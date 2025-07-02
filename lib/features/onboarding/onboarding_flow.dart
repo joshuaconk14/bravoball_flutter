@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:rive/rive.dart';
 import 'onboarding_questions.dart';
+import '../../widgets/bravo_button.dart';
+import '../../views/main_tab_view.dart';
 
 class OnboardingFlow extends StatefulWidget {
   const OnboardingFlow({Key? key}) : super(key: key);
@@ -20,6 +22,11 @@ class _OnboardingFlowState extends State<OnboardingFlow> {
   bool _regConfirmPasswordVisible = false;
   final Map<int, Set<int>> _multiAnswers = {};
 
+  // Persistent controllers for registration fields
+  final TextEditingController _emailController = TextEditingController();
+  final TextEditingController _passwordController = TextEditingController();
+  final TextEditingController _confirmPasswordController = TextEditingController();
+
   static const yellow = Color(0xFFF9CC53);
   static const darkGray = Color(0xFF444444);
 
@@ -28,6 +35,14 @@ class _OnboardingFlowState extends State<OnboardingFlow> {
   static const int stepPreview = 1;
   int get stepFirstQuestion => 2;
   int get stepRegistration => onboardingQuestions.length + stepFirstQuestion;
+
+  @override
+  void dispose() {
+    _emailController.dispose();
+    _passwordController.dispose();
+    _confirmPasswordController.dispose();
+    super.dispose();
+  }
 
   void _next() {
     // Only advance if not past registration
@@ -116,43 +131,21 @@ class _OnboardingFlowState extends State<OnboardingFlow> {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.stretch,
                   children: [
-                    ElevatedButton(
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: yellow,
-                        foregroundColor: Colors.white,
-                        elevation: 2,
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(16),
-                        ),
-                        padding: const EdgeInsets.symmetric(vertical: 18),
-                        textStyle: const TextStyle(
-                          fontFamily: 'Poppins',
-                          fontWeight: FontWeight.bold,
-                          fontSize: 18,
-                        ),
-                      ),
+                    BravoButton(
+                      text: 'Create an account',
                       onPressed: () => setState(() => _step = 1),
-                      child: const Text('Create an account'),
+                      color: yellow,
+                      textColor: Colors.white,
+                      disabled: false,
                     ),
                     const SizedBox(height: 16),
-                    ElevatedButton(
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: Colors.white,
-                        foregroundColor: darkGray,
-                        elevation: 2,
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(16),
-                        ),
-                        side: BorderSide(color: Colors.grey.shade200, width: 2),
-                        padding: const EdgeInsets.symmetric(vertical: 18),
-                        textStyle: const TextStyle(
-                          fontFamily: 'Poppins',
-                          fontWeight: FontWeight.bold,
-                          fontSize: 18,
-                        ),
-                      ),
+                    BravoButton(
+                      text: 'Login',
                       onPressed: _goToLogin,
-                      child: const Text('Login'),
+                      color: Colors.white,
+                      textColor: darkGray,
+                      disabled: false,
+                      borderSide: BorderSide(color: Colors.grey.shade200, width: 2),
                     ),
                   ],
                 ),
@@ -220,23 +213,12 @@ class _OnboardingFlowState extends State<OnboardingFlow> {
                 padding: const EdgeInsets.symmetric(horizontal: 24.0),
                 child: SizedBox(
                   width: double.infinity,
-                  child: ElevatedButton(
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: yellow,
-                      foregroundColor: Colors.white,
-                      elevation: 2,
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(16),
-                      ),
-                      padding: const EdgeInsets.symmetric(vertical: 18),
-                      textStyle: const TextStyle(
-                        fontFamily: 'Poppins',
-                        fontWeight: FontWeight.bold,
-                        fontSize: 18,
-                      ),
-                    ),
+                  child: BravoButton(
+                    text: 'Next',
                     onPressed: _next,
-                    child: const Text('Next'),
+                    color: yellow,
+                    textColor: Colors.white,
+                    disabled: false,
                   ),
                 ),
               ),
@@ -437,28 +419,17 @@ class _OnboardingFlowState extends State<OnboardingFlow> {
               padding: const EdgeInsets.symmetric(horizontal: 20.0, vertical: 16.0),
               child: SizedBox(
                 width: double.infinity,
-                child: ElevatedButton(
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: yellow,
-                    foregroundColor: Colors.white,
-                    elevation: 2,
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(16),
-                    ),
-                    padding: const EdgeInsets.symmetric(vertical: 18),
-                    textStyle: const TextStyle(
-                      fontFamily: 'Poppins',
-                      fontWeight: FontWeight.bold,
-                      fontSize: 18,
-                    ),
-                  ),
-                    onPressed: question.isMultiSelect
-                        ? (selected as Set<int>).isNotEmpty ? _next : null
-                        : selected != null ? _next : null,
-                    child: const Text('Next'),
-                  ),
+                child: BravoButton(
+                  text: 'Next',
+                  onPressed: question.isMultiSelect
+                      ? (selected as Set<int>).isNotEmpty ? _next : null
+                      : selected != null ? _next : null,
+                  color: yellow,
+                  textColor: Colors.white,
+                  disabled: false,
                 ),
               ),
+            ),
             ],
           ),
         ),
@@ -483,14 +454,22 @@ class _OnboardingFlowState extends State<OnboardingFlow> {
                       onPressed: _back,
                     ),
                     const Spacer(),
-                    // Skip button (disabled on registration)
-                    Text(
-                      'Skip',
-                      style: TextStyle(
-                        fontFamily: 'Poppins',
-                        fontWeight: FontWeight.bold,
-                        color: Colors.grey.shade400,
-                        fontSize: 16,
+                    // Working Skip button
+                    TextButton(
+                      onPressed: () {
+                        Navigator.pushReplacement(
+                          context,
+                          MaterialPageRoute(builder: (context) => const MainTabView()),
+                        );
+                      },
+                      child: const Text(
+                        'Skip',
+                        style: TextStyle(
+                          fontFamily: 'Poppins',
+                          fontWeight: FontWeight.bold,
+                          color: darkGray,
+                          fontSize: 16,
+                        ),
                       ),
                     ),
                   ],
@@ -542,7 +521,10 @@ class _OnboardingFlowState extends State<OnboardingFlow> {
                       _BravoTextField(
                         label: 'Email',
                         value: _regEmail,
-                        onChanged: (v) => setState(() => _regEmail = v),
+                        controller: _emailController,
+                        onChanged: (v) => setState(() {
+                          _regEmail = v;
+                        }),
                         keyboardType: TextInputType.emailAddress,
                         isPassword: false,
                         yellow: yellow,
@@ -551,7 +533,10 @@ class _OnboardingFlowState extends State<OnboardingFlow> {
                       _BravoTextField(
                         label: 'Password',
                         value: _regPassword,
-                        onChanged: (v) => setState(() => _regPassword = v),
+                        controller: _passwordController,
+                        onChanged: (v) => setState(() {
+                          _regPassword = v;
+                        }),
                         isPassword: true,
                         yellow: yellow,
                         passwordVisible: _regPasswordVisible,
@@ -561,7 +546,10 @@ class _OnboardingFlowState extends State<OnboardingFlow> {
                       _BravoTextField(
                         label: 'Confirm Password',
                         value: _regConfirmPassword,
-                        onChanged: (v) => setState(() => _regConfirmPassword = v),
+                        controller: _confirmPasswordController,
+                        onChanged: (v) => setState(() {
+                          _regConfirmPassword = v;
+                        }),
                         isPassword: true,
                         yellow: yellow,
                         passwordVisible: _regConfirmPasswordVisible,
@@ -581,21 +569,8 @@ class _OnboardingFlowState extends State<OnboardingFlow> {
                 padding: const EdgeInsets.symmetric(horizontal: 20.0, vertical: 16.0),
                 child: SizedBox(
                   width: double.infinity,
-                  child: ElevatedButton(
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: (_regEmail.isEmpty || _regPassword.isEmpty || _regConfirmPassword.isEmpty) ? Colors.grey.shade300 : yellow,
-                      foregroundColor: Colors.white,
-                      elevation: 0,
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(16),
-                      ),
-                      padding: const EdgeInsets.symmetric(vertical: 18),
-                      textStyle: const TextStyle(
-                        fontFamily: 'Poppins',
-                        fontWeight: FontWeight.bold,
-                        fontSize: 18,
-                      ),
-                    ),
+                  child: BravoButton(
+                    text: 'Submit',
                     onPressed: (_regEmail.isEmpty || _regPassword.isEmpty || _regConfirmPassword.isEmpty)
                         ? null
                         : () {
@@ -608,18 +583,24 @@ class _OnboardingFlowState extends State<OnboardingFlow> {
                               } else if (_regPassword != _regConfirmPassword) {
                                 _regError = 'Passwords do not match.';
                               } else {
-                                // TODO: Submit registration data
+                                // For now, skip to main tab view for testing
+                                Navigator.pushReplacement(
+                                  context,
+                                  MaterialPageRoute(builder: (context) => const MainTabView()),
+                                );
                               }
                             });
                           },
-                    child: const Text('Submit'),
+                    color: (_regEmail.isEmpty || _regPassword.isEmpty || _regConfirmPassword.isEmpty) ? Colors.grey.shade300 : yellow,
+                    textColor: Colors.white,
+                    disabled: false,
                 ),
               ),
             ),
           ],
+          ),
         ),
-      ),
-    );
+      );
     }
 
     // Fallback (should never hit)
@@ -698,43 +679,19 @@ class PlaceholderLoginPage extends StatelessWidget {
                 children: [
                   SizedBox(
                     width: double.infinity,
-                    child: ElevatedButton(
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: yellow,
-                        foregroundColor: Colors.white,
-                        elevation: 0,
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(16),
-                        ),
-                        padding: const EdgeInsets.symmetric(vertical: 18),
-                        textStyle: const TextStyle(
-                          fontFamily: 'Poppins',
-                          fontWeight: FontWeight.bold,
-                          fontSize: 18,
-                        ),
-                      ),
+                    child: BravoButton(
+                      text: 'Login',
                       onPressed: () {}, // TODO: Implement login logic
-                      child: const Text('Login'),
+                      color: yellow,
+                      textColor: Colors.white,
+                      disabled: false,
                     ),
                   ),
                   const SizedBox(height: 12),
                   SizedBox(
                     width: double.infinity,
-                    child: ElevatedButton(
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: Colors.grey.shade200,
-                        foregroundColor: darkGray,
-                        elevation: 0,
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(16),
-                        ),
-                        padding: const EdgeInsets.symmetric(vertical: 18),
-                        textStyle: const TextStyle(
-                          fontFamily: 'Poppins',
-                          fontWeight: FontWeight.bold,
-                          fontSize: 18,
-                        ),
-                      ),
+                    child: BravoButton(
+                      text: 'Cancel',
                   onPressed: () {
                     if (onBack != null) {
                       Navigator.of(context).pop();
@@ -743,7 +700,9 @@ class PlaceholderLoginPage extends StatelessWidget {
                       Navigator.of(context).pop();
                     }
                   },
-                      child: const Text('Cancel'),
+                      color: Colors.grey.shade200,
+                      textColor: darkGray,
+                      disabled: false,
                     ),
                   ),
                 ],
@@ -766,6 +725,7 @@ class _BravoTextField extends StatelessWidget {
   final bool passwordVisible;
   final VoidCallback? onToggleVisibility;
   final Color yellow;
+  final TextEditingController? controller;
 
   const _BravoTextField({
     required this.label,
@@ -776,13 +736,14 @@ class _BravoTextField extends StatelessWidget {
     this.passwordVisible = false,
     this.onToggleVisibility,
     required this.yellow,
+    this.controller,
     Key? key,
   }) : super(key: key);
 
   @override
   Widget build(BuildContext context) {
     return TextField(
-      controller: TextEditingController(text: value),
+      controller: controller,
       onChanged: onChanged,
       keyboardType: keyboardType,
       obscureText: isPassword && !passwordVisible,
