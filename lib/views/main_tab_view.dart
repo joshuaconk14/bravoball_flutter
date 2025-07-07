@@ -7,14 +7,16 @@ import '../features/profile/profile_view.dart';
 import '../constants/app_theme.dart';
 
 class MainTabView extends StatefulWidget {
-  const MainTabView({Key? key}) : super(key: key);
+  final int initialIndex;
+  
+  const MainTabView({Key? key, this.initialIndex = 0}) : super(key: key);
 
   @override
   State<MainTabView> createState() => _MainTabViewState();
 }
 
 class _MainTabViewState extends State<MainTabView> {
-  int _selectedIndex = 0;
+  late int _selectedIndex;
 
   static final List<Widget> _widgetOptions = <Widget>[
     const SessionGeneratorHomeFieldView(),
@@ -22,6 +24,12 @@ class _MainTabViewState extends State<MainTabView> {
     const SavedDrillsView(),
     const ProfileView(),
   ];
+
+  @override
+  void initState() {
+    super.initState();
+    _selectedIndex = widget.initialIndex;
+  }
 
   void _onItemTapped(int index) {
     setState(() {

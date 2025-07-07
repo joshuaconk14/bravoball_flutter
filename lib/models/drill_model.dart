@@ -33,6 +33,45 @@ class DrillModel {
     required this.videoUrl,
   });
 
+  // JSON serialization
+  Map<String, dynamic> toJson() {
+    return {
+      'id': id,
+      'title': title,
+      'skill': skill,
+      'subSkills': subSkills,
+      'sets': sets,
+      'reps': reps,
+      'duration': duration,
+      'description': description,
+      'instructions': instructions,
+      'tips': tips,
+      'equipment': equipment,
+      'trainingStyle': trainingStyle,
+      'difficulty': difficulty,
+      'videoUrl': videoUrl,
+    };
+  }
+
+  factory DrillModel.fromJson(Map<String, dynamic> json) {
+    return DrillModel(
+      id: json['id'] ?? '',
+      title: json['title'] ?? '',
+      skill: json['skill'] ?? '',
+      subSkills: List<String>.from(json['subSkills'] ?? []),
+      sets: json['sets'] ?? 0,
+      reps: json['reps'] ?? 0,
+      duration: json['duration'] ?? 0,
+      description: json['description'] ?? '',
+      instructions: List<String>.from(json['instructions'] ?? []),
+      tips: List<String>.from(json['tips'] ?? []),
+      equipment: List<String>.from(json['equipment'] ?? []),
+      trainingStyle: json['trainingStyle'] ?? '',
+      difficulty: json['difficulty'] ?? '',
+      videoUrl: json['videoUrl'] ?? '',
+    );
+  }
+
   @override
   bool operator ==(Object other) {
     if (identical(this, other)) return true;

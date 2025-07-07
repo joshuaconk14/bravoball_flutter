@@ -3,10 +3,14 @@ import 'package:provider/provider.dart';
 import 'package:rive/rive.dart';
 import '../../widgets/bravo_button.dart';
 import '../../models/drill_model.dart';
+import '../../models/editable_drill_model.dart';
 import '../../services/app_state_service.dart';
 import '../../constants/app_theme.dart';
 import 'session_generator_editor_page.dart';
 import 'edit_drill_view.dart';
+import 'drill_follow_along_view.dart';
+import 'session_completion_view.dart';
+import '../../views/main_tab_view.dart';
 
 class SessionGeneratorHomeFieldView extends StatefulWidget {
   const SessionGeneratorHomeFieldView({Key? key}) : super(key: key);
@@ -143,10 +147,10 @@ class _SessionGeneratorHomeFieldViewState extends State<SessionGeneratorHomeFiel
           
           // Status message bubble - speech bubble coming from Bravo
           Positioned(
-            top: 100, // Positioned right above Bravo (who is at 180)
-            left: 60,  // More padding from edges to make it more compact
-            right: 180, // More padding from edges to make it more compact
-            child: _buildSpeechBubble(_getStatusMessage(appState)),
+            top: 100, // Positioned right above Bravo 
+            left: 60,  // Aligned with Bravo's position
+            right: 180, // Give enough space
+            child: _buildStatusMessage(appState),
           ),
           
           // Bravo in middle field area
@@ -192,6 +196,9 @@ class _SessionGeneratorHomeFieldViewState extends State<SessionGeneratorHomeFiel
 
   // Begin button
   Widget _buildBeginButton(AppStateService appState) {
+    final hasSessionDrills = appState.editableSessionDrills.isNotEmpty;
+    final sessionInProgress = appState.hasSessionProgress;
+    
     return Padding(
       padding: const EdgeInsets.only(
         left: 32,
@@ -199,43 +206,72 @@ class _SessionGeneratorHomeFieldViewState extends State<SessionGeneratorHomeFiel
         bottom: 25, // Increased bottom padding to push drill circles further down
       ),
       child: BravoButton(
-        text: appState.hasSessionDrills ? 'Begin Training' : 'Create Session',
-        onPressed: appState.hasSessionDrills ? () {
-          // TODO: Start training session
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text('Starting training session...')),
+        text: sessionInProgress ? 'Continue Training' : (hasSessionDrills ? 'Begin Training' : 'Create Session'),
+        onPressed: hasSessionDrills ? () {
+          if (!appState.sessionInProgress) {
+            appState.startSession();
+          }
+          
+          final nextDrill = appState.getNextIncompleteDrill();
+          if (nextDrill != null) {
+            Navigator.of(context).push(
+              MaterialPageRoute(
+                builder: (_) => DrillFollowAlongView(
+                  editableDrill: nextDrill,
+                  onDrillCompleted: () {
+                    appState.updateDrillProgress(
+                      nextDrill.drill.id,
+                      isCompleted: true,
+                    );
+                  },
+                  onSessionCompleted: () {
+                    appState.completeSession();
+                    _showSessionComplete();
+                  },
+                ),
+              ),
+            );
+          }
+        } : () {
+          Navigator.of(context).push(
+            MaterialPageRoute(
+              builder: (_) => const SessionGeneratorEditorPage(),
+            ),
           );
-        } : null,
-        color: appState.hasSessionDrills ? AppTheme.buttonPrimary : AppTheme.buttonDisabled,
+        },
+        color: hasSessionDrills ? AppTheme.buttonPrimary : AppTheme.buttonDisabled,
         textColor: AppTheme.textOnPrimary,
         height: 56,
         textSize: 25,
-        disabled: !appState.hasSessionDrills,
+        disabled: !hasSessionDrills,
       ),
     );
   }
   
   // Drill path with circles and trophy
   Widget _buildDrillPath(AppStateService appState) {
-    final sessionDrills = appState.sessionDrills;
-    final hasSessionDrills = sessionDrills.isNotEmpty;
+    final editableSessionDrills = appState.editableSessionDrills;
+    final hasSessionDrills = editableSessionDrills.isNotEmpty;
     
     return Column(
       mainAxisAlignment: MainAxisAlignment.start,
       children: [
         // Drill circles
-        ...sessionDrills.asMap().entries.map((entry) {
+        ...editableSessionDrills.asMap().entries.map((entry) {
           final index = entry.key;
-          final drill = entry.value;
+          final editableDrill = entry.value;
+          final nextIncompleteDrill = appState.getNextIncompleteDrill();
+          final isActive = nextIncompleteDrill?.drill.id == editableDrill.drill.id;
+          
           return Column(
             children: [
               _DrillCircle(
-                drill: drill,
-                isActive: index == 0, // First drill is active
-                isCompleted: false, // TODO: Track completion state
-                onTap: () => _openEditDrill(drill),
+                editableDrill: editableDrill,
+                isActive: isActive,
+                isCompleted: editableDrill.isCompleted,
+                onTap: () => _openFollowAlong(editableDrill, appState),
               ),
-              if (index < sessionDrills.length - 1)
+              if (index < editableSessionDrills.length - 1)
                 const SizedBox(height: 24),
             ],
           );
@@ -245,12 +281,15 @@ class _SessionGeneratorHomeFieldViewState extends State<SessionGeneratorHomeFiel
         if (hasSessionDrills) ...[
           const SizedBox(height: 32),
           _TrophyWidget(
-            isUnlocked: false, // TODO: Check if session is complete
+            isUnlocked: appState.isSessionComplete,
             onTap: () {
-              // TODO: Show completion dialog
-              ScaffoldMessenger.of(context).showSnackBar(
-                const SnackBar(content: Text('Complete all drills to unlock the trophy!')),
-              );
+              if (appState.isSessionComplete) {
+                _showSessionComplete();
+              } else {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(content: Text('Complete all drills to unlock the trophy!')),
+                );
+              }
             },
           ),
         ],
@@ -258,16 +297,73 @@ class _SessionGeneratorHomeFieldViewState extends State<SessionGeneratorHomeFiel
     );
   }
 
-  // Open edit drill view
-  void _openEditDrill(DrillModel drill) {
+  // Open follow-along view instead of edit drill view
+  void _openFollowAlong(EditableDrillModel editableDrill, AppStateService appState) {
+    final nextIncompleteDrill = appState.getNextIncompleteDrill();
+    
+    // Only allow follow-along for the current active drill
+    if (nextIncompleteDrill?.drill.id == editableDrill.drill.id || editableDrill.isCompleted) {
+      Navigator.of(context).push(
+        MaterialPageRoute(
+          builder: (_) => DrillFollowAlongView(
+            editableDrill: editableDrill,
+            onDrillCompleted: () {
+              // Update progress in app state
+              appState.updateDrillProgress(
+                editableDrill.drill.id,
+                isCompleted: true,
+              );
+            },
+            onSessionCompleted: () {
+              // Handle session completion
+              appState.completeSession();
+              _showSessionComplete();
+            },
+          ),
+        ),
+      );
+    } else {
+      // Show edit drill view for inactive drills
+      Navigator.of(context).push(
+        MaterialPageRoute(
+          builder: (_) => EditDrillView(
+            drill: editableDrill.drill,
+            onSave: () {
+              ScaffoldMessenger.of(context).showSnackBar(
+                SnackBar(content: Text('${editableDrill.drill.title} updated successfully!')),
+              );
+            },
+          ),
+        ),
+      );
+    }
+  }
+
+  void _showSessionComplete() {
+    final appState = Provider.of<AppStateService>(context, listen: false);
+    
     Navigator.of(context).push(
       MaterialPageRoute(
-        builder: (_) => EditDrillView(
-          drill: drill,
-          onSave: () {
-            // Provide feedback when drill is updated
-            ScaffoldMessenger.of(context).showSnackBar(
-              SnackBar(content: Text('${drill.title} updated successfully!')),
+        builder: (_) => SessionCompletionView(
+          currentStreak: 3, // TODO: Get from app state
+          completedDrills: appState.editableSessionDrills.where((drill) => drill.isCompleted).length,
+          totalDrills: appState.editableSessionDrills.length,
+          onViewProgress: () {
+            // Navigate to progress tab (index 1)
+            Navigator.of(context).pushAndRemoveUntil(
+              MaterialPageRoute(
+                builder: (_) => const MainTabView(initialIndex: 1),
+              ),
+              (route) => false,
+            );
+          },
+          onBackToHome: () {
+            // Navigate back to home tab (index 0)
+            Navigator.of(context).pushAndRemoveUntil(
+              MaterialPageRoute(
+                builder: (_) => const MainTabView(initialIndex: 0),
+              ),
+              (route) => false,
             );
           },
         ),
@@ -276,58 +372,51 @@ class _SessionGeneratorHomeFieldViewState extends State<SessionGeneratorHomeFiel
   }
 
   // Status message based on drill count
-  String _getStatusMessage(AppStateService appState) {
-    final drillCount = appState.sessionDrillCount;
+  Widget _buildStatusMessage(AppStateService appState) {
+    final editableSessionDrills = appState.editableSessionDrills;
+    final hasSessionDrills = editableSessionDrills.isNotEmpty;
     
-    if (drillCount == 0) {
-      return 'Click on the soccer bag to\nadd drills to your session!';
-    } else if (drillCount == 1) {
-      return 'You have 1 drill to complete.';
+    String message;
+    if (!hasSessionDrills) {
+      message = "Click on the soccer bag to add drills to your session!";
+    } else if (appState.isSessionComplete) {
+      message = "Well done! Click on the trophy to claim your prize.";
     } else {
-      return 'You have $drillCount drills to complete.';
+      final incompleteDrills = editableSessionDrills.where((drill) => !drill.isCompleted).length;
+      message = "You have $incompleteDrills drill${incompleteDrills == 1 ? '' : 's'} to complete.";
     }
-  }
 
-  // Build a speech bubble with a tail pointing to Bravo
-  Widget _buildSpeechBubble(String text) {
     return Column(
       children: [
         // Main bubble
         Container(
-          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10), // Reduced padding for more compact look
+          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
           decoration: BoxDecoration(
-            color: AppTheme.speechBubbleBackground, // Use theme color
-            borderRadius: BorderRadius.circular(AppTheme.radiusLarge), // Use theme radius
-            boxShadow: [
-              BoxShadow(
-                color: AppTheme.black.withOpacity(0.2),
-                blurRadius: AppTheme.elevationHigh,
-                offset: const Offset(0, 4),
-              ),
-            ],
+            color: AppTheme.speechBubbleBackground,
+            borderRadius: BorderRadius.circular(12),
           ),
           child: Text(
-            text,
-            style: TextStyle(
-              fontFamily: AppTheme.fontPoppins,
-              fontWeight: FontWeight.bold,
-              fontSize: 13, // Smaller font size for compactness
-              color: AppTheme.speechBubbleText, // Use theme color
+            message,
+            style: const TextStyle(
+              fontFamily: 'Poppins',
+              fontWeight: FontWeight.w600,
+              fontSize: 13,
+              color: Colors.white,
             ),
             textAlign: TextAlign.center,
-            maxLines: 2, // Limit to 2 lines to prevent overflow
-            overflow: TextOverflow.ellipsis, // Handle overflow gracefully
+            maxLines: 2,
+            overflow: TextOverflow.ellipsis,
           ),
         ),
-        // Tail pointing down to Bravo
+        // Speech bubble tail pointing down to Bravo
         Container(
-          margin: const EdgeInsets.only(left: 15), // Adjusted offset for better alignment
+          margin: const EdgeInsets.only(left: 15),
           child: ClipPath(
             clipper: _TriangleClipper(),
             child: Container(
-              width: 16, // Slightly smaller tail
-              height: 8,  // Slightly smaller tail
-              color: AppTheme.speechBubbleBackground, // Use theme color
+              width: 16,
+              height: 8,
+              color: AppTheme.speechBubbleBackground,
             ),
           ),
         ),
@@ -338,13 +427,13 @@ class _SessionGeneratorHomeFieldViewState extends State<SessionGeneratorHomeFiel
 
 // Drill circle with skill icon and color
 class _DrillCircle extends StatelessWidget {
-  final DrillModel drill;
+  final EditableDrillModel editableDrill;
   final bool isActive;
   final bool isCompleted;
   final VoidCallback onTap;
 
   const _DrillCircle({
-    required this.drill,
+    required this.editableDrill,
     required this.isActive,
     required this.isCompleted,
     required this.onTap,
@@ -363,40 +452,61 @@ class _DrillCircle extends StatelessWidget {
       iconData = Icons.check;
     } else if (isActive) {
       backgroundColor = AppTheme.white;
-      iconColor = AppTheme.getSkillColor(drill.skill);
-      iconData = _getSkillIcon(drill.skill);
+      iconColor = _getSkillColor(editableDrill.drill.skill);
+      iconData = _getSkillIcon(editableDrill.drill.skill);
     } else {
       backgroundColor = AppTheme.buttonDisabled;
       iconColor = AppTheme.primaryGray;
-      iconData = _getSkillIcon(drill.skill);
+      iconData = _getSkillIcon(editableDrill.drill.skill);
     }
 
-    // Return the drill circle
+    // Return the drill circle with progress ring
     return GestureDetector(
       onTap: onTap,
-      child: Container(
-        width: 70,
-        height: 70,
-        decoration: BoxDecoration(
-          color: backgroundColor,
-          shape: BoxShape.circle,
-          border: isActive ? Border.all(color: AppTheme.getSkillColor(drill.skill), width: 3) : null,
-          boxShadow: [
-            if (isActive || isCompleted)
-              BoxShadow(
-                color: Colors.black.withOpacity(0.2),
-                blurRadius: 8,
-                offset: const Offset(0, 4),
+      child: Stack(
+        alignment: Alignment.center,
+        children: [
+          // Progress ring (only show if there's progress or completed)
+          if (editableDrill.progress > 0 || isCompleted)
+            SizedBox(
+              width: 80,
+              height: 80,
+              child: CircularProgressIndicator(
+                value: editableDrill.progress,
+                strokeWidth: 6,
+                backgroundColor: Colors.grey.shade300,
+                valueColor: AlwaysStoppedAnimation<Color>(
+                  isCompleted ? AppTheme.success : AppTheme.buttonPrimary,
+                ),
               ),
-          ],
-        ),
-        child: Center(
-          child: Icon(
-            iconData,
-            color: iconColor,
-            size: 32,
+            ),
+          
+          // Main drill circle
+          Container(
+            width: 70,
+            height: 70,
+            decoration: BoxDecoration(
+              color: backgroundColor,
+              shape: BoxShape.circle,
+              border: isActive ? Border.all(color: _getSkillColor(editableDrill.drill.skill), width: 3) : null,
+              boxShadow: [
+                if (isActive || isCompleted)
+                  BoxShadow(
+                    color: Colors.black.withOpacity(0.2),
+                    blurRadius: 8,
+                    offset: const Offset(0, 4),
+                  ),
+              ],
+            ),
+            child: Center(
+              child: Icon(
+                iconData,
+                color: iconColor,
+                size: 32,
+              ),
+            ),
           ),
-        ),
+        ],
       ),
     );
   }
@@ -404,6 +514,24 @@ class _DrillCircle extends StatelessWidget {
   IconData _getSkillIcon(String skill) {
     // Always return the running soccer player icon for all drills
     return Icons.directions_run;
+  }
+
+  Color _getSkillColor(String skill) {
+    // Simple color mapping for different skills
+    switch (skill.toLowerCase()) {
+      case 'dribbling':
+        return Colors.orange;
+      case 'passing':
+        return Colors.blue;
+      case 'shooting':
+        return Colors.red;
+      case 'first touch':
+        return Colors.green;
+      case 'defending':
+        return Colors.purple;
+      default:
+        return AppTheme.buttonPrimary;
+    }
   }
 }
 

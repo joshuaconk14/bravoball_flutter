@@ -54,8 +54,8 @@ class _EditDrillViewState extends State<EditDrillView> {
         ),
         centerTitle: true,
         actions: [
-          Container(
-            margin: const EdgeInsets.only(right: 16, top: 8, bottom: 8),
+          Padding(
+            padding: const EdgeInsets.only(right: 8.0),
             child: ElevatedButton(
               onPressed: () => _showDrillDetails(context),
               style: ElevatedButton.styleFrom(
@@ -63,20 +63,22 @@ class _EditDrillViewState extends State<EditDrillView> {
                 foregroundColor: Colors.white,
                 elevation: 0,
                 shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(20),
+                  borderRadius: BorderRadius.circular(12),
                 ),
+                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                minimumSize: const Size(0, 32),
               ),
               child: const Row(
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  Icon(Icons.info_outline, size: 16),
+                  Icon(Icons.info_outline, size: 14),
                   SizedBox(width: 4),
                   Text(
                     'Details',
                     style: TextStyle(
                       fontFamily: 'Poppins',
                       fontWeight: FontWeight.w600,
-                      fontSize: 14,
+                      fontSize: 12,
                     ),
                   ),
                 ],

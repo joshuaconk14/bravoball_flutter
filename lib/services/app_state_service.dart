@@ -2,6 +2,7 @@ import 'package:flutter/foundation.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'dart:convert';
 import '../models/drill_model.dart';
+import '../models/editable_drill_model.dart';
 import '../models/drill_group_model.dart';
 import '../models/filter_models.dart';
 
@@ -15,9 +16,17 @@ class AppStateService extends ChangeNotifier {
   UserPreferences _preferences = UserPreferences();
   UserPreferences get preferences => _preferences;
   
-  // Session drills
+  // Session drills (now using EditableDrillModel for progress tracking)
+  final List<EditableDrillModel> _editableSessionDrills = [];
+  List<EditableDrillModel> get editableSessionDrills => List.unmodifiable(_editableSessionDrills);
+  
+  // Session drills (legacy - for backward compatibility)
   final List<DrillModel> _sessionDrills = [];
   List<DrillModel> get sessionDrills => List.unmodifiable(_sessionDrills);
+  
+  // Session progress state
+  bool _sessionInProgress = false;
+  bool get sessionInProgress => _sessionInProgress;
   
   // Saved drill groups
   final List<DrillGroup> _savedDrillGroups = [];
@@ -209,6 +218,18 @@ class AppStateService extends ChangeNotifier {
   void addDrillToSession(DrillModel drill) {
     if (!_sessionDrills.any((d) => d.id == drill.id)) {
       _sessionDrills.add(drill);
+      
+      // Also add to editable session drills
+      final editableDrill = EditableDrillModel(
+        drill: drill,
+        setsDone: 0,
+        totalSets: drill.sets > 0 ? drill.sets : 3,
+        totalReps: drill.reps > 0 ? drill.reps : 10,
+        totalDuration: drill.duration > 0 ? drill.duration : 5,
+        isCompleted: false,
+      );
+      _editableSessionDrills.add(editableDrill);
+      
       _persistState();
       notifyListeners();
     }
@@ -216,6 +237,7 @@ class AppStateService extends ChangeNotifier {
   
   void removeDrillFromSession(DrillModel drill) {
     _sessionDrills.removeWhere((d) => d.id == drill.id);
+    _editableSessionDrills.removeWhere((ed) => ed.drill.id == drill.id);
     _persistState();
     notifyListeners();
   }
@@ -226,18 +248,25 @@ class AppStateService extends ChangeNotifier {
     }
     final DrillModel item = _sessionDrills.removeAt(oldIndex);
     _sessionDrills.insert(newIndex, item);
+    
+    final EditableDrillModel editableItem = _editableSessionDrills.removeAt(oldIndex);
+    _editableSessionDrills.insert(newIndex, editableItem);
+    
     _persistState();
     notifyListeners();
   }
   
   void clearSession() {
     _sessionDrills.clear();
+    _editableSessionDrills.clear();
+    _sessionInProgress = false;
     _persistState();
     notifyListeners();
   }
   
   // Update drill properties in session
   void updateDrillInSession(String drillId, {int? sets, int? reps, int? duration}) {
+    // Update legacy session drills
     final drillIndex = _sessionDrills.indexWhere((drill) => drill.id == drillId);
     if (drillIndex != -1) {
       final currentDrill = _sessionDrills[drillIndex];
@@ -259,9 +288,81 @@ class AppStateService extends ChangeNotifier {
       );
       
       _sessionDrills[drillIndex] = updatedDrill;
+    }
+    
+    // Update editable session drills
+    final editableDrillIndex = _editableSessionDrills.indexWhere((drill) => drill.drill.id == drillId);
+    if (editableDrillIndex != -1) {
+      final currentEditableDrill = _editableSessionDrills[editableDrillIndex];
+      _editableSessionDrills[editableDrillIndex] = currentEditableDrill.copyWith(
+        totalSets: sets,
+        totalReps: reps,
+        totalDuration: duration,
+      );
+    }
+    
+    _persistState();
+    notifyListeners();
+  }
+  
+  // Update drill progress during follow-along
+  void updateDrillProgress(String drillId, {int? setsDone, bool? isCompleted}) {
+    final editableDrillIndex = _editableSessionDrills.indexWhere((drill) => drill.drill.id == drillId);
+    if (editableDrillIndex != -1) {
+      final currentEditableDrill = _editableSessionDrills[editableDrillIndex];
+      _editableSessionDrills[editableDrillIndex] = currentEditableDrill.copyWith(
+        setsDone: setsDone,
+        isCompleted: isCompleted,
+      );
+      
       _persistState();
       notifyListeners();
     }
+  }
+  
+  // Session progress methods
+  void startSession() {
+    _sessionInProgress = true;
+    _persistState();
+    notifyListeners();
+  }
+  
+  void completeSession() {
+    _sessionInProgress = false;
+    // Mark all drills as completed
+    for (int i = 0; i < _editableSessionDrills.length; i++) {
+      _editableSessionDrills[i] = _editableSessionDrills[i].copyWith(isCompleted: true);
+    }
+    _persistState();
+    notifyListeners();
+  }
+  
+  // Get the next incomplete drill
+  EditableDrillModel? getNextIncompleteDrill() {
+    try {
+      return _editableSessionDrills.firstWhere((drill) => !drill.isCompleted);
+    } catch (e) {
+      return null;
+    }
+  }
+  
+  // Check if session has any progress
+  bool get hasSessionProgress {
+    return _editableSessionDrills.any((drill) => drill.setsDone > 0 || drill.isCompleted);
+  }
+  
+  // Get session completion percentage
+  double get sessionCompletionPercentage {
+    if (_editableSessionDrills.isEmpty) return 0.0;
+    
+    final completedDrills = _editableSessionDrills.where((drill) => drill.isCompleted).length;
+    return completedDrills / _editableSessionDrills.length;
+  }
+  
+  // Check if all drills are completed
+  bool get isSessionComplete {
+    if (_editableSessionDrills.isEmpty) return false;
+    return _editableSessionDrills.every((drill) => drill.isCompleted);
   }
   
   void toggleAutoGenerate(bool value) {
