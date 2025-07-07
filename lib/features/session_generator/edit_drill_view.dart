@@ -1,0 +1,353 @@
+import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
+import '../../models/drill_model.dart';
+import '../../services/app_state_service.dart';
+import '../../constants/app_theme.dart';
+import 'drill_detail_view.dart';
+
+class EditDrillView extends StatefulWidget {
+  final DrillModel drill;
+  final VoidCallback? onSave; // Optional callback when changes are saved
+
+  const EditDrillView({
+    Key? key,
+    required this.drill,
+    this.onSave,
+  }) : super(key: key);
+
+  @override
+  State<EditDrillView> createState() => _EditDrillViewState();
+}
+
+class _EditDrillViewState extends State<EditDrillView> {
+  late int sets;
+  late int reps;
+  late int duration;
+  
+  @override
+  void initState() {
+    super.initState();
+    sets = widget.drill.sets;
+    reps = widget.drill.reps;
+    duration = widget.drill.duration;
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      backgroundColor: Colors.white,
+      appBar: AppBar(
+        backgroundColor: Colors.white,
+        elevation: 0,
+        leading: IconButton(
+          icon: const Icon(Icons.close, color: Colors.black),
+          onPressed: () => Navigator.pop(context),
+        ),
+        title: const Text(
+          'Edit Drill',
+          style: TextStyle(
+            fontFamily: 'Poppins',
+            fontWeight: FontWeight.bold,
+            color: Colors.black,
+            fontSize: 18,
+          ),
+        ),
+        centerTitle: true,
+        actions: [
+          Container(
+            margin: const EdgeInsets.only(right: 16, top: 8, bottom: 8),
+            child: ElevatedButton(
+              onPressed: () => _showDrillDetails(context),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: Colors.grey.shade600,
+                foregroundColor: Colors.white,
+                elevation: 0,
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(20),
+                ),
+              ),
+              child: const Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Icon(Icons.info_outline, size: 16),
+                  SizedBox(width: 4),
+                  Text(
+                    'Details',
+                    style: TextStyle(
+                      fontFamily: 'Poppins',
+                      fontWeight: FontWeight.w600,
+                      fontSize: 14,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ],
+      ),
+      body: Column(
+        children: [
+          Expanded(
+            child: SingleChildScrollView(
+              padding: const EdgeInsets.all(16),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  // Video placeholder (like in Swift app)
+                  _buildVideoSection(),
+                  
+                  const SizedBox(height: 24),
+                  
+                  // Drill title
+                  Text(
+                    widget.drill.title,
+                    style: const TextStyle(
+                      fontFamily: 'Poppins',
+                      fontWeight: FontWeight.bold,
+                      fontSize: 20,
+                      color: Colors.black,
+                    ),
+                  ),
+                  
+                  const SizedBox(height: 8),
+                  
+                  // Skill badge
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                    decoration: BoxDecoration(
+                      color: _getSkillColor(widget.drill.skill).withOpacity(0.1),
+                      borderRadius: BorderRadius.circular(16),
+                      border: Border.all(
+                        color: _getSkillColor(widget.drill.skill).withOpacity(0.3),
+                      ),
+                    ),
+                    child: Text(
+                      widget.drill.skill,
+                      style: TextStyle(
+                        fontFamily: 'Poppins',
+                        fontWeight: FontWeight.w600,
+                        fontSize: 12,
+                        color: _getSkillColor(widget.drill.skill),
+                      ),
+                    ),
+                  ),
+                  
+                  const SizedBox(height: 32),
+                  
+                  // Edit controls
+                  _buildEditControls(),
+                  
+                  const SizedBox(height: 32),
+                ],
+              ),
+            ),
+          ),
+          
+          // Save Changes button
+          _buildSaveButton(),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildVideoSection() {
+    return Container(
+      width: double.infinity,
+      height: 200,
+      decoration: BoxDecoration(
+        color: Colors.grey.shade200,
+        borderRadius: BorderRadius.circular(16),
+        image: const DecorationImage(
+          image: NetworkImage('https://images.unsplash.com/photo-1544717440-6-2_I9gpz9E?q=80&w=2069'),
+          fit: BoxFit.cover,
+        ),
+      ),
+      child: Container(
+        decoration: BoxDecoration(
+          borderRadius: BorderRadius.circular(16),
+          gradient: LinearGradient(
+            begin: Alignment.topCenter,
+            end: Alignment.bottomCenter,
+            colors: [
+              Colors.transparent,
+              Colors.black.withOpacity(0.3),
+            ],
+          ),
+        ),
+        child: Center(
+          child: Container(
+            width: 60,
+            height: 60,
+            decoration: BoxDecoration(
+              color: Colors.white.withOpacity(0.9),
+              shape: BoxShape.circle,
+            ),
+            child: const Icon(
+              Icons.play_arrow,
+              color: Colors.black,
+              size: 30,
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildEditControls() {
+    return Column(
+      children: [
+        _buildControlRow('Sets', sets, (value) => setState(() => sets = value)),
+        const SizedBox(height: 16),
+        _buildControlRow('Reps', reps, (value) => setState(() => reps = value)),
+        const SizedBox(height: 16),
+        _buildControlRow('Minutes', duration, (value) => setState(() => duration = value)),
+      ],
+    );
+  }
+
+  Widget _buildControlRow(String label, int value, Function(int) onChanged) {
+    return Row(
+      children: [
+        Expanded(
+          flex: 2,
+          child: Text(
+            label,
+            style: const TextStyle(
+              fontFamily: 'Poppins',
+              fontWeight: FontWeight.w600,
+              fontSize: 16,
+              color: Colors.black87,
+            ),
+          ),
+        ),
+        Expanded(
+          flex: 3,
+          child: Container(
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+            decoration: BoxDecoration(
+              color: Colors.grey.shade100,
+              borderRadius: BorderRadius.circular(25),
+              border: Border.all(color: Colors.grey.shade300),
+            ),
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                GestureDetector(
+                  onTap: () {
+                    if (value > 1) onChanged(value - 1);
+                  },
+                  child: Container(
+                    width: 32,
+                    height: 32,
+                    decoration: BoxDecoration(
+                      color: value > 1 ? Colors.grey.shade300 : Colors.grey.shade200,
+                      shape: BoxShape.circle,
+                    ),
+                    child: Icon(
+                      Icons.remove,
+                      color: value > 1 ? Colors.black54 : Colors.grey.shade400,
+                      size: 16,
+                    ),
+                  ),
+                ),
+                Text(
+                  value.toString(),
+                  style: const TextStyle(
+                    fontFamily: 'Poppins',
+                    fontWeight: FontWeight.bold,
+                    fontSize: 18,
+                    color: Colors.black,
+                  ),
+                ),
+                GestureDetector(
+                  onTap: () => onChanged(value + 1),
+                  child: Container(
+                    width: 32,
+                    height: 32,
+                    decoration: BoxDecoration(
+                      color: Colors.grey.shade300,
+                      shape: BoxShape.circle,
+                    ),
+                    child: const Icon(
+                      Icons.add,
+                      color: Colors.black54,
+                      size: 16,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildSaveButton() {
+    return Container(
+      padding: const EdgeInsets.all(16),
+      child: SizedBox(
+        width: double.infinity,
+        height: 56,
+        child: ElevatedButton(
+          onPressed: _saveChanges,
+          style: ElevatedButton.styleFrom(
+            backgroundColor: AppTheme.buttonPrimary,
+            foregroundColor: AppTheme.textOnPrimary,
+            elevation: 0,
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(AppTheme.radiusLarge),
+            ),
+          ),
+          child: Text(
+            'Save Changes',
+            style: AppTheme.buttonTextMedium,
+          ),
+        ),
+      ),
+    );
+  }
+
+  void _saveChanges() {
+    // Update the drill in the session using AppStateService
+    final appState = Provider.of<AppStateService>(context, listen: false);
+    
+    // Only update if the drill is actually in the session
+    if (appState.isDrillInSession(widget.drill)) {
+      appState.updateDrillInSession(
+        widget.drill.id,
+        sets: sets,
+        reps: reps,
+        duration: duration,
+      );
+      
+      // Call the onSave callback if provided
+      widget.onSave?.call();
+      
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Drill updated successfully!'),
+          backgroundColor: Colors.green,
+        ),
+      );
+    }
+    
+    Navigator.pop(context);
+  }
+
+  void _showDrillDetails(BuildContext context) {
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (context) => DrillDetailView(
+          drill: widget.drill,
+          isInSession: true,
+        ),
+      ),
+    );
+  }
+
+  Color _getSkillColor(String skill) {
+    return AppTheme.getSkillColor(skill);
+  }
+} 
