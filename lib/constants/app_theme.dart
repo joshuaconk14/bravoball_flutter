@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/foundation.dart';
 
 /// Global app theme and color definitions
 /// Centralizes all design tokens for consistent styling across the app
@@ -221,7 +222,6 @@ class AppTheme {
         primary: primaryYellow,
         secondary: primaryGreen,
         surface: backgroundPrimary,
-        background: backgroundPrimary,
         error: error,
       ),
       fontFamily: fontPoppins,
@@ -261,5 +261,80 @@ class AppTheme {
         labelSmall: labelSmall,
       ),
     );
+  }
+}
+
+/// Environment types for API endpoints
+enum Environment {
+  production,
+  localhost,
+  staging,
+}
+
+/// Debug and Environment Settings
+/// Similar to iOS GlobalSettings for easy debugging and environment switching
+class AppSettings {
+  // Private constructor
+  AppSettings._();
+  
+  // MARK: - Debug Settings
+  /// Main debug toggle - set to true for test data, false for real backend
+  static const bool useTestData = true; // CHANGE THIS TO TOGGLE DEBUG MODE
+  
+  /// Additional debug options
+  static const bool enableDebugMenu = true; // Show debug menu in profile
+  static const bool logApiCalls = true; // Log API calls in debug mode
+  static const bool showPerformanceOverlay = false; // Show Flutter performance overlay
+  
+  // MARK: - Environment Settings
+  /// Current environment (only used when useTestData is false)
+  static const Environment currentEnvironment = Environment.localhost;
+  
+  /// Get base URL based on environment
+  static String get baseUrl {
+    if (kDebugMode) {
+      switch (currentEnvironment) {
+        case Environment.production:
+          return 'https://bravoball-backend.onrender.com';
+        case Environment.localhost:
+          return 'http://127.0.0.1:8000';
+        case Environment.staging:
+          return 'https://staging-bravoball-backend.onrender.com'; // Example staging URL
+      }
+    } else {
+      // Always use production in release builds
+      return 'https://bravoball-backend.onrender.com';
+    }
+  }
+  
+  // MARK: - Test Data Settings
+  /// Number of test drills to generate
+  static const int testDrillCount = 5;
+  
+  /// Test user settings
+  static const String testUserEmail = 'test@bravoball.com';
+  static const int testUserStreak = 3;
+  
+  // MARK: - Debug Info
+  /// Get debug info string for display
+  static String get debugInfo {
+    if (!kDebugMode) return 'Release Build';
+    
+    return '''
+Debug Mode: ${useTestData ? 'Test Data' : 'Backend Data'}
+Environment: ${currentEnvironment.name}
+Base URL: $baseUrl
+Test Drills: $testDrillCount
+''';
+  }
+  
+  /// Check if we should use test data
+  static bool get shouldUseTestData {
+    return kDebugMode && useTestData;
+  }
+  
+  /// Check if debug menu should be shown
+  static bool get shouldShowDebugMenu {
+    return kDebugMode && enableDebugMenu;
   }
 } 

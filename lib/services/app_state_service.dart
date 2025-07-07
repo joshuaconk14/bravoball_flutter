@@ -5,6 +5,8 @@ import '../models/drill_model.dart';
 import '../models/editable_drill_model.dart';
 import '../models/drill_group_model.dart';
 import '../models/filter_models.dart';
+import '../constants/app_theme.dart';
+import './test_data_service.dart';
 
 class AppStateService extends ChangeNotifier {
   static AppStateService? _instance;
@@ -36,13 +38,45 @@ class AppStateService extends ChangeNotifier {
   final Set<DrillModel> _likedDrills = {};
   Set<DrillModel> get likedDrills => Set.unmodifiable(_likedDrills);
   
-  // All available drills
-  final List<DrillModel> _availableDrills = _mockDrills;
+  // All available drills - use test data or real data based on debug settings
+  List<DrillModel> get _availableDrills {
+    if (AppSettings.shouldUseTestData) {
+      TestDataService.debugLog('Using test drills data');
+      // For immediate access to static drills (cached)
+      return TestDataService.getTestDrills();
+    } else {
+      TestDataService.debugLog('Using production drills data');
+      return _mockDrills; // This would be replaced with actual API calls
+    }
+  }
   List<DrillModel> get availableDrills => List.unmodifiable(_availableDrills);
+  
+  // Cached drill data for performance
+  List<DrillModel> _cachedDrills = [];
+  
+  // Pagination state for search
+  int _currentSearchPage = 1;
+  int _totalSearchPages = 1;
+  int _totalSearchResults = 0;
+  bool _hasMoreSearchResults = false;
+  String? _lastSearchQuery;
+  String? _lastSearchSkill;
+  String? _lastSearchDifficulty;
   
   // Loading state
   bool _isLoading = false;
   bool get isLoading => _isLoading;
+  
+  bool _isLoadingMore = false;
+  bool get isLoadingMore => _isLoadingMore;
+  
+  // Search results
+  List<DrillModel> _searchResults = [];
+  List<DrillModel> get searchResults => List.unmodifiable(_searchResults);
+  
+  // Error state
+  String? _lastError;
+  String? get lastError => _lastError;
   
   // Auto-generation settings
   bool _autoGenerateSession = true;
@@ -51,6 +85,253 @@ class AppStateService extends ChangeNotifier {
   // Initialize the service
   Future<void> initialize() async {
     await _loadPersistedState();
+    
+    // Load test session if in debug mode and no session exists
+    if (AppSettings.shouldUseTestData && _editableSessionDrills.isEmpty) {
+      await _loadTestSession();
+    }
+    
+    // Pre-cache some drills for better performance
+    await _loadInitialDrills();
+    
+    notifyListeners();
+  }
+  
+  // MARK: - Enhanced API-like Methods
+  
+  /// Load initial drills with loading state
+  Future<void> _loadInitialDrills() async {
+    if (!AppSettings.shouldUseTestData) return;
+    
+    _setLoading(true);
+    _clearError();
+    
+    try {
+      final response = await TestDataService.searchDrills(
+        DrillSearchFilters(page: 1, pageSize: 20)
+      );
+      
+      _cachedDrills = response.drills;
+      TestDataService.debugLog('Loaded ${_cachedDrills.length} initial drills');
+      
+    } catch (e) {
+      _setError('Failed to load drills: $e');
+      TestDataService.debugLog('Error loading initial drills: $e');
+    } finally {
+      _setLoading(false);
+    }
+  }
+  
+  /// Search drills with pagination and loading states
+  Future<void> searchDrillsWithPagination({
+    String? query,
+    String? skill,
+    String? difficulty,
+    String? trainingStyle,
+    List<String>? equipment,
+    int? maxDuration,
+    bool loadMore = false,
+  }) async {
+    
+    // Don't allow multiple concurrent searches
+    if (_isLoading && !loadMore) return;
+    if (_isLoadingMore && loadMore) return;
+    
+    // Reset pagination for new search
+    if (!loadMore) {
+      _currentSearchPage = 1;
+      _searchResults.clear();
+      _lastSearchQuery = query;
+      _lastSearchSkill = skill;
+      _lastSearchDifficulty = difficulty;
+    } else {
+      // Check if we can load more
+      if (!_hasMoreSearchResults) return;
+      _currentSearchPage++;
+    }
+    
+    loadMore ? _setLoadingMore(true) : _setLoading(true);
+    _clearError();
+    
+    try {
+      final filters = DrillSearchFilters(
+        query: query ?? _lastSearchQuery,
+        skill: skill ?? _lastSearchSkill,
+        difficulty: difficulty ?? _lastSearchDifficulty,
+        trainingStyle: trainingStyle,
+        equipment: equipment,
+        maxDuration: maxDuration,
+        page: _currentSearchPage,
+        pageSize: 15,
+      );
+      
+      final response = await TestDataService.searchDrills(filters);
+      
+      if (loadMore) {
+        _searchResults.addAll(response.drills);
+      } else {
+        _searchResults = response.drills;
+      }
+      
+      _totalSearchPages = response.totalPages;
+      _totalSearchResults = response.totalCount;
+      _hasMoreSearchResults = response.hasNextPage;
+      
+      TestDataService.debugLog(
+        'Search completed: ${response.drills.length} drills on page ${response.currentPage}/${response.totalPages}'
+      );
+      
+    } catch (e) {
+      _setError('Search failed: $e');
+      TestDataService.debugLog('Search error: $e');
+    } finally {
+      loadMore ? _setLoadingMore(false) : _setLoading(false);
+    }
+    
+    notifyListeners();
+  }
+  
+  /// Get drills by skill with loading state
+  Future<List<DrillModel>> getDrillsBySkillAsync(String skill) async {
+    _setLoading(true);
+    _clearError();
+    
+    try {
+      final drills = await TestDataService.getDrillsBySkill(skill);
+      TestDataService.debugLog('Loaded ${drills.length} drills for skill: $skill');
+      return drills;
+    } catch (e) {
+      _setError('Failed to load $skill drills: $e');
+      return [];
+    } finally {
+      _setLoading(false);
+      notifyListeners();
+    }
+  }
+  
+  /// Get popular drills with loading state
+  Future<List<DrillModel>> getPopularDrillsAsync() async {
+    _setLoading(true);
+    _clearError();
+    
+    try {
+      final drills = await TestDataService.getPopularDrills();
+      TestDataService.debugLog('Loaded ${drills.length} popular drills');
+      return drills;
+    } catch (e) {
+      _setError('Failed to load popular drills: $e');
+      return [];
+    } finally {
+      _setLoading(false);
+      notifyListeners();
+    }
+  }
+  
+  /// Get drill recommendations with loading state
+  Future<List<DrillModel>> getRecommendedDrillsAsync(int count) async {
+    _setLoading(true);
+    _clearError();
+    
+    try {
+      final drills = await TestDataService.getRecommendedDrills(count);
+      TestDataService.debugLog('Loaded $count recommended drills');
+      return drills;
+    } catch (e) {
+      _setError('Failed to load recommendations: $e');
+      return [];
+    } finally {
+      _setLoading(false);
+      notifyListeners();
+    }
+  }
+  
+  /// Load more search results
+  Future<void> loadMoreSearchResults() async {
+    await searchDrillsWithPagination(loadMore: true);
+  }
+  
+  /// Refresh current search
+  Future<void> refreshSearch() async {
+    await searchDrillsWithPagination(
+      query: _lastSearchQuery,
+      skill: _lastSearchSkill,
+      difficulty: _lastSearchDifficulty,
+    );
+  }
+  
+  // MARK: - Loading State Management
+  
+  void _setLoading(bool loading) {
+    _isLoading = loading;
+    if (loading) _clearError();
+  }
+  
+  void _setLoadingMore(bool loading) {
+    _isLoadingMore = loading;
+    if (loading) _clearError();
+  }
+  
+  void _setError(String error) {
+    _lastError = error;
+    TestDataService.debugLog('Error: $error');
+  }
+  
+  void _clearError() {
+    _lastError = null;
+  }
+  
+  // MARK: - Pagination Getters
+  
+  int get currentSearchPage => _currentSearchPage;
+  int get totalSearchPages => _totalSearchPages;
+  int get totalSearchResults => _totalSearchResults;
+  bool get hasMoreSearchResults => _hasMoreSearchResults;
+  bool get hasSearchResults => _searchResults.isNotEmpty;
+  
+  // MARK: - Debug Methods
+  
+  /// Load test session data for debugging
+  Future<void> _loadTestSession() async {
+    if (!AppSettings.shouldUseTestData) return;
+    
+    TestDataService.debugLog('Loading test session with ${AppSettings.testDrillCount} drills');
+    
+    _setLoading(true);
+    
+    try {
+      // Simulate loading delay
+      await Future.delayed(const Duration(milliseconds: 500));
+      
+      final testSessionDrills = TestDataService.getTestSessionDrills();
+      _editableSessionDrills.clear();
+      _sessionDrills.clear();
+      
+      _editableSessionDrills.addAll(testSessionDrills);
+      _sessionDrills.addAll(testSessionDrills.map((ed) => ed.drill));
+      
+      await _persistState();
+      TestDataService.debugLog('Test session loaded successfully');
+      
+    } catch (e) {
+      _setError('Failed to load test session: $e');
+    } finally {
+      _setLoading(false);
+    }
+  }
+  
+  /// Load test session (can be called from debug menu)
+  Future<void> loadTestSession() async {
+    await _loadTestSession();
+    notifyListeners();
+  }
+  
+  /// Clear all session data (useful for testing)
+  void clearAllSessionData() {
+    TestDataService.debugLog('Clearing all session data');
+    clearSession();
+    // Reset any progress tracking
+    _sessionInProgress = false;
+    _persistState();
     notifyListeners();
   }
   

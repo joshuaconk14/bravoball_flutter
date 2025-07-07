@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:url_launcher/url_launcher.dart';
 import '../../constants/app_theme.dart';
+import '../debug/debug_settings_view.dart';
 
 class ProfileView extends StatefulWidget {
   const ProfileView({Key? key}) : super(key: key);
@@ -77,6 +78,22 @@ class _ProfileViewState extends State<ProfileView> {
                   ),
                 ],
               ),
+              
+              // Debug Section (only show in debug mode)
+              if (AppSettings.shouldShowDebugMenu) ...[
+                const SizedBox(height: 24),
+                _buildSection(
+                  title: 'Developer',
+                  items: [
+                    _buildDebugMenuItem(
+                      icon: Icons.bug_report,
+                      title: 'Debug Settings',
+                      subtitle: AppSettings.shouldUseTestData ? 'Test Mode' : 'Backend Mode',
+                      onTap: () => _handleDebugSettings(),
+                    ),
+                  ],
+                ),
+              ],
               
               const SizedBox(height: 32),
               
@@ -247,6 +264,69 @@ class _ProfileViewState extends State<ProfileView> {
     );
   }
 
+  Widget _buildDebugMenuItem({
+    required IconData icon,
+    required String title,
+    required String subtitle,
+    required VoidCallback onTap,
+  }) {
+    return Material(
+      color: Colors.transparent,
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(12),
+        child: Container(
+          padding: const EdgeInsets.all(16),
+          child: Row(
+            children: [
+              Container(
+                padding: const EdgeInsets.all(8),
+                decoration: BoxDecoration(
+                  color: Colors.orange.withOpacity(0.1),
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: Icon(
+                  icon,
+                  color: Colors.orange,
+                  size: 20,
+                ),
+              ),
+              
+              const SizedBox(width: 16),
+              
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      title,
+                      style: AppTheme.bodyLarge.copyWith(
+                        color: AppTheme.primaryDark,
+                      ),
+                    ),
+                    Text(
+                      subtitle,
+                      style: AppTheme.bodySmall.copyWith(
+                        color: Colors.orange,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              
+              Icon(
+                Icons.arrow_forward_ios,
+                color: AppTheme.primaryGray,
+                size: 16,
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
   Widget _buildActionButtons() {
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 20),
@@ -350,6 +430,14 @@ class _ProfileViewState extends State<ProfileView> {
 
   void _handleDeleteAccount() {
     _showDeleteAccountConfirmationDialog();
+  }
+
+  void _handleDebugSettings() {
+    Navigator.of(context).push(
+      MaterialPageRoute(
+        builder: (context) => const DebugSettingsView(),
+      ),
+    );
   }
 
   // Helper Methods
