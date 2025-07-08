@@ -1,0 +1,119 @@
+import 'package:flutter/foundation.dart';
+
+/// App Configuration
+/// Mirrors Swift's GlobalSettings for environment and debug configuration
+class AppConfig {
+  // Private constructor to prevent instantiation
+  AppConfig._();
+
+  // MARK: - Environment Configuration
+  /// App Development Cases (mirrors Swift appDevCase)
+  /// 1: Production
+  /// 2: Computer (localhost)
+  /// 3: Phone (Wi-Fi IP)
+  static const int appDevCase = 2; // CHANGE THIS TO SWITCH ENVIRONMENTS
+
+  /// Debug mode toggle
+  static const bool debug = true; // Set false in production
+
+  /// Wi-Fi IP address for phone testing
+  /// TODO: make env variable
+  /// You can find this by running `ipconfig getifaddr en0` on macOS
+  static const String phoneWifiIP = '10.0.3.169'; // Update this with your actual IP
+
+  // MARK: - Environment Settings
+  /// Get base URL based on app development case
+  static String get baseUrl {
+    if (kDebugMode) {
+      switch (appDevCase) {
+        case 1:
+          // Production (simulated during debug)
+          return 'https://bravoball-backend.onrender.com';
+        case 2:
+          // Localhost for simulator or computer
+          return 'http://127.0.0.1:8000';
+        case 3:
+          // Wi-Fi IP for phone testing
+          return 'http://$phoneWifiIP:8000';
+        default:
+          return 'http://127.0.0.1:8000';
+      }
+    } else {
+      // Always use production in release builds
+      return 'https://bravoball-backend.onrender.com';
+    }
+  }
+
+  // MARK: - Environment Info
+  /// Get current environment name
+  static String get environmentName {
+    switch (appDevCase) {
+      case 1:
+        return 'Production';
+      case 2:
+        return 'Localhost';
+      case 3:
+        return 'Wi-Fi IP';
+      default:
+        return 'Unknown';
+    }
+  }
+
+  // MARK: - Debug Settings
+  /// Main debug toggle - set to true for test data, false for real backend
+  static bool get useTestData => debug && appDevCase == 0; // Only use test data when appDevCase is 0
+
+  /// Additional debug options
+  static bool get enableDebugMenu => kDebugMode && debug;
+  static bool get logApiCalls => kDebugMode && debug;
+  static bool get showPerformanceOverlay => kDebugMode && false;
+
+  // MARK: - Test Data Settings (when useTestData is true)
+  static const int testDrillCount = 5;
+  static const String testUserEmail = 'test@bravoball.com';
+  static const int testUserStreak = 3;
+
+  // MARK: - API Configuration
+  /// API timeout settings
+  static const Duration apiTimeout = Duration(seconds: 30);
+  static const Duration connectTimeout = Duration(seconds: 15);
+
+  /// API retry settings
+  static const int maxRetries = 3;
+  static const Duration retryDelay = Duration(seconds: 1);
+
+  // MARK: - Debug Info
+  /// Get debug info string for display
+  static String get debugInfo {
+    if (!kDebugMode) return 'Release Build';
+
+    return '''
+Environment: $environmentName (Case $appDevCase)
+Base URL: $baseUrl
+Debug Mode: $debug
+Test Data: $useTestData
+API Timeout: ${apiTimeout.inSeconds}s
+''';
+  }
+
+  /// Check if we should use real backend
+  static bool get useRealBackend => !useTestData;
+
+  /// Check if debug menu should be shown
+  static bool get shouldShowDebugMenu => enableDebugMenu;
+
+  /// Get full API URL with endpoint
+  static String apiUrl(String endpoint) {
+    if (!endpoint.startsWith('/')) {
+      endpoint = '/$endpoint';
+    }
+    return '$baseUrl$endpoint';
+  }
+}
+
+/// Environment types
+enum Environment {
+  production,
+  localhost,
+  wifiIP,
+} 

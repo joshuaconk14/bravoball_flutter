@@ -3,6 +3,7 @@ import 'package:rive/rive.dart';
 import 'onboarding_questions.dart';
 import '../../widgets/bravo_button.dart';
 import '../../views/main_tab_view.dart';
+import '../../features/auth/login_view.dart';
 import '../../constants/app_theme.dart';
 
 class OnboardingFlow extends StatefulWidget {
@@ -79,7 +80,19 @@ class _OnboardingFlowState extends State<OnboardingFlow> {
   void _goToLogin() {
     Navigator.of(context).push(
       MaterialPageRoute(
-        builder: (_) => PlaceholderLoginPage(onBack: () => setState(() => _step = 0)),
+        builder: (_) => LoginView(
+          onLoginSuccess: () {
+            // Login successful - navigate to main app
+            Navigator.of(context).pushAndRemoveUntil(
+              MaterialPageRoute(builder: (_) => const MainTabView()),
+              (route) => false,
+            );
+          },
+          onCancel: () {
+            // Go back to welcome page
+            Navigator.of(context).pop();
+          },
+        ),
       ),
     );
   }
@@ -611,115 +624,6 @@ class _OnboardingFlowState extends State<OnboardingFlow> {
 
     // Fallback (should never hit)
     return const SizedBox.shrink();
-  }
-}
-
-class PlaceholderLoginPage extends StatelessWidget {
-  final VoidCallback? onBack;
-  const PlaceholderLoginPage({Key? key, this.onBack}) : super(key: key);
-
-  @override
-  Widget build(BuildContext context) {
-    const yellow = _OnboardingFlowState.yellow;
-    const darkGray = _OnboardingFlowState.darkGray;
-    return Scaffold(
-      backgroundColor: Colors.white,
-      body: SafeArea(
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            const SizedBox(height: 32),
-            Center(
-              child: Text(
-                'Welcome Back!',
-                style: const TextStyle(
-                  fontFamily: 'PottaOne',
-                  fontSize: 32,
-                  color: darkGray,
-                ),
-              ),
-            ),
-            const SizedBox(height: 8),
-            Center(
-              child: SizedBox(
-                height: 140,
-                child: RiveAnimation.asset(
-                  'assets/rive/Bravo_Animation.riv',
-                  fit: BoxFit.contain,
-                ),
-              ),
-            ),
-            const SizedBox(height: 16),
-            // Scrollable login fields
-            Expanded(
-              child: SingleChildScrollView(
-                padding: const EdgeInsets.symmetric(horizontal: 24.0),
-                child: Column(
-                  children: [
-                    _BravoTextField(
-                      label: 'Email',
-                      value: '', // You can use a controller or state if you want to persist
-                      onChanged: (v) {},
-                      keyboardType: TextInputType.emailAddress,
-                      isPassword: false,
-                      yellow: yellow,
-                    ),
-                    const SizedBox(height: 16),
-                    _BravoTextField(
-                      label: 'Password',
-                      value: '',
-                      onChanged: (v) {},
-                      isPassword: true,
-                      yellow: yellow,
-                      passwordVisible: false,
-                      onToggleVisibility: () {},
-                    ),
-                  ],
-                ),
-              ),
-            ),
-            // Fixed Login/Cancel buttons
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 20.0, vertical: 8.0),
-              child: Column(
-                children: [
-                  SizedBox(
-                    width: double.infinity,
-                    child: BravoButton(
-                      text: 'Login',
-                      onPressed: () {}, // TODO: Implement login logic
-                      color: yellow,
-                      backColor: AppTheme.primaryDarkYellow,
-                      textColor: Colors.white,
-                      disabled: false,
-                    ),
-                  ),
-                  const SizedBox(height: 12),
-                  SizedBox(
-                    width: double.infinity,
-                    child: BravoButton(
-                      text: 'Cancel',
-                  onPressed: () {
-                    if (onBack != null) {
-                      Navigator.of(context).pop();
-                      onBack!();
-                    } else {
-                      Navigator.of(context).pop();
-                    }
-                  },
-                      color: Colors.grey.shade200,
-                      backColor: AppTheme.lightGray,
-                      textColor: darkGray,
-                      disabled: false,
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
   }
 }
 

@@ -1,15 +1,39 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/foundation.dart';
 import 'package:provider/provider.dart';
 import 'views/onboarding_view.dart';
 import 'features/onboarding/onboarding_flow.dart';
+import 'features/auth/login_view.dart';
+import 'views/main_tab_view.dart';
 import 'services/app_state_service.dart';
+import 'services/api_service.dart';
+import 'services/authentication_service.dart';
+import 'services/user_manager_service.dart';
 import 'constants/app_theme.dart';
+import 'config/app_config.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
   
+  // Show debug information
+  if (kDebugMode) {
+    print('🚀 Starting BravoBall Flutter App');
+    print('📱 ${AppConfig.debugInfo}');
+  }
+  
+  // Initialize services
+  ApiService.shared.initialize();
+  
   // Initialize the app state service
   await AppStateService.instance.initialize();
+  
+  // Initialize authentication services
+  await UserManagerService.instance.initialize();
+  await AuthenticationService.shared.initialize();
+  
+  if (kDebugMode) {
+    print('✅ All services initialized successfully');
+  }
   
   runApp(const MyApp());
 }
@@ -17,32 +41,247 @@ void main() async {
 class MyApp extends StatelessWidget {
   const MyApp({super.key});
 
-  // This widget is the root of your application.
   @override
   Widget build(BuildContext context) {
-    return ChangeNotifierProvider.value(
-      value: AppStateService.instance,
+    return MultiProvider(
+      providers: [
+        ChangeNotifierProvider.value(value: AppStateService.instance),
+        ChangeNotifierProvider.value(value: UserManagerService.instance),
+        ChangeNotifierProvider.value(value: AuthenticationService.shared),
+      ],
       child: MaterialApp(
         title: 'BravoBall',
         theme: AppTheme.lightTheme,
-        home: const OnboardingFlow(),
+        home: const AuthenticationWrapper(),
         debugShowCheckedModeBanner: false,
+        // Show performance overlay if enabled in debug mode
+        showPerformanceOverlay: AppConfig.showPerformanceOverlay,
       ),
     );
   }
 }
 
+/// Authentication Wrapper
+/// Determines whether to show welcome page or main app based on auth state
+class AuthenticationWrapper extends StatelessWidget {
+  const AuthenticationWrapper({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return Consumer2<UserManagerService, AuthenticationService>(
+      builder: (context, userManager, authService, child) {
+        // Show loading screen while checking authentication
+        if (authService.isCheckingAuth) {
+          return const AuthLoadingScreen();
+        }
+
+        // Show intro animation if needed
+        if (userManager.showIntroAnimation) {
+          return IntroAnimationScreen(
+            onComplete: () {
+              userManager.hideIntroAnimation();
+            },
+          );
+        }
+
+        // Show main app if user is logged in
+        if (userManager.isLoggedIn) {
+          return const MainTabView();
+        }
+
+        // User is not logged in - show welcome page with create account and login buttons
+        return const OnboardingFlow();
+      },
+    );
+  }
+}
+
+/// Auth Loading Screen
+/// Shows while checking authentication status on app start
+class AuthLoadingScreen extends StatelessWidget {
+  const AuthLoadingScreen({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      backgroundColor: AppTheme.primaryPurple,
+      body: Center(
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            // Logo/Animation placeholder
+            Container(
+              width: 120,
+              height: 120,
+              decoration: BoxDecoration(
+                color: Colors.white.withOpacity(0.2),
+                borderRadius: BorderRadius.circular(AppTheme.radiusLarge),
+              ),
+              child: const Icon(
+                Icons.sports_soccer,
+                size: 60,
+                color: Colors.white,
+              ),
+            ),
+            
+            const SizedBox(height: AppTheme.spacingLarge),
+            
+            // App Name
+            Text(
+              'BravoBall',
+              style: AppTheme.headlineLarge.copyWith(
+                color: Colors.white,
+                fontSize: 36,
+              ),
+            ),
+            
+            const SizedBox(height: AppTheme.spacingMedium),
+            
+            // Loading indicator
+            const CircularProgressIndicator(
+              valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
+              strokeWidth: 3,
+            ),
+            
+            const SizedBox(height: AppTheme.spacingMedium),
+            
+            Text(
+              'Checking authentication...',
+              style: AppTheme.bodyMedium.copyWith(
+                color: Colors.white.withOpacity(0.8),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+/// Intro Animation Screen
+/// Shows app intro animation (you can replace with Rive animation)
+class IntroAnimationScreen extends StatefulWidget {
+  final VoidCallback onComplete;
+
+  const IntroAnimationScreen({
+    Key? key,
+    required this.onComplete,
+  }) : super(key: key);
+
+  @override
+  State<IntroAnimationScreen> createState() => _IntroAnimationScreenState();
+}
+
+class _IntroAnimationScreenState extends State<IntroAnimationScreen>
+    with SingleTickerProviderStateMixin {
+  late AnimationController _controller;
+  late Animation<double> _fadeAnimation;
+  late Animation<double> _scaleAnimation;
+
+  @override
+  void initState() {
+    super.initState();
+    
+    _controller = AnimationController(
+      duration: const Duration(seconds: 2),
+      vsync: this,
+    );
+    
+    _fadeAnimation = Tween<double>(
+      begin: 0.0,
+      end: 1.0,
+    ).animate(CurvedAnimation(
+      parent: _controller,
+      curve: Curves.easeIn,
+    ));
+    
+    _scaleAnimation = Tween<double>(
+      begin: 0.5,
+      end: 1.0,
+    ).animate(CurvedAnimation(
+      parent: _controller,
+      curve: Curves.elasticOut,
+    ));
+    
+    _controller.forward();
+    
+    // Auto-complete after animation
+    Future.delayed(const Duration(seconds: 3), () {
+      if (mounted) {
+        widget.onComplete();
+      }
+    });
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      backgroundColor: AppTheme.primaryPurple,
+      body: Center(
+        child: AnimatedBuilder(
+          animation: _controller,
+          builder: (context, child) {
+            return FadeTransition(
+              opacity: _fadeAnimation,
+              child: ScaleTransition(
+                scale: _scaleAnimation,
+                child: Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    // App Logo
+                    Container(
+                      width: 150,
+                      height: 150,
+                      decoration: BoxDecoration(
+                        color: Colors.white,
+                        borderRadius: BorderRadius.circular(AppTheme.radiusLarge),
+                      ),
+                      child: Icon(
+                        Icons.sports_soccer,
+                        size: 80,
+                        color: AppTheme.primaryPurple,
+                      ),
+                    ),
+                    
+                    const SizedBox(height: AppTheme.spacingLarge),
+                    
+                    // App Name
+                    Text(
+                      'BravoBall',
+                      style: AppTheme.headlineLarge.copyWith(
+                        color: Colors.white,
+                        fontSize: 42,
+                      ),
+                    ),
+                    
+                    const SizedBox(height: AppTheme.spacingSmall),
+                    
+                    Text(
+                      'Your Soccer Training Companion',
+                      style: AppTheme.bodyLarge.copyWith(
+                        color: Colors.white.withOpacity(0.8),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            );
+          },
+        ),
+      ),
+    );
+  }
+}
+
+// Keep existing MyHomePage for reference/debugging
 class MyHomePage extends StatefulWidget {
   const MyHomePage({super.key, required this.title});
-
-  // This widget is the home page of your application. It is stateful, meaning
-  // that it has a State object (defined below) that contains fields that affect
-  // how it looks.
-
-  // This class is the configuration for the state. It holds the values (in this
-  // case the title) provided by the parent (in this case the App widget) and
-  // used by the build method of the State. Fields in a Widget subclass are
-  // always marked "final".
 
   final String title;
 
@@ -55,52 +294,49 @@ class _MyHomePageState extends State<MyHomePage> {
 
   void _incrementCounter() {
     setState(() {
-      // This call to setState tells the Flutter framework that something has
-      // changed in this State, which causes it to rerun the build method below
-      // so that the display can reflect the updated values. If we changed
-      // _counter without calling setState(), then the build method would not be
-      // called again, and so nothing would appear to happen.
       _counter++;
     });
   }
 
   @override
   Widget build(BuildContext context) {
-    // This method is rerun every time setState is called, for instance as done
-    // by the _incrementCounter method above.
-    //
-    // The Flutter framework has been optimized to make rerunning build methods
-    // fast, so that you can just rebuild anything that needs updating rather
-    // than having to individually change instances of widgets.
     return Scaffold(
       appBar: AppBar(
-        // TRY THIS: Try changing the color here to a specific color (to
-        // Colors.amber, perhaps?) and trigger a hot reload to see the AppBar
-        // change color while the other colors stay the same.
         backgroundColor: Theme.of(context).colorScheme.inversePrimary,
-        // Here we take the value from the MyHomePage object that was created by
-        // the App.build method, and use it to set our appbar title.
         title: Text(widget.title),
       ),
       body: Center(
-        // Center is a layout widget. It takes a single child and positions it
-        // in the middle of the parent.
         child: Column(
-          // Column is also a layout widget. It takes a list of children and
-          // arranges them vertically. By default, it sizes itself to fit its
-          // children horizontally, and tries to be as tall as its parent.
-          //
-          // Column has various properties to control how it sizes itself and
-          // how it positions its children. Here we use mainAxisAlignment to
-          // center the children vertically; the main axis here is the vertical
-          // axis because Columns are vertical (the cross axis would be
-          // horizontal).
-          //
-          // TRY THIS: Invoke "debug painting" (choose the "Toggle Debug Paint"
-          // action in the IDE, or press "p" in the console), to see the
-          // wireframe for each widget.
           mainAxisAlignment: MainAxisAlignment.center,
           children: <Widget>[
+            if (AppConfig.shouldShowDebugMenu) ...[
+              Container(
+                margin: const EdgeInsets.all(16),
+                padding: const EdgeInsets.all(12),
+                decoration: BoxDecoration(
+                  color: Colors.orange.withOpacity(0.1),
+                  border: Border.all(color: Colors.orange),
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: Column(
+                  children: [
+                    const Text(
+                      'DEBUG MODE',
+                      style: TextStyle(
+                        fontWeight: FontWeight.bold,
+                        color: Colors.orange,
+                      ),
+                    ),
+                    const SizedBox(height: 8),
+                    Text(
+                      AppConfig.debugInfo,
+                      style: const TextStyle(fontSize: 12),
+                      textAlign: TextAlign.center,
+                    ),
+                  ],
+                ),
+              ),
+            ],
             const Text('You have pushed the button this many times:'),
             Text(
               '$_counter',
@@ -113,7 +349,7 @@ class _MyHomePageState extends State<MyHomePage> {
         onPressed: _incrementCounter,
         tooltip: 'Increment',
         child: const Icon(Icons.add),
-      ), // This trailing comma makes auto-formatting nicer for build methods.
+      ),
     );
   }
 }
