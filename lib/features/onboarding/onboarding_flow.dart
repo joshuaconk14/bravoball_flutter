@@ -3,6 +3,7 @@ import 'package:rive/rive.dart';
 import 'onboarding_questions.dart';
 import '../../widgets/bravo_button.dart';
 import '../../views/main_tab_view.dart';
+import '../../constants/app_theme.dart';
 
 class OnboardingFlow extends StatefulWidget {
   const OnboardingFlow({Key? key}) : super(key: key);
@@ -135,6 +136,7 @@ class _OnboardingFlowState extends State<OnboardingFlow> {
                       text: 'Create an account',
                       onPressed: () => setState(() => _step = 1),
                       color: yellow,
+                      backColor: AppTheme.primaryDarkYellow,
                       textColor: Colors.white,
                       disabled: false,
                     ),
@@ -143,6 +145,7 @@ class _OnboardingFlowState extends State<OnboardingFlow> {
                       text: 'Login',
                       onPressed: _goToLogin,
                       color: Colors.white,
+                      backColor: AppTheme.lightGray,
                       textColor: darkGray,
                       disabled: false,
                       borderSide: BorderSide(color: Colors.grey.shade200, width: 2),
@@ -217,6 +220,7 @@ class _OnboardingFlowState extends State<OnboardingFlow> {
                     text: 'Next',
                     onPressed: _next,
                     color: yellow,
+                    backColor: AppTheme.primaryDarkYellow,
                     textColor: Colors.white,
                     disabled: false,
                   ),
@@ -425,6 +429,7 @@ class _OnboardingFlowState extends State<OnboardingFlow> {
                       ? (selected as Set<int>).isNotEmpty ? _next : null
                       : selected != null ? _next : null,
                   color: yellow,
+                  backColor: AppTheme.primaryDarkYellow,
                   textColor: Colors.white,
                   disabled: false,
                 ),
@@ -592,6 +597,7 @@ class _OnboardingFlowState extends State<OnboardingFlow> {
                             });
                           },
                     color: (_regEmail.isEmpty || _regPassword.isEmpty || _regConfirmPassword.isEmpty) ? Colors.grey.shade300 : yellow,
+                    backColor: (_regEmail.isEmpty || _regPassword.isEmpty || _regConfirmPassword.isEmpty) ? AppTheme.primaryGray : AppTheme.primaryDarkYellow,
                     textColor: Colors.white,
                     disabled: false,
                 ),
@@ -683,6 +689,7 @@ class PlaceholderLoginPage extends StatelessWidget {
                       text: 'Login',
                       onPressed: () {}, // TODO: Implement login logic
                       color: yellow,
+                      backColor: AppTheme.primaryDarkYellow,
                       textColor: Colors.white,
                       disabled: false,
                     ),
@@ -701,6 +708,7 @@ class PlaceholderLoginPage extends StatelessWidget {
                     }
                   },
                       color: Colors.grey.shade200,
+                      backColor: AppTheme.lightGray,
                       textColor: darkGray,
                       disabled: false,
                     ),

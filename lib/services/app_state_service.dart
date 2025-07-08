@@ -8,6 +8,35 @@ import '../models/filter_models.dart';
 import '../constants/app_theme.dart';
 import './test_data_service.dart';
 
+// Add CompletedSession model
+class CompletedSession {
+  final DateTime date;
+  final List<EditableDrillModel> drills;
+  final int totalCompletedDrills;
+  final int totalDrills;
+
+  CompletedSession({
+    required this.date,
+    required this.drills,
+    required this.totalCompletedDrills,
+    required this.totalDrills,
+  });
+
+  Map<String, dynamic> toJson() => {
+    'date': date.toIso8601String(),
+    'drills': drills.map((d) => d.toJson()).toList(),
+    'totalCompletedDrills': totalCompletedDrills,
+    'totalDrills': totalDrills,
+  };
+
+  factory CompletedSession.fromJson(Map<String, dynamic> json) => CompletedSession(
+    date: DateTime.parse(json['date']),
+    drills: (json['drills'] as List).map((d) => EditableDrillModel.fromJson(d)).toList(),
+    totalCompletedDrills: json['totalCompletedDrills'],
+    totalDrills: json['totalDrills'],
+  );
+}
+
 class AppStateService extends ChangeNotifier {
   static AppStateService? _instance;
   static AppStateService get instance => _instance ??= AppStateService._();
@@ -81,6 +110,21 @@ class AppStateService extends ChangeNotifier {
   // Auto-generation settings
   bool _autoGenerateSession = true;
   bool get autoGenerateSession => _autoGenerateSession;
+  
+  // Completed sessions
+  final List<CompletedSession> _completedSessions = [];
+  List<CompletedSession> get completedSessions => List.unmodifiable(_completedSessions);
+
+  void addCompletedSession(CompletedSession session) {
+    _completedSessions.add(session);
+    print('✅ CompletedSession saved!');
+    print('  Date: ${session.date}');
+    print('  Drills: ${session.drills.length}');
+    print('  Total Completed: ${session.totalCompletedDrills}');
+    print('  Total Drills: ${session.totalDrills}');
+    // TODO: persist to disk
+    notifyListeners();
+  }
   
   // Initialize the service
   Future<void> initialize() async {
@@ -614,6 +658,15 @@ class AppStateService extends ChangeNotifier {
     for (int i = 0; i < _editableSessionDrills.length; i++) {
       _editableSessionDrills[i] = _editableSessionDrills[i].copyWith(isCompleted: true);
     }
+    // Save completed session
+    final completedSession = CompletedSession(
+      date: DateTime.now(),
+      drills: List.from(_editableSessionDrills),
+      totalCompletedDrills: _editableSessionDrills.where((d) => d.isCompleted).length,
+      totalDrills: _editableSessionDrills.length,
+    );
+    addCompletedSession(completedSession);
+    print('Session completed and added to completedSessions.');
     _persistState();
     notifyListeners();
   }

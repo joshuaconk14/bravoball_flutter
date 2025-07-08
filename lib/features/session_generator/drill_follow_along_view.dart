@@ -112,33 +112,21 @@ class _DrillFollowAlongViewState extends State<DrillFollowAlongView> {
           // Progress section at top
           _buildProgressSection(),
           
-          // Main content - everything fits without scrolling
+          // Main content - flexible layout
           Expanded(
             child: Padding(
               padding: const EdgeInsets.symmetric(horizontal: 20),
               child: Column(
                 children: [
                   const SizedBox(height: 16),
-                  
-                  // Drill title and info - more compact
                   _buildDrillHeader(),
-                  
                   const SizedBox(height: 20),
-                  
-                  // Video player - smaller
-                  _buildVideoPlayer(),
-                  
+                  Flexible(child: _buildVideoPlayer()),
                   const SizedBox(height: 20),
-                  
-                  // Play controls - more compact
                   _buildPlayControls(),
-                  
-                  const Spacer(),
-                  
-                  // Action buttons at bottom
+                  const SizedBox(height: 12),
                   _buildActionButtons(),
-                  
-                  const SizedBox(height: 20),
+                  const SizedBox(height: 12),
                 ],
               ),
             ),
@@ -697,7 +685,15 @@ class _DrillFollowAlongViewState extends State<DrillFollowAlongView> {
     if (_editableDrill.setsDone >= _editableDrill.totalSets) return;
     
     if (!_isPlaying) {
+      // If timer was paused (not at initial state), resume immediately
+      if (_elapsedTime < _setDuration && _elapsedTime > 0 && !_showCountdown) {
+        setState(() {
+          _isPlaying = true;
+        });
+        _startTimer();
+      } else {
       _startCountdown();
+      }
     } else {
       _stopTimer();
     }
@@ -756,6 +752,7 @@ class _DrillFollowAlongViewState extends State<DrillFollowAlongView> {
     setState(() {
       _isPlaying = false;
       _showCountdown = false;
+      // Do NOT reset _elapsedTime here
     });
   }
 
@@ -765,7 +762,7 @@ class _DrillFollowAlongViewState extends State<DrillFollowAlongView> {
     
     setState(() {
       _editableDrill.setsDone++;
-      _elapsedTime = _setDuration;
+      _elapsedTime = _setDuration; // Only reset here
       _isPlaying = false;
     });
     
@@ -788,6 +785,7 @@ class _DrillFollowAlongViewState extends State<DrillFollowAlongView> {
   void _skipDrill() {
     _stopTimer();
     _editableDrill.isCompleted = true;
+    _elapsedTime = _setDuration; // Only reset here
     _updateDrillInSession();
     
     widget.onDrillCompleted?.call();

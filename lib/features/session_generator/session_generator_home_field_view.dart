@@ -37,6 +37,7 @@ class _SessionGeneratorHomeFieldViewState extends State<SessionGeneratorHomeFiel
                 child: Container(
                   color: AppTheme.backgroundField,
                   child: SingleChildScrollView(
+                    physics: const BouncingScrollPhysics(),
                     child: Column(
                       children: [
                         // Field area with controlled height
@@ -240,6 +241,7 @@ class _SessionGeneratorHomeFieldViewState extends State<SessionGeneratorHomeFiel
           );
         },
         color: hasSessionDrills ? AppTheme.buttonPrimary : AppTheme.buttonDisabled,
+        backColor: hasSessionDrills ? AppTheme.primaryDarkYellow : AppTheme.buttonDisabled,
         textColor: AppTheme.textOnPrimary,
         height: 56,
         textSize: 25,
@@ -284,6 +286,8 @@ class _SessionGeneratorHomeFieldViewState extends State<SessionGeneratorHomeFiel
             isUnlocked: appState.isSessionComplete,
             onTap: () {
               if (appState.isSessionComplete) {
+                // ✅ Save the session first
+                appState.completeSession();
                 _showSessionComplete();
               } else {
                 ScaffoldMessenger.of(context).showSnackBar(
