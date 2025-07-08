@@ -5,7 +5,8 @@ import '../models/drill_model.dart';
 import '../models/editable_drill_model.dart';
 import '../models/drill_group_model.dart';
 import '../models/filter_models.dart';
-import '../constants/app_theme.dart';
+import '../config/app_config.dart';
+import '../services/drill_api_service.dart';
 import './test_data_service.dart';
 
 // Add CompletedSession model
@@ -43,6 +44,9 @@ class AppStateService extends ChangeNotifier {
   
   AppStateService._();
   
+  // Services
+  final DrillApiService _drillApiService = DrillApiService.shared;
+  
   // User preferences
   UserPreferences _preferences = UserPreferences();
   UserPreferences get preferences => _preferences;
@@ -67,15 +71,14 @@ class AppStateService extends ChangeNotifier {
   final Set<DrillModel> _likedDrills = {};
   Set<DrillModel> get likedDrills => Set.unmodifiable(_likedDrills);
   
-  // All available drills - use test data or real data based on debug settings
+  // All available drills - use test data or real data based on config
   List<DrillModel> get _availableDrills {
-    if (AppSettings.shouldUseTestData) {
-      TestDataService.debugLog('Using test drills data');
-      // For immediate access to static drills (cached)
+    if (AppConfig.useTestData) {
+      if (kDebugMode) print('🔧 Using test drills data (AppConfig.useTestData = true)');
       return TestDataService.getTestDrills();
     } else {
-      TestDataService.debugLog('Using production drills data');
-      return _mockDrills; // This would be replaced with actual API calls
+      if (kDebugMode) print('🌐 Using cached backend drills data (AppConfig.useTestData = false)');
+      return _cachedDrills;
     }
   }
   List<DrillModel> get availableDrills => List.unmodifiable(_availableDrills);
@@ -117,21 +120,30 @@ class AppStateService extends ChangeNotifier {
 
   void addCompletedSession(CompletedSession session) {
     _completedSessions.add(session);
-    print('✅ CompletedSession saved!');
-    print('  Date: ${session.date}');
-    print('  Drills: ${session.drills.length}');
-    print('  Total Completed: ${session.totalCompletedDrills}');
-    print('  Total Drills: ${session.totalDrills}');
+    if (kDebugMode) {
+      print('✅ CompletedSession saved!');
+      print('  Date: ${session.date}');
+      print('  Drills: ${session.drills.length}');
+      print('  Total Completed: ${session.totalCompletedDrills}');
+      print('  Total Drills: ${session.totalDrills}');
+    }
     // TODO: persist to disk
     notifyListeners();
   }
   
   // Initialize the service
   Future<void> initialize() async {
+    if (kDebugMode) {
+      print('🚀 Initializing AppStateService...');
+      print('   Environment: ${AppConfig.environmentName}');
+      print('   Base URL: ${AppConfig.baseUrl}');
+      print('   Use Test Data: ${AppConfig.useTestData}');
+    }
+
     await _loadPersistedState();
     
     // Load test session if in debug mode and no session exists
-    if (AppSettings.shouldUseTestData && _editableSessionDrills.isEmpty) {
+    if (AppConfig.useTestData && _editableSessionDrills.isEmpty) {
       await _loadTestSession();
     }
     
@@ -145,22 +157,30 @@ class AppStateService extends ChangeNotifier {
   
   /// Load initial drills with loading state
   Future<void> _loadInitialDrills() async {
-    if (!AppSettings.shouldUseTestData) return;
-    
     _setLoading(true);
     _clearError();
     
     try {
-      final response = await TestDataService.searchDrills(
-        DrillSearchFilters(page: 1, pageSize: 20)
-      );
-      
-      _cachedDrills = response.drills;
-      TestDataService.debugLog('Loaded ${_cachedDrills.length} initial drills');
+      if (AppConfig.useTestData) {
+        // Use test data service
+        final response = await TestDataService.searchDrills(
+          DrillSearchFilters(page: 1, pageSize: 20)
+        );
+        _cachedDrills = response.drills;
+        if (kDebugMode) print('📚 Loaded ${_cachedDrills.length} test drills');
+      } else {
+        // Use real backend API
+        final response = await _drillApiService.searchDrills(
+          page: 1,
+          limit: 20,
+        );
+        _cachedDrills = _drillApiService.convertToLocalModels(response.items);
+        if (kDebugMode) print('🌐 Loaded ${_cachedDrills.length} backend drills');
+      }
       
     } catch (e) {
       _setError('Failed to load drills: $e');
-      TestDataService.debugLog('Error loading initial drills: $e');
+      if (kDebugMode) print('❌ Error loading initial drills: $e');
     } finally {
       _setLoading(false);
     }
@@ -198,36 +218,64 @@ class AppStateService extends ChangeNotifier {
     _clearError();
     
     try {
-      final filters = DrillSearchFilters(
-        query: query ?? _lastSearchQuery,
-        skill: skill ?? _lastSearchSkill,
-        difficulty: difficulty ?? _lastSearchDifficulty,
-        trainingStyle: trainingStyle,
-        equipment: equipment,
-        maxDuration: maxDuration,
-        page: _currentSearchPage,
-        pageSize: 15,
-      );
-      
-      final response = await TestDataService.searchDrills(filters);
-      
-      if (loadMore) {
-        _searchResults.addAll(response.drills);
+      if (AppConfig.useTestData) {
+        // Use test data service
+        final filters = DrillSearchFilters(
+          query: query ?? _lastSearchQuery,
+          skill: skill ?? _lastSearchSkill,
+          difficulty: difficulty ?? _lastSearchDifficulty,
+          trainingStyle: trainingStyle,
+          equipment: equipment,
+          maxDuration: maxDuration,
+          page: _currentSearchPage,
+          pageSize: 15,
+        );
+        
+        final response = await TestDataService.searchDrills(filters);
+        
+        if (loadMore) {
+          _searchResults.addAll(response.drills);
+        } else {
+          _searchResults = response.drills;
+        }
+        
+        _totalSearchPages = response.totalPages;
+        _totalSearchResults = response.totalCount;
+        _hasMoreSearchResults = response.hasNextPage;
+        
+        if (kDebugMode) {
+          print('📚 Test search completed: ${response.drills.length} drills on page ${response.currentPage}/${response.totalPages}');
+        }
       } else {
-        _searchResults = response.drills;
+        // Use real backend API
+        final response = await _drillApiService.searchDrills(
+          query: query ?? _lastSearchQuery ?? '',
+          category: skill ?? _lastSearchSkill,
+          difficulty: difficulty ?? _lastSearchDifficulty,
+          page: _currentSearchPage,
+          limit: 15,
+        );
+        
+        final newDrills = _drillApiService.convertToLocalModels(response.items);
+        
+        if (loadMore) {
+          _searchResults.addAll(newDrills);
+        } else {
+          _searchResults = newDrills;
+        }
+        
+        _totalSearchPages = response.totalPages;
+        _totalSearchResults = response.total;
+        _hasMoreSearchResults = response.hasNextPage;
+        
+        if (kDebugMode) {
+          print('🌐 Backend search completed: ${newDrills.length} drills on page ${response.page}/${response.totalPages}');
+        }
       }
-      
-      _totalSearchPages = response.totalPages;
-      _totalSearchResults = response.totalCount;
-      _hasMoreSearchResults = response.hasNextPage;
-      
-      TestDataService.debugLog(
-        'Search completed: ${response.drills.length} drills on page ${response.currentPage}/${response.totalPages}'
-      );
       
     } catch (e) {
       _setError('Search failed: $e');
-      TestDataService.debugLog('Search error: $e');
+      if (kDebugMode) print('❌ Search error: $e');
     } finally {
       loadMore ? _setLoadingMore(false) : _setLoading(false);
     }
@@ -241,9 +289,16 @@ class AppStateService extends ChangeNotifier {
     _clearError();
     
     try {
-      final drills = await TestDataService.getDrillsBySkill(skill);
-      TestDataService.debugLog('Loaded ${drills.length} drills for skill: $skill');
-      return drills;
+      if (AppConfig.useTestData) {
+        final drills = await TestDataService.getDrillsBySkill(skill);
+        if (kDebugMode) print('📚 Loaded ${drills.length} test drills for skill: $skill');
+        return drills;
+      } else {
+        final response = await _drillApiService.getDrillsByCategory(skill);
+        final drills = _drillApiService.convertToLocalModels(response);
+        if (kDebugMode) print('🌐 Loaded ${drills.length} backend drills for skill: $skill');
+        return drills;
+      }
     } catch (e) {
       _setError('Failed to load $skill drills: $e');
       return [];
@@ -259,9 +314,17 @@ class AppStateService extends ChangeNotifier {
     _clearError();
     
     try {
-      final drills = await TestDataService.getPopularDrills();
-      TestDataService.debugLog('Loaded ${drills.length} popular drills');
-      return drills;
+      if (AppConfig.useTestData) {
+        final drills = await TestDataService.getPopularDrills();
+        if (kDebugMode) print('📚 Loaded ${drills.length} popular test drills');
+        return drills;
+      } else {
+        // For backend, just get the first 10 drills as "popular"
+        final response = await _drillApiService.searchDrills(limit: 10);
+        final drills = _drillApiService.convertToLocalModels(response.items);
+        if (kDebugMode) print('🌐 Loaded ${drills.length} popular backend drills');
+        return drills;
+      }
     } catch (e) {
       _setError('Failed to load popular drills: $e');
       return [];
@@ -277,9 +340,17 @@ class AppStateService extends ChangeNotifier {
     _clearError();
     
     try {
-      final drills = await TestDataService.getRecommendedDrills(count);
-      TestDataService.debugLog('Loaded $count recommended drills');
-      return drills;
+      if (AppConfig.useTestData) {
+        final drills = await TestDataService.getRecommendedDrills(count);
+        if (kDebugMode) print('📚 Loaded $count recommended test drills');
+        return drills;
+      } else {
+        // For backend, get random drills as recommendations
+        final response = await _drillApiService.searchDrills(limit: count);
+        final drills = _drillApiService.convertToLocalModels(response.items);
+        if (kDebugMode) print('🌐 Loaded ${drills.length} recommended backend drills');
+        return drills;
+      }
     } catch (e) {
       _setError('Failed to load recommendations: $e');
       return [];
@@ -317,7 +388,7 @@ class AppStateService extends ChangeNotifier {
   
   void _setError(String error) {
     _lastError = error;
-    TestDataService.debugLog('Error: $error');
+    if (kDebugMode) print('❌ AppState Error: $error');
   }
   
   void _clearError() {
@@ -336,9 +407,9 @@ class AppStateService extends ChangeNotifier {
   
   /// Load test session data for debugging
   Future<void> _loadTestSession() async {
-    if (!AppSettings.shouldUseTestData) return;
+    if (!AppConfig.useTestData) return;
     
-    TestDataService.debugLog('Loading test session with ${AppSettings.testDrillCount} drills');
+    if (kDebugMode) print('📚 Loading test session with ${AppConfig.testDrillCount} drills');
     
     _setLoading(true);
     
@@ -354,7 +425,7 @@ class AppStateService extends ChangeNotifier {
       _sessionDrills.addAll(testSessionDrills.map((ed) => ed.drill));
       
       await _persistState();
-      TestDataService.debugLog('Test session loaded successfully');
+      if (kDebugMode) print('✅ Test session loaded successfully');
       
     } catch (e) {
       _setError('Failed to load test session: $e');
@@ -371,7 +442,7 @@ class AppStateService extends ChangeNotifier {
   
   /// Clear all session data (useful for testing)
   void clearAllSessionData() {
-    TestDataService.debugLog('Clearing all session data');
+    if (kDebugMode) print('🧹 Clearing all session data');
     clearSession();
     // Reset any progress tracking
     _sessionInProgress = false;

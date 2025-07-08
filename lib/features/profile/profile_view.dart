@@ -1,7 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:url_launcher/url_launcher.dart';
+import 'package:provider/provider.dart';
 import '../../constants/app_theme.dart';
+import '../../config/app_config.dart';
+import '../../services/user_manager_service.dart';
+import '../../services/login_service.dart';
 import '../debug/debug_settings_view.dart';
 
 class ProfileView extends StatefulWidget {
@@ -12,113 +16,122 @@ class ProfileView extends StatefulWidget {
 }
 
 class _ProfileViewState extends State<ProfileView> {
-  final String userEmail = 'test@user.com'; // This would come from your user service
   final String appVersion = '1.1.0'; // This would come from package info
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: AppTheme.lightGray,
-      body: SafeArea(
-        child: SingleChildScrollView(
-          child: Column(
-            children: [
-              // Header Section
-              _buildHeader(),
-              
-              const SizedBox(height: 32),
-              
-              // Account Section
-              _buildSection(
-                title: 'Account',
-                items: [
-                  _buildMenuItem(
-                    icon: Icons.edit_outlined,
-                    title: 'Edit your details',
-                    onTap: () => _handleEditDetails(),
+    return Consumer<UserManagerService>(
+      builder: (context, userManager, child) {
+        return Scaffold(
+          backgroundColor: AppTheme.lightGray,
+          body: SafeArea(
+            child: SingleChildScrollView(
+              child: Column(
+                children: [
+                  // Header Section
+                  _buildHeader(userManager),
+                  
+                  const SizedBox(height: 32),
+                  
+                  // Account Section
+                  _buildSection(
+                    title: 'Account',
+                    items: [
+                      _buildMenuItem(
+                        icon: Icons.edit_outlined,
+                        title: 'Edit your details',
+                        onTap: () => _handleEditDetails(),
+                      ),
+                      _buildMenuItem(
+                        icon: Icons.lock_outline,
+                        title: 'Change Password',
+                        onTap: () => _handleChangePassword(),
+                      ),
+                      _buildMenuItem(
+                        icon: Icons.share_outlined,
+                        title: 'Share With a Friend',
+                        onTap: () => _handleShareApp(),
+                      ),
+                    ],
                   ),
-                  _buildMenuItem(
-                    icon: Icons.lock_outline,
-                    title: 'Change Password',
-                    onTap: () => _handleChangePassword(),
+                  
+                  const SizedBox(height: 24),
+                  
+                  // Support Section
+                  _buildSection(
+                    title: 'Support',
+                    items: [
+                      _buildMenuItem(
+                        icon: Icons.lightbulb_outline,
+                        title: 'Feature Requests',
+                        onTap: () => _handleFeatureRequests(),
+                      ),
+                      _buildMenuItem(
+                        icon: Icons.privacy_tip_outlined,
+                        title: 'Privacy Policy',
+                        onTap: () => _handlePrivacyPolicy(),
+                      ),
+                      _buildMenuItem(
+                        icon: Icons.description_outlined,
+                        title: 'Terms of Service',
+                        onTap: () => _handleTermsOfService(),
+                      ),
+                      _buildMenuItem(
+                        icon: Icons.link_outlined,
+                        title: 'Follow our Socials',
+                        onTap: () => _handleFollowSocials(),
+                      ),
+                    ],
                   ),
-                  _buildMenuItem(
-                    icon: Icons.share_outlined,
-                    title: 'Share With a Friend',
-                    onTap: () => _handleShareApp(),
-                  ),
-                ],
-              ),
-              
-              const SizedBox(height: 24),
-              
-              // Support Section
-              _buildSection(
-                title: 'Support',
-                items: [
-                  _buildMenuItem(
-                    icon: Icons.lightbulb_outline,
-                    title: 'Feature Requests',
-                    onTap: () => _handleFeatureRequests(),
-                  ),
-                  _buildMenuItem(
-                    icon: Icons.privacy_tip_outlined,
-                    title: 'Privacy Policy',
-                    onTap: () => _handlePrivacyPolicy(),
-                  ),
-                  _buildMenuItem(
-                    icon: Icons.description_outlined,
-                    title: 'Terms of Service',
-                    onTap: () => _handleTermsOfService(),
-                  ),
-                  _buildMenuItem(
-                    icon: Icons.link_outlined,
-                    title: 'Follow our Socials',
-                    onTap: () => _handleFollowSocials(),
-                  ),
-                ],
-              ),
-              
-              // Debug Section (only show in debug mode)
-              if (AppSettings.shouldShowDebugMenu) ...[
-                const SizedBox(height: 24),
-                _buildSection(
-                  title: 'Developer',
-                  items: [
-                    _buildDebugMenuItem(
-                      icon: Icons.bug_report,
-                      title: 'Debug Settings',
-                      subtitle: AppSettings.shouldUseTestData ? 'Test Mode' : 'Backend Mode',
-                      onTap: () => _handleDebugSettings(),
+                  
+                  // Debug Section (only show in debug mode)
+                  if (AppConfig.shouldShowDebugMenu) ...[
+                    const SizedBox(height: 24),
+                    _buildSection(
+                      title: 'Developer',
+                      items: [
+                        _buildDebugMenuItem(
+                          icon: Icons.bug_report,
+                          title: 'Debug Settings',
+                          subtitle: AppConfig.useTestData ? 'Test Mode' : 'Backend Mode',
+                          onTap: () => _handleDebugSettings(),
+                        ),
+                        _buildDebugMenuItem(
+                          icon: Icons.info_outline,
+                          title: 'Auth Debug Info',
+                          subtitle: userManager.isLoggedIn ? 'Authenticated' : 'Not Authenticated',
+                          onTap: () => _showAuthDebugInfo(userManager),
+                        ),
+                      ],
                     ),
                   ],
-                ),
-              ],
-              
-              const SizedBox(height: 32),
-              
-              // Version Info
-              Text(
-                'Version $appVersion',
-                style: AppTheme.bodySmall.copyWith(
-                  color: AppTheme.primaryGray,
-                ),
+                  
+                  const SizedBox(height: 32),
+                  
+                  // Version Info
+                  Text(
+                    'Version $appVersion',
+                    style: AppTheme.bodySmall.copyWith(
+                      color: AppTheme.primaryGray,
+                    ),
+                  ),
+                  
+                  const SizedBox(height: 32),
+                  
+                  // Action Buttons
+                  _buildActionButtons(),
+                  
+                  const SizedBox(height: 32),
+                ],
               ),
-              
-              const SizedBox(height: 32),
-              
-              // Action Buttons
-              _buildActionButtons(),
-              
-              const SizedBox(height: 32),
-            ],
+            ),
           ),
-        ),
-      ),
+        );
+      },
     );
   }
 
-  Widget _buildHeader() {
+  Widget _buildHeader(UserManagerService userManager) {
     return Container(
       width: double.infinity,
       padding: const EdgeInsets.all(32),
@@ -145,11 +158,30 @@ class _ProfileViewState extends State<ProfileView> {
           
           // User Email
           Text(
-            userEmail,
+            userManager.email.isNotEmpty ? userManager.email : 'Guest User',
             style: AppTheme.titleLarge.copyWith(
               color: AppTheme.primaryDark,
             ),
           ),
+          
+          // Login Status
+          if (userManager.isLoggedIn) ...[
+            const SizedBox(height: 4),
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+              decoration: BoxDecoration(
+                color: AppTheme.success.withOpacity(0.1),
+                borderRadius: BorderRadius.circular(12),
+              ),
+              child: Text(
+                'Authenticated',
+                style: AppTheme.bodySmall.copyWith(
+                  color: AppTheme.success,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+            ),
+          ],
         ],
       ),
     );
@@ -328,74 +360,74 @@ class _ProfileViewState extends State<ProfileView> {
   }
 
   Widget _buildActionButtons() {
-    return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 20),
-      child: Column(
-        children: [
-          // Logout Button
-          SizedBox(
-            width: double.infinity,
-            child: ElevatedButton(
-              onPressed: () => _handleLogout(),
-              style: ElevatedButton.styleFrom(
-                backgroundColor: AppTheme.primaryYellow,
-                foregroundColor: Colors.white,
-                padding: const EdgeInsets.symmetric(vertical: 16),
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(12),
+    return Consumer<UserManagerService>(
+      builder: (context, userManager, child) {
+        return Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 20),
+          child: Column(
+            children: [
+              // Logout Button
+              SizedBox(
+                width: double.infinity,
+                child: ElevatedButton(
+                  onPressed: () => _handleLogout(userManager),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: AppTheme.primaryYellow,
+                    foregroundColor: Colors.white,
+                    padding: const EdgeInsets.symmetric(vertical: 16),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    elevation: 2,
+                  ),
+                  child: Text(
+                    'Logout',
+                    style: AppTheme.buttonTextMedium,
+                  ),
                 ),
-                elevation: 2,
               ),
-              child: Text(
-                'Logout',
-                style: AppTheme.buttonTextMedium,
-              ),
-            ),
-          ),
-          
-          const SizedBox(height: 16),
-          
-          // Delete Account Button
-          SizedBox(
-            width: double.infinity,
-            child: ElevatedButton(
-              onPressed: () => _handleDeleteAccount(),
-              style: ElevatedButton.styleFrom(
-                backgroundColor: AppTheme.error,
-                foregroundColor: Colors.white,
-                padding: const EdgeInsets.symmetric(vertical: 16),
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(12),
+              
+              const SizedBox(height: 16),
+              
+              // Delete Account Button
+              SizedBox(
+                width: double.infinity,
+                child: ElevatedButton(
+                  onPressed: () => _handleDeleteAccount(),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: AppTheme.error,
+                    foregroundColor: Colors.white,
+                    padding: const EdgeInsets.symmetric(vertical: 16),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    elevation: 2,
+                  ),
+                  child: Text(
+                    'Delete Account',
+                    style: AppTheme.buttonTextMedium,
+                  ),
                 ),
-                elevation: 2,
               ),
-              child: Text(
-                'Delete Account',
-                style: AppTheme.buttonTextMedium,
-              ),
-            ),
+            ],
           ),
-        ],
-      ),
+        );
+      },
     );
   }
 
   // Action Handlers
   void _handleEditDetails() {
-    // TODO: Navigate to edit details page
     _showComingSoonSnackBar('Edit Details');
   }
 
   void _handleChangePassword() {
-    // TODO: Navigate to change password page
     _showComingSoonSnackBar('Change Password');
   }
 
   void _handleShareApp() {
-    // Share the app
     const shareText = 'Check out BravoBall - Your personal soccer training companion!\n\nDownload it here: https://apps.apple.com/app/bravoball';
     
-    // For now, we'll copy to clipboard since share package needs to be added
     Clipboard.setData(const ClipboardData(text: shareText));
     
     ScaffoldMessenger.of(context).showSnackBar(
@@ -411,21 +443,15 @@ class _ProfileViewState extends State<ProfileView> {
   }
 
   void _handlePrivacyPolicy() {
-    // TODO: Navigate to privacy policy page or web view
     _showComingSoonSnackBar('Privacy Policy');
   }
 
   void _handleTermsOfService() {
-    // TODO: Navigate to terms of service page or web view
     _showComingSoonSnackBar('Terms of Service');
   }
 
   void _handleFollowSocials() {
     _showSocialLinksBottomSheet();
-  }
-
-  void _handleLogout() {
-    _showLogoutConfirmationDialog();
   }
 
   void _handleDeleteAccount() {
@@ -436,6 +462,30 @@ class _ProfileViewState extends State<ProfileView> {
     Navigator.of(context).push(
       MaterialPageRoute(
         builder: (context) => const DebugSettingsView(),
+      ),
+    );
+  }
+
+  void _showAuthDebugInfo(UserManagerService userManager) {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Authentication Debug Info'),
+        content: SingleChildScrollView(
+          child: Text(
+            userManager.debugInfo,
+            style: const TextStyle(
+              fontFamily: 'Courier',
+              fontSize: 12,
+            ),
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('Close'),
+          ),
+        ],
       ),
     );
   }
@@ -486,7 +536,6 @@ class _ProfileViewState extends State<ProfileView> {
               ),
               const SizedBox(height: 20),
               
-              // Social Media Links
               _buildSocialLink('Instagram', 'https://instagram.com/bravoball'),
               _buildSocialLink('Twitter', 'https://twitter.com/bravoball'),
               _buildSocialLink('Facebook', 'https://facebook.com/bravoball'),
@@ -538,50 +587,6 @@ class _ProfileViewState extends State<ProfileView> {
     );
   }
 
-  void _showLogoutConfirmationDialog() {
-    showDialog(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: const Text(
-          'Logout',
-          style: TextStyle(fontFamily: AppTheme.fontPoppins),
-        ),
-        content: const Text(
-          'Are you sure you want to logout?',
-          style: TextStyle(fontFamily: AppTheme.fontPoppins),
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: const Text(
-              'Cancel',
-              style: TextStyle(fontFamily: AppTheme.fontPoppins),
-            ),
-          ),
-          TextButton(
-            onPressed: () {
-              Navigator.pop(context);
-              // TODO: Implement actual logout logic
-              ScaffoldMessenger.of(context).showSnackBar(
-                const SnackBar(
-                  content: Text('Logout functionality coming soon!'),
-                  duration: Duration(seconds: 2),
-                ),
-              );
-            },
-            child: const Text(
-              'Logout',
-              style: TextStyle(
-                fontFamily: AppTheme.fontPoppins,
-                color: AppTheme.primaryYellow,
-              ),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
   void _showDeleteAccountConfirmationDialog() {
     showDialog(
       context: context,
@@ -605,19 +610,80 @@ class _ProfileViewState extends State<ProfileView> {
           TextButton(
             onPressed: () {
               Navigator.pop(context);
-              // TODO: Implement actual delete account logic
-              ScaffoldMessenger.of(context).showSnackBar(
-                const SnackBar(
-                  content: Text('Delete account functionality coming soon!'),
-                  duration: Duration(seconds: 2),
-                ),
-              );
+              _showComingSoonSnackBar('Delete account functionality');
             },
             child: const Text(
               'Delete',
               style: TextStyle(
                 fontFamily: AppTheme.fontPoppins,
                 color: AppTheme.error,
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  void _handleLogout(UserManagerService userManager) {
+    _showLogoutConfirmationDialog(userManager);
+  }
+
+  void _showLogoutConfirmationDialog(UserManagerService userManager) {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text(
+          'Logout',
+          style: TextStyle(fontFamily: AppTheme.fontPoppins),
+        ),
+        content: const Text(
+          'Are you sure you want to logout?',
+          style: TextStyle(fontFamily: AppTheme.fontPoppins),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text(
+              'Cancel',
+              style: TextStyle(fontFamily: AppTheme.fontPoppins),
+            ),
+          ),
+          TextButton(
+            onPressed: () async {
+              Navigator.pop(context);
+              
+              // Show loading indicator
+              showDialog(
+                context: context,
+                barrierDismissible: false,
+                builder: (context) => const Center(
+                  child: CircularProgressIndicator(),
+                ),
+              );
+              
+              // Perform logout
+              await LoginService.shared.logoutUser();
+              
+              // Close loading indicator
+              if (mounted) {
+                Navigator.pop(context);
+                
+                // Show success message
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(
+                    content: Text('Logged out successfully'),
+                    backgroundColor: AppTheme.success,
+                    duration: Duration(seconds: 2),
+                  ),
+                );
+              }
+            },
+            child: const Text(
+              'Logout',
+              style: TextStyle(
+                fontFamily: AppTheme.fontPoppins,
+                color: AppTheme.primaryYellow,
               ),
             ),
           ),

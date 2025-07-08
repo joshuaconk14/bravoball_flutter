@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 import '../../constants/app_theme.dart';
+import '../../config/app_config.dart';
 import '../../services/test_data_service.dart';
 import '../../services/app_state_service.dart';
 
@@ -68,7 +69,7 @@ class _DebugSettingsViewState extends State<DebugSettingsView> {
   }
 
   Widget _buildStatusCard() {
-    final isTestMode = AppSettings.shouldUseTestData;
+    final isTestMode = AppConfig.useTestData;
     
     return Container(
       width: double.infinity,
@@ -122,7 +123,7 @@ class _DebugSettingsViewState extends State<DebugSettingsView> {
                       ),
                     ),
                     Text(
-                      isTestMode ? 'Using local test data' : 'Connected to: ${AppSettings.baseUrl}',
+                      isTestMode ? 'Using local test data' : 'Connected to: ${AppConfig.baseUrl}',
                       style: TextStyle(
                         fontFamily: 'Poppins',
                         fontWeight: FontWeight.w500,
@@ -140,8 +141,8 @@ class _DebugSettingsViewState extends State<DebugSettingsView> {
           
           Text(
             isTestMode 
-                ? 'To switch to backend data, change AppSettings.useTestData to false in app_theme.dart and hot restart.'
-                : 'To switch to test data, change AppSettings.useTestData to true in app_theme.dart and hot restart.',
+                ? 'To switch to backend data, change AppConfig.appDevCase to 1, 2, or 3 in app_config.dart and hot restart.'
+                : 'To switch to test data, change AppConfig.appDevCase to 0 in app_config.dart and hot restart.',
             style: TextStyle(
               fontFamily: 'Poppins',
               fontWeight: FontWeight.w400,
@@ -179,11 +180,11 @@ class _DebugSettingsViewState extends State<DebugSettingsView> {
           ),
           child: Column(
             children: [
-              _buildInfoRow('Current Environment', AppSettings.currentEnvironment.name),
+              _buildInfoRow('Current Environment', AppConfig.environmentName),
               const Divider(),
-              _buildInfoRow('Base URL', AppSettings.baseUrl),
+              _buildInfoRow('Base URL', AppConfig.baseUrl),
               const Divider(),
-              _buildInfoRow('Debug Logging', AppSettings.logApiCalls ? 'Enabled' : 'Disabled'),
+              _buildInfoRow('Debug Logging', AppConfig.logApiCalls ? 'Enabled' : 'Disabled'),
             ],
           ),
         ),
@@ -192,7 +193,7 @@ class _DebugSettingsViewState extends State<DebugSettingsView> {
   }
 
   Widget _buildTestDataSection() {
-    if (!AppSettings.shouldUseTestData) {
+    if (!AppConfig.useTestData) {
       return const SizedBox.shrink();
     }
     
@@ -215,7 +216,7 @@ class _DebugSettingsViewState extends State<DebugSettingsView> {
           children: [
             _buildActionButton(
               title: 'Load Test Session',
-              subtitle: 'Generate ${AppSettings.testDrillCount} test drills',
+              subtitle: 'Generate ${AppConfig.testDrillCount} test drills',
               icon: Icons.fitness_center,
               onTap: () => _loadTestSession(),
             ),
@@ -306,7 +307,7 @@ class _DebugSettingsViewState extends State<DebugSettingsView> {
               const SizedBox(height: 12),
               
               Text(
-                AppSettings.debugInfo.trim(),
+                AppConfig.debugInfo.trim(),
                 style: const TextStyle(
                   fontFamily: 'Courier',
                   fontSize: 12,
@@ -483,10 +484,10 @@ class _DebugSettingsViewState extends State<DebugSettingsView> {
     final appState = Provider.of<AppStateService>(context, listen: false);
     appState.loadTestSession();
     
-    TestDataService.debugLog('Loading test session with ${AppSettings.testDrillCount} drills');
+    TestDataService.debugLog('Loading test session with ${AppConfig.testDrillCount} drills');
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
-        content: Text('Test session loaded with ${AppSettings.testDrillCount} drills'),
+        content: Text('Test session loaded with ${AppConfig.testDrillCount} drills'),
         backgroundColor: Colors.green,
       ),
     );
@@ -546,7 +547,7 @@ class _DebugSettingsViewState extends State<DebugSettingsView> {
   }
 
   void _testApiConnection() {
-    TestDataService.debugLog('Testing API connection to ${AppSettings.baseUrl}');
+    TestDataService.debugLog('Testing API connection to ${AppConfig.baseUrl}');
     
     // Simulate API test
     TestDataService.simulateApiDelay('Connection test', milliseconds: 2000).then((result) {
@@ -571,7 +572,7 @@ class _DebugSettingsViewState extends State<DebugSettingsView> {
     
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
-        content: Text('Testing connection to ${AppSettings.baseUrl}...'),
+        content: Text('Testing connection to ${AppConfig.baseUrl}...'),
         backgroundColor: Colors.blue,
       ),
     );
@@ -631,7 +632,7 @@ class _DebugSettingsViewState extends State<DebugSettingsView> {
   }
 
   void _copyDebugInfo() {
-    Clipboard.setData(ClipboardData(text: AppSettings.debugInfo));
+    Clipboard.setData(ClipboardData(text: AppConfig.debugInfo));
     ScaffoldMessenger.of(context).showSnackBar(
       const SnackBar(
         content: Text('Debug info copied to clipboard'),

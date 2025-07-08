@@ -1,8 +1,9 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/foundation.dart';
 import 'package:provider/provider.dart';
 import '../../models/drill_model.dart';
 import '../../services/app_state_service.dart';
-import '../../services/test_data_service.dart';
+import '../../config/app_config.dart';
 import '../../constants/app_theme.dart';
 import '../../widgets/drill_card_widget.dart';
 import 'drill_detail_view.dart';
@@ -49,6 +50,15 @@ class _DrillSearchViewState extends State<DrillSearchView> {
 
   void _performSearch() {
     final appState = Provider.of<AppStateService>(context, listen: false);
+    
+    if (kDebugMode) {
+      print('🔍 Performing drill search:');
+      print('   Query: "${_searchQuery.isEmpty ? 'empty' : _searchQuery}"');
+      print('   Skill Filter: ${_selectedSkillFilter ?? 'none'}');
+      print('   Difficulty Filter: ${_selectedDifficultyFilter ?? 'none'}');
+      print('   Data Source: ${AppConfig.useTestData ? 'Test Data' : 'Backend API'}');
+    }
+    
     appState.searchDrillsWithPagination(
       query: _searchQuery.isEmpty ? null : _searchQuery,
       skill: _selectedSkillFilter,
@@ -59,15 +69,17 @@ class _DrillSearchViewState extends State<DrillSearchView> {
   void _loadMoreResults() {
     final appState = Provider.of<AppStateService>(context, listen: false);
     if (appState.hasMoreSearchResults && !appState.isLoadingMore) {
+      if (kDebugMode) {
+        print('📄 Loading more search results...');
+      }
       appState.loadMoreSearchResults();
     }
   }
 
   @override
   Widget build(BuildContext context) {
-        return Scaffold(
-      backgroundColor: AppTheme.backgroundPrimary,
-          appBar: AppBar(
+    return Scaffold(
+      appBar: AppBar(
         title: const Text(
           'Search Drills',
           style: AppTheme.titleLarge,
@@ -93,10 +105,16 @@ class _DrillSearchViewState extends State<DrillSearchView> {
               return const SizedBox();
             },
           ),
+          // Debug menu button
+          if (AppConfig.shouldShowDebugMenu)
+            IconButton(
+              icon: const Icon(Icons.bug_report, color: Colors.orange),
+              onPressed: () => _showDebugInfo(context),
+            ),
         ],
-          ),
-          body: Column(
-            children: [
+      ),
+      body: Column(
+        children: [
           // Search Header
           _buildSearchHeader(),
           
@@ -106,24 +124,67 @@ class _DrillSearchViewState extends State<DrillSearchView> {
           // Search Results
           Expanded(
             child: _buildSearchResults(),
-                    ),
-                  ],
-                ),
+          ),
+        ],
+      ),
     );
   }
 
   Widget _buildSearchHeader() {
     return Container(
       padding: const EdgeInsets.all(AppTheme.spacingMedium),
-                child: Column(
-                  children: [
+      child: Column(
+        children: [
+          // Debug indicator (only in debug mode)
+          if (AppConfig.shouldShowDebugMenu)
+            Container(
+              width: double.infinity,
+              padding: const EdgeInsets.all(8),
+              margin: const EdgeInsets.only(bottom: 12),
+              decoration: BoxDecoration(
+                color: AppConfig.useTestData 
+                    ? Colors.blue.withOpacity(0.1)
+                    : Colors.green.withOpacity(0.1),
+                border: Border.all(
+                  color: AppConfig.useTestData ? Colors.blue : Colors.green,
+                ),
+                borderRadius: BorderRadius.circular(8),
+              ),
+              child: Row(
+                children: [
+                  Icon(
+                    AppConfig.useTestData ? Icons.science : Icons.cloud,
+                    size: 16,
+                    color: AppConfig.useTestData ? Colors.blue : Colors.green,
+                  ),
+                  const SizedBox(width: 8),
+                  Text(
+                    AppConfig.useTestData ? 'Using Test Data' : 'Using Backend API',
+                    style: TextStyle(
+                      fontSize: 12,
+                      fontWeight: FontWeight.bold,
+                      color: AppConfig.useTestData ? Colors.blue : Colors.green,
+                    ),
+                  ),
+                  const Spacer(),
+                  Text(
+                    AppConfig.environmentName,
+                    style: TextStyle(
+                      fontSize: 10,
+                      color: AppConfig.useTestData ? Colors.blue : Colors.green,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          
           // Search Bar
           TextField(
-                        controller: _searchController,
-                        onChanged: (value) {
-                          setState(() {
-                            _searchQuery = value;
-                          });
+            controller: _searchController,
+            onChanged: (value) {
+              setState(() {
+                _searchQuery = value;
+              });
               // Debounce search
               Future.delayed(const Duration(milliseconds: 500), () {
                 if (_searchController.text == value) {
@@ -175,11 +236,17 @@ class _DrillSearchViewState extends State<DrillSearchView> {
             child: _buildFilterDropdown(
               label: 'Skill',
               value: _selectedSkillFilter,
-              items: ['All Skills', ...TestDataService.getAvailableSkills()],
-              allValue: 'All Skills',
+              items: const [
+                'Passing',
+                'Shooting', 
+                'Dribbling',
+                'First Touch',
+                'Defending',
+                'Fitness'
+              ],
               onChanged: (value) {
                 setState(() {
-                  _selectedSkillFilter = value == 'All Skills' ? null : value;
+                  _selectedSkillFilter = value;
                 });
                 _performSearch();
               },
@@ -193,15 +260,29 @@ class _DrillSearchViewState extends State<DrillSearchView> {
             child: _buildFilterDropdown(
               label: 'Difficulty',
               value: _selectedDifficultyFilter,
-              items: TestDataService.getAvailableDifficulties(),
-              allValue: 'All Levels',
+              items: const ['Beginner', 'Intermediate', 'Advanced'],
               onChanged: (value) {
                 setState(() {
-                  _selectedDifficultyFilter = value == 'All Levels' ? null : value;
+                  _selectedDifficultyFilter = value;
                 });
                 _performSearch();
               },
             ),
+          ),
+          
+          const SizedBox(width: AppTheme.spacingSmall),
+          
+          // Clear Filters
+          IconButton(
+            onPressed: () {
+              setState(() {
+                _selectedSkillFilter = null;
+                _selectedDifficultyFilter = null;
+              });
+              _performSearch();
+            },
+            icon: const Icon(Icons.clear_all, color: AppTheme.primaryGray),
+            tooltip: 'Clear filters',
           ),
         ],
       ),
@@ -212,47 +293,37 @@ class _DrillSearchViewState extends State<DrillSearchView> {
     required String label,
     required String? value,
     required List<String> items,
-    required String allValue,
     required Function(String?) onChanged,
   }) {
-    // Ensure the value matches one of the items
-    final displayValue = value ?? allValue;
-    
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
-      decoration: BoxDecoration(
-        color: AppTheme.lightGray,
-        borderRadius: BorderRadius.circular(AppTheme.radiusMedium),
-        border: Border.all(color: AppTheme.primaryGray.withOpacity(0.3)),
-      ),
-      child: DropdownButtonHideUnderline(
-        child: DropdownButton<String>(
-          hint: Text(
-            label,
-            style: AppTheme.bodySmall.copyWith(color: AppTheme.primaryGray),
-          ),
-          value: displayValue,
-          isExpanded: true,
-          items: items.map((String item) {
-            return DropdownMenuItem<String>(
-              value: item,
-              child: Text(
-                item,
-                style: AppTheme.bodySmall,
-                overflow: TextOverflow.ellipsis,
-              ),
-            );
-          }).toList(),
-          onChanged: (String? newValue) {
-            // Convert "All" options back to null for filtering
-            if (newValue == allValue) {
-              onChanged(null);
-            } else {
-              onChanged(newValue);
-            }
-          },
+    return DropdownButtonFormField<String>(
+      value: value,
+      decoration: InputDecoration(
+        labelText: label,
+        labelStyle: AppTheme.bodySmall.copyWith(color: AppTheme.primaryGray),
+        contentPadding: const EdgeInsets.symmetric(
+          horizontal: AppTheme.spacingSmall,
+          vertical: AppTheme.spacingXSmall,
         ),
+        border: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(AppTheme.radiusSmall),
+          borderSide: BorderSide(color: Colors.grey.shade300),
+        ),
+        filled: true,
+        fillColor: Colors.white,
       ),
+      items: [
+        DropdownMenuItem<String>(
+          value: null,
+          child: Text('All', style: AppTheme.bodySmall),
+        ),
+        ...items.map((item) => DropdownMenuItem<String>(
+          value: item,
+          child: Text(item, style: AppTheme.bodySmall),
+        )),
+      ],
+      onChanged: onChanged,
+      isExpanded: true,
+      style: AppTheme.bodySmall,
     );
   }
 
@@ -261,14 +332,14 @@ class _DrillSearchViewState extends State<DrillSearchView> {
       builder: (context, appState, child) {
         return Column(
           children: [
-            // Results Header
+            // Results header
             _buildResultsHeader(appState),
             
-            // Results List
-              Expanded(
+            // Results content
+            Expanded(
               child: _buildResultsList(appState),
-              ),
-            ],
+            ),
+          ],
         );
       },
     );
@@ -320,6 +391,9 @@ class _DrillSearchViewState extends State<DrillSearchView> {
     // Results list with pagination
     return RefreshIndicator(
       onRefresh: () async {
+        if (kDebugMode) {
+          print('🔄 Refreshing search results...');
+        }
         await appState.refreshSearch();
       },
       child: ListView.builder(
@@ -361,37 +435,6 @@ class _DrillSearchViewState extends State<DrillSearchView> {
     );
   }
 
-  Widget _buildLoadMoreIndicator(AppStateService appState) {
-    if (appState.isLoadingMore) {
-      return const Padding(
-        padding: EdgeInsets.all(AppTheme.spacingLarge),
-        child: Center(
-          child: CircularProgressIndicator(
-            color: AppTheme.primaryYellow,
-          ),
-        ),
-      );
-    }
-
-    return Container(
-      margin: const EdgeInsets.all(AppTheme.spacingMedium),
-      child: ElevatedButton(
-        onPressed: _loadMoreResults,
-        style: ElevatedButton.styleFrom(
-          backgroundColor: AppTheme.primaryYellow,
-          padding: const EdgeInsets.symmetric(vertical: AppTheme.spacingMedium),
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(AppTheme.radiusMedium),
-          ),
-        ),
-        child: const Text(
-          'Load More Drills',
-          style: AppTheme.buttonTextMedium,
-        ),
-      ),
-    );
-  }
-
   Widget _buildErrorView(String error) {
     return Center(
       child: Padding(
@@ -402,13 +445,12 @@ class _DrillSearchViewState extends State<DrillSearchView> {
             Icon(
               Icons.error_outline,
               size: 64,
-              color: AppTheme.error,
+              color: Colors.red.shade400,
             ),
             const SizedBox(height: AppTheme.spacingMedium),
             Text(
-              'Oops! Something went wrong',
+              'Error loading drills',
               style: AppTheme.titleMedium,
-              textAlign: TextAlign.center,
             ),
             const SizedBox(height: AppTheme.spacingSmall),
             Text(
@@ -416,16 +458,10 @@ class _DrillSearchViewState extends State<DrillSearchView> {
               style: AppTheme.bodyMedium.copyWith(color: AppTheme.primaryGray),
               textAlign: TextAlign.center,
             ),
-            const SizedBox(height: AppTheme.spacingLarge),
+            const SizedBox(height: AppTheme.spacingMedium),
             ElevatedButton(
               onPressed: _performSearch,
-              style: ElevatedButton.styleFrom(
-                backgroundColor: AppTheme.primaryYellow,
-              ),
-              child: const Text(
-                'Try Again',
-                style: AppTheme.buttonTextMedium,
-              ),
+              child: const Text('Retry'),
             ),
           ],
         ),
@@ -434,7 +470,7 @@ class _DrillSearchViewState extends State<DrillSearchView> {
   }
 
   Widget _buildEmptyView() {
-      return Center(
+    return Center(
       child: Padding(
         padding: const EdgeInsets.all(AppTheme.spacingLarge),
         child: Column(
@@ -462,6 +498,29 @@ class _DrillSearchViewState extends State<DrillSearchView> {
         ),
       ),
     );
+  }
+
+  Widget _buildLoadMoreIndicator(AppStateService appState) {
+    if (appState.isLoadingMore) {
+      return const Padding(
+        padding: EdgeInsets.all(AppTheme.spacingMedium),
+        child: Center(
+          child: CircularProgressIndicator(
+            color: AppTheme.primaryYellow,
+          ),
+        ),
+      );
+    } else {
+      return Padding(
+        padding: const EdgeInsets.all(AppTheme.spacingMedium),
+        child: Center(
+          child: ElevatedButton(
+            onPressed: _loadMoreResults,
+            child: const Text('Load More'),
+          ),
+        ),
+      );
+    }
   }
 
   void _navigateToDrillDetail(DrillModel drill) {
@@ -515,24 +574,66 @@ class _DrillSearchViewState extends State<DrillSearchView> {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text(
-                      drill.title,
-                      style: AppTheme.titleSmall,
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                    ),
-                    const SizedBox(height: 4),
+                    // Title and difficulty
                     Row(
                       children: [
-                        _buildChip(drill.skill, AppTheme.getSkillColor(drill.skill)),
-                        const SizedBox(width: 8),
-                        _buildChip(drill.difficulty, AppTheme.primaryGray),
+                        Expanded(
+                          child: Text(
+                            drill.title,
+                            style: AppTheme.titleMedium,
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                        ),
+                        Container(
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 8,
+                            vertical: 4,
+                          ),
+                          decoration: BoxDecoration(
+                            color: AppTheme.getSkillColor(drill.skill).withOpacity(0.1),
+                            borderRadius: BorderRadius.circular(4),
+                          ),
+                          child: Text(
+                            drill.difficulty,
+                            style: AppTheme.labelSmall.copyWith(
+                              color: AppTheme.getSkillColor(drill.skill),
+                              fontWeight: FontWeight.w600,
+                            ),
+                          ),
+                        ),
                       ],
                     ),
+                    
                     const SizedBox(height: 4),
+                    
+                    // Skill and duration
+                    Row(
+                      children: [
+                        Text(
+                          drill.skill,
+                          style: AppTheme.bodySmall.copyWith(
+                            color: AppTheme.getSkillColor(drill.skill),
+                            fontWeight: FontWeight.w500,
+                          ),
+                        ),
+                        Text(
+                          ' • ${drill.duration}min',
+                          style: AppTheme.bodySmall.copyWith(
+                            color: AppTheme.primaryGray,
+                          ),
+                        ),
+                      ],
+                    ),
+                    
+                    const SizedBox(height: 4),
+                    
+                    // Description
                     Text(
                       drill.description,
-                      style: AppTheme.bodySmall.copyWith(color: AppTheme.primaryGray),
+                      style: AppTheme.bodySmall.copyWith(
+                        color: AppTheme.primaryGray,
+                      ),
                       maxLines: 2,
                       overflow: TextOverflow.ellipsis,
                     ),
@@ -540,36 +641,24 @@ class _DrillSearchViewState extends State<DrillSearchView> {
                 ),
               ),
               
-              // Action button
-              Column(
-                children: [
-                  Text(
-                    '${drill.duration}min',
-                    style: AppTheme.labelMedium.copyWith(color: AppTheme.primaryGray),
-                  ),
-                  const SizedBox(height: 8),
-                  ElevatedButton(
-                    onPressed: appState.isDrillInSession(drill) 
-                        ? null 
-                        : () => _addDrillToSession(drill),
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: appState.isDrillInSession(drill) 
-                          ? AppTheme.primaryGray 
-                          : AppTheme.primaryYellow,
-                      minimumSize: const Size(60, 32),
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(AppTheme.radiusSmall),
-                      ),
-                    ),
-                    child: Text(
-                      appState.isDrillInSession(drill) ? 'Added' : 'Add',
-                      style: AppTheme.bodySmall.copyWith(
-                        color: Colors.white,
-                        fontWeight: FontWeight.bold,
-                      ),
-                    ),
-                  ),
-                ],
+              const SizedBox(width: AppTheme.spacingSmall),
+              
+              // Add to session button
+              IconButton(
+                onPressed: appState.isDrillInSession(drill) 
+                    ? null 
+                    : () => _addDrillToSession(drill),
+                icon: Icon(
+                  appState.isDrillInSession(drill) 
+                      ? Icons.check_circle 
+                      : Icons.add_circle_outline,
+                  color: appState.isDrillInSession(drill) 
+                      ? AppTheme.success 
+                      : AppTheme.primaryYellow,
+                ),
+                tooltip: appState.isDrillInSession(drill) 
+                    ? 'Already in session' 
+                    : 'Add to session',
               ),
             ],
           ),
@@ -577,21 +666,44 @@ class _DrillSearchViewState extends State<DrillSearchView> {
       ),
     );
   }
-  
-  Widget _buildChip(String text, Color color) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
-      decoration: BoxDecoration(
-        color: color.withOpacity(0.1),
-        borderRadius: BorderRadius.circular(AppTheme.radiusSmall),
-        border: Border.all(color: color.withOpacity(0.3)),
-      ),
-      child: Text(
-        text,
-        style: AppTheme.labelSmall.copyWith(
-          color: color,
-          fontWeight: FontWeight.w600,
+
+  void _showDebugInfo(BuildContext context) {
+    final appState = Provider.of<AppStateService>(context, listen: false);
+    
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Debug Information'),
+        content: SingleChildScrollView(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Text('Environment: ${AppConfig.environmentName}'),
+              Text('Base URL: ${AppConfig.baseUrl}'),
+              Text('Use Test Data: ${AppConfig.useTestData}'),
+              const SizedBox(height: 16),
+              Text('Search Results: ${appState.searchResults.length}'),
+              Text('Current Page: ${appState.currentSearchPage}'),
+              Text('Total Pages: ${appState.totalSearchPages}'),
+              Text('Total Results: ${appState.totalSearchResults}'),
+              Text('Has More: ${appState.hasMoreSearchResults}'),
+              const SizedBox(height: 16),
+              Text('Loading: ${appState.isLoading}'),
+              Text('Loading More: ${appState.isLoadingMore}'),
+              if (appState.lastError != null) ...[
+                const SizedBox(height: 16),
+                Text('Last Error: ${appState.lastError}'),
+              ],
+            ],
+          ),
         ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('Close'),
+          ),
+        ],
       ),
     );
   }

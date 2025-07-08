@@ -1,6 +1,7 @@
 import '../models/drill_model.dart';
 import '../models/editable_drill_model.dart';
 import '../constants/app_theme.dart';
+import '../config/app_config.dart';
 import 'dart:math';
 
 /// Pagination Response Model
@@ -970,7 +971,7 @@ class TestDataService {
 
   /// Debug logging for development
   static void debugLog(String message) {
-    if (AppSettings.logApiCalls) {
+    if (AppConfig.logApiCalls) {
       print('🔍 [TestDataAPI] $message');
     }
   }
