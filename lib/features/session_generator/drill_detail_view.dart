@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import '../../models/drill_model.dart';
 import '../../widgets/bravo_button.dart';
+import '../../constants/app_theme.dart';
 
 class DrillDetailView extends StatelessWidget {
   final DrillModel drill;
@@ -246,6 +247,7 @@ class DrillDetailView extends StatelessWidget {
             text: isInSession ? 'Remove from Session' : 'Add to Session',
             onPressed: onAddToSession,
             color: isInSession ? Colors.red : const Color(0xFFF9CC53),
+            backColor: isInSession ? Colors.red.shade700 : AppTheme.primaryDarkYellow,
             textColor: Colors.white,
             height: 52,
             textSize: 16,

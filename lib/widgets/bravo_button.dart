@@ -1,10 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
-class BravoButton extends StatelessWidget {
+class BravoButton extends StatefulWidget {
   final String text;
   final VoidCallback? onPressed;
   final Color color;
+  final Color backColor;
   final Color textColor;
   final bool disabled;
   final bool enableHaptics;
@@ -19,6 +20,7 @@ class BravoButton extends StatelessWidget {
     required this.text,
     required this.onPressed,
     required this.color,
+    required this.backColor,
     required this.textColor,
     this.disabled = false,
     this.enableHaptics = true,
@@ -30,40 +32,121 @@ class BravoButton extends StatelessWidget {
   }) : super(key: key);
 
   @override
+  State<BravoButton> createState() => _BravoButtonState();
+}
+
+class _BravoButtonState extends State<BravoButton> with SingleTickerProviderStateMixin {
+  late AnimationController _controller;
+  late Animation<double> _offsetAnimation;
+  bool _isPressed = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _controller = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 80),
+      reverseDuration: const Duration(milliseconds: 120),
+    );
+    _offsetAnimation = Tween<double>(begin: 0, end: 8).animate(
+      CurvedAnimation(parent: _controller, curve: Curves.easeInOut),
+    );
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  void _onTapDown(TapDownDetails details) {
+    if (!widget.disabled) {
+      setState(() => _isPressed = true);
+      _controller.forward();
+    }
+  }
+
+  void _onTapUp(TapUpDetails details) {
+    if (!widget.disabled) {
+      setState(() => _isPressed = false);
+      _controller.reverse();
+      if (widget.enableHaptics) {
+        HapticFeedback.mediumImpact();
+      }
+      if (widget.onPressed != null) widget.onPressed!();
+    }
+  }
+
+  void _onTapCancel() {
+    if (!widget.disabled) {
+      setState(() => _isPressed = false);
+      _controller.reverse();
+    }
+  }
+
+  @override
   Widget build(BuildContext context) {
+    final Color backColor = widget.disabled ? widget.backColor.withOpacity(0.5) : widget.backColor;
+    final Color frontColor = widget.disabled ? widget.color.withOpacity(0.5) : widget.color;
     return SizedBox(
       width: double.infinity,
-      height: height,
-      child: ElevatedButton(
-        style: ElevatedButton.styleFrom(
-          backgroundColor: disabled ? color.withOpacity(0.5) : color,
-          foregroundColor: textColor,
-          elevation: 0,
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(borderRadius),
-            side: borderSide ?? BorderSide.none,
+      height: widget.height + 6,
+      child: GestureDetector(
+        onTapDown: _onTapDown,
+        onTapUp: _onTapUp,
+        onTapCancel: _onTapCancel,
+        child: Stack(
+          clipBehavior: Clip.none,
+          children: [
+            // Back rectangle
+            Positioned(
+              left: 0,
+              right: 0,
+              top: 6,
+              child: Container(
+                height: widget.height,
+                decoration: BoxDecoration(
+                  color: backColor,
+                  borderRadius: BorderRadius.circular(widget.borderRadius),
+                  border: widget.borderSide != null ? Border.all(color: widget.borderSide!.color, width: widget.borderSide!.width) : null,
           ),
-          padding: const EdgeInsets.symmetric(vertical: 18),
-          textStyle: TextStyle(
-            fontFamily: 'Poppins',
-            fontWeight: fontWeight,
-            fontSize: textSize,
-          ),
-        ),
-        onPressed: disabled
-            ? null
-            : () {
-                if (enableHaptics) {
-                  HapticFeedback.mediumImpact();
-                }
-                if (onPressed != null) onPressed!();
-              },
+              ),
+            ),
+            // Animated front rectangle
+            AnimatedBuilder(
+              animation: _offsetAnimation,
+              builder: (context, child) {
+                return Positioned(
+                  left: 0,
+                  right: 0,
+                  top: _offsetAnimation.value,
+                  child: Container(
+                    height: widget.height,
+                    decoration: BoxDecoration(
+                      color: frontColor,
+                      borderRadius: BorderRadius.circular(widget.borderRadius),
+                      border: widget.borderSide != null ? Border.all(color: widget.borderSide!.color, width: widget.borderSide!.width) : null,
+                    ),
+                    alignment: Alignment.center,
+                    padding: const EdgeInsets.symmetric(vertical: 0),
         child: FittedBox(
           fit: BoxFit.scaleDown,
           child: Text(
-            text,
+                        widget.text,
             overflow: TextOverflow.ellipsis,
+                        style: TextStyle(
+                          fontFamily: 'Poppins',
+                          fontWeight: widget.fontWeight,
+                          fontSize: widget.textSize,
+                          color: widget.textColor,
+                        ),
+                      ),
+                    ),
+                  ),
+                );
+              },
           ),
+          ],
         ),
       ),
     );
