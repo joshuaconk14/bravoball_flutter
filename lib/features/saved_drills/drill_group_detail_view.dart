@@ -22,6 +22,16 @@ class DrillGroupDetailView extends StatefulWidget {
 
 class _DrillGroupDetailViewState extends State<DrillGroupDetailView> {
   bool _isEditMode = false;
+  bool _isEditingGroupInfo = false;
+  final TextEditingController _nameController = TextEditingController();
+  final TextEditingController _descriptionController = TextEditingController();
+
+  @override
+  void dispose() {
+    _nameController.dispose();
+    _descriptionController.dispose();
+    super.dispose();
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -121,9 +131,13 @@ class _DrillGroupDetailViewState extends State<DrillGroupDetailView> {
                   ),
                   child: IconButton(
                     onPressed: () {
-                      setState(() {
-                        _isEditMode = !_isEditMode;
-                      });
+                      if (_isEditMode) {
+                        // If we're in edit mode, finish editing
+                        _finishEditingGroupInfo(appState);
+                      } else {
+                        // Start editing group info
+                        _startEditingGroupInfo(group);
+                      }
                     },
                     icon: Icon(
                       _isEditMode ? Icons.done : Icons.edit,
@@ -158,12 +172,40 @@ class _DrillGroupDetailViewState extends State<DrillGroupDetailView> {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text(
-                      group.name,
-                      style: AppTheme.headlineMedium.copyWith(
-                        color: Colors.white,
+                    // Group name - editable when in edit mode
+                    if (_isEditMode)
+                      TextField(
+                        controller: _nameController,
+                        style: AppTheme.headlineMedium.copyWith(
+                          color: Colors.white,
+                        ),
+                        decoration: InputDecoration(
+                          border: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(8),
+                            borderSide: BorderSide(color: Colors.white.withOpacity(0.3)),
+                          ),
+                          enabledBorder: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(8),
+                            borderSide: BorderSide(color: Colors.white.withOpacity(0.3)),
+                          ),
+                          focusedBorder: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(8),
+                            borderSide: BorderSide(color: Colors.white, width: 2),
+                          ),
+                          contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                          isDense: true,
+                          filled: true,
+                          fillColor: Colors.white.withOpacity(0.1),
+                        ),
+                        maxLines: 1,
+                      )
+                    else
+                      Text(
+                        group.name,
+                        style: AppTheme.headlineMedium.copyWith(
+                          color: Colors.white,
+                        ),
                       ),
-                    ),
                     const SizedBox(height: 4),
                     Text(
                       '${group.drills.length} drill${group.drills.length == 1 ? '' : 's'}',
@@ -195,12 +237,42 @@ class _DrillGroupDetailViewState extends State<DrillGroupDetailView> {
                 color: AppTheme.lightGray,
                 borderRadius: BorderRadius.circular(12),
               ),
-              child: Text(
-                group.description,
-                style: AppTheme.bodyMedium.copyWith(
-                  color: AppTheme.primaryDark,
-                ),
-              ),
+              child: _isEditMode
+                  ? TextField(
+                      controller: _descriptionController,
+                      style: AppTheme.bodyMedium.copyWith(
+                        color: AppTheme.primaryDark,
+                      ),
+                      decoration: InputDecoration(
+                        border: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(8),
+                          borderSide: BorderSide(color: AppTheme.primaryPurple.withOpacity(0.3)),
+                        ),
+                        enabledBorder: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(8),
+                          borderSide: BorderSide(color: AppTheme.primaryPurple.withOpacity(0.3)),
+                        ),
+                        focusedBorder: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(8),
+                          borderSide: BorderSide(color: AppTheme.primaryPurple, width: 2),
+                        ),
+                        contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                        isDense: true,
+                        filled: true,
+                        fillColor: Colors.white,
+                        hintText: 'Enter description...',
+                        hintStyle: AppTheme.bodyMedium.copyWith(
+                          color: AppTheme.primaryGray.withOpacity(0.6),
+                        ),
+                      ),
+                      maxLines: 3,
+                    )
+                  : Text(
+                      group.description,
+                      style: AppTheme.bodyMedium.copyWith(
+                        color: AppTheme.primaryDark,
+                      ),
+                    ),
             ),
           
           if (group.drills.isNotEmpty) ...[
@@ -271,7 +343,7 @@ class _DrillGroupDetailViewState extends State<DrillGroupDetailView> {
               const Spacer(),
               if (_isEditMode && !group.isLikedDrillsGroup)
                 Text(
-                  'Tap to remove',
+                  'Edit group info • Tap drills to remove',
                   style: AppTheme.bodySmall.copyWith(
                     color: AppTheme.primaryGray,
                   ),
@@ -468,5 +540,34 @@ class _DrillGroupDetailViewState extends State<DrillGroupDetailView> {
         ),
       ),
     );
+  }
+
+  void _startEditingGroupInfo(DrillGroup group) {
+    setState(() {
+      _isEditMode = true;
+      _nameController.text = group.name;
+      _descriptionController.text = group.description;
+    });
+  }
+
+  void _finishEditingGroupInfo(AppStateService appState) {
+    if (_nameController.text.trim().isNotEmpty) {
+      appState.editDrillGroup(
+        widget.group.id,
+        _nameController.text.trim(),
+        _descriptionController.text.trim(),
+      );
+      
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Group updated successfully!'),
+          duration: Duration(seconds: 2),
+        ),
+      );
+    }
+    
+    setState(() {
+      _isEditMode = false;
+    });
   }
 } 

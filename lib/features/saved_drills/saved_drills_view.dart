@@ -14,6 +14,17 @@ class SavedDrillsView extends StatefulWidget {
 }
 
 class _SavedDrillsViewState extends State<SavedDrillsView> {
+  String? _editingGroupId;
+  final TextEditingController _nameController = TextEditingController();
+  final TextEditingController _descriptionController = TextEditingController();
+
+  @override
+  void dispose() {
+    _nameController.dispose();
+    _descriptionController.dispose();
+    super.dispose();
+  }
+
   @override
   Widget build(BuildContext context) {
     return Consumer<AppStateService>(
@@ -29,15 +40,19 @@ class _SavedDrillsViewState extends State<SavedDrillsView> {
                   child: Column(
                     children: [
                       const SizedBox(height: 20),
+                      // Centered title
+                      Text(
+                        'Saved Drills',
+                        style: AppTheme.headlineMedium.copyWith(
+                          color: Colors.white,
+                        ),
+                        textAlign: TextAlign.center,
+                      ),
+                      const SizedBox(height: 16),
+                      // Add button row
                       Row(
+                        mainAxisAlignment: MainAxisAlignment.end,
                         children: [
-                          Text(
-                            'Saved Drills',
-                            style: AppTheme.headlineMedium.copyWith(
-                              color: Colors.white,
-                            ),
-                          ),
-                          const Spacer(),
                           Container(
                             decoration: BoxDecoration(
                               color: Colors.white.withOpacity(0.2),
@@ -147,7 +162,7 @@ class _SavedDrillsViewState extends State<SavedDrillsView> {
 
   Widget _buildGroupCard(DrillGroup group, AppStateService appState) {
     return GestureDetector(
-      onTap: () {
+      onTap: _editingGroupId == group.id ? null : () {
         Navigator.push(
           context,
           MaterialPageRoute(
@@ -193,40 +208,103 @@ class _SavedDrillsViewState extends State<SavedDrillsView> {
                   ),
                   const Spacer(),
                   if (!group.isLikedDrillsGroup)
-                    PopupMenuButton<String>(
-                      onSelected: (value) {
-                        if (value == 'delete') {
-                          _showDeleteConfirmation(group, appState);
-                        }
-                      },
-                      itemBuilder: (context) => [
-                        const PopupMenuItem(
-                          value: 'delete',
-                          child: Row(
-                            children: [
-                              Icon(Icons.delete, color: Colors.red),
-                              SizedBox(width: 8),
-                              Text('Delete'),
-                            ],
+                    if (_editingGroupId == group.id)
+                      Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          IconButton(
+                            onPressed: () => _finishEditingGroup(group, appState),
+                            icon: const Icon(
+                              Icons.check,
+                              color: Colors.green,
+                              size: 20,
+                            ),
                           ),
+                          IconButton(
+                            onPressed: _cancelEditing,
+                            icon: const Icon(
+                              Icons.close,
+                              color: Colors.red,
+                              size: 20,
+                            ),
+                          ),
+                        ],
+                      )
+                    else
+                      PopupMenuButton<String>(
+                        onSelected: (value) {
+                          if (value == 'edit') {
+                            _startEditingGroup(group);
+                          } else if (value == 'delete') {
+                            _showDeleteConfirmation(group, appState);
+                          }
+                        },
+                        itemBuilder: (context) => [
+                          const PopupMenuItem(
+                            value: 'edit',
+                            child: Row(
+                              children: [
+                                Icon(Icons.edit, color: AppTheme.primaryPurple),
+                                SizedBox(width: 8),
+                                Text('Edit'),
+                              ],
+                            ),
+                          ),
+                          const PopupMenuItem(
+                            value: 'delete',
+                            child: Row(
+                              children: [
+                                Icon(Icons.delete, color: Colors.red),
+                                SizedBox(width: 8),
+                                Text('Delete'),
+                              ],
+                            ),
+                          ),
+                        ],
+                        child: Icon(
+                          Icons.more_vert,
+                          color: Colors.grey.shade600,
                         ),
-                      ],
-                      child: Icon(
-                        Icons.more_vert,
-                        color: Colors.grey.shade600,
                       ),
-                    ),
                 ],
               ),
               const SizedBox(height: 16),
-              Text(
-                group.name,
-                style: AppTheme.titleMedium.copyWith(
-                  color: AppTheme.primaryDark,
+              // Group name - editable when in edit mode
+              if (_editingGroupId == group.id)
+                TextField(
+                  controller: _nameController,
+                  style: AppTheme.titleMedium.copyWith(
+                    color: AppTheme.primaryDark,
+                  ),
+                  decoration: InputDecoration(
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(8),
+                      borderSide: BorderSide(color: AppTheme.primaryPurple.withOpacity(0.3)),
+                    ),
+                    enabledBorder: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(8),
+                      borderSide: BorderSide(color: AppTheme.primaryPurple.withOpacity(0.3)),
+                    ),
+                    focusedBorder: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(8),
+                      borderSide: BorderSide(color: AppTheme.primaryPurple, width: 2),
+                    ),
+                    contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                    isDense: true,
+                    filled: true,
+                    fillColor: Colors.white,
+                  ),
+                  maxLines: 1,
+                )
+              else
+                Text(
+                  group.name,
+                  style: AppTheme.titleMedium.copyWith(
+                    color: AppTheme.primaryDark,
+                  ),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
                 ),
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
-              ),
               const SizedBox(height: 4),
               Text(
                 '${group.drills.length} drill${group.drills.length == 1 ? '' : 's'}',
@@ -235,14 +313,42 @@ class _SavedDrillsViewState extends State<SavedDrillsView> {
                 ),
               ),
               const SizedBox(height: 8),
-              Text(
-                group.description,
-                style: AppTheme.bodySmall.copyWith(
-                  color: AppTheme.primaryGray,
+              // Group description - editable when in edit mode
+              if (_editingGroupId == group.id)
+                TextField(
+                  controller: _descriptionController,
+                  style: AppTheme.bodySmall.copyWith(
+                    color: AppTheme.primaryGray,
+                  ),
+                  decoration: InputDecoration(
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(8),
+                      borderSide: BorderSide(color: AppTheme.primaryPurple.withOpacity(0.3)),
+                    ),
+                    enabledBorder: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(8),
+                      borderSide: BorderSide(color: AppTheme.primaryPurple.withOpacity(0.3)),
+                    ),
+                    focusedBorder: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(8),
+                      borderSide: BorderSide(color: AppTheme.primaryPurple, width: 2),
+                    ),
+                    contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                    isDense: true,
+                    filled: true,
+                    fillColor: Colors.white,
+                  ),
+                  maxLines: 2,
+                )
+              else
+                Text(
+                  group.description,
+                  style: AppTheme.bodySmall.copyWith(
+                    color: AppTheme.primaryGray,
+                  ),
+                  maxLines: 2,
+                  overflow: TextOverflow.ellipsis,
                 ),
-                maxLines: 2,
-                overflow: TextOverflow.ellipsis,
-              ),
               const Spacer(),
               if (group.drills.isNotEmpty)
                 Wrap(
@@ -460,5 +566,32 @@ class _SavedDrillsViewState extends State<SavedDrillsView> {
         ],
       ),
     );
+  }
+
+  void _startEditingGroup(DrillGroup group) {
+    setState(() {
+      _editingGroupId = group.id;
+      _nameController.text = group.name;
+      _descriptionController.text = group.description;
+    });
+  }
+
+  void _finishEditingGroup(DrillGroup group, AppStateService appState) {
+    if (_nameController.text.trim().isNotEmpty) {
+      appState.editDrillGroup(
+        group.id,
+        _nameController.text.trim(),
+        _descriptionController.text.trim(),
+      );
+    }
+    setState(() {
+      _editingGroupId = null;
+    });
+  }
+
+  void _cancelEditing() {
+    setState(() {
+      _editingGroupId = null;
+    });
   }
 } 

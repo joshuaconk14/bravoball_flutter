@@ -13,6 +13,7 @@ class AppTheme {
   static const Color primaryDarkGreen = Color(0xFF60AE17);
   static const Color primaryPurple = Color(0xFF8E4EC6);
   static const Color primaryDarkPurple = Color(0xFF7A42A8);
+  static const Color primaryLightBlue = Color(0xFF86C9F7);
   
   // MARK: - Secondary Colors
   static const Color secondaryBlue = Color(0xFF86C9F7);

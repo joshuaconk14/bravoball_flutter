@@ -13,6 +13,18 @@ class ProgressView extends StatefulWidget {
 class _ProgressViewState extends State<ProgressView> {
   DateTime selectedDate = DateTime.now();
   bool showWeekView = true;
+  CompletedSession? selectedSession; // Add this
+
+  void _showSessionResults(CompletedSession session) {
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+      ),
+      builder: (context) => DrillResultsView(session: session),
+    );
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -271,15 +283,14 @@ class _ProgressViewState extends State<ProgressView> {
   Widget _buildWeekView() {
     final now = DateTime.now();
     final startOfWeek = now.subtract(Duration(days: now.weekday % 7));
-    
+    final appState = Provider.of<AppStateService>(context, listen: false);
     return Row(
       mainAxisAlignment: MainAxisAlignment.spaceAround,
       children: List.generate(7, (index) {
         final date = startOfWeek.add(Duration(days: index));
         final isToday = _isSameDay(date, now);
-        final hasSession = index == 5; // Mock: 6th day has a session
-        
-        return _buildDayCell(date.day, isToday, hasSession);
+        final hasSession = appState.completedSessions.any((s) => _isSameDay(s.date, date));
+        return _buildDayCell(date.day, isToday, hasSession, date: date);
       }),
     );
   }
@@ -288,7 +299,7 @@ class _ProgressViewState extends State<ProgressView> {
     final daysInMonth = DateTime(selectedDate.year, selectedDate.month + 1, 0).day;
     final firstDayOfMonth = DateTime(selectedDate.year, selectedDate.month, 1);
     final firstWeekday = firstDayOfMonth.weekday % 7;
-    
+    final appState = Provider.of<AppStateService>(context, listen: false);
     return Column(
       children: [
         for (int week = 0; week < 6; week++)
@@ -298,16 +309,13 @@ class _ProgressViewState extends State<ProgressView> {
               mainAxisAlignment: MainAxisAlignment.spaceAround,
               children: List.generate(7, (dayOfWeek) {
                 final dayNumber = week * 7 + dayOfWeek + 1 - firstWeekday;
-                
                 if (dayNumber <= 0 || dayNumber > daysInMonth) {
                   return const SizedBox(width: 30, height: 40);
                 }
-                
                 final date = DateTime(selectedDate.year, selectedDate.month, dayNumber);
                 final isToday = _isSameDay(date, DateTime.now());
-                final hasSession = dayNumber == 6; // Mock: 6th day has a session
-                
-                return _buildDayCell(dayNumber, isToday, hasSession);
+                final hasSession = appState.completedSessions.any((s) => _isSameDay(s.date, date));
+                return _buildDayCell(dayNumber, isToday, hasSession, date: date);
               }),
             ),
           ),
@@ -315,16 +323,27 @@ class _ProgressViewState extends State<ProgressView> {
     );
   }
 
-  Widget _buildDayCell(int day, bool isToday, bool hasSession) {
+  Widget _buildDayCell(int day, bool isToday, bool hasSession, {DateTime? date}) {
     Color backgroundColor = Colors.transparent;
     Color textColor = AppTheme.primaryDark;
-    
+    final appState = Provider.of<AppStateService>(context, listen: false);
     if (hasSession) {
       backgroundColor = AppTheme.secondaryBlue;
       textColor = AppTheme.white;
     }
-    
-    return Container(
+    return GestureDetector(
+      onTap: () {
+        if (date != null) {
+          final sessions = appState.completedSessions.where(
+            (s) => s.date.year == date.year && s.date.month == date.month && s.date.day == date.day,
+          );
+          if (sessions.isNotEmpty) {
+            final session = sessions.first;
+            _showSessionResults(session);
+          }
+        }
+      },
+      child: Container(
       width: 30,
       height: 40,
       decoration: BoxDecoration(
@@ -340,6 +359,7 @@ class _ProgressViewState extends State<ProgressView> {
             fontSize: 16,
             fontWeight: FontWeight.w600,
             color: textColor,
+            ),
           ),
         ),
       ),
@@ -418,5 +438,198 @@ class _ProgressViewState extends State<ProgressView> {
     return date1.year == date2.year &&
            date1.month == date2.month &&
            date1.day == date2.day;
+  }
+} 
+
+// Add DrillResultsView widget at the end of the file
+class DrillResultsView extends StatefulWidget {
+  final CompletedSession session;
+  const DrillResultsView({Key? key, required this.session}) : super(key: key);
+
+  @override
+  State<DrillResultsView> createState() => _DrillResultsViewState();
+}
+
+class _DrillResultsViewState extends State<DrillResultsView> with SingleTickerProviderStateMixin {
+  late AnimationController _controller;
+  late Animation<double> _animation;
+
+  @override
+  void initState() {
+    super.initState();
+    _controller = AnimationController(
+      vsync: this,
+      duration: const Duration(seconds: 1),
+    );
+    _animation = Tween<double>(begin: 0, end: widget.session.totalCompletedDrills / (widget.session.totalDrills == 0 ? 1 : widget.session.totalDrills))
+        .animate(CurvedAnimation(parent: _controller, curve: Curves.easeOutCubic));
+    _controller.forward();
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final session = widget.session;
+    final percent = session.totalDrills == 0 ? 0.0 : session.totalCompletedDrills / session.totalDrills;
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 32),
+      decoration: const BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.vertical(top: Radius.circular(32)),
+      ),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.center,
+        children: [
+          Row(
+            children: [
+              IconButton(
+                icon: const Icon(Icons.close),
+                onPressed: () => Navigator.of(context).pop(),
+              ),
+              const Spacer(),
+            ],
+          ),
+          const SizedBox(height: 8),
+          Text(
+            _formatDate(session.date),
+            style: const TextStyle(
+              fontWeight: FontWeight.bold,
+              fontSize: 16,
+              color: Colors.black87,
+            ),
+          ),
+          const SizedBox(height: 24),
+          const Text(
+            'Score:',
+            style: TextStyle(
+              fontWeight: FontWeight.bold,
+              fontSize: 24,
+              color: Colors.black87,
+            ),
+          ),
+          const SizedBox(height: 8),
+          AnimatedBuilder(
+            animation: _animation,
+            builder: (context, child) {
+              return AnimatedProgressCircle(
+                percent: _animation.value,
+                label: '${session.totalCompletedDrills} / ${session.totalDrills}',
+                color: AppTheme.primaryYellow,
+              );
+            },
+          ),
+          const SizedBox(height: 32),
+          const Text(
+            'Drills:',
+            style: TextStyle(
+              fontWeight: FontWeight.bold,
+              fontSize: 22,
+              color: Colors.black87,
+            ),
+          ),
+          const SizedBox(height: 16),
+          ...session.drills.map((drill) => Padding(
+            padding: const EdgeInsets.only(bottom: 16.0),
+            child: Container(
+              width: double.infinity,
+              decoration: BoxDecoration(
+                color: AppTheme.primaryYellow,
+                borderRadius: BorderRadius.circular(18),
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.black.withOpacity(0.08),
+                    blurRadius: 8,
+                    offset: const Offset(0, 4),
+                  ),
+                ],
+              ),
+              padding: const EdgeInsets.all(16),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    'Drill: ${drill.drill.title}',
+                    style: const TextStyle(
+                      fontWeight: FontWeight.bold,
+                      fontSize: 16,
+                      color: Colors.black,
+                    ),
+                  ),
+                  const SizedBox(height: 6),
+                  Text(
+                    'Skill: ${drill.drill.skill}',
+                    style: const TextStyle(fontSize: 14, color: Colors.black87),
+                  ),
+                  Text(
+                    'Duration: ${drill.totalDuration}min    Sets: ${drill.totalSets}    Reps: ${drill.totalReps}',
+                    style: const TextStyle(fontSize: 14, color: Colors.black87),
+                  ),
+                  Text(
+                    'Equipment: ${drill.drill.equipment.join(", ")}',
+                    style: const TextStyle(fontSize: 14, color: Colors.black87),
+                  ),
+                ],
+              ),
+            ),
+          )),
+        ],
+      ),
+    );
+  }
+
+  String _formatDate(DateTime date) {
+    return '${_monthName(date.month)} ${date.day}, ${date.year}';
+  }
+
+  String _monthName(int month) {
+    const months = [
+      'January', 'February', 'March', 'April', 'May', 'June',
+      'July', 'August', 'September', 'October', 'November', 'December'
+    ];
+    return months[month - 1];
+  }
+}
+
+class AnimatedProgressCircle extends StatelessWidget {
+  final double percent;
+  final String label;
+  final Color color;
+  const AnimatedProgressCircle({Key? key, required this.percent, required this.label, required this.color}) : super(key: key);
+
+  @override
+  Widget build(BuildContext context) {
+    return SizedBox(
+      width: 160,
+      height: 160,
+      child: Stack(
+        alignment: Alignment.center,
+        children: [
+          SizedBox(
+            width: 160,
+            height: 160,
+            child: CircularProgressIndicator(
+              value: percent,
+              strokeWidth: 8,
+              backgroundColor: color.withOpacity(0.15),
+              valueColor: AlwaysStoppedAnimation<Color>(color),
+            ),
+          ),
+          Text(
+            label,
+            style: const TextStyle(
+              fontWeight: FontWeight.bold,
+              fontSize: 36,
+              color: Colors.black54,
+            ),
+          ),
+        ],
+      ),
+    );
   }
 } 

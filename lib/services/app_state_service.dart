@@ -472,6 +472,20 @@ class AppStateService extends ChangeNotifier {
     notifyListeners();
   }
   
+  void editDrillGroup(String groupId, String newName, String newDescription) {
+    final groupIndex = _savedDrillGroups.indexWhere((group) => group.id == groupId);
+    if (groupIndex != -1) {
+      final group = _savedDrillGroups[groupIndex];
+      final updatedGroup = group.copyWith(
+        name: newName,
+        description: newDescription,
+      );
+      _savedDrillGroups[groupIndex] = updatedGroup;
+      _persistState();
+      notifyListeners();
+    }
+  }
+  
   void addDrillToGroup(String groupId, DrillModel drill) {
     final groupIndex = _savedDrillGroups.indexWhere((g) => g.id == groupId);
     if (groupIndex != -1) {
