@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/foundation.dart';
 import 'package:provider/provider.dart';
+import 'package:flutter_dotenv/flutter_dotenv.dart';
+import 'package:rive/rive.dart';
 import 'views/onboarding_view.dart';
 import 'features/onboarding/onboarding_flow.dart';
 import 'features/auth/login_view.dart';
@@ -15,10 +17,14 @@ import 'config/app_config.dart';
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
   
+  // Load environment variables from .env file
+  await dotenv.load(fileName: ".env");
+  
   // Show debug information
   if (kDebugMode) {
     print('🚀 Starting BravoBall Flutter App');
     print('📱 ${AppConfig.debugInfo}');
+    print('🌐 Phone Wi-Fi IP: ${AppConfig.phoneWifiIP}');
   }
   
   // Initialize services
@@ -222,7 +228,7 @@ class _IntroAnimationScreenState extends State<IntroAnimationScreen>
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: AppTheme.primaryPurple,
+      backgroundColor: Colors.white,
       body: Center(
         child: AnimatedBuilder(
           animation: _controller,
@@ -231,44 +237,13 @@ class _IntroAnimationScreenState extends State<IntroAnimationScreen>
               opacity: _fadeAnimation,
               child: ScaleTransition(
                 scale: _scaleAnimation,
-                child: Column(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    // App Logo
-                    Container(
-                      width: 150,
-                      height: 150,
-                      decoration: BoxDecoration(
-                        color: Colors.white,
-                        borderRadius: BorderRadius.circular(AppTheme.radiusLarge),
-                      ),
-                      child: Icon(
-                        Icons.sports_soccer,
-                        size: 80,
-                        color: AppTheme.primaryPurple,
-                      ),
-                    ),
-                    
-                    const SizedBox(height: AppTheme.spacingLarge),
-                    
-                    // App Name
-                    Text(
-                      'BravoBall',
-                      style: AppTheme.headlineLarge.copyWith(
-                        color: Colors.white,
-                        fontSize: 42,
-                      ),
-                    ),
-                    
-                    const SizedBox(height: AppTheme.spacingSmall),
-                    
-                    Text(
-                      'Your Soccer Training Companion',
-                      style: AppTheme.bodyLarge.copyWith(
-                        color: Colors.white.withOpacity(0.8),
-                      ),
-                    ),
-                  ],
+                child: SizedBox(
+                  width: MediaQuery.of(context).size.width,
+                  height: MediaQuery.of(context).size.height,
+                  child: const RiveAnimation.asset(
+                    'assets/rive/BravoBall_Intro.riv',
+                    fit: BoxFit.cover,
+                  ),
                 ),
               ),
             );

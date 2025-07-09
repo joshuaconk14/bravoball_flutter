@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import 'package:rive/rive.dart';
 import '../../constants/app_theme.dart';
 import '../../services/login_service.dart';
 import '../../services/user_manager_service.dart';
@@ -64,7 +65,7 @@ class _LoginViewState extends State<LoginView> {
                 
                 const SizedBox(height: AppTheme.spacingXLarge),
                 
-                // Logo/Animation placeholder (you can add your Rive animation here)
+                // Logo/Animation with Bravo character
                 Container(
                   height: 200,
                   width: 200,
@@ -73,10 +74,9 @@ class _LoginViewState extends State<LoginView> {
                     color: AppTheme.primaryYellow.withOpacity(0.1),
                     borderRadius: BorderRadius.circular(AppTheme.radiusLarge),
                   ),
-                  child: Icon(
-                    Icons.sports_soccer,
-                    size: 80,
-                    color: AppTheme.primaryYellow,
+                  child: const RiveAnimation.asset(
+                    'assets/rive/Bravo_Animation.riv',
+                    fit: BoxFit.contain,
                   ),
                 ),
                 

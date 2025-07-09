@@ -6,6 +6,7 @@ import '../../models/editable_drill_model.dart';
 import '../../services/app_state_service.dart';
 import '../../constants/app_theme.dart';
 import '../../widgets/bravo_button.dart';
+import '../../widgets/drill_video_player.dart';
 import 'drill_detail_view.dart';
 import 'session_completion_view.dart';
 
@@ -121,7 +122,7 @@ class _DrillFollowAlongViewState extends State<DrillFollowAlongView> {
                   const SizedBox(height: 16),
                   _buildDrillHeader(),
                   const SizedBox(height: 20),
-                  Flexible(child: _buildVideoPlayer()),
+                  _buildVideoPlayer(),
                   const SizedBox(height: 20),
                   _buildPlayControls(),
                   const SizedBox(height: 12),
@@ -306,141 +307,42 @@ class _DrillFollowAlongViewState extends State<DrillFollowAlongView> {
   }
 
   Widget _buildVideoPlayer() {
-    return AspectRatio(
-      aspectRatio: 16 / 9, // Standard landscape video aspect ratio
-      child: Container(
+    if (_editableDrill.drill.videoUrl.isNotEmpty) {
+      return DrillVideoPlayer(
+        videoUrl: _editableDrill.drill.videoUrl,
+        aspectRatio: 16 / 9,
+        showControls: true,
+      );
+    } else {
+      // Fallback placeholder when no video URL
+      return Container(
+        width: double.infinity,
+        height: 200,
         decoration: BoxDecoration(
+          color: Colors.grey.shade200,
           borderRadius: BorderRadius.circular(16),
-          boxShadow: [
-            BoxShadow(
-              color: Colors.black.withOpacity(0.1),
-              blurRadius: 12,
-              offset: const Offset(0, 4),
+        ),
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(
+              Icons.videocam_off,
+              size: 48,
+              color: Colors.grey.shade600,
+            ),
+            const SizedBox(height: 8),
+            Text(
+              'No video available',
+              style: TextStyle(
+                fontFamily: 'Poppins',
+                fontSize: 14,
+                color: Colors.grey.shade600,
+              ),
             ),
           ],
         ),
-        child: ClipRRect(
-          borderRadius: BorderRadius.circular(16),
-          child: Container(
-            decoration: BoxDecoration(
-              gradient: LinearGradient(
-                begin: Alignment.topLeft,
-                end: Alignment.bottomRight,
-                colors: [
-                  Colors.grey.shade300,
-                  Colors.grey.shade400,
-                ],
-              ),
-            ),
-            child: Stack(
-              children: [
-                // Background pattern
-                Positioned.fill(
-                  child: Container(
-                    decoration: BoxDecoration(
-                      image: DecorationImage(
-                        image: const AssetImage('assets/images/field_pattern.png'),
-                        fit: BoxFit.cover,
-                        opacity: 0.1,
-                        onError: (exception, stackTrace) {
-                          // Fallback if image doesn't exist
-                        },
-                      ),
-                    ),
-                  ),
-                ),
-                
-                // Gradient overlay
-                Container(
-                  decoration: BoxDecoration(
-                    gradient: LinearGradient(
-                      begin: Alignment.topCenter,
-                      end: Alignment.bottomCenter,
-                      colors: [
-                        Colors.transparent,
-                        Colors.black.withOpacity(0.3),
-                      ],
-                    ),
-                  ),
-                ),
-                
-                // Play button and video info
-                Center(
-                  child: Column(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      // Play button
-                      Container(
-                        width: 50,
-                        height: 50,
-                        decoration: BoxDecoration(
-                          color: Colors.white.withOpacity(0.95),
-                          shape: BoxShape.circle,
-                          boxShadow: [
-                            BoxShadow(
-                              color: Colors.black.withOpacity(0.2),
-                              blurRadius: 6,
-                              offset: const Offset(0, 3),
-                            ),
-                          ],
-                        ),
-                        child: const Icon(
-                          Icons.play_arrow,
-                          color: Colors.black87,
-                          size: 25,
-                        ),
-                      ),
-                      
-                      const SizedBox(height: 8),
-                      
-                      // Video description
-                      Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                        decoration: BoxDecoration(
-                          color: Colors.black.withOpacity(0.6),
-                          borderRadius: BorderRadius.circular(6),
-                        ),
-                        child: const Text(
-                          'Tap to view demonstration',
-                          style: TextStyle(
-                            fontFamily: 'Poppins',
-                            fontWeight: FontWeight.w500,
-                            fontSize: 10,
-                            color: Colors.white,
-                          ),
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-                
-                // Duration badge (top right)
-                Positioned(
-                  top: 8,
-                  right: 8,
-                  child: Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 3),
-                    decoration: BoxDecoration(
-                      color: Colors.black.withOpacity(0.7),
-                      borderRadius: BorderRadius.circular(4),
-                    ),
-                    child: const Text(
-                      '2:45',
-                      style: TextStyle(
-                        fontFamily: 'Poppins',
-                        fontWeight: FontWeight.w600,
-                        fontSize: 10,
-                        color: Colors.white,
-                      ),
-                    ),
-                  ),
-                ),
-              ],
-            ),
-          ),
-        ),
-      ),
-    );
+      );
+    }
   }
 
   Widget _buildPlayControls() {
