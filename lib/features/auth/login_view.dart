@@ -1,9 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../../constants/app_theme.dart';
-import '../../models/login_state_model.dart';
 import '../../services/login_service.dart';
 import '../../services/user_manager_service.dart';
+import 'forgot_password_view.dart';
+import '../../models/login_state_model.dart';
 
 /// Login View
 /// Mirrors Swift LoginView for user authentication UI
@@ -309,11 +310,9 @@ class _LoginViewState extends State<LoginView> {
   }
 
   void _handleForgotPassword() {
-    // TODO: Implement forgot password functionality
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(
-        content: Text('Forgot password functionality coming soon!'),
-        behavior: SnackBarBehavior.floating,
+    Navigator.of(context).push(
+      MaterialPageRoute(
+        builder: (context) => const ForgotPasswordView(),
       ),
     );
   }

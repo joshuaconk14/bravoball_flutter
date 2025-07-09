@@ -7,6 +7,7 @@ import '../../config/app_config.dart';
 import '../../services/user_manager_service.dart';
 import '../../services/login_service.dart';
 import '../debug/debug_settings_view.dart';
+import '../onboarding/onboarding_flow.dart';
 
 class ProfileView extends StatefulWidget {
   const ProfileView({Key? key}) : super(key: key);
@@ -668,14 +669,18 @@ class _ProfileViewState extends State<ProfileView> {
               // Close loading indicator
               if (mounted) {
                 Navigator.pop(context);
-                
-                // Show success message
+                // Show success message (optional)
                 ScaffoldMessenger.of(context).showSnackBar(
                   const SnackBar(
                     content: Text('Logged out successfully'),
                     backgroundColor: AppTheme.success,
                     duration: Duration(seconds: 2),
                   ),
+                );
+                // Navigate to onboarding and clear stack
+                Navigator.of(context).pushAndRemoveUntil(
+                  MaterialPageRoute(builder: (context) => const OnboardingFlow()),
+                  (route) => false,
                 );
               }
             },

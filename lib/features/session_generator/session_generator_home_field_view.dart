@@ -81,10 +81,20 @@ class _SessionGeneratorHomeFieldViewState extends State<SessionGeneratorHomeFiel
           height: 48,
           child: Row(
             children: [
-              CircleAvatar(
+              GestureDetector(
+                onTap: () {
+                  Navigator.of(context).pushAndRemoveUntil(
+                    MaterialPageRoute(
+                      builder: (_) => const MainTabView(initialIndex: 3),
+                    ),
+                    (route) => false,
+                  );
+                },
+                child: CircleAvatar(
                 radius: 18,
                 backgroundColor: AppTheme.backgroundPrimary,
                 child: Icon(Icons.person, color: AppTheme.secondaryBlue, size: 28),
+                ),
               ),
               
               const Spacer(),
@@ -101,7 +111,16 @@ class _SessionGeneratorHomeFieldViewState extends State<SessionGeneratorHomeFiel
               
               const Spacer(),
               
-              Row(
+              GestureDetector(
+                onTap: () {
+                  Navigator.of(context).pushAndRemoveUntil(
+                    MaterialPageRoute(
+                      builder: (_) => const MainTabView(initialIndex: 1),
+                    ),
+                    (route) => false,
+                  );
+                },
+                child: Row(
                 children: [
                   Icon(Icons.local_fire_department, color: AppTheme.secondaryOrange, size: 24),
                   const SizedBox(width: 4),
@@ -115,6 +134,7 @@ class _SessionGeneratorHomeFieldViewState extends State<SessionGeneratorHomeFiel
                     ),
                   ),
                 ],
+                ),
               ),
             ],
           ),

@@ -8,6 +8,7 @@ import '../../widgets/drill_card_widget.dart';
 import 'drill_detail_view.dart';
 import 'drill_search_view.dart';
 import 'edit_drill_view.dart';
+import '../../constants/app_theme.dart';
 
 class SessionGeneratorEditorPage extends StatefulWidget {
   const SessionGeneratorEditorPage({Key? key}) : super(key: key);
@@ -53,76 +54,83 @@ class _SessionGeneratorEditorPageState extends State<SessionGeneratorEditorPage>
     return Consumer<AppStateService>(
       builder: (context, appState, child) {
     return Scaffold(
-      backgroundColor: Colors.white,
+      backgroundColor: AppTheme.primaryLightBlue,
       appBar: AppBar(
-        backgroundColor: Colors.white,
+        backgroundColor: AppTheme.primaryLightBlue,
         elevation: 0.5,
         leading: IconButton(
-          icon: const Icon(Icons.info_outline, color: Colors.grey, size: 28),
-              onPressed: () => _showInfoDialog(context),
-            ),
-            title: const Text(
-              'Edit Session',
-              style: TextStyle(
-                fontFamily: 'Poppins',
-                fontWeight: FontWeight.bold,
-                color: Colors.black,
-              ),
-            ),
+          icon: const Icon(Icons.info_outline, color: Colors.white, size: 28),
+          onPressed: () => _showInfoDialog(context),
+        ),
+        title: const Text(
+          'Edit Session',
+          style: TextStyle(
+            fontFamily: 'Poppins',
+            fontWeight: FontWeight.bold,
+            color: Colors.white,
+          ),
+        ),
         centerTitle: true,
         actions: [
           TextButton(
             onPressed: () => Navigator.of(context).pop(),
-                child: const Text(
-                  'Done',
-                  style: TextStyle(
-                    fontFamily: 'Poppins',
-                    fontWeight: FontWeight.bold,
-                    color: Colors.blue,
-                    fontSize: 16,
-                  ),
-                ),
+            child: const Text(
+              'Done',
+              style: TextStyle(
+                fontFamily: 'Poppins',
+                fontWeight: FontWeight.bold,
+                color: Colors.white,
+                fontSize: 16,
+              ),
+            ),
           ),
         ],
       ),
-      body: SingleChildScrollView(
-            physics: const AlwaysScrollableScrollPhysics(),
+      body: Column(
+        children: [
+          // Filter/search area on blue background
+          Padding(
+            padding: const EdgeInsets.fromLTRB(16, 16, 16, 0),
             child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                // Filter section
-                Container(
-                  padding: const EdgeInsets.all(16),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-                      // Selected skills display
-                      if (appState.preferences.selectedSkills.isNotEmpty)
-                        _buildSelectedSkillsSection(appState),
-                      
-                      if (appState.preferences.selectedSkills.isNotEmpty)
-                        const SizedBox(height: 12),
-                      
-                      // Filter chips
-                      _buildFilterChips(appState),
-                      
-                      const SizedBox(height: 20),
-                      
-                      // Session drills section
-                      _buildSessionDrillsSection(appState),
-                      
-                      const SizedBox(height: 20),
-                      
-                      // Add more drills button
-                      _buildAddMoreDrillsButton(appState),
-                      
-                      const SizedBox(height: 20),
-                    ],
-                  ),
-                ),
+                if (appState.preferences.selectedSkills.isNotEmpty)
+                  _buildSelectedSkillsSection(appState),
+                if (appState.preferences.selectedSkills.isNotEmpty)
+                  const SizedBox(height: 12),
+                _buildFilterChips(appState),
               ],
             ),
           ),
-        );
+          // White card with rounded top border for session drills and below
+          Expanded(
+            child: Container(
+              width: double.infinity,
+              margin: const EdgeInsets.only(top: 24),
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 20),
+              decoration: const BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.only(
+                  topLeft: Radius.circular(32),
+                  topRight: Radius.circular(32),
+                ),
+              ),
+              child: SingleChildScrollView(
+                physics: const AlwaysScrollableScrollPhysics(),
+                child: Column(
+                  children: [
+                    _buildSessionDrillsSection(appState),
+                    const SizedBox(height: 20),
+                    _buildAddMoreDrillsButton(appState),
+                    const SizedBox(height: 20),
+                  ],
+                ),
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
       },
     );
   }
@@ -138,7 +146,7 @@ class _SessionGeneratorEditorPageState extends State<SessionGeneratorEditorPage>
             fontFamily: 'Poppins',
             fontWeight: FontWeight.bold,
             fontSize: 16,
-            color: Colors.black87,
+            color: Colors.white,
           ),
         ),
         const SizedBox(height: 8),
@@ -180,7 +188,7 @@ class _SessionGeneratorEditorPageState extends State<SessionGeneratorEditorPage>
             fontFamily: 'Poppins',
             fontWeight: FontWeight.bold,
             fontSize: 16,
-            color: Colors.black87,
+            color: Colors.white,
           ),
         ),
         const SizedBox(height: 8),
@@ -306,80 +314,6 @@ class _SessionGeneratorEditorPageState extends State<SessionGeneratorEditorPage>
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Row(
-                children: [
-            const Text(
-              'Your Session',
-              style: TextStyle(
-                fontFamily: 'Poppins',
-                fontWeight: FontWeight.bold,
-                fontSize: 18,
-                color: Colors.black87,
-              ),
-            ),
-            const Spacer(),
-            if (appState.sessionDrills.isNotEmpty) ...[
-              Text(
-                '${appState.sessionDrillCount} drill${appState.sessionDrillCount == 1 ? '' : 's'}',
-                style: TextStyle(
-                  fontFamily: 'Poppins',
-                  fontSize: 14,
-                  color: Colors.grey.shade600,
-                ),
-              ),
-              const SizedBox(width: 12),
-              GestureDetector(
-                onTap: () {
-                  showDialog(
-                    context: context,
-                    builder: (context) => AlertDialog(
-                      title: const Text('Clear Session'),
-                      content: const Text('Are you sure you want to remove all drills from your session?'),
-                      actions: [
-                        TextButton(
-                          onPressed: () => Navigator.pop(context),
-                          child: const Text('Cancel'),
-                        ),
-                        TextButton(
-                          onPressed: () {
-                            appState.clearSession();
-                            Navigator.pop(context);
-                          },
-                          child: const Text('Clear'),
-                        ),
-                      ],
-                    ),
-                  );
-                },
-                child: Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                  decoration: BoxDecoration(
-                    color: Colors.red.shade50,
-                    borderRadius: BorderRadius.circular(12),
-                    border: Border.all(color: Colors.red.shade200),
-                  ),
-                  child: Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Icon(Icons.clear_all, size: 14, color: Colors.red.shade600),
-                      const SizedBox(width: 4),
-                      Text(
-                        'Clear',
-                        style: TextStyle(
-                          fontFamily: 'Poppins',
-                          fontSize: 12,
-                          fontWeight: FontWeight.w500,
-                          color: Colors.red.shade600,
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-              ),
-            ],
-          ],
-        ),
-        const SizedBox(height: 12),
         
         // If no drills in session, show a message
         if (appState.sessionDrills.isEmpty)
