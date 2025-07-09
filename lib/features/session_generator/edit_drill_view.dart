@@ -3,6 +3,7 @@ import 'package:provider/provider.dart';
 import '../../models/drill_model.dart';
 import '../../services/app_state_service.dart';
 import '../../constants/app_theme.dart';
+import '../../widgets/drill_video_player.dart';
 import 'drill_detail_view.dart';
 
 class EditDrillView extends StatefulWidget {
@@ -153,46 +154,42 @@ class _EditDrillViewState extends State<EditDrillView> {
   }
 
   Widget _buildVideoSection() {
-    return Container(
-      width: double.infinity,
-      height: 200,
-      decoration: BoxDecoration(
-        color: Colors.grey.shade200,
-        borderRadius: BorderRadius.circular(16),
-        image: const DecorationImage(
-          image: NetworkImage('https://images.unsplash.com/photo-1544717440-6-2_I9gpz9E?q=80&w=2069'),
-          fit: BoxFit.cover,
-        ),
-      ),
-      child: Container(
+    if (widget.drill.videoUrl.isNotEmpty) {
+      return DrillVideoPlayer(
+        videoUrl: widget.drill.videoUrl,
+        aspectRatio: 16 / 9,
+        showControls: true,
+      );
+    } else {
+      // Fallback placeholder when no video URL
+      return Container(
+        width: double.infinity,
+        height: 200,
         decoration: BoxDecoration(
+          color: Colors.grey.shade200,
           borderRadius: BorderRadius.circular(16),
-          gradient: LinearGradient(
-            begin: Alignment.topCenter,
-            end: Alignment.bottomCenter,
-            colors: [
-              Colors.transparent,
-              Colors.black.withOpacity(0.3),
-            ],
-          ),
         ),
-        child: Center(
-          child: Container(
-            width: 60,
-            height: 60,
-            decoration: BoxDecoration(
-              color: Colors.white.withOpacity(0.9),
-              shape: BoxShape.circle,
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(
+              Icons.videocam_off,
+              size: 48,
+              color: Colors.grey.shade600,
             ),
-            child: const Icon(
-              Icons.play_arrow,
-              color: Colors.black,
-              size: 30,
+            const SizedBox(height: 8),
+            Text(
+              'No video available',
+              style: TextStyle(
+                fontFamily: 'Poppins',
+                fontSize: 14,
+                color: Colors.grey.shade600,
+              ),
             ),
-          ),
+          ],
         ),
-      ),
-    );
+      );
+    }
   }
 
   Widget _buildEditControls() {

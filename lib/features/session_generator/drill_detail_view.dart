@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import '../../models/drill_model.dart';
 import '../../widgets/bravo_button.dart';
+import '../../widgets/drill_video_player.dart';
 import '../../constants/app_theme.dart';
 
 class DrillDetailView extends StatelessWidget {
@@ -44,6 +45,19 @@ class DrillDetailView extends StatelessWidget {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
+            // Video player section
+            if (drill.videoUrl.isNotEmpty)
+              Column(
+                children: [
+                  DrillVideoPlayer(
+                    videoUrl: drill.videoUrl,
+                    aspectRatio: 16 / 9,
+                    showControls: true,
+                  ),
+                  const SizedBox(height: 24),
+                ],
+              ),
+            
             // Drill header with icon and basic info
             _buildDrillHeader(),
             

@@ -1,4 +1,5 @@
 import 'package:flutter/foundation.dart';
+import 'package:flutter_dotenv/flutter_dotenv.dart';
 
 /// App Configuration
 /// Mirrors Swift's GlobalSettings for environment and debug configuration
@@ -11,15 +12,14 @@ class AppConfig {
   /// 1: Production
   /// 2: Computer (localhost)
   /// 3: Phone (Wi-Fi IP)
-  static const int appDevCase = 2; // CHANGE THIS TO SWITCH ENVIRONMENTS
+  static const int appDevCase = 3; // CHANGE THIS TO SWITCH ENVIRONMENTS
 
   /// Debug mode toggle
   static const bool debug = true; // Set false in production
 
-  /// Wi-Fi IP address for phone testing
-  /// TODO: make env variable
+  /// Wi-Fi IP address for phone testing - loaded from .env file
   /// You can find this by running `ipconfig getifaddr en0` on macOS
-  static const String phoneWifiIP = '10.0.3.169'; // Update this with your actual IP
+  static String get phoneWifiIP => dotenv.env['PHONE_WIFI_IP'] ?? '127.0.0.1';
 
   // MARK: - Environment Settings
   /// Get base URL based on app development case
