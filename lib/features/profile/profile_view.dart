@@ -459,6 +459,85 @@ class _ProfileViewState extends State<ProfileView> {
     _showDeleteAccountConfirmationDialog();
   }
 
+  void _showDeleteAccountConfirmationDialog() {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text(
+          'Delete Account',
+          style: TextStyle(fontFamily: AppTheme.fontPoppins),
+        ),
+        content: const Text(
+          'Are you sure you want to delete your account? This action cannot be undone.',
+          style: TextStyle(fontFamily: AppTheme.fontPoppins),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text(
+              'Cancel',
+              style: TextStyle(fontFamily: AppTheme.fontPoppins),
+            ),
+          ),
+          TextButton(
+            onPressed: () async {
+              Navigator.pop(context);
+              
+              // Show loading indicator
+              showDialog(
+                context: context,
+                barrierDismissible: false,
+                builder: (context) => const Center(
+                  child: CircularProgressIndicator(),
+                ),
+              );
+              
+              // Perform account deletion
+              final success = await LoginService.shared.deleteAccount();
+              
+              // Close loading indicator
+              if (mounted) {
+                Navigator.pop(context);
+                
+                if (success) {
+                  // Show success message
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(
+                      content: Text('Account deleted successfully'),
+                      backgroundColor: AppTheme.success,
+                      duration: Duration(seconds: 2),
+                    ),
+                  );
+                  // Navigate to onboarding and clear stack
+                  Navigator.of(context).pushAndRemoveUntil(
+                    MaterialPageRoute(builder: (context) => const OnboardingFlow()),
+                    (route) => false,
+                  );
+                } else {
+                  // Show error message
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(
+                      content: Text('Failed to delete account. Please try again.'),
+                      backgroundColor: AppTheme.error,
+                      duration: Duration(seconds: 3),
+                    ),
+                  );
+                }
+              }
+            },
+            child: const Text(
+              'Delete',
+              style: TextStyle(
+                fontFamily: AppTheme.fontPoppins,
+                color: AppTheme.error,
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
   void _handleDebugSettings() {
     Navigator.of(context).push(
       MaterialPageRoute(
@@ -584,44 +663,6 @@ class _ProfileViewState extends State<ProfileView> {
             ],
           ),
         ),
-      ),
-    );
-  }
-
-  void _showDeleteAccountConfirmationDialog() {
-    showDialog(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: const Text(
-          'Delete Account',
-          style: TextStyle(fontFamily: AppTheme.fontPoppins),
-        ),
-        content: const Text(
-          'Are you sure you want to delete your account? This action cannot be undone.',
-          style: TextStyle(fontFamily: AppTheme.fontPoppins),
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: const Text(
-              'Cancel',
-              style: TextStyle(fontFamily: AppTheme.fontPoppins),
-            ),
-          ),
-          TextButton(
-            onPressed: () {
-              Navigator.pop(context);
-              _showComingSoonSnackBar('Delete account functionality');
-            },
-            child: const Text(
-              'Delete',
-              style: TextStyle(
-                fontFamily: AppTheme.fontPoppins,
-                color: AppTheme.error,
-              ),
-            ),
-          ),
-        ],
       ),
     );
   }

@@ -107,7 +107,7 @@ class DrillApiService {
   }
 
   /// Get a specific drill by ID
-  Future<DrillResponse?> getDrillById(int id) async {
+  Future<DrillResponse?> getDrillById(String id) async {
     try {
       _logRequest('getDrillById', '/api/drills/$id', {});
 
@@ -150,7 +150,7 @@ class DrillApiService {
     final trainingStyle = _mapIntensityToTrainingStyle(drillResponse.intensity);
 
     return DrillModel(
-      id: 'drill_${drillResponse.id}', // Generate local UUID-like ID
+      id: drillResponse.id.toString(), // Use the backend ID as UUID
       title: drillResponse.title,
       skill: _mapSkillCategory(skillCategory),
       subSkills: allSubSkills,
@@ -261,7 +261,7 @@ class DrillApiService {
   List<DrillResponse> _getMockDrills() {
     return [
       DrillResponse(
-        id: 1,
+        id: '550e8400-e29b-41d4-a716-446655440001',
         title: 'One-Touch Passing Drill',
         description: 'Improve first-touch control and quick decision-making using the wall',
         type: 'passing',
@@ -292,7 +292,7 @@ class DrillApiService {
         variations: [],
       ),
       DrillResponse(
-        id: 2,
+        id: '550e8400-e29b-41d4-a716-446655440002',
         title: 'Cone Dribbling Challenge',
         description: 'Improve close control dribbling through a series of cones',
         type: 'dribbling',
@@ -324,7 +324,7 @@ class DrillApiService {
         variations: [],
       ),
       DrillResponse(
-        id: 3,
+        id: '550e8400-e29b-41d4-a716-446655440003',
         title: 'Power Shooting Practice',
         description: 'Basic shooting drill to improve accuracy and power',
         type: 'shooting',

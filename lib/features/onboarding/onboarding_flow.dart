@@ -5,6 +5,8 @@ import '../../widgets/bravo_button.dart';
 import '../../views/main_tab_view.dart';
 import '../../features/auth/login_view.dart';
 import '../../constants/app_theme.dart';
+import '../../services/onboarding_service.dart';
+import '../../models/onboarding_model.dart';
 
 class OnboardingFlow extends StatefulWidget {
   const OnboardingFlow({Key? key}) : super(key: key);
@@ -23,6 +25,7 @@ class _OnboardingFlowState extends State<OnboardingFlow> {
   bool _regPasswordVisible = false;
   bool _regConfirmPasswordVisible = false;
   final Map<int, Set<int>> _multiAnswers = {};
+  bool _isSubmitting = false;
 
   // Persistent controllers for registration fields
   final TextEditingController _emailController = TextEditingController();
@@ -159,7 +162,7 @@ class _OnboardingFlowState extends State<OnboardingFlow> {
                       onPressed: _goToLogin,
                       color: Colors.white,
                       backColor: AppTheme.lightGray,
-                      textColor: darkGray,
+                      textColor: AppTheme.primaryYellow,
                       disabled: false,
                       borderSide: BorderSide(color: Colors.grey.shade200, width: 2),
                     ),
@@ -587,36 +590,68 @@ class _OnboardingFlowState extends State<OnboardingFlow> {
                 padding: const EdgeInsets.symmetric(horizontal: 20.0, vertical: 16.0),
                 child: SizedBox(
                   width: double.infinity,
-                  child: BravoButton(
-                    text: 'Submit',
-                    onPressed: (_regEmail.isEmpty || _regPassword.isEmpty || _regConfirmPassword.isEmpty)
-                        ? null
-                        : () {
-                            setState(() {
-                              _regError = '';
-                              if (!_regEmail.contains('@')) {
-                                _regError = 'Please enter a valid email.';
-                              } else if (_regPassword.length < 6) {
-                                _regError = 'Password must be at least 6 characters.';
-                              } else if (_regPassword != _regConfirmPassword) {
-                                _regError = 'Passwords do not match.';
-                              } else {
-                                // For now, skip to main tab view for testing
-                                Navigator.pushReplacement(
-                                  context,
-                                  MaterialPageRoute(builder: (context) => const MainTabView()),
-                                );
-                              }
-                            });
-                          },
-                    color: (_regEmail.isEmpty || _regPassword.isEmpty || _regConfirmPassword.isEmpty) ? Colors.grey.shade300 : yellow,
-                    backColor: (_regEmail.isEmpty || _regPassword.isEmpty || _regConfirmPassword.isEmpty) ? AppTheme.primaryGray : AppTheme.primaryDarkYellow,
-                    textColor: Colors.white,
-                    disabled: false,
+                  child: _isSubmitting
+                      ? const Center(child: CircularProgressIndicator())
+                      : BravoButton(
+                          text: 'Submit',
+                          onPressed: (_regEmail.isEmpty || _regPassword.isEmpty || _regConfirmPassword.isEmpty)
+                              ? null
+                              : () async {
+                                  setState(() {
+                                    _regError = '';
+                                  });
+                                  if (!_regEmail.contains('@')) {
+                                    setState(() => _regError = 'Please enter a valid email.');
+                                    return;
+                                  } else if (_regPassword.length < 6) {
+                                    setState(() => _regError = 'Password must be at least 6 characters.');
+                                    return;
+                                  } else if (_regPassword != _regConfirmPassword) {
+                                    setState(() => _regError = 'Passwords do not match.');
+                                    return;
+                                  }
+                                  setState(() => _isSubmitting = true);
+                                  // Gather onboarding answers
+                                  final answers = _answers;
+                                  final multiAnswers = _multiAnswers;
+                                  final onboardingData = OnboardingData(
+                                    email: _regEmail,
+                                    password: _regPassword,
+                                    primaryGoal: onboardingQuestions[0].options[answers[2] ?? 0],
+                                    trainingExperience: onboardingQuestions[1].options[answers[3] ?? 0],
+                                    position: onboardingQuestions[2].options[answers[4] ?? 0],
+                                    ageRange: onboardingQuestions[3].options[answers[5] ?? 0],
+                                    strengths: (multiAnswers[6] ?? <int>{}).map((i) => onboardingQuestions[4].options[i]).toList(),
+                                    areasToImprove: (multiAnswers[7] ?? <int>{}).map((i) => onboardingQuestions[5].options[i]).toList(),
+                                  );
+                                  final success = await OnboardingService.shared.submitOnboardingData(
+                                    onboardingData,
+                                    onError: (msg) {
+                                      setState(() {
+                                        _regError = msg;
+                                        _isSubmitting = false;
+                                      });
+                                    },
+                                  );
+                                  if (success) {
+                                    if (mounted) {
+                                      Navigator.pushReplacement(
+                                        context,
+                                        MaterialPageRoute(builder: (context) => const MainTabView()),
+                                      );
+                                    }
+                                  } else {
+                                    setState(() => _isSubmitting = false);
+                                  }
+                                },
+                          color: (_regEmail.isEmpty || _regPassword.isEmpty || _regConfirmPassword.isEmpty) ? Colors.grey.shade300 : yellow,
+                          backColor: (_regEmail.isEmpty || _regPassword.isEmpty || _regConfirmPassword.isEmpty) ? AppTheme.primaryGray : AppTheme.primaryDarkYellow,
+                          textColor: Colors.white,
+                          disabled: false,
+                        ),
                 ),
               ),
-            ),
-          ],
+            ],
           ),
         ),
       );

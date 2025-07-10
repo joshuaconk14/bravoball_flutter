@@ -230,11 +230,24 @@ class ApiService {
     
     try {
       // Try to decode JSON response
-      final Map<String, dynamic> responseData;
+      final dynamic jsonData;
       if (response.body.isNotEmpty) {
-        responseData = json.decode(response.body) as Map<String, dynamic>;
+        jsonData = json.decode(response.body);
       } else {
-        responseData = {};
+        jsonData = {};
+      }
+
+      // Convert array responses to object format for consistency
+      Map<String, dynamic> responseData;
+      if (jsonData is List) {
+        // If response is an array, wrap it in a 'data' key
+        responseData = {'data': jsonData};
+      } else if (jsonData is Map<String, dynamic>) {
+        // If response is already an object, use it as is
+        responseData = jsonData;
+      } else {
+        // Fallback for other types
+        responseData = {'data': jsonData};
       }
 
       // Check if response is successful

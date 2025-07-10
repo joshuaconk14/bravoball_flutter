@@ -91,11 +91,11 @@ class EditableDrillModel {
   factory EditableDrillModel.fromJson(Map<String, dynamic> json) {
     return EditableDrillModel(
       drill: DrillModel.fromJson(json['drill']),
-      setsDone: json['setsDone'] ?? 0,
-      totalSets: json['totalSets'] ?? 0,
-      totalReps: json['totalReps'] ?? 0,
-      totalDuration: json['totalDuration'] ?? 0,
-      isCompleted: json['isCompleted'] ?? false,
+      setsDone: json['setsDone'] ?? json['sets_done'] ?? 0,
+      totalSets: json['totalSets'] ?? json['sets'] ?? 0,
+      totalReps: json['totalReps'] ?? json['reps'] ?? 0,
+      totalDuration: json['totalDuration'] ?? json['duration'] ?? 0,
+      isCompleted: json['isCompleted'] ?? json['is_completed'] ?? false,
     );
   }
 

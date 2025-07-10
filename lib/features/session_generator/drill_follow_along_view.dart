@@ -43,9 +43,32 @@ class _DrillFollowAlongViewState extends State<DrillFollowAlongView> {
   @override
   void initState() {
     super.initState();
+    
+    print('🔍 [DRILL_FOLLOW_ALONG] initState() called');
+    print('📥 [DRILL_FOLLOW_ALONG] Received editableDrill from widget:');
+    print('   - Drill ID: ${widget.editableDrill.drill.id}');
+    print('   - Drill Title: ${widget.editableDrill.drill.title}');
+    print('   - Total Sets: ${widget.editableDrill.totalSets}');
+    print('   - Total Reps: ${widget.editableDrill.totalReps}');
+    print('   - Total Duration: ${widget.editableDrill.totalDuration}');
+    print('   - Sets Done: ${widget.editableDrill.setsDone}');
+    print('   - Is Completed: ${widget.editableDrill.isCompleted}');
+    
     _editableDrill = widget.editableDrill;
+    
+    print('📊 [DRILL_FOLLOW_ALONG] After assignment to _editableDrill:');
+    print('   - Total Sets: ${_editableDrill.totalSets}');
+    print('   - Total Reps: ${_editableDrill.totalReps}');
+    print('   - Total Duration: ${_editableDrill.totalDuration}');
+    print('   - Sets Done: ${_editableDrill.setsDone}');
+    
     _setDuration = _editableDrill.calculateSetDuration();
     _elapsedTime = _setDuration;
+    
+    print('⏱️ [DRILL_FOLLOW_ALONG] Timer setup:');
+    print('   - Set Duration: $_setDuration');
+    print('   - Elapsed Time: $_elapsedTime');
+    print('✅ [DRILL_FOLLOW_ALONG] initState() completed');
   }
 
   @override
@@ -793,13 +816,26 @@ class _DrillFollowAlongViewState extends State<DrillFollowAlongView> {
   }
 
   void _updateDrillInSession() {
+    print('🔄 [DRILL_FOLLOW_ALONG] _updateDrillInSession() called');
+    print('📊 [DRILL_FOLLOW_ALONG] Current _editableDrill values:');
+    print('   - Total Sets: ${_editableDrill.totalSets}');
+    print('   - Total Reps: ${_editableDrill.totalReps}');
+    print('   - Total Duration: ${_editableDrill.totalDuration}');
+    print('   - Sets Done: ${_editableDrill.setsDone}');
+    
     final appState = Provider.of<AppStateService>(context, listen: false);
     appState.updateDrillInSession(
       _editableDrill.drill.id,
-      sets: _editableDrill.setsDone,
+      sets: _editableDrill.totalSets,      // Fixed: use totalSets instead of setsDone
       reps: _editableDrill.totalReps,
       duration: _editableDrill.totalDuration,
     );
+    
+    print('📤 [DRILL_FOLLOW_ALONG] Called appState.updateDrillInSession with:');
+    print('   - Drill ID: ${_editableDrill.drill.id}');
+    print('   - Sets: ${_editableDrill.totalSets}');
+    print('   - Reps: ${_editableDrill.totalReps}');
+    print('   - Duration: ${_editableDrill.totalDuration}');
   }
 
   void _showDrillDetails(BuildContext context) {

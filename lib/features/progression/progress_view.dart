@@ -109,14 +109,18 @@ class _ProgressViewState extends State<ProgressView> {
                   size: 80,
                 ),
                 const SizedBox(width: 10),
-                Text(
-                  '3', // TODO: Connect to actual streak data
-                  style: TextStyle(
-                    fontFamily: AppTheme.fontPoppins,
-                    fontSize: 90,
-                    fontWeight: FontWeight.bold,
-                    color: AppTheme.white,
-                  ),
+                Consumer<AppStateService>(
+                  builder: (context, appState, child) {
+                    return Text(
+                      '${appState.currentStreak}', // Use real streak data
+                      style: TextStyle(
+                        fontFamily: AppTheme.fontPoppins,
+                        fontSize: 90,
+                        fontWeight: FontWeight.bold,
+                        color: AppTheme.white,
+                      ),
+                    );
+                  },
                 ),
               ],
             ),
@@ -367,62 +371,66 @@ class _ProgressViewState extends State<ProgressView> {
   }
 
   Widget _buildProgressStats() {
-    return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 40),
-      child: Row(
-        children: [
-          Expanded(
-            child: Column(
-              children: [
-                Text(
-                  '1 day',
-                  style: TextStyle(
-                    fontFamily: AppTheme.fontPoppins,
-                    fontSize: 30,
-                    fontWeight: FontWeight.bold,
-                    color: AppTheme.primaryYellow,
-                  ),
+    return Consumer<AppStateService>(
+      builder: (context, appState, child) {
+        return Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 40),
+          child: Row(
+            children: [
+              Expanded(
+                child: Column(
+                  children: [
+                    Text(
+                      appState.highestStreak == 1 ? '${appState.highestStreak} day' : '${appState.highestStreak} days',
+                      style: TextStyle(
+                        fontFamily: AppTheme.fontPoppins,
+                        fontSize: 30,
+                        fontWeight: FontWeight.bold,
+                        color: AppTheme.primaryYellow,
+                      ),
+                    ),
+                    const SizedBox(height: 4),
+                    Text(
+                      'Highest Streak',
+                      style: TextStyle(
+                        fontFamily: AppTheme.fontPoppins,
+                        fontSize: 16,
+                        fontWeight: FontWeight.bold,
+                        color: Colors.grey.shade600,
+                      ),
+                    ),
+                  ],
                 ),
-                const SizedBox(height: 4),
-                Text(
-                  'Highest Streak',
-                  style: TextStyle(
-                    fontFamily: AppTheme.fontPoppins,
-                    fontSize: 16,
-                    fontWeight: FontWeight.bold,
-                    color: Colors.grey.shade600,
-                  ),
+              ),
+              Expanded(
+                child: Column(
+                  children: [
+                    Text(
+                      '${appState.countOfFullyCompletedSessions}',
+                      style: TextStyle(
+                        fontFamily: AppTheme.fontPoppins,
+                        fontSize: 30,
+                        fontWeight: FontWeight.bold,
+                        color: AppTheme.primaryYellow,
+                      ),
+                    ),
+                    const SizedBox(height: 4),
+                    Text(
+                      'Sessions completed',
+                      style: TextStyle(
+                        fontFamily: AppTheme.fontPoppins,
+                        fontSize: 16,
+                        fontWeight: FontWeight.bold,
+                        color: Colors.grey.shade600,
+                      ),
+                    ),
+                  ],
                 ),
-              ],
-            ),
+              ),
+            ],
           ),
-          Expanded(
-            child: Column(
-              children: [
-                Text(
-                  '1',
-                  style: TextStyle(
-                    fontFamily: AppTheme.fontPoppins,
-                    fontSize: 30,
-                    fontWeight: FontWeight.bold,
-                    color: AppTheme.primaryYellow,
-                  ),
-                ),
-                const SizedBox(height: 4),
-                Text(
-                  'Sessions completed',
-                  style: TextStyle(
-                    fontFamily: AppTheme.fontPoppins,
-                    fontSize: 16,
-                    fontWeight: FontWeight.bold,
-                    color: Colors.grey.shade600,
-                  ),
-                ),
-              ],
-            ),
-          ),
-        ],
-      ),
+        );
+      },
     );
   }
 

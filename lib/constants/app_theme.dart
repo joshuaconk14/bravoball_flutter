@@ -37,7 +37,8 @@ class AppTheme {
   static const Color buttonPrimary = primaryYellow;
   static const Color buttonPrimaryDark = primaryDarkYellow;
   static const Color buttonSecondary = lightGray;
-  static const Color buttonDisabled = Color(0xFFE5E5EA);
+  static const Color buttonDisabledGray = Color(0xFFE5E5EA);
+  static const Color buttonDisabledDarkGray = Color(0xFFBEBEC2);
   
   // MARK: - Text Colors
   static const Color textPrimary = primaryDark;
