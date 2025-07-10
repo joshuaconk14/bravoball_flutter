@@ -1,5 +1,4 @@
 import 'package:flutter/foundation.dart';
-import 'package:shared_preferences/shared_preferences.dart';
 import 'dart:convert';
 import '../models/drill_model.dart';
 import '../models/editable_drill_model.dart';
@@ -13,6 +12,7 @@ import '../services/session_data_sync_service.dart';
 import '../services/progress_data_sync_service.dart';
 import '../services/user_manager_service.dart';
 import '../services/drill_group_sync_service.dart';
+import '../services/preferences_sync_service.dart';
 
 // Add CompletedSession model
 class CompletedSession {
@@ -53,6 +53,7 @@ class AppStateService extends ChangeNotifier {
   final DrillApiService _drillApiService = DrillApiService.shared;
   final ProgressDataSyncService _progressSyncService = ProgressDataSyncService.shared;
   final DrillGroupSyncService _drillGroupSyncService = DrillGroupSyncService.shared;
+  final PreferencesSyncService _preferencesSyncService = PreferencesSyncService.shared;
   
   // User preferences
   UserPreferences _preferences = UserPreferences();
@@ -148,9 +149,11 @@ class AppStateService extends ChangeNotifier {
   Timer? _progressHistorySyncTimer;
   Timer? _completedSessionSyncTimer;
   Timer? _drillGroupsSyncTimer;
+  Timer? _preferencesSyncTimer;
   static const Duration _sessionDrillsSyncDebounce = Duration(milliseconds: 500);
   static const Duration _progressSyncDebounce = Duration(milliseconds: 1000);
   static const Duration _drillGroupsSyncDebounce = Duration(milliseconds: 1000);
+  static const Duration _preferencesSyncDebounce = Duration(milliseconds: 1000);
 
   void addCompletedSession(CompletedSession session) {
     _completedSessions.add(session);
@@ -318,6 +321,11 @@ class AppStateService extends ChangeNotifier {
       await _loadDrillGroupsFromBackend();
       print('✅ [LOAD] Drill groups loading completed');
       
+      print('🔄 [LOAD] Starting preferences loading...');
+      // Load user preferences
+      await _loadPreferencesFromBackend();
+      print('✅ [LOAD] Preferences loading completed');
+      
       if (kDebugMode) {
         print('✅ Successfully loaded all backend data');
         print('📊 Final data summary:');
@@ -327,7 +335,8 @@ class AppStateService extends ChangeNotifier {
         print('   - Liked drills: ${_likedDrills.length}');
         print('   - Current streak: $_currentStreak');
         print('   - Highest streak: $_highestStreak');
-        print('   - Completed sessions count: $_countOfFullyCompletedSessions');
+        print('   - Completed sessions count: $_countOfFullyCompletedSessions}');
+        print('   - User preferences loaded: ${_preferences.selectedSkills.isNotEmpty || _preferences.selectedEquipment.isNotEmpty}');
       }
     } catch (e) {
       if (kDebugMode) {
@@ -514,6 +523,31 @@ class AppStateService extends ChangeNotifier {
     } catch (e) {
       if (kDebugMode) {
         print('❌ Error loading drill groups from backend: $e');
+      }
+    }
+  }
+
+  // Load preferences from backend
+  Future<void> _loadPreferencesFromBackend() async {
+    try {
+      if (kDebugMode) {
+        print('📥 Loading preferences from backend...');
+      }
+      
+      await _preferencesSyncService.loadPreferencesFromBackend();
+      
+      if (kDebugMode) {
+        print('✅ Loaded preferences from backend');
+        print('   - Time: ${_preferences.selectedTime}');
+        print('   - Equipment: ${_preferences.selectedEquipment}');
+        print('   - Training Style: ${_preferences.selectedTrainingStyle}');
+        print('   - Location: ${_preferences.selectedLocation}');
+        print('   - Difficulty: ${_preferences.selectedDifficulty}');
+        print('   - Skills: ${_preferences.selectedSkills}');
+      }
+    } catch (e) {
+      if (kDebugMode) {
+        print('❌ Error loading preferences from backend: $e');
       }
     }
   }
@@ -758,7 +792,6 @@ class AppStateService extends ChangeNotifier {
       _editableSessionDrills.addAll(testSessionDrills);
       _sessionDrills.addAll(testSessionDrills.map((ed) => ed.drill));
       
-      await _persistState();
       if (kDebugMode) print('✅ Test session loaded successfully');
       
     } catch (e) {
@@ -780,7 +813,6 @@ class AppStateService extends ChangeNotifier {
     clearSession();
     // Reset any progress tracking
     _sessionInProgress = false;
-    _persistState();
     notifyListeners();
   }
   
@@ -796,7 +828,6 @@ class AppStateService extends ChangeNotifier {
     );
     
     _savedDrillGroups.add(newGroup);
-    _persistState();
     notifyListeners();
     
     // Sync to backend
@@ -816,7 +847,6 @@ class AppStateService extends ChangeNotifier {
     }
     
     _savedDrillGroups.removeWhere((group) => group.id == groupId);
-    _persistState();
     notifyListeners();
   }
   
@@ -829,7 +859,6 @@ class AppStateService extends ChangeNotifier {
         description: newDescription,
       );
       _savedDrillGroups[groupIndex] = updatedGroup;
-      _persistState();
       notifyListeners();
       
       // Sync to backend
@@ -846,7 +875,6 @@ class AppStateService extends ChangeNotifier {
           drills: [...group.drills, drill],
         );
         _savedDrillGroups[groupIndex] = updatedGroup;
-        _persistState();
         notifyListeners();
         
         // Sync to backend
@@ -868,7 +896,6 @@ class AppStateService extends ChangeNotifier {
           drills: [...group.drills, ...newDrills],
         );
         _savedDrillGroups[groupIndex] = updatedGroup;
-        _persistState();
         notifyListeners();
         
         // Sync to backend
@@ -885,7 +912,6 @@ class AppStateService extends ChangeNotifier {
         drills: group.drills.where((d) => d.id != drill.id).toList(),
       );
       _savedDrillGroups[groupIndex] = updatedGroup;
-      _persistState();
       notifyListeners();
       
       // Sync to backend
@@ -909,7 +935,6 @@ class AppStateService extends ChangeNotifier {
     } else {
       _likedDrills.add(drill);
     }
-    _persistState();
     notifyListeners();
     
     // Sync to backend
@@ -938,8 +963,10 @@ class AppStateService extends ChangeNotifier {
     if (_autoGenerateSession) {
       _autoGenerateSessionDrills();
     }
-    _persistState();
     notifyListeners();
+    
+    // Sync to backend
+    _schedulePreferencesSync();
   }
   
   void updateEquipmentFilter(Set<String> equipment) {
@@ -947,8 +974,10 @@ class AppStateService extends ChangeNotifier {
     if (_autoGenerateSession) {
       _autoGenerateSessionDrills();
     }
-    _persistState();
     notifyListeners();
+    
+    // Sync to backend
+    _schedulePreferencesSync();
   }
   
   void updateTrainingStyleFilter(String? style) {
@@ -956,8 +985,10 @@ class AppStateService extends ChangeNotifier {
     if (_autoGenerateSession) {
       _autoGenerateSessionDrills();
     }
-    _persistState();
     notifyListeners();
+    
+    // Sync to backend
+    _schedulePreferencesSync();
   }
   
   void updateLocationFilter(String? location) {
@@ -965,8 +996,10 @@ class AppStateService extends ChangeNotifier {
     if (_autoGenerateSession) {
       _autoGenerateSessionDrills();
     }
-    _persistState();
     notifyListeners();
+    
+    // Sync to backend
+    _schedulePreferencesSync();
   }
   
   void updateDifficultyFilter(String? difficulty) {
@@ -974,16 +1007,36 @@ class AppStateService extends ChangeNotifier {
     if (_autoGenerateSession) {
       _autoGenerateSessionDrills();
     }
-    _persistState();
     notifyListeners();
+    
+    // Sync to backend
+    _schedulePreferencesSync();
   }
   
   void updateSkillsFilter(Set<String> skills) {
     _preferences.selectedSkills = skills;
-    if (_autoGenerateSession) {
-      _autoGenerateSessionDrills();
-    }
-    _persistState();
+    // Don't auto-generate session drills when skills change
+    // This preserves the ordered session drills from backend
+    notifyListeners();
+    
+    // Sync to backend
+    _schedulePreferencesSync();
+  }
+
+  /// Update user preferences (called by PreferencesSyncService)
+  void updateUserPreferences(UserPreferences preferences) {
+    _preferences = preferences;
+    notifyListeners();
+  }
+
+  /// Update ordered session drills (called by PreferencesSyncService)
+  void updateOrderedSessionDrillsThroughPreferences(List<EditableDrillModel> drills) {
+    _editableSessionDrills.clear();
+    _sessionDrills.clear();
+    
+    _editableSessionDrills.addAll(drills);
+    _sessionDrills.addAll(drills.map((ed) => ed.drill));
+    
     notifyListeners();
   }
   
@@ -1003,7 +1056,6 @@ class AppStateService extends ChangeNotifier {
       );
       _editableSessionDrills.add(editableDrill);
       
-      _persistState();
       notifyListeners();
       _scheduleSessionDrillsSync();
     }
@@ -1012,7 +1064,6 @@ class AppStateService extends ChangeNotifier {
   void removeDrillFromSession(DrillModel drill) {
     _sessionDrills.removeWhere((d) => d.id == drill.id);
     _editableSessionDrills.removeWhere((ed) => ed.drill.id == drill.id);
-    _persistState();
     notifyListeners();
     _scheduleSessionDrillsSync();
   }
@@ -1027,7 +1078,6 @@ class AppStateService extends ChangeNotifier {
     final EditableDrillModel editableItem = _editableSessionDrills.removeAt(oldIndex);
     _editableSessionDrills.insert(newIndex, editableItem);
     
-    _persistState();
     notifyListeners();
     _scheduleSessionDrillsSync();
   }
@@ -1036,7 +1086,6 @@ class AppStateService extends ChangeNotifier {
     _sessionDrills.clear();
     _editableSessionDrills.clear();
     _sessionInProgress = false;
-    _persistState();
     notifyListeners();
     _scheduleSessionDrillsSync();
   }
@@ -1078,7 +1127,6 @@ class AppStateService extends ChangeNotifier {
       );
     }
     
-    _persistState();
     notifyListeners();
     _scheduleSessionDrillsSync();
   }
@@ -1093,7 +1141,6 @@ class AppStateService extends ChangeNotifier {
         isCompleted: isCompleted,
       );
       
-      _persistState();
       notifyListeners();
       _scheduleSessionDrillsSync();
     }
@@ -1102,7 +1149,6 @@ class AppStateService extends ChangeNotifier {
   // Session progress methods
   void startSession() {
     _sessionInProgress = true;
-    _persistState();
     notifyListeners();
   }
   
@@ -1121,7 +1167,6 @@ class AppStateService extends ChangeNotifier {
     );
     addCompletedSession(completedSession);
     print('Session completed and added to completedSessions.');
-    _persistState();
     notifyListeners();
   }
   
@@ -1158,7 +1203,6 @@ class AppStateService extends ChangeNotifier {
     if (value) {
       _autoGenerateSessionDrills();
     }
-    _persistState();
     notifyListeners();
   }
   
@@ -1260,158 +1304,39 @@ class AppStateService extends ChangeNotifier {
   
   // Persistence methods
   Future<void> _persistState() async {
-    try {
-      final prefs = await SharedPreferences.getInstance();
-      
-      // Save preferences
-      await prefs.setString('user_preferences', jsonEncode({
-        'selectedTime': _preferences.selectedTime,
-        'selectedEquipment': _preferences.selectedEquipment.toList(),
-        'selectedTrainingStyle': _preferences.selectedTrainingStyle,
-        'selectedLocation': _preferences.selectedLocation,
-        'selectedDifficulty': _preferences.selectedDifficulty,
-        'selectedSkills': _preferences.selectedSkills.toList(),
-      }));
-      
-      // Save session drills
-      await prefs.setStringList('session_drill_ids', _sessionDrills.map((d) => d.id).toList());
-      
-      // Save saved drill groups
-      await prefs.setString('saved_drill_groups', jsonEncode(
-        _savedDrillGroups.map((group) => group.toJson()).toList()
-      ));
-      
-      // Save liked drills
-      await prefs.setStringList('liked_drill_ids', _likedDrills.map((d) => d.id).toList());
-      
-      // Save auto-generation setting
-      await prefs.setBool('auto_generate_session', _autoGenerateSession);
-      
-      // Save progress data
-      await prefs.setInt('current_streak', _currentStreak);
-      await prefs.setInt('highest_streak', _highestStreak);
-      await prefs.setInt('count_of_fully_completed_sessions', _countOfFullyCompletedSessions);
-      
-      // Save completed sessions
-      await prefs.setString('completed_sessions', jsonEncode(
-        _completedSessions.map((session) => session.toJson()).toList()
-      ));
-      
-    } catch (e) {
-      debugPrint('Error persisting state: $e');
-    }
+    // No local persistence - everything is backend-synced
+    // This method is kept for potential future use but does nothing
   }
   
   Future<void> _loadPersistedState() async {
-    try {
-      final prefs = await SharedPreferences.getInstance();
-      
-      // Load preferences
-      final preferencesJson = prefs.getString('user_preferences');
-      if (preferencesJson != null) {
-        final preferencesMap = jsonDecode(preferencesJson) as Map<String, dynamic>;
-        _preferences = UserPreferences(
-          selectedTime: preferencesMap['selectedTime'] as String?,
-          selectedEquipment: Set<String>.from(preferencesMap['selectedEquipment'] ?? []),
-          selectedTrainingStyle: preferencesMap['selectedTrainingStyle'] as String?,
-          selectedLocation: preferencesMap['selectedLocation'] as String?,
-          selectedDifficulty: preferencesMap['selectedDifficulty'] as String?,
-          selectedSkills: Set<String>.from(preferencesMap['selectedSkills'] ?? []),
-        );
-      }
-      
-      // Load session drills
-      final sessionDrillIds = prefs.getStringList('session_drill_ids');
-      if (sessionDrillIds != null) {
-        _sessionDrills.clear();
-        for (final id in sessionDrillIds) {
-          final drill = _availableDrills.firstWhere(
-            (d) => d.id == id,
-            orElse: () => _availableDrills.first, // Fallback if drill not found
-          );
-          _sessionDrills.add(drill);
-        }
-      }
-      
-      // Load saved drill groups
-      final savedGroupsJson = prefs.getString('saved_drill_groups');
-      if (savedGroupsJson != null) {
-        final savedGroupsList = jsonDecode(savedGroupsJson) as List;
-        _savedDrillGroups.clear();
-        for (final groupData in savedGroupsList) {
-          try {
-            final group = DrillGroup.fromJson(groupData as Map<String, dynamic>, _availableDrills);
-            _savedDrillGroups.add(group);
-          } catch (e) {
-            debugPrint('Error loading drill group: $e');
-          }
-        }
-      }
-      
-      // Load liked drills
-      final likedDrillIds = prefs.getStringList('liked_drill_ids');
-      if (likedDrillIds != null) {
-        _likedDrills.clear();
-        for (final id in likedDrillIds) {
-          final drill = _availableDrills.firstWhere(
-            (d) => d.id == id,
-            orElse: () => _availableDrills.first, // Fallback if drill not found
-          );
-          _likedDrills.add(drill);
-        }
-      }
-      
-      // Load auto-generation setting
-      _autoGenerateSession = prefs.getBool('auto_generate_session') ?? true;
-      
-      // Load progress data
-      _currentStreak = prefs.getInt('current_streak') ?? 0;
-      _highestStreak = prefs.getInt('highest_streak') ?? 0;
-      _countOfFullyCompletedSessions = prefs.getInt('count_of_fully_completed_sessions') ?? 0;
-      
-      // Load completed sessions
-      final completedSessionsJson = prefs.getString('completed_sessions');
-      if (completedSessionsJson != null) {
-        final completedSessionsList = jsonDecode(completedSessionsJson) as List;
-        _completedSessions.clear();
-        for (final sessionData in completedSessionsList) {
-          try {
-            final session = CompletedSession.fromJson(sessionData as Map<String, dynamic>);
-            _completedSessions.add(session);
-          } catch (e) {
-            debugPrint('Error loading completed session: $e');
-          }
-        }
-      }
-      
-    } catch (e) {
-      debugPrint('Error loading persisted state: $e');
-    }
+    // No local loading - everything is loaded from backend
+    // This method is kept for potential future use but does nothing
   }
   
   // Clear all data (for logout, etc.)
   Future<void> clearAllData() async {
-    try {
-      final prefs = await SharedPreferences.getInstance();
-      await prefs.clear();
-      
-      _preferences = UserPreferences();
-      _sessionDrills.clear();
-      _editableSessionDrills.clear();
-      _savedDrillGroups.clear();
-      _likedDrills.clear();
-      _autoGenerateSession = true;
-      
-      // Clear progress data
-      _completedSessions.clear();
-      _currentStreak = 0;
-      _highestStreak = 0;
-      _countOfFullyCompletedSessions = 0;
-      
-      notifyListeners();
-    } catch (e) {
-      debugPrint('Error clearing data: $e');
-    }
+    // Reset all local state (backend data will be cleared by backend sync)
+    _preferences = UserPreferences();
+    _autoGenerateSession = true;
+    
+    // Clear local session state (will be reloaded from backend)
+    _sessionDrills.clear();
+    _editableSessionDrills.clear();
+    _savedDrillGroups.clear();
+    _likedDrills.clear();
+    _completedSessions.clear();
+    _currentStreak = 0;
+    _highestStreak = 0;
+    _countOfFullyCompletedSessions = 0;
+    
+    // Cancel sync timers
+    _sessionDrillsSyncTimer?.cancel();
+    _progressHistorySyncTimer?.cancel();
+    _completedSessionSyncTimer?.cancel();
+    _drillGroupsSyncTimer?.cancel();
+    _preferencesSyncTimer?.cancel();
+    
+    notifyListeners();
   }
   
   // Mock data - same as before
@@ -1559,6 +1484,20 @@ class AppStateService extends ChangeNotifier {
       await _drillGroupSyncService.syncAllDrillGroups(
         savedGroups: _savedDrillGroups,
         likedGroup: likedDrillsGroup,
+      );
+    });
+  }
+
+  void _schedulePreferencesSync() {
+    _preferencesSyncTimer?.cancel();
+    _preferencesSyncTimer = Timer(_preferencesSyncDebounce, () async {
+      await _preferencesSyncService.syncPreferencesWithBackend(
+        time: _preferences.selectedTime,
+        equipment: _preferences.selectedEquipment,
+        trainingStyle: _preferences.selectedTrainingStyle,
+        location: _preferences.selectedLocation,
+        difficulty: _preferences.selectedDifficulty,
+        skills: _preferences.selectedSkills,
       );
     });
   }
