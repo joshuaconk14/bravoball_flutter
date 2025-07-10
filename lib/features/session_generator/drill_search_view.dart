@@ -135,48 +135,6 @@ class _DrillSearchViewState extends State<DrillSearchView> {
       padding: const EdgeInsets.all(AppTheme.spacingMedium),
       child: Column(
         children: [
-          // Debug indicator (only in debug mode)
-          if (AppConfig.shouldShowDebugMenu)
-            Container(
-              width: double.infinity,
-              padding: const EdgeInsets.all(8),
-              margin: const EdgeInsets.only(bottom: 12),
-              decoration: BoxDecoration(
-                color: AppConfig.useTestData 
-                    ? Colors.blue.withOpacity(0.1)
-                    : Colors.green.withOpacity(0.1),
-                border: Border.all(
-                  color: AppConfig.useTestData ? Colors.blue : Colors.green,
-                ),
-                borderRadius: BorderRadius.circular(8),
-              ),
-              child: Row(
-                children: [
-                  Icon(
-                    AppConfig.useTestData ? Icons.science : Icons.cloud,
-                    size: 16,
-                    color: AppConfig.useTestData ? Colors.blue : Colors.green,
-                  ),
-                  const SizedBox(width: 8),
-                  Text(
-                    AppConfig.useTestData ? 'Using Test Data' : 'Using Backend API',
-                    style: TextStyle(
-                      fontSize: 12,
-                      fontWeight: FontWeight.bold,
-                      color: AppConfig.useTestData ? Colors.blue : Colors.green,
-                    ),
-                  ),
-                  const Spacer(),
-                  Text(
-                    AppConfig.environmentName,
-                    style: TextStyle(
-                      fontSize: 10,
-                      color: AppConfig.useTestData ? Colors.blue : Colors.green,
-                    ),
-                  ),
-                ],
-              ),
-            ),
           
           // Search Bar
           TextField(

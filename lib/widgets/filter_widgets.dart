@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../models/filter_models.dart';
 import '../services/app_state_service.dart';
+import '../constants/app_theme.dart';
 
 class FilterChipWidget extends StatelessWidget {
   final FilterType filterType;
@@ -24,10 +25,10 @@ class FilterChipWidget extends StatelessWidget {
       child: Container(
         padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
         decoration: BoxDecoration(
-          color: isSelected ? const Color(0xFFF9CC53) : Colors.grey.shade100,
+          color: isSelected ? AppTheme.primaryLightBlue : Colors.grey.shade100,
           borderRadius: BorderRadius.circular(20),
           border: Border.all(
-            color: isSelected ? Colors.orange : Colors.grey.shade300,
+            color: isSelected ? AppTheme.primaryLightBlue : Colors.grey.shade300,
             width: 1,
           ),
         ),
@@ -42,7 +43,7 @@ class FilterChipWidget extends StatelessWidget {
                 fontFamily: 'Poppins',
                 fontWeight: FontWeight.w500,
                 fontSize: 14,
-                color: isSelected ? Colors.black87 : Colors.grey.shade700,
+                color: isSelected ? Colors.white : Colors.grey.shade700,
               ),
             ),
           ],
@@ -52,17 +53,18 @@ class FilterChipWidget extends StatelessWidget {
   }
 
   Widget _getFilterIcon() {
+    final iconColor = isSelected ? Colors.white : Colors.grey.shade700;
     switch (filterType) {
       case FilterType.time:
-        return const Icon(Icons.timer, size: 18);
+        return Icon(Icons.timer, size: 18, color: iconColor);
       case FilterType.equipment:
-        return const Icon(Icons.sports_soccer, size: 18);
+        return Icon(Icons.sports_soccer, size: 18, color: iconColor);
       case FilterType.trainingStyle:
-        return const Icon(Icons.fitness_center, size: 18);
+        return Icon(Icons.fitness_center, size: 18, color: iconColor);
       case FilterType.location:
-        return const Icon(Icons.location_on, size: 18);
+        return Icon(Icons.location_on, size: 18, color: iconColor);
       case FilterType.difficulty:
-        return const Icon(Icons.trending_up, size: 18);
+        return Icon(Icons.trending_up, size: 18, color: iconColor);
     }
   }
 }
@@ -202,10 +204,10 @@ class EquipmentMultiSelect extends StatelessWidget {
                   child: Container(
                     padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
                     decoration: BoxDecoration(
-                      color: isSelected ? const Color(0xFFF9CC53) : Colors.grey.shade100,
+                      color: isSelected ? AppTheme.primaryLightBlue : Colors.grey.shade100,
                       borderRadius: BorderRadius.circular(20),
                       border: Border.all(
-                        color: isSelected ? Colors.orange : Colors.grey.shade300,
+                        color: isSelected ? AppTheme.primaryLightBlue : Colors.grey.shade300,
                         width: 2,
                       ),
                     ),
@@ -313,10 +315,10 @@ class SkillSelector extends StatelessWidget {
                 child: Container(
                   padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
                   decoration: BoxDecoration(
-                    color: isSelected ? const Color(0xFFF9CC53) : Colors.grey.shade100,
+                    color: isSelected ? AppTheme.primaryLightBlue : Colors.grey.shade100,
                     borderRadius: BorderRadius.circular(16),
                     border: Border.all(
-                      color: isSelected ? Colors.orange : Colors.grey.shade300,
+                      color: isSelected ? AppTheme.primaryLightBlue : Colors.grey.shade300,
                       width: 2,
                     ),
                   ),

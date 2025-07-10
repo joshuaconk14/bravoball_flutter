@@ -13,6 +13,7 @@ class ReusableDrillSearchView extends StatefulWidget {
   final Function(DrillModel)? isDisabled;
   final Function(DrillModel)? isSelected;
   final bool allowMultipleSelection;
+  final Color themeColor;
 
   const ReusableDrillSearchView({
     Key? key,
@@ -22,6 +23,7 @@ class ReusableDrillSearchView extends StatefulWidget {
     this.isDisabled,
     this.isSelected,
     this.allowMultipleSelection = true,
+    required this.themeColor,
   }) : super(key: key);
 
   @override
@@ -30,14 +32,237 @@ class ReusableDrillSearchView extends StatefulWidget {
 
 class _ReusableDrillSearchViewState extends State<ReusableDrillSearchView> {
   final TextEditingController _searchController = TextEditingController();
+  final ScrollController _scrollController = ScrollController();
   String _searchQuery = '';
   String? _selectedSkillFilter;
+  String? _selectedDifficultyFilter;
   final Set<DrillModel> _selectedDrills = {};
+
+  @override
+  void initState() {
+    super.initState();
+    _scrollController.addListener(_onScroll);
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _performSearch();
+    });
+  }
 
   @override
   void dispose() {
     _searchController.dispose();
+    _scrollController.dispose();
     super.dispose();
+  }
+
+  void _onScroll() {
+    final appState = Provider.of<AppStateService>(context, listen: false);
+    if (_scrollController.position.pixels >= _scrollController.position.maxScrollExtent * 0.8) {
+      if (appState.hasMoreSearchResults && !appState.isLoadingMore) {
+        appState.loadMoreSearchResults();
+      }
+    }
+  }
+
+  void _performSearch() {
+    final appState = Provider.of<AppStateService>(context, listen: false);
+    appState.searchDrillsWithPagination(
+      query: _searchQuery.isEmpty ? null : _searchQuery,
+      skill: _selectedSkillFilter,
+      difficulty: _selectedDifficultyFilter,
+    );
+  }
+
+  Widget _buildSkillFilterDropdown() {
+    // You may want to get this list from your SkillCategories if available
+    const skills = [
+      'Passing', 'Shooting', 'Dribbling', 'First Touch', 'Defending', 'Fitness'
+    ];
+    return Expanded(
+      child: DropdownButtonFormField<String>(
+        value: _selectedSkillFilter,
+        decoration: InputDecoration(
+          labelText: 'Skill',
+          labelStyle: TextStyle(color: widget.themeColor),
+          border: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(12),
+            borderSide: BorderSide(color: widget.themeColor),
+          ),
+          filled: true,
+          fillColor: Colors.white,
+        ),
+        items: [
+          DropdownMenuItem<String>(
+            value: null,
+            child: Text('All', style: TextStyle(color: widget.themeColor)),
+          ),
+          ...skills.map((skill) => DropdownMenuItem<String>(
+            value: skill,
+            child: Text(skill, style: TextStyle(color: widget.themeColor)),
+          )),
+        ],
+        onChanged: (value) {
+          setState(() {
+            _selectedSkillFilter = value;
+          });
+          _performSearch();
+        },
+        isExpanded: true,
+        style: TextStyle(color: widget.themeColor),
+      ),
+    );
+  }
+
+  Widget _buildDifficultyFilterDropdown() {
+    const difficulties = ['Beginner', 'Intermediate', 'Advanced'];
+    return Expanded(
+      child: DropdownButtonFormField<String>(
+        value: _selectedDifficultyFilter,
+        decoration: InputDecoration(
+          labelText: 'Difficulty',
+          labelStyle: TextStyle(color: widget.themeColor),
+          border: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(12),
+            borderSide: BorderSide(color: widget.themeColor),
+          ),
+          filled: true,
+          fillColor: Colors.white,
+        ),
+        items: [
+          DropdownMenuItem<String>(
+            value: null,
+            child: Text('All', style: TextStyle(color: widget.themeColor)),
+          ),
+          ...difficulties.map((diff) => DropdownMenuItem<String>(
+            value: diff,
+            child: Text(diff, style: TextStyle(color: widget.themeColor)),
+          )),
+        ],
+        onChanged: (value) {
+          setState(() {
+            _selectedDifficultyFilter = value;
+          });
+          _performSearch();
+        },
+        isExpanded: true,
+        style: TextStyle(color: widget.themeColor),
+      ),
+    );
+  }
+
+  Widget _buildFilters() {
+    return Container(
+      height: 60,
+      padding: const EdgeInsets.symmetric(horizontal: 16),
+      child: Row(
+        children: [
+          _buildSkillFilterDropdown(),
+          const SizedBox(width: 8),
+          _buildDifficultyFilterDropdown(),
+          const SizedBox(width: 8),
+          IconButton(
+            onPressed: () {
+              setState(() {
+                _selectedSkillFilter = null;
+                _selectedDifficultyFilter = null;
+              });
+              _performSearch();
+            },
+            icon: Icon(Icons.clear_all, color: widget.themeColor),
+            tooltip: 'Clear filters',
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildSearchResults(AppStateService appState) {
+    // Use backend paginated results if available, otherwise fallback to local
+    final useBackend = appState.searchResults.isNotEmpty || appState.isLoading || appState.isLoadingMore;
+    final results = useBackend
+        ? appState.searchResults
+        : (_searchQuery.isNotEmpty
+            ? appState.searchDrills(_searchQuery)
+            : (_selectedSkillFilter != null
+                ? appState.filterDrillsBySkill(_selectedSkillFilter!)
+                : appState.availableDrills));
+
+    if (appState.isLoading && !useBackend) {
+      return const Center(child: CircularProgressIndicator());
+    }
+    if (appState.lastError != null && !useBackend) {
+      return Center(child: Text('Error: ${appState.lastError}'));
+    }
+    if (results.isEmpty) {
+      return Center(
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(Icons.search_off, size: 64, color: Colors.grey.shade400),
+            const SizedBox(height: 16),
+            Text('No drills found', style: TextStyle(color: Colors.grey)),
+            const SizedBox(height: 8),
+            Text('Try adjusting your search or filters', style: TextStyle(color: Colors.grey.shade600)),
+          ],
+        ),
+      );
+    }
+    return RefreshIndicator(
+      onRefresh: () async {
+        _performSearch();
+      },
+      child: ListView.builder(
+        controller: _scrollController,
+        itemCount: results.length + (appState.hasMoreSearchResults ? 1 : 0),
+        itemBuilder: (context, index) {
+          if (index == results.length && appState.hasMoreSearchResults) {
+            if (appState.isLoadingMore) {
+              return const Padding(
+                padding: EdgeInsets.all(16),
+                child: Center(child: CircularProgressIndicator()),
+              );
+            } else {
+              return Padding(
+                padding: const EdgeInsets.all(16),
+                child: Center(
+                  child: ElevatedButton(
+                    onPressed: () => appState.loadMoreSearchResults(),
+                    child: const Text('Load More'),
+                  ),
+                ),
+              );
+            }
+          }
+          final drill = results[index];
+          final isCurrentlySelected = _selectedDrills.contains(drill);
+          final isDisabled = widget.isDisabled?.call(drill) ?? false;
+          final isPreSelected = widget.isSelected?.call(drill) ?? false;
+          return SelectableDrillCard(
+            drill: drill,
+            isSelected: isCurrentlySelected,
+            isDisabled: isDisabled,
+            isPreSelected: isPreSelected,
+            themeColor: widget.themeColor,
+            onTap: () => _navigateToDrillDetail(context, drill, appState),
+            onSelectionChanged: (selected) {
+              setState(() {
+                if (widget.allowMultipleSelection) {
+                  if (selected) {
+                    _selectedDrills.add(drill);
+                  } else {
+                    _selectedDrills.remove(drill);
+                  }
+                } else {
+                  _selectedDrills.clear();
+                  if (selected) {
+                    _selectedDrills.add(drill);
+                  }
+                }
+              });
+            },
+          );
+        },
+      ),
+    );
   }
 
   @override
@@ -47,7 +272,7 @@ class _ReusableDrillSearchViewState extends State<ReusableDrillSearchView> {
         return Scaffold(
           backgroundColor: Colors.white,
           appBar: AppBar(
-            backgroundColor: AppTheme.primaryPurple,
+            backgroundColor: widget.themeColor,
             elevation: 0.5,
             leading: IconButton(
               icon: const Icon(Icons.close, color: Colors.white),
@@ -103,59 +328,46 @@ class _ReusableDrillSearchViewState extends State<ReusableDrillSearchView> {
                       decoration: BoxDecoration(
                         color: Colors.grey.shade100,
                         borderRadius: BorderRadius.circular(12),
-                        border: Border.all(color: AppTheme.primaryPurple, width: 2),
+                        border: Border.all(color: widget.themeColor, width: 2),
                       ),
                       child: TextField(
                         controller: _searchController,
                         style: const TextStyle(
                           fontFamily: AppTheme.fontPoppins,
                         ),
-                        decoration: const InputDecoration(
+                        decoration: InputDecoration(
                           hintText: 'Search drills...',
-                          hintStyle: TextStyle(
+                          hintStyle: const TextStyle(
                             fontFamily: AppTheme.fontPoppins,
                             color: Colors.grey,
                           ),
-                          prefixIcon: Icon(Icons.search, color: AppTheme.primaryPurple),
+                          prefixIcon: Icon(Icons.search, color: widget.themeColor),
                           border: InputBorder.none,
-                          contentPadding: EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                          contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
                         ),
                         onChanged: (value) {
                           setState(() {
                             _searchQuery = value;
                           });
+                          // Debounce search
+                          Future.delayed(const Duration(milliseconds: 500), () {
+                            if (_searchController.text == value) {
+                              _performSearch();
+                            }
+                          });
                         },
                       ),
                     ),
-                    
                     const SizedBox(height: 12),
-                    
-                    // Skill filter chips
-                    SingleChildScrollView(
-                      scrollDirection: Axis.horizontal,
-                      child: Row(
-                        children: [
-                          _buildSkillFilterChip('All', null),
-                          const SizedBox(width: 8),
-                          ...SkillCategories.categories.map((category) {
-                            return Padding(
-                              padding: const EdgeInsets.only(right: 8),
-                              child: _buildSkillFilterChip(category.name, category.name),
-                            );
-                          }).toList(),
-                        ],
-                      ),
-                    ),
+                    _buildFilters(),
                   ],
                 ),
               ),
-              
-              // Selected drills count
               if (_selectedDrills.isNotEmpty)
                 Container(
                   width: double.infinity,
                   padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-                  color: AppTheme.primaryPurple.withOpacity(0.1),
+                  color: widget.themeColor.withOpacity(0.1),
                   child: Text(
                     '${_selectedDrills.length} drill${_selectedDrills.length == 1 ? '' : 's'} selected',
                     style: const TextStyle(
@@ -165,13 +377,9 @@ class _ReusableDrillSearchViewState extends State<ReusableDrillSearchView> {
                     ),
                   ),
                 ),
-              
-              // Results
               Expanded(
                 child: _buildSearchResults(appState),
               ),
-              
-              // Action button
               if (_selectedDrills.isNotEmpty)
                 Container(
                   width: double.infinity,
@@ -182,7 +390,7 @@ class _ReusableDrillSearchViewState extends State<ReusableDrillSearchView> {
                       Navigator.pop(context);
                     },
                     style: ElevatedButton.styleFrom(
-                      backgroundColor: AppTheme.primaryPurple,
+                      backgroundColor: widget.themeColor,
                       foregroundColor: Colors.white,
                       padding: const EdgeInsets.symmetric(vertical: 16),
                       shape: RoundedRectangleBorder(
@@ -206,143 +414,6 @@ class _ReusableDrillSearchViewState extends State<ReusableDrillSearchView> {
     );
   }
 
-  Widget _buildSkillFilterChip(String label, String? skillValue) {
-    final isSelected = _selectedSkillFilter == skillValue;
-    
-    return GestureDetector(
-      onTap: () {
-        setState(() {
-          _selectedSkillFilter = skillValue;
-        });
-      },
-      child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-        decoration: BoxDecoration(
-          color: isSelected ? AppTheme.primaryPurple : Colors.grey.shade100,
-          borderRadius: BorderRadius.circular(20),
-          border: Border.all(
-            color: isSelected ? AppTheme.primaryDarkPurple : Colors.grey.shade300,
-            width: 1,
-          ),
-        ),
-        child: Text(
-          label,
-          style: TextStyle(
-            fontFamily: AppTheme.fontPoppins,
-            fontWeight: FontWeight.w500,
-            fontSize: 14,
-            color: isSelected ? Colors.white : Colors.grey.shade700,
-          ),
-        ),
-      ),
-    );
-  }
-
-  Widget _buildSearchResults(AppStateService appState) {
-    List<DrillModel> results;
-    
-    if (_searchQuery.isNotEmpty) {
-      results = appState.searchDrills(_searchQuery);
-    } else if (_selectedSkillFilter != null) {
-      results = appState.filterDrillsBySkill(_selectedSkillFilter!);
-    } else {
-      results = appState.availableDrills;
-    }
-    
-    if (results.isEmpty) {
-      return Center(
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Icon(
-              Icons.search_off,
-              size: 64,
-              color: Colors.grey.shade400,
-            ),
-            const SizedBox(height: 16),
-            Text(
-              _searchQuery.isNotEmpty 
-                  ? 'No drills found for "$_searchQuery"'
-                  : 'No drills available',
-              style: const TextStyle(
-                fontFamily: AppTheme.fontPoppins,
-                fontSize: 16,
-                color: Colors.grey,
-              ),
-              textAlign: TextAlign.center,
-            ),
-            const SizedBox(height: 8),
-            Text(
-              'Try adjusting your search or filters',
-              style: TextStyle(
-                fontFamily: AppTheme.fontPoppins,
-                fontSize: 14,
-                color: Colors.grey.shade600,
-              ),
-            ),
-          ],
-        ),
-      );
-    }
-    
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        // Results header
-        Padding(
-          padding: const EdgeInsets.all(16),
-          child: Text(
-            '${results.length} drill${results.length == 1 ? '' : 's'} found',
-            style: const TextStyle(
-              fontFamily: AppTheme.fontPoppins,
-              fontWeight: FontWeight.bold,
-              fontSize: 16,
-              color: Colors.black87,
-            ),
-          ),
-        ),
-        
-        // Results list
-        Expanded(
-          child: ListView.builder(
-            padding: const EdgeInsets.symmetric(horizontal: 8),
-            itemCount: results.length,
-            itemBuilder: (context, index) {
-              final drill = results[index];
-              final isCurrentlySelected = _selectedDrills.contains(drill);
-              final isDisabled = widget.isDisabled?.call(drill) ?? false;
-              final isPreSelected = widget.isSelected?.call(drill) ?? false;
-              
-              return SelectableDrillCard(
-                drill: drill,
-                isSelected: isCurrentlySelected,
-                isDisabled: isDisabled,
-                isPreSelected: isPreSelected,
-                onTap: () => _navigateToDrillDetail(context, drill, appState),
-                onSelectionChanged: (selected) {
-                  setState(() {
-                    if (widget.allowMultipleSelection) {
-                      if (selected) {
-                        _selectedDrills.add(drill);
-                      } else {
-                        _selectedDrills.remove(drill);
-                      }
-                    } else {
-                      _selectedDrills.clear();
-                      if (selected) {
-                        _selectedDrills.add(drill);
-                      }
-                    }
-                  });
-                },
-              );
-            },
-          ),
-        ),
-      ],
-    );
-  }
-
   void _navigateToDrillDetail(BuildContext context, DrillModel drill, AppStateService appState) {
     Navigator.push(
       context,
@@ -363,6 +434,7 @@ class SelectableDrillCard extends StatelessWidget {
   final bool isPreSelected;
   final VoidCallback? onTap;
   final Function(bool) onSelectionChanged;
+  final Color themeColor;
 
   const SelectableDrillCard({
     Key? key,
@@ -372,6 +444,7 @@ class SelectableDrillCard extends StatelessWidget {
     required this.isPreSelected,
     this.onTap,
     required this.onSelectionChanged,
+    required this.themeColor,
   }) : super(key: key);
 
   @override
@@ -379,13 +452,13 @@ class SelectableDrillCard extends StatelessWidget {
     return Container(
       margin: const EdgeInsets.symmetric(vertical: 4, horizontal: 8),
       decoration: BoxDecoration(
-        color: isSelected ? AppTheme.primaryPurple.withOpacity(0.1) : Colors.white,
+        color: isSelected ? themeColor.withOpacity(0.1) : Colors.white,
         borderRadius: BorderRadius.circular(12),
         border: Border.all(
           color: isSelected 
-              ? AppTheme.primaryPurple 
+              ? themeColor 
               : isPreSelected 
-                  ? AppTheme.secondaryBlue
+                  ? themeColor
                   : Colors.grey.shade200,
           width: isSelected || isPreSelected ? 2 : 1,
         ),
@@ -416,15 +489,15 @@ class SelectableDrillCard extends StatelessWidget {
                     height: 24,
                     decoration: BoxDecoration(
                       color: isSelected 
-                          ? AppTheme.primaryPurple 
+                          ? themeColor 
                           : isPreSelected
-                              ? AppTheme.secondaryBlue
+                              ? themeColor
                               : Colors.transparent,
                       border: Border.all(
                         color: isSelected 
-                            ? AppTheme.primaryPurple 
+                            ? themeColor 
                             : isPreSelected
-                                ? AppTheme.secondaryBlue
+                                ? themeColor
                                 : Colors.grey.shade400,
                         width: 2,
                       ),
@@ -498,7 +571,7 @@ class SelectableDrillCard extends StatelessWidget {
                   Container(
                     padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                     decoration: BoxDecoration(
-                      color: AppTheme.secondaryBlue,
+                      color: themeColor,
                       borderRadius: BorderRadius.circular(12),
                     ),
                     child: const Text(

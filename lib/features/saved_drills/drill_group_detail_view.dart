@@ -509,6 +509,7 @@ class _DrillGroupDetailViewState extends State<DrillGroupDetailView> {
               ? 'Like Drills' 
               : 'Add to ${group.name}',
           actionButtonText: group.isLikedDrillsGroup ? 'Like Drills' : 'Add to Collection',
+          themeColor: AppTheme.primaryPurple,
           onDrillsSelected: (selectedDrills) {
             if (group.isLikedDrillsGroup) {
               // For liked drills, toggle each drill's liked status

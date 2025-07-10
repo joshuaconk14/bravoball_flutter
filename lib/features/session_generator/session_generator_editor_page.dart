@@ -6,8 +6,8 @@ import '../../models/filter_models.dart';
 import '../../services/app_state_service.dart';
 import '../../widgets/filter_widgets.dart';
 import '../../widgets/drill_card_widget.dart';
+import '../../widgets/reusable_drill_search_view.dart';
 import 'drill_detail_view.dart';
-import 'drill_search_view.dart';
 import 'edit_drill_view.dart';
 import '../../constants/app_theme.dart';
 
@@ -138,7 +138,24 @@ class _SessionGeneratorEditorPageState extends State<SessionGeneratorEditorPage>
                 Navigator.push(
                   context,
                   MaterialPageRoute(
-                    builder: (context) => const DrillSearchView(),
+                    builder: (context) => ReusableDrillSearchView(
+                      title: 'Add to Session',
+                      actionButtonText: 'Add to Session',
+                      themeColor: AppTheme.primaryLightBlue,
+                      onDrillsSelected: (selectedDrills) {
+                        for (final drill in selectedDrills) {
+                          appState.addDrillToSession(drill);
+                        }
+                        Navigator.pop(context);
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          SnackBar(
+                            content: Text('${selectedDrills.length} drill${selectedDrills.length == 1 ? '' : 's'} added to session'),
+                            duration: const Duration(seconds: 2),
+                          ),
+                        );
+                      },
+                      isSelected: (drill) => appState.isDrillInSession(drill),
+                    ),
                   ),
                 );
               },
@@ -389,7 +406,24 @@ class _SessionGeneratorEditorPageState extends State<SessionGeneratorEditorPage>
                 Navigator.push(
                   context,
                   MaterialPageRoute(
-                    builder: (context) => const DrillSearchView(),
+                    builder: (context) => ReusableDrillSearchView(
+                      title: 'Add to Session',
+                      actionButtonText: 'Add to Session',
+                      themeColor: AppTheme.primaryLightBlue,
+                      onDrillsSelected: (selectedDrills) {
+                        for (final drill in selectedDrills) {
+                          appState.addDrillToSession(drill);
+                        }
+                        Navigator.pop(context);
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          SnackBar(
+                            content: Text('${selectedDrills.length} drill${selectedDrills.length == 1 ? '' : 's'} added to session'),
+                            duration: const Duration(seconds: 2),
+                          ),
+                        );
+                      },
+                      isSelected: (drill) => appState.isDrillInSession(drill),
+                    ),
                   ),
                 );
               },
@@ -546,7 +580,24 @@ class _SessionGeneratorEditorPageState extends State<SessionGeneratorEditorPage>
             Navigator.push(
               context,
               MaterialPageRoute(
-                builder: (context) => const DrillSearchView(),
+                builder: (context) => ReusableDrillSearchView(
+                  title: 'Add to Session',
+                  actionButtonText: 'Add to Session',
+                  themeColor: AppTheme.primaryLightBlue,
+                  onDrillsSelected: (selectedDrills) {
+                    for (final drill in selectedDrills) {
+                      appState.addDrillToSession(drill);
+                    }
+                    Navigator.pop(context);
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      SnackBar(
+                        content: Text('${selectedDrills.length} drill${selectedDrills.length == 1 ? '' : 's'} added to session'),
+                        duration: const Duration(seconds: 2),
+                      ),
+                    );
+                  },
+                  isSelected: (drill) => appState.isDrillInSession(drill),
+                ),
               ),
             );
           },
