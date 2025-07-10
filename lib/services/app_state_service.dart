@@ -12,6 +12,7 @@ import 'dart:async';
 import '../services/session_data_sync_service.dart';
 import '../services/progress_data_sync_service.dart';
 import '../services/user_manager_service.dart';
+import '../services/drill_group_sync_service.dart';
 
 // Add CompletedSession model
 class CompletedSession {
@@ -51,6 +52,7 @@ class AppStateService extends ChangeNotifier {
   // Services
   final DrillApiService _drillApiService = DrillApiService.shared;
   final ProgressDataSyncService _progressSyncService = ProgressDataSyncService.shared;
+  final DrillGroupSyncService _drillGroupSyncService = DrillGroupSyncService.shared;
   
   // User preferences
   UserPreferences _preferences = UserPreferences();
@@ -145,8 +147,10 @@ class AppStateService extends ChangeNotifier {
   Timer? _sessionDrillsSyncTimer;
   Timer? _progressHistorySyncTimer;
   Timer? _completedSessionSyncTimer;
+  Timer? _drillGroupsSyncTimer;
   static const Duration _sessionDrillsSyncDebounce = Duration(milliseconds: 500);
   static const Duration _progressSyncDebounce = Duration(milliseconds: 1000);
+  static const Duration _drillGroupsSyncDebounce = Duration(milliseconds: 1000);
 
   void addCompletedSession(CompletedSession session) {
     _completedSessions.add(session);
@@ -309,11 +313,18 @@ class AppStateService extends ChangeNotifier {
       await _loadOrderedSessionDrillsFromBackend();
       print('✅ [LOAD] Ordered session drills loading completed');
       
+      print('🔄 [LOAD] Starting drill groups loading...');
+      // Load drill groups
+      await _loadDrillGroupsFromBackend();
+      print('✅ [LOAD] Drill groups loading completed');
+      
       if (kDebugMode) {
         print('✅ Successfully loaded all backend data');
         print('📊 Final data summary:');
         print('   - Ordered drills: ${_editableSessionDrills.length}');
         print('   - Completed sessions: ${_completedSessions.length}');
+        print('   - Saved drill groups: ${_savedDrillGroups.length}');
+        print('   - Liked drills: ${_likedDrills.length}');
         print('   - Current streak: $_currentStreak');
         print('   - Highest streak: $_highestStreak');
         print('   - Completed sessions count: $_countOfFullyCompletedSessions');
@@ -365,6 +376,12 @@ class AppStateService extends ChangeNotifier {
     _countOfFullyCompletedSessions = 0;
     _savedDrillGroups.clear();
     _likedDrills.clear();
+    
+    // Cancel sync timers
+    _sessionDrillsSyncTimer?.cancel();
+    _progressHistorySyncTimer?.cancel();
+    _completedSessionSyncTimer?.cancel();
+    _drillGroupsSyncTimer?.cancel();
     
     if (kDebugMode) {
       print('✅ User data cleared');
@@ -452,6 +469,51 @@ class AppStateService extends ChangeNotifier {
     } catch (e) {
       if (kDebugMode) {
         print('❌ Error loading ordered session drills from backend: $e');
+      }
+    }
+  }
+
+  // Load drill groups from backend
+  Future<void> _loadDrillGroupsFromBackend() async {
+    try {
+      if (kDebugMode) {
+        print('📥 Loading drill groups from backend...');
+      }
+      
+      // Get all drill groups from backend
+      final backendGroups = await _drillGroupSyncService.getAllDrillGroups();
+      
+      if (backendGroups.isNotEmpty) {
+        // Convert backend responses to local models
+        final localGroups = _drillGroupSyncService.convertToLocalModels(backendGroups);
+        
+        // Clear existing groups and add backend groups
+        _savedDrillGroups.clear();
+        _likedDrills.clear();
+        
+        for (final group in localGroups) {
+          if (group.isLikedDrillsGroup) {
+            // Add drills to liked drills set
+            _likedDrills.addAll(group.drills);
+          } else {
+            // Add to saved drill groups
+            _savedDrillGroups.add(group);
+          }
+        }
+        
+        if (kDebugMode) {
+          print('✅ Loaded ${localGroups.length} drill groups from backend');
+          print('   - Saved groups: ${_savedDrillGroups.length}');
+          print('   - Liked drills: ${_likedDrills.length}');
+        }
+      } else {
+        if (kDebugMode) {
+          print('ℹ️ No drill groups found in backend');
+        }
+      }
+    } catch (e) {
+      if (kDebugMode) {
+        print('❌ Error loading drill groups from backend: $e');
       }
     }
   }
@@ -736,9 +798,23 @@ class AppStateService extends ChangeNotifier {
     _savedDrillGroups.add(newGroup);
     _persistState();
     notifyListeners();
+    
+    // Sync to backend
+    _scheduleDrillGroupsSync();
   }
   
   void deleteDrillGroup(String groupId) {
+    // Find the group to get its backend ID
+    final groupIndex = _savedDrillGroups.indexWhere((group) => group.id == groupId);
+    if (groupIndex != -1) {
+      final group = _savedDrillGroups[groupIndex];
+      // Try to delete from backend if it has a numeric ID
+      final backendId = int.tryParse(group.id);
+      if (backendId != null && backendId > 0) {
+        _drillGroupSyncService.deleteDrillGroup(backendId);
+      }
+    }
+    
     _savedDrillGroups.removeWhere((group) => group.id == groupId);
     _persistState();
     notifyListeners();
@@ -755,6 +831,9 @@ class AppStateService extends ChangeNotifier {
       _savedDrillGroups[groupIndex] = updatedGroup;
       _persistState();
       notifyListeners();
+      
+      // Sync to backend
+      _scheduleDrillGroupsSync();
     }
   }
   
@@ -769,6 +848,9 @@ class AppStateService extends ChangeNotifier {
         _savedDrillGroups[groupIndex] = updatedGroup;
         _persistState();
         notifyListeners();
+        
+        // Sync to backend
+        _scheduleDrillGroupsSync();
       }
     }
   }
@@ -788,6 +870,9 @@ class AppStateService extends ChangeNotifier {
         _savedDrillGroups[groupIndex] = updatedGroup;
         _persistState();
         notifyListeners();
+        
+        // Sync to backend
+        _scheduleDrillGroupsSync();
       }
     }
   }
@@ -802,6 +887,9 @@ class AppStateService extends ChangeNotifier {
       _savedDrillGroups[groupIndex] = updatedGroup;
       _persistState();
       notifyListeners();
+      
+      // Sync to backend
+      _scheduleDrillGroupsSync();
     }
   }
   
@@ -823,6 +911,9 @@ class AppStateService extends ChangeNotifier {
     }
     _persistState();
     notifyListeners();
+    
+    // Sync to backend
+    _scheduleDrillGroupsSync();
   }
   
   bool isDrillLiked(DrillModel drill) {
@@ -1459,6 +1550,16 @@ class AppStateService extends ChangeNotifier {
     _sessionDrillsSyncTimer?.cancel();
     _sessionDrillsSyncTimer = Timer(_sessionDrillsSyncDebounce, () async {
       await SessionDataSyncService.shared.syncOrderedSessionDrills(_editableSessionDrills);
+    });
+  }
+
+  void _scheduleDrillGroupsSync() {
+    _drillGroupsSyncTimer?.cancel();
+    _drillGroupsSyncTimer = Timer(_drillGroupsSyncDebounce, () async {
+      await _drillGroupSyncService.syncAllDrillGroups(
+        savedGroups: _savedDrillGroups,
+        likedGroup: likedDrillsGroup,
+      );
     });
   }
 } 
