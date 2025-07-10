@@ -12,7 +12,7 @@ class AppConfig {
   /// 1: Production
   /// 2: Computer (localhost)
   /// 3: Phone (Wi-Fi IP)
-  static const int appDevCase = 3; // CHANGE THIS TO SWITCH ENVIRONMENTS
+  static const int appDevCase = 2; // CHANGE THIS TO SWITCH ENVIRONMENTS
 
   /// Debug mode toggle
   static const bool debug = true; // Set false in production

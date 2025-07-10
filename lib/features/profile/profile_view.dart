@@ -63,9 +63,9 @@ class _ProfileViewState extends State<ProfileView> {
                     title: 'Support',
                     items: [
                       _buildMenuItem(
-                        icon: Icons.lightbulb_outline,
-                        title: 'Feature Requests',
-                        onTap: () => _handleFeatureRequests(),
+                        icon: Icons.chat_outlined,
+                        title: 'Join our Discord',
+                        onTap: () => _handleDiscordCommunity(),
                       ),
                       _buildMenuItem(
                         icon: Icons.privacy_tip_outlined,
@@ -439,8 +439,8 @@ class _ProfileViewState extends State<ProfileView> {
     );
   }
 
-  void _handleFeatureRequests() {
-    _launchUrl('https://bravoball.featurebase.app');
+  void _handleDiscordCommunity() {
+    _launchUrl('https://discord.gg/5afDtqdD');
   }
 
   void _handlePrivacyPolicy() {

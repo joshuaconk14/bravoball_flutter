@@ -155,9 +155,9 @@ class _EditDrillViewState extends State<EditDrillView> {
   }
 
   Widget _buildVideoSection() {
-    if (widget.drill.videoUrl.isNotEmpty) {
+    if (widget.editableDrill.drill.videoUrl.isNotEmpty) {
       return DrillVideoPlayer(
-        videoUrl: widget.drill.videoUrl,
+        videoUrl: widget.editableDrill.drill.videoUrl,
         aspectRatio: 16 / 9,
         showControls: true,
       );
