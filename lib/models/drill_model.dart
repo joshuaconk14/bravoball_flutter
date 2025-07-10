@@ -1,7 +1,7 @@
 import 'package:flutter/foundation.dart';
 
 class DrillModel {
-  final String id;
+  final String id; // This will store the UUID from backend
   final String title;
   final String skill;
   final List<String> subSkills;
@@ -36,7 +36,7 @@ class DrillModel {
   // JSON serialization
   Map<String, dynamic> toJson() {
     return {
-      'id': id,
+      'uuid': id, // Use 'uuid' for backend compatibility
       'title': title,
       'skill': skill,
       'subSkills': subSkills,
@@ -54,8 +54,11 @@ class DrillModel {
   }
 
   factory DrillModel.fromJson(Map<String, dynamic> json) {
+    // Handle both 'uuid' (new backend format) and 'id' (legacy format)
+    final drillId = json['uuid'] ?? json['id'] ?? '';
+    
     return DrillModel(
-      id: json['id'] ?? '',
+      id: drillId,
       title: json['title'] ?? '',
       skill: json['skill'] ?? '',
       subSkills: List<String>.from(json['subSkills'] ?? []),

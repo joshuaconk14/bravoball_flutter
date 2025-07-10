@@ -92,13 +92,64 @@ class AuthenticationWrapper extends StatelessWidget {
 
         // Show main app if user is logged in
         if (userManager.isLoggedIn) {
-          return const MainTabView();
+          return MainTabViewWrapper();
         }
 
         // User is not logged in - show welcome page with create account and login buttons
         return const OnboardingFlow();
       },
     );
+  }
+}
+
+/// Main Tab View Wrapper
+/// Handles backend data loading when user is authenticated
+class MainTabViewWrapper extends StatefulWidget {
+  const MainTabViewWrapper({super.key});
+
+  @override
+  State<MainTabViewWrapper> createState() => _MainTabViewWrapperState();
+}
+
+class _MainTabViewWrapperState extends State<MainTabViewWrapper> {
+  bool _hasLoadedBackendData = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadBackendDataIfNeeded();
+  }
+
+  void _loadBackendDataIfNeeded() {
+    final userManager = UserManagerService.instance;
+    final appState = AppStateService.instance;
+    
+    // Load backend data if user has account history and we haven't loaded yet
+    if (userManager.userHasAccountHistory && !_hasLoadedBackendData) {
+      if (kDebugMode) {
+        print('📱 Loading backend data for user: ${userManager.email}');
+      }
+      
+      appState.loadBackendData().then((_) {
+        if (mounted) {
+          setState(() {
+            _hasLoadedBackendData = true;
+          });
+        }
+      });
+    } else {
+      // If no user history, set isInitialLoad to false immediately
+      appState.setInitialLoadState(false);
+      
+      if (kDebugMode) {
+        print('✅ Initialization complete - isInitialLoad set to false (no user history)');
+      }
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return const MainTabView();
   }
 }
 

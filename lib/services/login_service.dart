@@ -5,6 +5,7 @@ import '../models/login_state_model.dart';
 import 'api_service.dart';
 import 'user_manager_service.dart';
 import 'authentication_service.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 /// Login Service
 /// Mirrors Swift LoginService for handling authentication API calls
@@ -207,6 +208,74 @@ class LoginService {
     
     if (kDebugMode) {
       print('✅ LoginService: User logged out successfully');
+    }
+  }
+
+  /// Delete user account and clear all data (mirrors Swift deleteAccount)
+  Future<bool> deleteAccount() async {
+    if (kDebugMode) {
+      print('🗑️ LoginService: Deleting user account');
+    }
+
+    try {
+      // Store email before clearing for logging
+      final userEmail = _userManager.email;
+      
+      // Make DELETE request to backend
+      final response = await _apiService.delete(
+        '/delete-account/',
+        requiresAuth: true,
+      );
+
+      if (kDebugMode) {
+        print('📥 Backend response status: ${response.statusCode}');
+        if (response.data != null) {
+          print('Response: ${response.data}');
+        }
+      }
+
+      if (response.isSuccess) {
+        // Clear all user data
+        if (kDebugMode) {
+          print('\n🗑️ Deleting account for user: $userEmail');
+        }
+
+        // 1. Clear user manager data
+        await _userManager.logout();
+        if (kDebugMode) {
+          print('  ✓ Cleared user manager data');
+        }
+
+        // 2. Clear authentication service data
+        await AuthenticationService.shared.clearInvalidTokens();
+        if (kDebugMode) {
+          print('  ✓ Cleared authentication data');
+        }
+
+        // 3. Clear shared preferences (equivalent to UserDefaults)
+        final prefs = await SharedPreferences.getInstance();
+        await prefs.clear();
+        if (kDebugMode) {
+          print('  ✓ Cleared shared preferences data');
+        }
+
+        if (kDebugMode) {
+          print('✅ Account deleted and all data cleared successfully');
+        }
+        
+        return true;
+      } else {
+        if (kDebugMode) {
+          print('❌ Failed to delete account: ${response.statusCode}');
+          print('Error: ${response.error}');
+        }
+        return false;
+      }
+    } catch (e) {
+      if (kDebugMode) {
+        print('❌ Error deleting account: $e');
+      }
+      return false;
     }
   }
 } 

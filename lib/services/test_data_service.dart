@@ -69,7 +69,7 @@ class TestDataService {
     return [
       // DRIBBLING DRILLS
       DrillModel(
-        id: 'drill_001',
+        id: '550e8400-e29b-41d4-a716-446655440001',
         title: 'Cone Weaving Mastery',
         description: 'Master close control by weaving through cones with both feet. Focus on tight turns and quick changes of direction.',
         skill: 'Dribbling',
@@ -93,7 +93,7 @@ class TestDataService {
       ),
       
       DrillModel(
-        id: 'drill_002',
+        id: '550e8400-e29b-41d4-a716-446655440002',
         title: 'Ronaldinho Rainbow Flick',
         description: 'Learn the iconic rainbow flick to beat defenders in style. Practice the perfect touch and timing.',
         skill: 'Dribbling',
@@ -117,7 +117,7 @@ class TestDataService {
       ),
 
       DrillModel(
-        id: 'drill_003',
+        id: '550e8400-e29b-41d4-a716-446655440003',
         title: 'Speed Dribbling Circuit',
         description: 'Develop explosive pace while maintaining ball control. Perfect for beating defenders on the break.',
         skill: 'Dribbling',
@@ -142,7 +142,7 @@ class TestDataService {
 
       // PASSING DRILLS
       DrillModel(
-        id: 'drill_004',
+        id: '550e8400-e29b-41d4-a716-446655440004',
         title: 'Precision Passing Gates',
         description: 'Improve passing accuracy by hitting targets of different sizes. Build confidence in your distribution.',
         skill: 'Passing',
@@ -166,7 +166,7 @@ class TestDataService {
       ),
 
       DrillModel(
-        id: 'drill_005',
+        id: '550e8400-e29b-41d4-a716-446655440005',
         title: 'Long Range Distribution',
         description: 'Master long passes like a center-back. Switch play and find teammates across the field.',
         skill: 'Passing',
@@ -190,7 +190,7 @@ class TestDataService {
       ),
 
       DrillModel(
-        id: 'drill_006',
+        id: '550e8400-e29b-41d4-a716-446655440006',
         title: 'One-Touch Passing Wall',
         description: 'Develop quick passing under pressure. Perfect for tight spaces and quick combinations.',
         skill: 'Passing',
@@ -215,7 +215,7 @@ class TestDataService {
 
       // SHOOTING DRILLS
       DrillModel(
-        id: 'drill_007',
+        id: '550e8400-e29b-41d4-a716-446655440007',
         title: 'Power Shot Technique',
         description: 'Learn to strike the ball with power and precision. Become a threat from outside the box.',
         skill: 'Shooting',
@@ -239,7 +239,7 @@ class TestDataService {
       ),
 
       DrillModel(
-        id: 'drill_008',
+        id: '550e8400-e29b-41d4-a716-446655440008',
         title: 'Finesse Shot Mastery',
         description: 'Master the art of placement over power. Learn to curl shots into the top corner.',
         skill: 'Shooting',
@@ -263,7 +263,7 @@ class TestDataService {
       ),
 
       DrillModel(
-        id: 'drill_009',
+        id: '550e8400-e29b-41d4-a716-446655440009',
         title: 'Volley Technique Training',
         description: 'Perfect your volleying technique for spectacular goals. Control and power in one motion.',
         skill: 'Shooting',
@@ -288,7 +288,7 @@ class TestDataService {
 
       // FIRST TOUCH DRILLS
       DrillModel(
-        id: 'drill_010',
+        id: '550e8400-e29b-41d4-a716-446655440010',
         title: 'Wall Control Challenge',
         description: 'Master your first touch using a wall. Control balls coming at different angles and speeds.',
         skill: 'First Touch',
@@ -312,7 +312,7 @@ class TestDataService {
       ),
 
       DrillModel(
-        id: 'drill_011',
+        id: '550e8400-e29b-41d4-a716-446655440011',
         title: 'Aerial Control Mastery',
         description: 'Control balls from the air like a professional. Essential for modern soccer.',
         skill: 'First Touch',
@@ -336,7 +336,7 @@ class TestDataService {
       ),
 
       DrillModel(
-        id: 'drill_012',
+        id: '550e8400-e29b-41d4-a716-446655440012',
         title: 'Pressure Cooker First Touch',
         description: 'Perfect your first touch under pressure. Simulate game-like conditions.',
         skill: 'First Touch',
@@ -361,7 +361,7 @@ class TestDataService {
 
       // DEFENDING DRILLS
       DrillModel(
-        id: 'drill_013',
+        id: '550e8400-e29b-41d4-a716-446655440013',
         title: 'Defensive Positioning Basics',
         description: 'Learn proper defensive stance and positioning. Foundation of good defending.',
         skill: 'Defending',
@@ -385,7 +385,7 @@ class TestDataService {
       ),
 
       DrillModel(
-        id: 'drill_014',
+        id: '550e8400-e29b-41d4-a716-446655440014',
         title: 'Tackling Technique',
         description: 'Master the art of clean tackling. Win the ball without fouling.',
         skill: 'Defending',
@@ -409,7 +409,7 @@ class TestDataService {
       ),
 
       DrillModel(
-        id: 'drill_015',
+        id: '550e8400-e29b-41d4-a716-446655440015',
         title: 'Jockeying and Delay',
         description: 'Learn to delay attackers and force them into poor decisions. Patience is key.',
         skill: 'Defending',
@@ -434,7 +434,7 @@ class TestDataService {
 
       // FITNESS DRILLS
       DrillModel(
-        id: 'drill_016',
+        id: '550e8400-e29b-41d4-a716-446655440016',
         title: 'Sprint Interval Training',
         description: 'Build explosive speed and endurance. Essential for modern soccer fitness.',
         skill: 'Fitness',
@@ -458,7 +458,7 @@ class TestDataService {
       ),
 
       DrillModel(
-        id: 'drill_017',
+        id: '550e8400-e29b-41d4-a716-446655440017',
         title: 'Agility Ladder Workout',
         description: 'Improve footwork and coordination. Essential for quick movements on the field.',
         skill: 'Fitness',
@@ -482,7 +482,7 @@ class TestDataService {
       ),
 
       DrillModel(
-        id: 'drill_018',
+        id: '550e8400-e29b-41d4-a716-446655440018',
         title: 'Plyometric Power Training',
         description: 'Build explosive power for jumping and sprinting. Become more athletic.',
         skill: 'Fitness',
@@ -507,7 +507,7 @@ class TestDataService {
 
       // SPECIALIZED DRILLS
       DrillModel(
-        id: 'drill_019',
+        id: '550e8400-e29b-41d4-a716-446655440019',
         title: 'Goalkeeper Reaction Training',
         description: 'Improve reflexes and shot-stopping ability. Essential for goalkeepers.',
         skill: 'Goalkeeping',
@@ -531,7 +531,7 @@ class TestDataService {
       ),
 
       DrillModel(
-        id: 'drill_020',
+        id: '550e8400-e29b-41d4-a716-446655440020',
         title: 'Set Piece Specialist',
         description: 'Master free kicks and corners. Become your team\'s dead ball specialist.',
         skill: 'Set Pieces',
@@ -556,7 +556,7 @@ class TestDataService {
 
       // ADDITIONAL ADVANCED DRILLS
       DrillModel(
-        id: 'drill_021',
+        id: '550e8400-e29b-41d4-a716-446655440021',
         title: 'Messi-Style Close Control',
         description: 'Master close control in tight spaces like Lionel Messi. Essential for creative players.',
         skill: 'Dribbling',
@@ -580,7 +580,7 @@ class TestDataService {
       ),
 
       DrillModel(
-        id: 'drill_022',
+        id: '550e8400-e29b-41d4-a716-446655440022',
         title: 'Tiki-Taka Passing Precision',
         description: 'Master quick, short passes like Barcelona. Perfect for possession-based play.',
         skill: 'Passing',
@@ -604,7 +604,7 @@ class TestDataService {
       ),
 
       DrillModel(
-        id: 'drill_023',
+        id: '550e8400-e29b-41d4-a716-446655440023',
         title: 'Cristiano Power Headers',
         description: 'Develop heading power and accuracy like Cristiano Ronaldo. Dominate in the air.',
         skill: 'Heading',
@@ -628,7 +628,7 @@ class TestDataService {
       ),
 
       DrillModel(
-        id: 'drill_024',
+        id: '550e8400-e29b-41d4-a716-446655440024',
         title: 'Neymar Skill Moves',
         description: 'Learn flashy skill moves to beat defenders. Add flair to your game.',
         skill: 'Dribbling',
@@ -652,7 +652,7 @@ class TestDataService {
       ),
 
       DrillModel(
-        id: 'drill_025',
+        id: '550e8400-e29b-41d4-a716-446655440025',
         title: 'Goalkeeper Distribution',
         description: 'Improve goal kick and throwing accuracy. Start attacks from the back.',
         skill: 'Goalkeeping',
@@ -677,7 +677,7 @@ class TestDataService {
 
       // TEAM PLAY DRILLS
       DrillModel(
-        id: 'drill_026',
+        id: '550e8400-e29b-41d4-a716-446655440026',
         title: '2v1 Attacking Play',
         description: 'Master 2v1 situations in attack. Learn when to pass and when to shoot.',
         skill: 'Team Play',
@@ -701,7 +701,7 @@ class TestDataService {
       ),
 
       DrillModel(
-        id: 'drill_027',
+        id: '550e8400-e29b-41d4-a716-446655440027',
         title: 'Small-Sided Games',
         description: 'Play 3v3 or 4v4 games to improve all aspects of your game.',
         skill: 'Team Play',
@@ -725,7 +725,7 @@ class TestDataService {
       ),
 
       DrillModel(
-        id: 'drill_028',
+        id: '550e8400-e29b-41d4-a716-446655440028',
         title: 'Crossing and Finishing',
         description: 'Practice crossing from wide areas and finishing in the box.',
         skill: 'Crossing',
@@ -749,7 +749,7 @@ class TestDataService {
       ),
 
       DrillModel(
-        id: 'drill_029',
+        id: '550e8400-e29b-41d4-a716-446655440029',
         title: 'Defensive Pressing',
         description: 'Learn to press as a unit and win the ball back quickly.',
         skill: 'Defending',
@@ -773,7 +773,7 @@ class TestDataService {
       ),
 
       DrillModel(
-        id: 'drill_030',
+        id: '550e8400-e29b-41d4-a716-446655440030',
         title: 'Mental Toughness Training',
         description: 'Build mental resilience and concentration. Essential for high-pressure situations.',
         skill: 'Mental',

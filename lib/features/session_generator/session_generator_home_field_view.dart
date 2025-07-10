@@ -120,20 +120,24 @@ class _SessionGeneratorHomeFieldViewState extends State<SessionGeneratorHomeFiel
                     (route) => false,
                   );
                 },
-                child: Row(
-                children: [
-                  Icon(Icons.local_fire_department, color: AppTheme.secondaryOrange, size: 24),
-                  const SizedBox(width: 4),
-                  Text(
-                    '3', // TODO: Replace with actual streak
-                    style: TextStyle(
-                      fontFamily: AppTheme.fontPoppins,
-                      fontSize: 20,
-                      color: AppTheme.secondaryOrange,
-                      fontWeight: FontWeight.bold,
-                    ),
-                  ),
-                ],
+                child: Consumer<AppStateService>(
+                  builder: (context, appState, child) {
+                    return Row(
+                      children: [
+                        Icon(Icons.local_fire_department, color: AppTheme.secondaryOrange, size: 24),
+                        const SizedBox(width: 4),
+                        Text(
+                          '${appState.currentStreak}', // Use actual streak from AppStateService
+                          style: TextStyle(
+                            fontFamily: AppTheme.fontPoppins,
+                            fontSize: 20,
+                            color: AppTheme.secondaryOrange,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                      ],
+                    );
+                  },
                 ),
               ),
             ],
@@ -260,8 +264,8 @@ class _SessionGeneratorHomeFieldViewState extends State<SessionGeneratorHomeFiel
             ),
           );
         },
-        color: hasSessionDrills ? AppTheme.buttonPrimary : AppTheme.buttonDisabled,
-        backColor: hasSessionDrills ? AppTheme.primaryDarkYellow : AppTheme.buttonDisabled,
+        color: hasSessionDrills ? AppTheme.buttonPrimary : AppTheme.buttonDisabledGray,
+        backColor: hasSessionDrills ? AppTheme.primaryDarkYellow : AppTheme.buttonDisabledDarkGray,
         textColor: AppTheme.textOnPrimary,
         height: 56,
         textSize: 25,
@@ -351,7 +355,7 @@ class _SessionGeneratorHomeFieldViewState extends State<SessionGeneratorHomeFiel
       Navigator.of(context).push(
         MaterialPageRoute(
           builder: (_) => EditDrillView(
-            drill: editableDrill.drill,
+            editableDrill: editableDrill,
             onSave: () {
               ScaffoldMessenger.of(context).showSnackBar(
                 SnackBar(content: Text('${editableDrill.drill.title} updated successfully!')),
@@ -369,7 +373,7 @@ class _SessionGeneratorHomeFieldViewState extends State<SessionGeneratorHomeFiel
     Navigator.of(context).push(
       MaterialPageRoute(
         builder: (_) => SessionCompletionView(
-          currentStreak: 3, // TODO: Get from app state
+          currentStreak: appState.currentStreak, // Use actual streak from AppStateService
           completedDrills: appState.editableSessionDrills.where((drill) => drill.isCompleted).length,
           totalDrills: appState.editableSessionDrills.length,
           onViewProgress: () {
@@ -479,7 +483,7 @@ class _DrillCircle extends StatelessWidget {
       iconColor = _getSkillColor(editableDrill.drill.skill);
       iconData = _getSkillIcon(editableDrill.drill.skill);
     } else {
-      backgroundColor = AppTheme.buttonDisabled;
+      backgroundColor = AppTheme.buttonDisabledGray;
       iconColor = AppTheme.primaryGray;
       iconData = _getSkillIcon(editableDrill.drill.skill);
     }
@@ -579,7 +583,7 @@ class _TrophyWidget extends StatelessWidget {
         width: 80,
         height: 80,
         decoration: BoxDecoration(
-          color: isUnlocked ? AppTheme.primaryYellow : AppTheme.buttonDisabled,
+          color: isUnlocked ? AppTheme.primaryYellow : AppTheme.buttonDisabledGray,
           shape: BoxShape.circle,
           boxShadow: [
             BoxShadow(

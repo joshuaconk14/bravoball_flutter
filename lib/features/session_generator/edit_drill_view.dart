@@ -1,18 +1,19 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../../models/drill_model.dart';
+import '../../models/editable_drill_model.dart';
 import '../../services/app_state_service.dart';
 import '../../constants/app_theme.dart';
 import '../../widgets/drill_video_player.dart';
 import 'drill_detail_view.dart';
 
 class EditDrillView extends StatefulWidget {
-  final DrillModel drill;
+  final EditableDrillModel editableDrill;
   final VoidCallback? onSave; // Optional callback when changes are saved
 
   const EditDrillView({
     Key? key,
-    required this.drill,
+    required this.editableDrill,
     this.onSave,
   }) : super(key: key);
 
@@ -28,9 +29,9 @@ class _EditDrillViewState extends State<EditDrillView> {
   @override
   void initState() {
     super.initState();
-    sets = widget.drill.sets;
-    reps = widget.drill.reps;
-    duration = widget.drill.duration;
+    sets = widget.editableDrill.totalSets;
+    reps = widget.editableDrill.totalReps;
+    duration = widget.editableDrill.totalDuration;
   }
 
   @override
@@ -103,7 +104,7 @@ class _EditDrillViewState extends State<EditDrillView> {
                   
                   // Drill title
                   Text(
-                    widget.drill.title,
+                    widget.editableDrill.drill.title,
                     style: const TextStyle(
                       fontFamily: 'Poppins',
                       fontWeight: FontWeight.bold,
@@ -118,19 +119,19 @@ class _EditDrillViewState extends State<EditDrillView> {
                   Container(
                     padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
                     decoration: BoxDecoration(
-                      color: _getSkillColor(widget.drill.skill).withOpacity(0.1),
+                      color: _getSkillColor(widget.editableDrill.drill.skill).withOpacity(0.1),
                       borderRadius: BorderRadius.circular(16),
                       border: Border.all(
-                        color: _getSkillColor(widget.drill.skill).withOpacity(0.3),
+                        color: _getSkillColor(widget.editableDrill.drill.skill).withOpacity(0.3),
                       ),
                     ),
                     child: Text(
-                      widget.drill.skill,
+                      widget.editableDrill.drill.skill,
                       style: TextStyle(
                         fontFamily: 'Poppins',
                         fontWeight: FontWeight.w600,
                         fontSize: 12,
-                        color: _getSkillColor(widget.drill.skill),
+                        color: _getSkillColor(widget.editableDrill.drill.skill),
                       ),
                     ),
                   ),
@@ -312,9 +313,9 @@ class _EditDrillViewState extends State<EditDrillView> {
     final appState = Provider.of<AppStateService>(context, listen: false);
     
     // Only update if the drill is actually in the session
-    if (appState.isDrillInSession(widget.drill)) {
+    if (appState.isDrillInSession(widget.editableDrill.drill)) {
       appState.updateDrillInSession(
-        widget.drill.id,
+        widget.editableDrill.drill.id,
         sets: sets,
         reps: reps,
         duration: duration,
@@ -339,7 +340,7 @@ class _EditDrillViewState extends State<EditDrillView> {
       context,
       MaterialPageRoute(
         builder: (context) => DrillDetailView(
-          drill: widget.drill,
+          drill: widget.editableDrill.drill,
           isInSession: true,
         ),
       ),

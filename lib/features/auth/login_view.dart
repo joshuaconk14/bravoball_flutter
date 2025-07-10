@@ -6,6 +6,7 @@ import '../../services/login_service.dart';
 import '../../services/user_manager_service.dart';
 import 'forgot_password_view.dart';
 import '../../models/login_state_model.dart';
+import '../../widgets/bravo_button.dart';
 
 /// Login View
 /// Mirrors Swift LoginView for user authentication UI
@@ -231,33 +232,16 @@ class _LoginViewState extends State<LoginView> {
         return SizedBox(
           width: double.infinity,
           height: 50,
-          child: ElevatedButton(
-            onPressed: model.isLoading || !model.isFormValid 
-                ? null 
-                : _handleLogin,
-            style: ElevatedButton.styleFrom(
-              backgroundColor: AppTheme.primaryYellow,
-              foregroundColor: Colors.white,
-              disabledBackgroundColor: AppTheme.buttonDisabled,
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(AppTheme.radiusLarge),
-              ),
-              elevation: AppTheme.elevationMedium,
-            ),
-            child: model.isLoading
-                ? const SizedBox(
-                    height: 20,
-                    width: 20,
-                    child: CircularProgressIndicator(
-                      strokeWidth: 2,
-                      valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
-                    ),
-                  )
-                : Text(
-                    'Login',
-                    style: AppTheme.buttonTextMedium,
-                  ),
-          ),
+          child: BravoButton(
+              text: 'Login',
+              onPressed: model.isLoading || !model.isFormValid ? null : _handleLogin,
+              color: AppTheme.primaryYellow,
+              backColor: AppTheme.primaryDarkYellow,
+              textColor: Colors.white,
+              disabled: model.isLoading || !model.isFormValid,
+              textSize: 18,
+              height: 50,
+            )
         );
       },
     );
@@ -267,22 +251,17 @@ class _LoginViewState extends State<LoginView> {
     return SizedBox(
       width: double.infinity,
       height: 50,
-      child: OutlinedButton(
+      child: BravoButton(
+        text: 'Cancel',
         onPressed: _handleCancel,
-        style: OutlinedButton.styleFrom(
-          foregroundColor: AppTheme.primaryYellow,
-          side: const BorderSide(color: AppTheme.primaryYellow),
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(AppTheme.radiusLarge),
-          ),
-        ),
-        child: Text(
-          'Cancel',
-          style: AppTheme.buttonTextMedium.copyWith(
-            color: AppTheme.primaryYellow,
-          ),
-        ),
-      ),
+        color: Colors.white,
+        backColor: AppTheme.lightGray,
+        textColor: AppTheme.primaryYellow,
+        disabled: false,
+        textSize: 18,
+        height: 50,
+        borderSide: BorderSide(color: AppTheme.lightGray, width: 2),
+      )
     );
   }
 

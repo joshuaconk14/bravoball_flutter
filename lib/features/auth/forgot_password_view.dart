@@ -22,6 +22,10 @@ class _ForgotPasswordViewState extends State<ForgotPasswordView> {
   final ForgotPasswordService _forgotPasswordService = ForgotPasswordService.shared;
   late ForgotPasswordModel _forgotPasswordModel;
   bool _isSending = false;
+  
+  // Controllers for password fields
+  final TextEditingController _newPasswordController = TextEditingController();
+  final TextEditingController _confirmPasswordController = TextEditingController();
 
   @override
   void initState() {
@@ -32,6 +36,8 @@ class _ForgotPasswordViewState extends State<ForgotPasswordView> {
   @override
   void dispose() {
     _forgotPasswordModel.dispose();
+    _newPasswordController.dispose();
+    _confirmPasswordController.dispose();
     super.dispose();
   }
 
@@ -498,7 +504,13 @@ class _ForgotPasswordViewState extends State<ForgotPasswordView> {
         // New Password Field
         Consumer<ForgotPasswordModel>(
           builder: (context, model, child) {
+            // Update controller when model changes
+            if (_newPasswordController.text != model.forgotPasswordNewPassword) {
+              _newPasswordController.text = model.forgotPasswordNewPassword;
+            }
+            
             return TextField(
+              controller: _newPasswordController,
               onChanged: (value) => model.forgotPasswordNewPassword = value,
               obscureText: !model.isNewPasswordVisible,
               textInputAction: TextInputAction.next,
@@ -542,7 +554,13 @@ class _ForgotPasswordViewState extends State<ForgotPasswordView> {
         // Confirm Password Field
         Consumer<ForgotPasswordModel>(
           builder: (context, model, child) {
+            // Update controller when model changes
+            if (_confirmPasswordController.text != model.forgotPasswordConfirmPassword) {
+              _confirmPasswordController.text = model.forgotPasswordConfirmPassword;
+            }
+            
             return TextField(
+              controller: _confirmPasswordController,
               onChanged: (value) => model.forgotPasswordConfirmPassword = value,
               obscureText: true,
               textInputAction: TextInputAction.done,
@@ -632,6 +650,22 @@ class _ForgotPasswordViewState extends State<ForgotPasswordView> {
                           model.forgotPasswordNewPassword,
                           model.forgotPasswordConfirmPassword,
                           model,
+                          onSuccess: () {
+                            // Show success message
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              const SnackBar(
+                                content: Text('Password reset successfully!'),
+                                backgroundColor: AppTheme.success,
+                                duration: Duration(seconds: 3),
+                              ),
+                            );
+                            // Navigate back to login page
+                            if (widget.onClose != null) {
+                              widget.onClose!();
+                            } else {
+                              Navigator.of(context).pop();
+                            }
+                          },
                         );
                         setState(() => _isSending = false);
                       },

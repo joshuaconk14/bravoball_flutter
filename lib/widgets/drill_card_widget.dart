@@ -3,6 +3,9 @@ import '../models/drill_model.dart';
 
 class DraggableDrillCard extends StatelessWidget {
   final DrillModel drill;
+  final int? sets;
+  final int? reps;
+  final int? duration;
   final VoidCallback? onTap;
   final VoidCallback? onDelete;
   final bool isDraggable;
@@ -10,6 +13,9 @@ class DraggableDrillCard extends StatelessWidget {
   const DraggableDrillCard({
     Key? key,
     required this.drill,
+    this.sets,
+    this.reps,
+    this.duration,
     this.onTap,
     this.onDelete,
     this.isDraggable = false,
@@ -51,7 +57,6 @@ class DraggableDrillCard extends StatelessWidget {
                       size: 20,
                     ),
                   ),
-                
                 // Skill indicator
                 Container(
                   width: 4,
@@ -61,9 +66,7 @@ class DraggableDrillCard extends StatelessWidget {
                     borderRadius: BorderRadius.circular(2),
                   ),
                 ),
-                
                 const SizedBox(width: 12),
-                
                 // Drill content
                 Expanded(
                   child: Column(
@@ -92,7 +95,7 @@ class DraggableDrillCard extends StatelessWidget {
                       ),
                       const SizedBox(height: 4),
                       Text(
-                        '${drill.sets} sets • ${drill.reps} reps • ${drill.duration} min',
+                        '${sets ?? drill.sets} sets • ${reps ?? drill.reps} reps • ${duration ?? drill.duration} min',
                         style: TextStyle(
                           fontFamily: 'Poppins',
                           fontSize: 11,
@@ -102,7 +105,6 @@ class DraggableDrillCard extends StatelessWidget {
                     ],
                   ),
                 ),
-                
                 // Action buttons
                 Row(
                   mainAxisSize: MainAxisSize.min,

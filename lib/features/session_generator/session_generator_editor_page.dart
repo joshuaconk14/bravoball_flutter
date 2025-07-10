@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../../models/drill_model.dart';
+import '../../models/editable_drill_model.dart';
 import '../../models/filter_models.dart';
 import '../../services/app_state_service.dart';
 import '../../widgets/filter_widgets.dart';
@@ -54,7 +55,7 @@ class _SessionGeneratorEditorPageState extends State<SessionGeneratorEditorPage>
     return Consumer<AppStateService>(
       builder: (context, appState, child) {
     return Scaffold(
-      backgroundColor: AppTheme.primaryLightBlue,
+      backgroundColor: Colors.white,
       appBar: AppBar(
         backgroundColor: AppTheme.primaryLightBlue,
         elevation: 0.5,
@@ -88,51 +89,66 @@ class _SessionGeneratorEditorPageState extends State<SessionGeneratorEditorPage>
       ),
       body: Column(
         children: [
-          // Filter/search area on blue background
-          Padding(
-            padding: const EdgeInsets.fromLTRB(16, 16, 16, 0),
+          // Filter section with shadow (fixed)
+          Container(
+            padding: const EdgeInsets.all(16),
+            decoration: BoxDecoration(
+              color: Colors.white,
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.black.withOpacity(0.10),
+                  blurRadius: 12,
+                  offset: Offset(0, 6),
+                ),
+              ],
+            ),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
+                // Selected skills display
                 if (appState.preferences.selectedSkills.isNotEmpty)
                   _buildSelectedSkillsSection(appState),
                 if (appState.preferences.selectedSkills.isNotEmpty)
                   const SizedBox(height: 12),
+                // Filter chips
                 _buildFilterChips(appState),
               ],
             ),
           ),
-          // White card with rounded top border for session drills and below
+          // Drills section (scrollable)
           Expanded(
-            child: Container(
-              width: double.infinity,
-              margin: const EdgeInsets.only(top: 24),
-              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 20),
-              decoration: const BoxDecoration(
-                color: Colors.white,
-                borderRadius: BorderRadius.only(
-                  topLeft: Radius.circular(32),
-                  topRight: Radius.circular(32),
-                ),
-              ),
-              child: SingleChildScrollView(
-                physics: const AlwaysScrollableScrollPhysics(),
-                child: Column(
-                  children: [
-                    _buildSessionDrillsSection(appState),
-                    const SizedBox(height: 20),
-                    _buildAddMoreDrillsButton(appState),
-                    const SizedBox(height: 20),
-                  ],
-                ),
-              ),
+            child: ListView(
+              padding: const EdgeInsets.only(top: 20, left: 16, right: 16, bottom: 32),
+              children: [
+                _buildSessionDrillsSection(appState),
+                if (appState.sessionDrills.isNotEmpty)
+                  const SizedBox(height: 20),
+                if (appState.sessionDrills.isNotEmpty)
+                  _buildAddMoreDrillsButton(appState),
+              ],
             ),
           ),
         ],
       ),
+      floatingActionButton: appState.sessionDrills.isEmpty || true
+          ? FloatingActionButton(
+              backgroundColor: AppTheme.primaryLightBlue,
+              foregroundColor: Colors.white,
+              onPressed: () {
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (context) => const DrillSearchView(),
+                  ),
+                );
+              },
+              child: const Icon(Icons.add, size: 32),
+              tooltip: 'Add Drills',
+            )
+          : null,
     );
-      },
-    );
+  },
+);
   }
 
   // Build the selected skills section
@@ -146,7 +162,7 @@ class _SessionGeneratorEditorPageState extends State<SessionGeneratorEditorPage>
             fontFamily: 'Poppins',
             fontWeight: FontWeight.bold,
             fontSize: 16,
-            color: Colors.white,
+            color: Colors.black87,
           ),
         ),
         const SizedBox(height: 8),
@@ -188,7 +204,7 @@ class _SessionGeneratorEditorPageState extends State<SessionGeneratorEditorPage>
             fontFamily: 'Poppins',
             fontWeight: FontWeight.bold,
             fontSize: 16,
-            color: Colors.white,
+            color: Colors.black87,
           ),
         ),
         const SizedBox(height: 8),
@@ -311,12 +327,147 @@ class _SessionGeneratorEditorPageState extends State<SessionGeneratorEditorPage>
 
   // Build the session drills section
   Widget _buildSessionDrillsSection(AppStateService appState) {
+    if (appState.sessionDrills.isEmpty) {
+      return Column(
+        children: [
+          const SizedBox(height: 32),
+          Container(
+            width: 80,
+            height: 80,
+            decoration: BoxDecoration(
+              color: AppTheme.primaryLightBlue.withOpacity(0.15),
+              borderRadius: BorderRadius.circular(20),
+            ),
+            child: const Icon(Icons.folder, size: 48, color: AppTheme.primaryLightBlue),
+          ),
+          const SizedBox(height: 18),
+          const Text(
+            'No drills in this session',
+            style: TextStyle(
+              fontFamily: 'Poppins',
+              fontWeight: FontWeight.bold,
+              fontSize: 20,
+              color: Colors.black87,
+            ),
+          ),
+          const SizedBox(height: 8),
+          const Text(
+            'Add drills to this session to get started',
+            style: TextStyle(
+              fontFamily: 'Poppins',
+              fontWeight: FontWeight.w400,
+              fontSize: 15,
+              color: Colors.grey,
+            ),
+            textAlign: TextAlign.center,
+          ),
+          const SizedBox(height: 28),
+          SizedBox(
+            width: 200,
+            height: 56,
+            child: ElevatedButton.icon(
+              icon: const Icon(Icons.add, size: 22),
+              label: const Text(
+                'Add Drills',
+                style: TextStyle(
+                  fontFamily: 'Poppins',
+                  fontWeight: FontWeight.w600,
+                  fontSize: 16,
+                  overflow: TextOverflow.visible,
+                ),
+              ),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: AppTheme.primaryLightBlue,
+                foregroundColor: Colors.white,
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(14),
+                ),
+                elevation: 2,
+                padding: const EdgeInsets.symmetric(vertical: 16),
+              ),
+              onPressed: () {
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (context) => const DrillSearchView(),
+                  ),
+                );
+              },
+            ),
+          ),
+          const SizedBox(height: 32),
+        ],
+      );
+    }
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        
-        // If no drills in session, show a message
-        if (appState.sessionDrills.isEmpty)
+        Row(
+          children: [
+            const Spacer(),
+            if (appState.editableSessionDrills.isNotEmpty) ...[
+              Text(
+                '${appState.editableSessionDrills.length} drill${appState.editableSessionDrills.length == 1 ? '' : 's'}',
+                style: TextStyle(
+                  fontFamily: 'Poppins',
+                  fontSize: 14,
+                  color: Colors.grey.shade600,
+                ),
+              ),
+              const SizedBox(width: 12),
+              GestureDetector(
+                onTap: () {
+                  showDialog(
+                    context: context,
+                    builder: (context) => AlertDialog(
+                      title: const Text('Clear Session'),
+                      content: const Text('Are you sure you want to remove all drills from your session?'),
+                      actions: [
+                        TextButton(
+                          onPressed: () => Navigator.pop(context),
+                          child: const Text('Cancel'),
+                        ),
+                        TextButton(
+                          onPressed: () {
+                            appState.clearSession();
+                            Navigator.pop(context);
+                          },
+                          child: const Text('Clear'),
+                        ),
+                      ],
+                    ),
+                  );
+                },
+                child: Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                  decoration: BoxDecoration(
+                    color: Colors.red.shade50,
+                    borderRadius: BorderRadius.circular(12),
+                    border: Border.all(color: Colors.red.shade200),
+                  ),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Icon(Icons.clear_all, size: 14, color: Colors.red.shade600),
+                      const SizedBox(width: 4),
+                      Text(
+                        'Clear',
+                        style: TextStyle(
+                          fontFamily: 'Poppins',
+                          fontSize: 12,
+                          fontWeight: FontWeight.w500,
+                          color: Colors.red.shade600,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            ],
+          ],
+        ),
+        const SizedBox(height: 12),
+        if (appState.editableSessionDrills.isEmpty)
           Container(
             height: 120,
             decoration: BoxDecoration(
@@ -347,20 +498,23 @@ class _SessionGeneratorEditorPageState extends State<SessionGeneratorEditorPage>
           ReorderableListView.builder(
             shrinkWrap: true,
             physics: const NeverScrollableScrollPhysics(),
-            itemCount: appState.sessionDrills.length,
+            itemCount: appState.editableSessionDrills.length,
             onReorder: (oldIndex, newIndex) {
               appState.reorderSessionDrills(oldIndex, newIndex);
             },
             itemBuilder: (context, index) {
-              final drill = appState.sessionDrills[index];
+              final editableDrill = appState.editableSessionDrills[index];
               return Padding(
-                key: Key(drill.id),
+                key: Key(editableDrill.drill.id),
                 padding: const EdgeInsets.only(bottom: 8),
                 child: DraggableDrillCard(
-                  drill: drill,
+                  drill: editableDrill.drill,
+                  sets: editableDrill.totalSets,
+                  reps: editableDrill.totalReps,
+                  duration: editableDrill.totalDuration,
                   isDraggable: true,
-                  onTap: () => _navigateToDrillDetail(context, drill, appState),
-                  onDelete: () => appState.removeDrillFromSession(drill),
+                  onTap: () => _navigateToDrillDetail(context, editableDrill, appState),
+                  onDelete: () => appState.removeDrillFromSession(editableDrill.drill),
                 ),
               );
             },
@@ -453,20 +607,33 @@ class _SessionGeneratorEditorPageState extends State<SessionGeneratorEditorPage>
   }
 
   // Navigate to the drill detail view
-  void _navigateToDrillDetail(BuildContext context, DrillModel drill, AppStateService appState) {
-    final isInSession = appState.isDrillInSession(drill);
+  void _navigateToDrillDetail(BuildContext context, EditableDrillModel drill, AppStateService appState) {
+    final isInSession = appState.isDrillInSession(drill.drill);
     
     if (isInSession) {
+      // Find the EditableDrillModel for this drill
+      final editableDrill = appState.editableSessionDrills.firstWhere(
+        (ed) => ed.drill.id == drill.drill.id,
+        orElse: () => EditableDrillModel(
+          drill: drill.drill,
+          setsDone: 0,
+          totalSets: drill.totalSets,
+          totalReps: drill.totalReps,
+          totalDuration: drill.totalDuration,
+          isCompleted: false,
+        ),
+      );
+      
       // Navigate to EditDrillView for session drills
       Navigator.push(
         context,
         MaterialPageRoute(
           builder: (context) => EditDrillView(
-            drill: drill,
+            editableDrill: editableDrill,
             onSave: () {
               // Optional: Add any additional logic when drill is saved
               ScaffoldMessenger.of(context).showSnackBar(
-                SnackBar(content: Text('${drill.title} updated in session')),
+                SnackBar(content: Text('${drill.drill.title} updated in session')),
               );
             },
           ),
@@ -478,12 +645,12 @@ class _SessionGeneratorEditorPageState extends State<SessionGeneratorEditorPage>
         context,
         MaterialPageRoute(
           builder: (context) => DrillDetailView(
-            drill: drill,
+            drill: drill.drill,
             isInSession: isInSession,
             onAddToSession: () {
-              appState.addDrillToSession(drill);
+              appState.addDrillToSession(drill.drill);
               ScaffoldMessenger.of(context).showSnackBar(
-                SnackBar(content: Text('${drill.title} added to session')),
+                SnackBar(content: Text('${drill.drill.title} added to session')),
               );
               Navigator.pop(context);
             },
