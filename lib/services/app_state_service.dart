@@ -131,6 +131,9 @@ class AppStateService extends ChangeNotifier {
   int _currentStreak = 0;
   int get currentStreak => _currentStreak;
   
+  int _previousStreak = 0;
+  int get previousStreak => _previousStreak;
+  
   int _highestStreak = 0;
   int get highestStreak => _highestStreak;
   
@@ -146,7 +149,6 @@ class AppStateService extends ChangeNotifier {
 
   // Sync timers for reactive syncing
   Timer? _sessionDrillsSyncTimer;
-  Timer? _progressHistorySyncTimer;
   Timer? _completedSessionSyncTimer;
   Timer? _drillGroupsSyncTimer;
   Timer? _preferencesSyncTimer;
@@ -158,13 +160,8 @@ class AppStateService extends ChangeNotifier {
   void addCompletedSession(CompletedSession session) {
     _completedSessions.add(session);
     
-    // Update progress tracking
-    if (session.totalCompletedDrills == session.totalDrills) {
-      _countOfFullyCompletedSessions += 1;
-    }
-    
-    // Update streak logic (simplified - you can enhance this)
-    _updateStreak();
+    // All progress tracking (including completed sessions count) is now handled by backend
+    // No need to calculate locally anymore
     
     if (kDebugMode) {
       print('✅ CompletedSession saved!');
@@ -172,50 +169,20 @@ class AppStateService extends ChangeNotifier {
       print('  Drills: ${session.drills.length}');
       print('  Total Completed: ${session.totalCompletedDrills}');
       print('  Total Drills: ${session.totalDrills}');
-      print('  Current Streak: $_currentStreak');
-      print('  Highest Streak: $_highestStreak');
-      print('  Completed Sessions: $_countOfFullyCompletedSessions');
+      print('  Previous Streak: $_previousStreak (from backend)');
+      print('  Current Streak: $_currentStreak (from backend)');
+      print('  Highest Streak: $_highestStreak (from backend)');
+      print('  Completed Sessions: $_countOfFullyCompletedSessions (from backend)');
     }
     
     // Schedule syncs
     _scheduleCompletedSessionSync(session);
-    _scheduleProgressHistorySync();
+    
+    // Refresh progress history from backend after session completion
+    // This ensures we get the latest streaks and completed sessions count
+    refreshProgressHistoryFromBackend();
     
     notifyListeners();
-  }
-
-  // Update streak based on completed sessions
-  void _updateStreak() {
-    final today = DateTime.now();
-    final yesterday = today.subtract(const Duration(days: 1));
-    
-    // Check if we have sessions today and yesterday
-    final hasSessionToday = _completedSessions.any((s) => 
-      s.date.year == today.year && 
-      s.date.month == today.month && 
-      s.date.day == today.day
-    );
-    
-    final hasSessionYesterday = _completedSessions.any((s) => 
-      s.date.year == yesterday.year && 
-      s.date.month == yesterday.month && 
-      s.date.day == yesterday.day
-    );
-    
-    if (hasSessionToday) {
-      if (hasSessionYesterday) {
-        _currentStreak += 1;
-      } else {
-        _currentStreak = 1;
-      }
-    } else {
-      _currentStreak = 0;
-    }
-    
-    // Update highest streak
-    if (_currentStreak > _highestStreak) {
-      _highestStreak = _currentStreak;
-    }
   }
 
   // Schedule completed session sync
@@ -227,18 +194,6 @@ class AppStateService extends ChangeNotifier {
         drills: session.drills,
         totalCompleted: session.totalCompletedDrills,
         total: session.totalDrills,
-      );
-    });
-  }
-
-  // Schedule progress history sync
-  void _scheduleProgressHistorySync() {
-    _progressHistorySyncTimer?.cancel();
-    _progressHistorySyncTimer = Timer(_progressSyncDebounce, () async {
-      await _progressSyncService.syncProgressHistory(
-        currentStreak: _currentStreak,
-        highestStreak: _highestStreak,
-        completedSessionsCount: _countOfFullyCompletedSessions,
       );
     });
   }
@@ -333,6 +288,7 @@ class AppStateService extends ChangeNotifier {
         print('   - Completed sessions: ${_completedSessions.length}');
         print('   - Saved drill groups: ${_savedDrillGroups.length}');
         print('   - Liked drills: ${_likedDrills.length}');
+        print('   - Previous streak: $_previousStreak');
         print('   - Current streak: $_currentStreak');
         print('   - Highest streak: $_highestStreak');
         print('   - Completed sessions count: $_countOfFullyCompletedSessions}');
@@ -371,6 +327,48 @@ class AppStateService extends ChangeNotifier {
     notifyListeners();
   }
 
+  /// Refresh progress history from backend (includes streaks and completed sessions count)
+  Future<void> refreshProgressHistoryFromBackend() async {
+    if (AppConfig.useTestData) {
+      if (kDebugMode) {
+        print('ℹ️ Skipping progress history refresh - using test data');
+      }
+      return;
+    }
+    
+    try {
+      if (kDebugMode) {
+        print('🔄 Refreshing progress history from backend...');
+      }
+      
+      final progressHistory = await _progressSyncService.updateProgressHistory();
+      if (progressHistory != null) {
+        _currentStreak = progressHistory['currentStreak'] ?? 0;
+        _previousStreak = progressHistory['previousStreak'] ?? 0;
+        _highestStreak = progressHistory['highestStreak'] ?? 0;
+        _countOfFullyCompletedSessions = progressHistory['completedSessionsCount'] ?? 0;
+        
+        if (kDebugMode) {
+          print('✅ Progress history refreshed from backend:');
+          print('   - Current Streak: $_currentStreak');
+          print('   - Previous Streak: $_previousStreak');
+          print('   - Highest Streak: $_highestStreak');
+          print('   - Completed Sessions Count: $_countOfFullyCompletedSessions');
+        }
+      } else {
+        if (kDebugMode) {
+          print('⚠️ No progress history data returned from backend');
+        }
+      }
+      
+      notifyListeners();
+    } catch (e) {
+      if (kDebugMode) {
+        print('❌ Error refreshing progress history: $e');
+      }
+    }
+  }
+
   /// Clear user data (mirrors Swift clearUserData)
   void clearUserData() {
     if (kDebugMode) {
@@ -381,6 +379,7 @@ class AppStateService extends ChangeNotifier {
     _sessionDrills.clear();
     _completedSessions.clear();
     _currentStreak = 0;
+    _previousStreak = 0;
     _highestStreak = 0;
     _countOfFullyCompletedSessions = 0;
     _savedDrillGroups.clear();
@@ -388,7 +387,6 @@ class AppStateService extends ChangeNotifier {
     
     // Cancel sync timers
     _sessionDrillsSyncTimer?.cancel();
-    _progressHistorySyncTimer?.cancel();
     _completedSessionSyncTimer?.cancel();
     _drillGroupsSyncTimer?.cancel();
     
@@ -419,25 +417,34 @@ class AppStateService extends ChangeNotifier {
       _completedSessions.addAll(completedSessions);
       print('✅ [PROGRESS] Updated local completedSessions list: ${_completedSessions.length} sessions');
       
-      // Load progress history
+      // Load progress history (streaks calculated by backend)
       print('🔄 [PROGRESS] Starting to fetch progress history from backend...');
-      final progressHistory = await _progressSyncService.fetchProgressHistory();
+      final progressHistory = await _progressSyncService.updateProgressHistory();
       if (progressHistory != null) {
+        // All streak data comes from backend calculation
         _currentStreak = progressHistory['currentStreak'] ?? 0;
+        _previousStreak = progressHistory['previousStreak'] ?? 0;
         _highestStreak = progressHistory['highestStreak'] ?? 0;
         _countOfFullyCompletedSessions = progressHistory['completedSessionsCount'] ?? 0;
         
-        print('📊 [PROGRESS] Progress history loaded:');
+        print('📊 [PROGRESS] Progress history loaded from backend:');
         print('   - Current Streak: $_currentStreak');
+        print('   - Previous Streak: $_previousStreak');
         print('   - Highest Streak: $_highestStreak');
         print('   - Completed Sessions Count: $_countOfFullyCompletedSessions');
       } else {
         print('⚠️ [PROGRESS] No progress history returned from backend');
+        // Reset streak data if backend doesn't return any
+        _currentStreak = 0;
+        _previousStreak = 0;
+        _highestStreak = 0;
+        _countOfFullyCompletedSessions = 0;
       }
       
       if (kDebugMode) {
         print('✅ Loaded progress data from backend:');
         print('   Completed Sessions: ${_completedSessions.length}');
+        print('   Previous Streak: $_previousStreak');
         print('   Current Streak: $_currentStreak');
         print('   Highest Streak: $_highestStreak');
         print('   Completed Sessions Count: $_countOfFullyCompletedSessions');
@@ -448,6 +455,11 @@ class AppStateService extends ChangeNotifier {
         print('Error type: ${e.runtimeType}');
         print('Error description: $e');
       }
+      // Reset streak data on error
+      _currentStreak = 0;
+      _previousStreak = 0;
+      _highestStreak = 0;
+      _countOfFullyCompletedSessions = 0;
     }
   }
 
@@ -1326,12 +1338,12 @@ class AppStateService extends ChangeNotifier {
     _likedDrills.clear();
     _completedSessions.clear();
     _currentStreak = 0;
+    _previousStreak = 0;
     _highestStreak = 0;
     _countOfFullyCompletedSessions = 0;
     
     // Cancel sync timers
     _sessionDrillsSyncTimer?.cancel();
-    _progressHistorySyncTimer?.cancel();
     _completedSessionSyncTimer?.cancel();
     _drillGroupsSyncTimer?.cancel();
     _preferencesSyncTimer?.cancel();

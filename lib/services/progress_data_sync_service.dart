@@ -158,52 +158,9 @@ class ProgressDataSyncService {
     }
   }
 
-  // MARK: - Progress History Sync
 
-  /// Sync progress history to the backend
-  Future<bool> syncProgressHistory({
-    required int currentStreak,
-    required int highestStreak,
-    required int completedSessionsCount,
-  }) async {
-    try {
-      final progressData = {
-        'current_streak': currentStreak,
-        'highest_streak': highestStreak,
-        'completed_sessions_count': completedSessionsCount,
-      };
-
-      if (kDebugMode) {
-        print('📤 Syncing progress history: ${jsonEncode(progressData)}');
-      }
-
-      final response = await _apiService.put(
-        '/api/progress_history/',
-        body: progressData,
-        requiresAuth: true,
-      );
-
-      if (response.isSuccess) {
-        if (kDebugMode) {
-          print('✅ Successfully synced progress history');
-        }
-        return true;
-      } else {
-        if (kDebugMode) {
-          print('❌ Failed to sync progress history: ${response.statusCode} ${response.error}');
-        }
-        return false;
-      }
-    } catch (e) {
-      if (kDebugMode) {
-        print('❌ Error syncing progress history: $e');
-      }
-      return false;
-    }
-  }
-
-  /// Fetch progress history from the backend
-  Future<Map<String, dynamic>?> fetchProgressHistory() async {
+  /// Update and fetch progress history from the backend
+  Future<Map<String, dynamic>?> updateProgressHistory() async {
     try {
       if (kDebugMode) {
         print('📥 Fetching progress history from backend');
@@ -217,6 +174,7 @@ class ProgressDataSyncService {
       if (response.isSuccess && response.data != null) {
         final progressData = {
           'currentStreak': response.data!['current_streak'] ?? 0,
+          'previousStreak': response.data!['previous_streak'] ?? 0,
           'highestStreak': response.data!['highest_streak'] ?? 0,
           'completedSessionsCount': response.data!['completed_sessions_count'] ?? 0,
         };
