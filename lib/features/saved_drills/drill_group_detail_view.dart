@@ -381,37 +381,6 @@ class _DrillGroupDetailViewState extends State<DrillGroupDetailView> {
                 ? () => _removeDrillFromGroup(drill, group, appState)
                 : null,
           ),
-          
-          // Liked drill overlay for liked drills group
-          if (group.isLikedDrillsGroup)
-            Positioned(
-              top: 8,
-              right: 8,
-              child: GestureDetector(
-                onTap: () {
-                  appState.toggleLikedDrill(drill);
-                },
-                child: Container(
-                  padding: const EdgeInsets.all(6),
-                  decoration: BoxDecoration(
-                    color: Colors.white,
-                    borderRadius: BorderRadius.circular(8),
-                    boxShadow: [
-                      BoxShadow(
-                        color: Colors.black.withOpacity(0.1),
-                        blurRadius: 4,
-                        offset: const Offset(0, 2),
-                      ),
-                    ],
-                  ),
-                  child: Icon(
-                    Icons.favorite,
-                    color: AppTheme.secondaryRed,
-                    size: 16,
-                  ),
-                ),
-              ),
-            ),
         ],
       ),
     );

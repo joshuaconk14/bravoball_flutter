@@ -354,7 +354,7 @@ class _SessionGeneratorEditorPageState extends State<SessionGeneratorEditorPage>
               color: AppTheme.primaryLightBlue.withOpacity(0.15),
               borderRadius: BorderRadius.circular(20),
             ),
-            child: const Icon(Icons.folder, size: 48, color: AppTheme.primaryLightBlue),
+            child: const Icon(Icons.fitness_center, size: 48, color: AppTheme.primaryLightBlue),
           ),
           const SizedBox(height: 18),
           const Text(
@@ -561,6 +561,7 @@ class _SessionGeneratorEditorPageState extends State<SessionGeneratorEditorPage>
                   isDraggable: !appState.isLoadingPreferences,
                   onTap: appState.isLoadingPreferences ? null : () => _navigateToDrillDetail(context, editableDrill, appState),
                   onDelete: appState.isLoadingPreferences ? null : () => appState.removeDrillFromSession(editableDrill.drill),
+                  showOverlayIcons: false,
                 ),
               );
             },

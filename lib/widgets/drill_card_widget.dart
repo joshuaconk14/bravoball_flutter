@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import '../models/drill_model.dart';
 import '../constants/app_theme.dart'; // Fixed import path for AppTheme
+import 'package:provider/provider.dart'; // Added for Provider
+import '../services/app_state_service.dart'; // Added for AppStateService
 
 class DraggableDrillCard extends StatelessWidget {
   final DrillModel drill;
@@ -10,6 +12,7 @@ class DraggableDrillCard extends StatelessWidget {
   final VoidCallback? onTap;
   final VoidCallback? onDelete;
   final bool isDraggable;
+  final bool showOverlayIcons;
 
   const DraggableDrillCard({
     Key? key,
@@ -20,6 +23,7 @@ class DraggableDrillCard extends StatelessWidget {
     this.onTap,
     this.onDelete,
     this.isDraggable = false,
+    this.showOverlayIcons = true,
   }) : super(key: key);
 
   @override
@@ -139,10 +143,57 @@ class DraggableDrillCard extends StatelessWidget {
                         ),
                         visualDensity: VisualDensity.compact,
                       ),
-                    Icon(
-                      Icons.arrow_forward_ios,
-                      color: Colors.grey.shade400,
-                      size: 16,
+                    // Replace chevron with ellipsis button
+                    PopupMenuButton<String>(
+                      icon: Icon(Icons.more_vert, color: Colors.grey.shade600, size: 20),
+                      onSelected: (value) async {
+                        if (value == 'like') {
+                          final appState = Provider.of<AppStateService>(context, listen: false);
+                          appState.toggleLikedDrill(drill);
+                        } else if (value == 'session') {
+                          final appState = Provider.of<AppStateService>(context, listen: false);
+                          if (appState.isDrillInSession(drill)) {
+                            appState.removeDrillFromSession(drill);
+                          } else {
+                            appState.addDrillToSession(drill);
+                          }
+                        }
+                      },
+                      itemBuilder: (context) {
+                        final appState = Provider.of<AppStateService>(context, listen: false);
+                        final isLiked = appState.isDrillLiked(drill);
+                        final isInSession = appState.isDrillInSession(drill);
+                        return [
+                          PopupMenuItem(
+                            value: 'like',
+                            child: Row(
+                              children: [
+                                Icon(
+                                  isLiked ? Icons.favorite : Icons.favorite_border,
+                                  color: isLiked ? Colors.red : Colors.grey,
+                                  size: 20,
+                                ),
+                                const SizedBox(width: 8),
+                                Text(isLiked ? 'Unlike' : 'Like'),
+                              ],
+                            ),
+                          ),
+                          PopupMenuItem(
+                            value: 'session',
+                            child: Row(
+                              children: [
+                                Icon(
+                                  isInSession ? Icons.fitness_center : Icons.add_circle_outline,
+                                  color: isInSession ? Colors.blue : Colors.grey,
+                                  size: 20,
+                                ),
+                                const SizedBox(width: 8),
+                                Text(isInSession ? 'Remove from Session' : 'Add to Session'),
+                              ],
+                            ),
+                          ),
+                        ];
+                      },
                     ),
                   ],
                 ),
@@ -153,15 +204,62 @@ class DraggableDrillCard extends StatelessWidget {
       ),
     );
 
+    // Add like and session icons in the top right corner of the card
+    final cardWithIcons = showOverlayIcons
+        ? Stack(
+            children: [
+              cardContent,
+              Positioned(
+                top: 8,
+                right: 8,
+                child: Builder(
+                  builder: (context) {
+                    final appState = Provider.of<AppStateService>(context, listen: false);
+                    final isLiked = appState.isDrillLiked(drill);
+                    final isInSession = appState.isDrillInSession(drill);
+                    if (!isLiked && !isInSession) return const SizedBox.shrink();
+                    return Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 4),
+                      decoration: BoxDecoration(
+                        color: Colors.white,
+                        borderRadius: BorderRadius.circular(8),
+                        boxShadow: [
+                          BoxShadow(
+                            color: Colors.black.withOpacity(0.1),
+                            blurRadius: 4,
+                            offset: const Offset(0, 2),
+                          ),
+                        ],
+                      ),
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          if (isInSession)
+                            Icon(Icons.fitness_center, color: Colors.blue, size: 18),
+                          if (isLiked)
+                            Padding(
+                              padding: const EdgeInsets.only(left: 4),
+                              child: Icon(Icons.favorite, color: Colors.red, size: 18),
+                          ),
+                        ],
+                      ),
+                    );
+                  },
+                ),
+              ),
+            ],
+          )
+        : cardContent;
+
     // If draggable, wrap with ReorderableDragStartListener
     if (isDraggable) {
       return ReorderableDragStartListener(
         index: 0, // This will be overridden by the ReorderableListView
-        child: cardContent,
+        child: cardWithIcons,
       );
     }
 
-    return cardContent;
+    return cardWithIcons;
   }
 
   String _getSkillIconPath(String skill) {

@@ -233,7 +233,7 @@ class _SessionGeneratorHomeFieldViewState extends State<SessionGeneratorHomeFiel
       child: SizedBox(
         width: 180, // Fixed width to match Bravo + backpack width
         child: BravoButton(
-          text: sessionInProgress ? 'Continue Training' : (hasSessionDrills ? 'Begin Training' : 'Create Session'),
+          text: 'Begin Training',
           onPressed: hasSessionDrills ? () {
             if (!appState.sessionInProgress) {
               appState.startSession();
