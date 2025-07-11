@@ -71,6 +71,10 @@ class AppStateService extends ChangeNotifier {
   bool _sessionInProgress = false;
   bool get sessionInProgress => _sessionInProgress;
   
+  // ✅ NEW: Track if current session has been completed to prevent duplicates
+  bool _currentSessionCompleted = false;
+  bool get currentSessionCompleted => _currentSessionCompleted;
+  
   // Saved drill groups
   final List<DrillGroup> _savedDrillGroups = [];
   List<DrillGroup> get savedDrillGroups => List.unmodifiable(_savedDrillGroups);
@@ -107,6 +111,10 @@ class AppStateService extends ChangeNotifier {
   
   bool _isLoadingMore = false;
   bool get isLoadingMore => _isLoadingMore;
+
+  // ✅ NEW: Loading state for preference updates
+  bool _isLoadingPreferences = false;
+  bool get isLoadingPreferences => _isLoadingPreferences;
   
   // Search results
   List<DrillModel> _searchResults = [];
@@ -123,8 +131,27 @@ class AppStateService extends ChangeNotifier {
   // Completed sessions
   final List<CompletedSession> _completedSessions = [];
   List<CompletedSession> get completedSessions {
-    print('📊 [GETTER] Accessing completedSessions: ${_completedSessions.length} sessions');
     return List.unmodifiable(_completedSessions);
+  }
+
+  /// Check if there are any sessions completed today
+  bool get hasSessionsCompletedToday {
+    final today = DateTime.now();
+    return _completedSessions.any((session) => 
+      session.date.year == today.year &&
+      session.date.month == today.month &&
+      session.date.day == today.day
+    );
+  }
+
+  /// Get the number of sessions completed today
+  int get sessionsCompletedToday {
+    final today = DateTime.now();
+    return _completedSessions.where((session) => 
+      session.date.year == today.year &&
+      session.date.month == today.month &&
+      session.date.day == today.day
+    ).length;
   }
 
   // Progress tracking (mirrors Swift MainAppModel)
@@ -384,6 +411,10 @@ class AppStateService extends ChangeNotifier {
     _countOfFullyCompletedSessions = 0;
     _savedDrillGroups.clear();
     _likedDrills.clear();
+    
+    // Reset session state
+    _sessionInProgress = false;
+    _currentSessionCompleted = false; // ✅ Reset completion flag
     
     // Cancel sync timers
     _sessionDrillsSyncTimer?.cancel();
@@ -765,6 +796,12 @@ class AppStateService extends ChangeNotifier {
     _isLoadingMore = loading;
     if (loading) _clearError();
   }
+
+  // ✅ NEW: Set preference loading state
+  void _setLoadingPreferences(bool loading) {
+    _isLoadingPreferences = loading;
+    notifyListeners();
+  }
   
   void _setError(String error) {
     _lastError = error;
@@ -825,6 +862,7 @@ class AppStateService extends ChangeNotifier {
     clearSession();
     // Reset any progress tracking
     _sessionInProgress = false;
+    _currentSessionCompleted = false; // ✅ Reset completion flag
     notifyListeners();
   }
   
@@ -971,6 +1009,7 @@ class AppStateService extends ChangeNotifier {
   // MARK: - Existing Filter Methods
   
   void updateTimeFilter(String? time) {
+    _setLoadingPreferences(true);
     _preferences.selectedTime = time;
     if (_autoGenerateSession) {
       _autoGenerateSessionDrills();
@@ -982,6 +1021,7 @@ class AppStateService extends ChangeNotifier {
   }
   
   void updateEquipmentFilter(Set<String> equipment) {
+    _setLoadingPreferences(true);
     _preferences.selectedEquipment = equipment;
     if (_autoGenerateSession) {
       _autoGenerateSessionDrills();
@@ -993,6 +1033,7 @@ class AppStateService extends ChangeNotifier {
   }
   
   void updateTrainingStyleFilter(String? style) {
+    _setLoadingPreferences(true);
     _preferences.selectedTrainingStyle = style;
     if (_autoGenerateSession) {
       _autoGenerateSessionDrills();
@@ -1004,6 +1045,7 @@ class AppStateService extends ChangeNotifier {
   }
   
   void updateLocationFilter(String? location) {
+    _setLoadingPreferences(true);
     _preferences.selectedLocation = location;
     if (_autoGenerateSession) {
       _autoGenerateSessionDrills();
@@ -1015,6 +1057,7 @@ class AppStateService extends ChangeNotifier {
   }
   
   void updateDifficultyFilter(String? difficulty) {
+    _setLoadingPreferences(true);
     _preferences.selectedDifficulty = difficulty;
     if (_autoGenerateSession) {
       _autoGenerateSessionDrills();
@@ -1026,6 +1069,7 @@ class AppStateService extends ChangeNotifier {
   }
   
   void updateSkillsFilter(Set<String> skills) {
+    _setLoadingPreferences(true);
     _preferences.selectedSkills = skills;
     // Don't auto-generate session drills when skills change
     // This preserves the ordered session drills from backend
@@ -1049,6 +1093,15 @@ class AppStateService extends ChangeNotifier {
     _editableSessionDrills.addAll(drills);
     _sessionDrills.addAll(drills.map((ed) => ed.drill));
     
+    // ✅ Check if session should remain completed after drill updates
+    // Only reset completion flag if there are incomplete drills
+    if (drills.isNotEmpty && drills.any((drill) => !drill.isCompleted)) {
+      _currentSessionCompleted = false;
+    }
+    
+    // ✅ Stop loading preferences when drills are updated
+    _setLoadingPreferences(false);
+    
     notifyListeners();
   }
   
@@ -1067,6 +1120,9 @@ class AppStateService extends ChangeNotifier {
         isCompleted: false,
       );
       _editableSessionDrills.add(editableDrill);
+      
+      // ✅ Reset completion flag when adding new drills
+      _currentSessionCompleted = false;
       
       notifyListeners();
       _scheduleSessionDrillsSync();
@@ -1098,6 +1154,7 @@ class AppStateService extends ChangeNotifier {
     _sessionDrills.clear();
     _editableSessionDrills.clear();
     _sessionInProgress = false;
+    _currentSessionCompleted = false; // ✅ Reset completion flag
     notifyListeners();
     _scheduleSessionDrillsSync();
   }
@@ -1153,6 +1210,14 @@ class AppStateService extends ChangeNotifier {
         isCompleted: isCompleted,
       );
       
+      // ✅ AUTO-COMPLETE SESSION: Check if all drills are now completed
+      if (isCompleted == true && canCompleteSession) {
+        if (kDebugMode) {
+          print('🎉 All drills completed! Auto-completing session...');
+        }
+        _completeSessionOnce();
+      }
+      
       notifyListeners();
       _scheduleSessionDrillsSync();
     }
@@ -1161,15 +1226,33 @@ class AppStateService extends ChangeNotifier {
   // Session progress methods
   void startSession() {
     _sessionInProgress = true;
+    _currentSessionCompleted = false; // ✅ Reset completion flag when starting
     notifyListeners();
   }
   
+  // ✅ UPDATED: Prevent duplicate session completions
   void completeSession() {
+    if (_currentSessionCompleted) {
+      if (kDebugMode) {
+        print('⚠️ Session already completed, ignoring duplicate completion request');
+      }
+      return;
+    }
+    _completeSessionOnce();
+  }
+  
+  // ✅ NEW: Private method that actually completes the session once
+  void _completeSessionOnce() {
+    if (_currentSessionCompleted) return; // Double-check protection
+    
     _sessionInProgress = false;
+    _currentSessionCompleted = true; // ✅ Mark as completed
+    
     // Mark all drills as completed
     for (int i = 0; i < _editableSessionDrills.length; i++) {
       _editableSessionDrills[i] = _editableSessionDrills[i].copyWith(isCompleted: true);
     }
+    
     // Save completed session
     final completedSession = CompletedSession(
       date: DateTime.now(),
@@ -1178,7 +1261,11 @@ class AppStateService extends ChangeNotifier {
       totalDrills: _editableSessionDrills.length,
     );
     addCompletedSession(completedSession);
-    print('Session completed and added to completedSessions.');
+    
+    if (kDebugMode) {
+      print('✅ Session completed and added to completedSessions (once only).');
+    }
+    
     notifyListeners();
   }
   
@@ -1208,6 +1295,11 @@ class AppStateService extends ChangeNotifier {
   bool get isSessionComplete {
     if (_editableSessionDrills.isEmpty) return false;
     return _editableSessionDrills.every((drill) => drill.isCompleted);
+  }
+  
+  // ✅ NEW: Check if current session can be completed (not already completed)
+  bool get canCompleteSession {
+    return isSessionComplete && !_currentSessionCompleted;
   }
   
   void toggleAutoGenerate(bool value) {
@@ -1511,6 +1603,147 @@ class AppStateService extends ChangeNotifier {
         difficulty: _preferences.selectedDifficulty,
         skills: _preferences.selectedSkills,
       );
+      
+      // ✅ Set loading to false after sync completes
+      // Note: updateOrderedSessionDrillsThroughPreferences will also set loading to false
+      // if new drills are received, but we set it here as a fallback
+      _setLoadingPreferences(false);
     });
+  }
+
+  // ✅ DEBUG METHODS FOR STREAK TESTING
+  /// Reset all streak values to 0 (for debugging/testing)
+  void resetStreak() {
+    _currentStreak = 0;
+    _previousStreak = 0;
+    _highestStreak = 0;
+    _countOfFullyCompletedSessions = 0;
+    
+    if (kDebugMode) {
+      print('🧪 [DEBUG] Streaks reset: current=0, previous=0, highest=0, sessions=0');
+    }
+    
+    notifyListeners();
+  }
+
+  /// Increment current streak by 1 (for debugging/testing)
+  void incrementStreak() {
+    _previousStreak = _currentStreak;
+    _currentStreak += 1;
+    _highestStreak = _currentStreak > _highestStreak ? _currentStreak : _highestStreak;
+    
+    if (kDebugMode) {
+      print('🧪 [DEBUG] Streak incremented: current=$_currentStreak, previous=$_previousStreak, highest=$_highestStreak');
+    }
+    
+    notifyListeners();
+  }
+
+  /// Add multiple completed sessions for testing (for debugging/testing)
+  void addCompletedSessions(int count) {
+    final now = DateTime.now();
+    
+    for (int i = 0; i < count; i++) {
+      // Create sessions on consecutive past days
+      final sessionDate = now.subtract(Duration(days: count - i));
+      
+      // Create a test completed session
+      final testSession = CompletedSession(
+        date: sessionDate,
+        drills: [
+          EditableDrillModel(
+            drill: _mockDrills.first, // Use first mock drill
+            setsDone: 1,
+            totalSets: 1,
+            totalReps: 10,
+            totalDuration: 5,
+            isCompleted: true,
+          ),
+        ],
+        totalCompletedDrills: 1,
+        totalDrills: 1,
+      );
+      
+      _completedSessions.add(testSession);
+    }
+    
+    // Update completed sessions count
+    _countOfFullyCompletedSessions = _completedSessions.length;
+    
+    // Recalculate streaks based on new sessions
+    _recalculateStreaksFromSessions();
+    
+    if (kDebugMode) {
+      print('🧪 [DEBUG] Added $count completed sessions');
+      print('   - Total sessions: $_countOfFullyCompletedSessions');
+      print('   - Current streak: $_currentStreak');
+      print('   - Highest streak: $_highestStreak');
+    }
+    
+    notifyListeners();
+  }
+
+  /// Recalculate streaks based on completed sessions (helper method)
+  void _recalculateStreaksFromSessions() {
+    if (_completedSessions.isEmpty) {
+      _currentStreak = 0;
+      _previousStreak = 0;
+      _highestStreak = 0;
+      return;
+    }
+
+    // Sort sessions by date
+    final sortedSessions = _completedSessions.toList()
+      ..sort((a, b) => a.date.compareTo(b.date));
+
+    // Calculate current streak (consecutive days ending at today or yesterday)
+    final today = DateTime.now();
+    final todayDate = DateTime(today.year, today.month, today.day);
+    
+    int currentStreak = 0;
+    int maxStreak = 0;
+    int tempStreak = 1;
+    
+    // Group sessions by date (in case multiple sessions per day)
+    final sessionDates = <DateTime>{};
+    for (final session in sortedSessions) {
+      final sessionDate = DateTime(session.date.year, session.date.month, session.date.day);
+      sessionDates.add(sessionDate);
+    }
+    
+    final sortedDates = sessionDates.toList()..sort();
+    
+    // Calculate max streak
+    for (int i = 0; i < sortedDates.length; i++) {
+      if (i > 0) {
+        final daysDifference = sortedDates[i].difference(sortedDates[i - 1]).inDays;
+        if (daysDifference == 1) {
+          tempStreak++;
+        } else {
+          tempStreak = 1;
+        }
+      }
+      maxStreak = tempStreak > maxStreak ? tempStreak : maxStreak;
+    }
+    
+    // Calculate current streak (from today backwards)
+    DateTime checkDate = todayDate;
+    while (sessionDates.contains(checkDate)) {
+      currentStreak++;
+      checkDate = checkDate.subtract(const Duration(days: 1));
+    }
+    
+    // If no session today, check if there was one yesterday
+    if (currentStreak == 0 && sessionDates.contains(todayDate.subtract(const Duration(days: 1)))) {
+      checkDate = todayDate.subtract(const Duration(days: 1));
+      while (sessionDates.contains(checkDate)) {
+        currentStreak++;
+        checkDate = checkDate.subtract(const Duration(days: 1));
+      }
+    }
+    
+    _previousStreak = _currentStreak;
+    _currentStreak = currentStreak;
+    _highestStreak = maxStreak > _highestStreak ? maxStreak : _highestStreak;
   }
 } 

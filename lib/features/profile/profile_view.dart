@@ -8,6 +8,10 @@ import '../../services/user_manager_service.dart';
 import '../../services/login_service.dart';
 import '../debug/debug_settings_view.dart';
 import '../onboarding/onboarding_flow.dart';
+import 'edit_details_view.dart';
+import 'change_password_view.dart';
+import 'privacy_policy_view.dart';
+import 'terms_of_service_view.dart';
 
 class ProfileView extends StatefulWidget {
   const ProfileView({Key? key}) : super(key: key);
@@ -32,7 +36,7 @@ class _ProfileViewState extends State<ProfileView> {
                   // Header Section
                   _buildHeader(userManager),
                   
-                  const SizedBox(height: 32),
+                  const SizedBox(height: 20), // Reduced from 32
                   
                   // Account Section
                   _buildSection(
@@ -56,7 +60,7 @@ class _ProfileViewState extends State<ProfileView> {
                     ],
                   ),
                   
-                  const SizedBox(height: 24),
+                  const SizedBox(height: 16), // Reduced from 24
                   
                   // Support Section
                   _buildSection(
@@ -87,7 +91,7 @@ class _ProfileViewState extends State<ProfileView> {
                   
                   // Debug Section (only show in debug mode)
                   if (AppConfig.shouldShowDebugMenu) ...[
-                    const SizedBox(height: 24),
+                    const SizedBox(height: 16), // Reduced from 24
                     _buildSection(
                       title: 'Developer',
                       items: [
@@ -107,7 +111,7 @@ class _ProfileViewState extends State<ProfileView> {
                     ),
                   ],
                   
-                  const SizedBox(height: 32),
+                  const SizedBox(height: 20), // Reduced from 32
                   
                   // Version Info
                   Text(
@@ -117,12 +121,12 @@ class _ProfileViewState extends State<ProfileView> {
                     ),
                   ),
                   
-                  const SizedBox(height: 32),
+                  const SizedBox(height: 20), // Reduced from 32
                   
                   // Action Buttons
                   _buildActionButtons(),
                   
-                  const SizedBox(height: 32),
+                  const SizedBox(height: 20), // Reduced from 32
                 ],
               ),
             ),
@@ -135,27 +139,27 @@ class _ProfileViewState extends State<ProfileView> {
   Widget _buildHeader(UserManagerService userManager) {
     return Container(
       width: double.infinity,
-      padding: const EdgeInsets.all(32),
+      padding: const EdgeInsets.all(20), // Reduced from 32
       child: Column(
         children: [
-          const SizedBox(height: 20),
+          const SizedBox(height: 12), // Reduced from 20
           
           // Profile Avatar
           Container(
-            width: 80,
-            height: 80,
+            width: 64, // Reduced from 80
+            height: 64, // Reduced from 80
             decoration: BoxDecoration(
               color: AppTheme.secondaryBlue,
               shape: BoxShape.circle,
             ),
             child: const Icon(
               Icons.person,
-              size: 48,
+              size: 36, // Reduced from 48
               color: Colors.white,
             ),
           ),
           
-          const SizedBox(height: 16),
+          const SizedBox(height: 12), // Reduced from 16
           
           // User Email
           Text(
@@ -193,13 +197,13 @@ class _ProfileViewState extends State<ProfileView> {
     required List<Widget> items,
   }) {
     return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 20),
+      padding: const EdgeInsets.symmetric(horizontal: 16), // Reduced from 20
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           // Section Title
           Padding(
-            padding: const EdgeInsets.only(left: 4, bottom: 12),
+            padding: const EdgeInsets.only(left: 4, bottom: 8), // Reduced bottom from 12
             child: Text(
               title,
               style: AppTheme.titleMedium.copyWith(
@@ -258,11 +262,11 @@ class _ProfileViewState extends State<ProfileView> {
         onTap: onTap,
         borderRadius: BorderRadius.circular(12),
         child: Container(
-          padding: const EdgeInsets.all(16),
+          padding: const EdgeInsets.all(12), // Reduced from 16
           child: Row(
             children: [
               Container(
-                padding: const EdgeInsets.all(8),
+                padding: const EdgeInsets.all(6), // Reduced from 8
                 decoration: BoxDecoration(
                   color: AppTheme.primaryYellow.withOpacity(0.1),
                   borderRadius: BorderRadius.circular(8),
@@ -270,11 +274,11 @@ class _ProfileViewState extends State<ProfileView> {
                 child: Icon(
                   icon,
                   color: AppTheme.primaryYellow,
-                  size: 20,
+                  size: 18, // Reduced from 20
                 ),
               ),
               
-              const SizedBox(width: 16),
+              const SizedBox(width: 12), // Reduced from 16
               
               Expanded(
                 child: Text(
@@ -288,7 +292,7 @@ class _ProfileViewState extends State<ProfileView> {
               Icon(
                 Icons.arrow_forward_ios,
                 color: AppTheme.primaryGray,
-                size: 16,
+                size: 14, // Reduced from 16
               ),
             ],
           ),
@@ -309,11 +313,11 @@ class _ProfileViewState extends State<ProfileView> {
         onTap: onTap,
         borderRadius: BorderRadius.circular(12),
         child: Container(
-          padding: const EdgeInsets.all(16),
+          padding: const EdgeInsets.all(12), // Reduced from 16
           child: Row(
             children: [
               Container(
-                padding: const EdgeInsets.all(8),
+                padding: const EdgeInsets.all(6), // Reduced from 8
                 decoration: BoxDecoration(
                   color: Colors.orange.withOpacity(0.1),
                   borderRadius: BorderRadius.circular(8),
@@ -321,11 +325,11 @@ class _ProfileViewState extends State<ProfileView> {
                 child: Icon(
                   icon,
                   color: Colors.orange,
-                  size: 20,
+                  size: 18, // Reduced from 20
                 ),
               ),
               
-              const SizedBox(width: 16),
+              const SizedBox(width: 12), // Reduced from 16
               
               Expanded(
                 child: Column(
@@ -351,7 +355,7 @@ class _ProfileViewState extends State<ProfileView> {
               Icon(
                 Icons.arrow_forward_ios,
                 color: AppTheme.primaryGray,
-                size: 16,
+                size: 14, // Reduced from 16
               ),
             ],
           ),
@@ -364,7 +368,7 @@ class _ProfileViewState extends State<ProfileView> {
     return Consumer<UserManagerService>(
       builder: (context, userManager, child) {
         return Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 20),
+          padding: const EdgeInsets.symmetric(horizontal: 16), // Reduced from 20
           child: Column(
             children: [
               // Logout Button
@@ -375,7 +379,7 @@ class _ProfileViewState extends State<ProfileView> {
                   style: ElevatedButton.styleFrom(
                     backgroundColor: AppTheme.primaryYellow,
                     foregroundColor: Colors.white,
-                    padding: const EdgeInsets.symmetric(vertical: 16),
+                    padding: const EdgeInsets.symmetric(vertical: 14), // Reduced from 16
                     shape: RoundedRectangleBorder(
                       borderRadius: BorderRadius.circular(12),
                     ),
@@ -388,7 +392,7 @@ class _ProfileViewState extends State<ProfileView> {
                 ),
               ),
               
-              const SizedBox(height: 16),
+              const SizedBox(height: 12), // Reduced from 16
               
               // Delete Account Button
               SizedBox(
@@ -398,7 +402,7 @@ class _ProfileViewState extends State<ProfileView> {
                   style: ElevatedButton.styleFrom(
                     backgroundColor: AppTheme.error,
                     foregroundColor: Colors.white,
-                    padding: const EdgeInsets.symmetric(vertical: 16),
+                    padding: const EdgeInsets.symmetric(vertical: 14), // Reduced from 16
                     shape: RoundedRectangleBorder(
                       borderRadius: BorderRadius.circular(12),
                     ),
@@ -419,11 +423,19 @@ class _ProfileViewState extends State<ProfileView> {
 
   // Action Handlers
   void _handleEditDetails() {
-    _showComingSoonSnackBar('Edit Details');
+    Navigator.of(context).push(
+      MaterialPageRoute(
+        builder: (context) => const EditDetailsView(),
+      ),
+    );
   }
 
   void _handleChangePassword() {
-    _showComingSoonSnackBar('Change Password');
+    Navigator.of(context).push(
+      MaterialPageRoute(
+        builder: (context) => const ChangePasswordView(),
+      ),
+    );
   }
 
   void _handleShareApp() {
@@ -444,11 +456,19 @@ class _ProfileViewState extends State<ProfileView> {
   }
 
   void _handlePrivacyPolicy() {
-    _showComingSoonSnackBar('Privacy Policy');
+    Navigator.of(context).push(
+      MaterialPageRoute(
+        builder: (context) => const PrivacyPolicyView(),
+      ),
+    );
   }
 
   void _handleTermsOfService() {
-    _showComingSoonSnackBar('Terms of Service');
+    Navigator.of(context).push(
+      MaterialPageRoute(
+        builder: (context) => const TermsOfServiceView(),
+      ),
+    );
   }
 
   void _handleFollowSocials() {

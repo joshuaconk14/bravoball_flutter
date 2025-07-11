@@ -1,10 +1,12 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:flutter/foundation.dart';
 import 'package:provider/provider.dart';
 import 'dart:async';
 import '../../models/editable_drill_model.dart';
 import '../../services/app_state_service.dart';
 import '../../constants/app_theme.dart';
+import '../../config/app_config.dart';
 import '../../widgets/bravo_button.dart';
 import '../../widgets/drill_video_player.dart';
 import 'drill_detail_view.dart';
@@ -265,10 +267,10 @@ class _DrillFollowAlongViewState extends State<DrillFollowAlongView> {
         Container(
           padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
           decoration: BoxDecoration(
-            color: _getSkillColor(_editableDrill.drill.skill).withOpacity(0.1),
+            color: AppTheme.getSkillColor(_editableDrill.drill.skill).withOpacity(0.1),
             borderRadius: BorderRadius.circular(12),
             border: Border.all(
-              color: _getSkillColor(_editableDrill.drill.skill).withOpacity(0.3),
+              color: AppTheme.getSkillColor(_editableDrill.drill.skill).withOpacity(0.3),
             ),
           ),
           child: Text(
@@ -277,7 +279,7 @@ class _DrillFollowAlongViewState extends State<DrillFollowAlongView> {
               fontFamily: 'Poppins',
               fontWeight: FontWeight.w600,
               fontSize: 11,
-              color: _getSkillColor(_editableDrill.drill.skill),
+              color: AppTheme.getSkillColor(_editableDrill.drill.skill),
             ),
           ),
         ),
@@ -425,7 +427,7 @@ class _DrillFollowAlongViewState extends State<DrillFollowAlongView> {
               
               // Play/Pause button (larger)
               GestureDetector(
-                onTap: (_editableDrill.setsDone < _editableDrill.totalSets && !_showCountdown) ? _togglePlayPause : null,
+                onTap: (_editableDrill.setsDone < _editableDrill.totalSets && (!_showCountdown || AppConfig.debug)) ? _togglePlayPause : null,
                 child: Container(
                   width: 90,
                   height: 90,
@@ -433,7 +435,7 @@ class _DrillFollowAlongViewState extends State<DrillFollowAlongView> {
                     gradient: LinearGradient(
                       begin: Alignment.topLeft,
                       end: Alignment.bottomRight,
-                      colors: (_editableDrill.setsDone < _editableDrill.totalSets && !_showCountdown)
+                      colors: (_editableDrill.setsDone < _editableDrill.totalSets && (!_showCountdown || AppConfig.debug))
                           ? [
                               AppTheme.buttonPrimary,
                               AppTheme.buttonPrimary.withOpacity(0.8),
@@ -453,21 +455,44 @@ class _DrillFollowAlongViewState extends State<DrillFollowAlongView> {
                     ],
                   ),
                   child: Center(
-                    child: _showCountdown
-                        ? Text(
-                            _countdownValue.toString(),
-                            style: const TextStyle(
-                              fontFamily: 'Poppins',
-                              fontWeight: FontWeight.bold,
-                              fontSize: 36,
-                              color: Colors.white,
+                    child: Stack(
+                      alignment: Alignment.center,
+                      children: [
+                        _showCountdown
+                            ? Text(
+                                _countdownValue.toString(),
+                                style: const TextStyle(
+                                  fontFamily: 'Poppins',
+                                  fontWeight: FontWeight.bold,
+                                  fontSize: 36,
+                                  color: Colors.white,
+                                ),
+                              )
+                            : Icon(
+                                _isPlaying ? Icons.pause : Icons.play_arrow,
+                                size: 36,
+                                color: Colors.white,
+                              ),
+                        // Debug mode indicator
+                        if (AppConfig.debug && _showCountdown)
+                          Positioned(
+                            top: 8,
+                            right: 8,
+                            child: Container(
+                              padding: const EdgeInsets.all(2),
+                              decoration: const BoxDecoration(
+                                color: Colors.white,
+                                shape: BoxShape.circle,
+                              ),
+                              child: const Icon(
+                                Icons.bug_report,
+                                size: 12,
+                                color: Colors.purple,
+                              ),
                             ),
-                          )
-                        : Icon(
-                            _isPlaying ? Icons.pause : Icons.play_arrow,
-                            size: 36,
-                            color: Colors.white,
                           ),
+                      ],
+                    ),
                   ),
                 ),
               ),
@@ -609,8 +634,22 @@ class _DrillFollowAlongViewState extends State<DrillFollowAlongView> {
   void _togglePlayPause() {
     if (_editableDrill.setsDone >= _editableDrill.totalSets) return;
     
-    // Prevent interaction during countdown
-    if (_showCountdown) return;
+    // In debug mode, allow skipping countdown by pressing button during countdown
+    if (_showCountdown && AppConfig.debug) {
+      if (kDebugMode) {
+        print('🐛 DEBUG: Skipping countdown');
+      }
+      _countdownTimer?.cancel();
+      setState(() {
+        _showCountdown = false;
+        _isPlaying = true;
+      });
+      _startTimer();
+      return;
+    }
+    
+    // Prevent interaction during countdown (except in debug mode)
+    if (_showCountdown && !AppConfig.debug) return;
     
     if (!_isPlaying) {
       // If timer was paused (not at initial state), resume immediately
@@ -663,16 +702,26 @@ class _DrillFollowAlongViewState extends State<DrillFollowAlongView> {
     // Cancel any existing timer to prevent multiple timers
     _timer?.cancel();
     
-    _timer = Timer.periodic(const Duration(seconds: 1), (timer) {
+    // Use faster timer in debug mode for testing
+    final timerInterval = AppConfig.debug ? const Duration(milliseconds: 100) : const Duration(seconds: 1);
+    final timeDecrement = AppConfig.debug ? 1.0 : 1.0; // In debug mode, decrease by 1 second every 100ms
+    
+    if (AppConfig.debug) {
+      print('🐛 DEBUG: Starting timer with fast mode (100ms intervals)');
+    }
+    
+    _timer = Timer.periodic(timerInterval, (timer) {
       setState(() {
         if (_elapsedTime > 0) {
-          _elapsedTime--;
+          _elapsedTime -= timeDecrement;
           
-          // Provide haptic feedback at certain intervals
-          if (_elapsedTime == 30 || _elapsedTime == 10) {
-            HapticFeedback.lightImpact();
-          } else if (_elapsedTime <= 3 && _elapsedTime > 0) {
-            HapticFeedback.mediumImpact();
+          // Provide haptic feedback at certain intervals (only in normal mode)
+          if (!AppConfig.debug) {
+            if (_elapsedTime == 30 || _elapsedTime == 10) {
+              HapticFeedback.lightImpact();
+            } else if (_elapsedTime <= 3 && _elapsedTime > 0) {
+              HapticFeedback.mediumImpact();
+            }
           }
         } else {
           // Time's up for this set
@@ -767,23 +816,5 @@ class _DrillFollowAlongViewState extends State<DrillFollowAlongView> {
     final minutes = (seconds / 60).floor();
     final remainingSeconds = (seconds % 60).floor();
     return '${minutes.toString().padLeft(2, '0')}:${remainingSeconds.toString().padLeft(2, '0')}';
-  }
-
-  Color _getSkillColor(String skill) {
-    // Simple color mapping for different skills
-    switch (skill.toLowerCase()) {
-      case 'dribbling':
-        return Colors.orange;
-      case 'passing':
-        return Colors.blue;
-      case 'shooting':
-        return Colors.red;
-      case 'first touch':
-        return Colors.green;
-      case 'defending':
-        return Colors.purple;
-      default:
-        return AppTheme.buttonPrimary;
-    }
   }
 } 

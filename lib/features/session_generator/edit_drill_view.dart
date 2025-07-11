@@ -131,10 +131,10 @@ class _EditDrillViewState extends State<EditDrillView> {
                   Container(
                     padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
                     decoration: BoxDecoration(
-                      color: _getSkillColor(widget.editableDrill.drill.skill).withOpacity(0.1),
+                      color: AppTheme.getSkillColor(widget.editableDrill.drill.skill).withOpacity(0.1),
                       borderRadius: BorderRadius.circular(16),
                       border: Border.all(
-                        color: _getSkillColor(widget.editableDrill.drill.skill).withOpacity(0.3),
+                        color: AppTheme.getSkillColor(widget.editableDrill.drill.skill).withOpacity(0.3),
                       ),
                     ),
                     child: Text(
@@ -143,7 +143,7 @@ class _EditDrillViewState extends State<EditDrillView> {
                         fontFamily: 'Poppins',
                         fontWeight: FontWeight.w600,
                         fontSize: 12,
-                        color: _getSkillColor(widget.editableDrill.drill.skill),
+                        color: AppTheme.getSkillColor(widget.editableDrill.drill.skill),
                       ),
                     ),
                   ),
@@ -460,9 +460,5 @@ class _EditDrillViewState extends State<EditDrillView> {
         ),
       ),
     );
-  }
-
-  Color _getSkillColor(String skill) {
-    return AppTheme.getSkillColor(skill);
   }
 } 

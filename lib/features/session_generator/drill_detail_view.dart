@@ -97,7 +97,7 @@ class DrillDetailView extends StatelessWidget {
                             width: 24,
                             height: 24,
                             decoration: BoxDecoration(
-                              color: _getSkillColor(drill.skill),
+                              color: AppTheme.getSkillColor(drill.skill),
                               shape: BoxShape.circle,
                             ),
                             child: Center(
@@ -222,16 +222,16 @@ class DrillDetailView extends StatelessWidget {
                   return Container(
                     padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
                     decoration: BoxDecoration(
-                      color: _getSkillColor(drill.skill).withOpacity(0.1),
+                      color: AppTheme.getSkillColor(drill.skill).withOpacity(0.1),
                       borderRadius: BorderRadius.circular(20),
-                      border: Border.all(color: _getSkillColor(drill.skill).withOpacity(0.3)),
+                      border: Border.all(color: AppTheme.getSkillColor(drill.skill).withOpacity(0.3)),
                     ),
                     child: Text(
                       subSkill,
                       style: TextStyle(
                         fontFamily: 'Poppins',
                         fontSize: 14,
-                        color: _getSkillColor(drill.skill),
+                        color: AppTheme.getSkillColor(drill.skill),
                         fontWeight: FontWeight.w500,
                       ),
                     ),
@@ -275,9 +275,9 @@ class DrillDetailView extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
-        color: _getSkillColor(drill.skill).withOpacity(0.1),
+        color: AppTheme.getSkillColor(drill.skill).withOpacity(0.1),
         borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: _getSkillColor(drill.skill).withOpacity(0.3)),
+        border: Border.all(color: AppTheme.getSkillColor(drill.skill).withOpacity(0.3)),
       ),
       child: Row(
         children: [
@@ -286,7 +286,7 @@ class DrillDetailView extends StatelessWidget {
             width: 60,
             height: 60,
             decoration: BoxDecoration(
-              color: _getSkillColor(drill.skill),
+              color: AppTheme.getSkillColor(drill.skill),
               borderRadius: BorderRadius.circular(12),
             ),
             child: Icon(
@@ -309,7 +309,7 @@ class DrillDetailView extends StatelessWidget {
                     fontFamily: 'Poppins',
                     fontWeight: FontWeight.w600,
                     fontSize: 14,
-                    color: _getSkillColor(drill.skill),
+                    color: AppTheme.getSkillColor(drill.skill),
                   ),
                 ),
                 const SizedBox(height: 4),
@@ -413,21 +413,6 @@ class DrillDetailView extends StatelessWidget {
         content,
       ],
     );
-  }
-
-  Color _getSkillColor(String skill) {
-    switch (skill.toLowerCase()) {
-      case 'passing':
-        return Colors.blue;
-      case 'shooting':
-        return Colors.red;
-      case 'dribbling':
-        return Colors.green;
-      case 'first touch':
-        return Colors.purple;
-      default:
-        return Colors.grey;
-    }
   }
 
   IconData _getSkillIcon(String skill) {

@@ -62,6 +62,11 @@ class _DebugSettingsViewState extends State<DebugSettingsView> {
             
             // Developer Actions
             _buildDeveloperActionsSection(),
+            
+            const SizedBox(height: 24),
+            
+            // Streak Testing Section (always show for debugging)
+            _buildStreakTestingSection(),
           ],
         ),
       ),
@@ -370,6 +375,54 @@ class _DebugSettingsViewState extends State<DebugSettingsView> {
     );
   }
 
+  Widget _buildStreakTestingSection() {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        const Text(
+          'Streak Testing',
+          style: TextStyle(
+            fontFamily: 'Poppins',
+            fontWeight: FontWeight.bold,
+            fontSize: 18,
+            color: Colors.black,
+          ),
+        ),
+        
+        const SizedBox(height: 12),
+        
+        Column(
+          children: [
+            _buildActionButton(
+              title: 'Reset Streak',
+              subtitle: 'Set current streak to 0',
+              icon: Icons.refresh,
+              onTap: () => _resetStreak(),
+            ),
+            
+            const SizedBox(height: 8),
+            
+            _buildActionButton(
+              title: 'Add Days to Streak',
+              subtitle: 'Increment current streak by 1',
+              icon: Icons.add_circle,
+              onTap: () => _addDaysToStreak(),
+            ),
+            
+            const SizedBox(height: 8),
+            
+            _buildActionButton(
+              title: 'Add Completed Sessions',
+              subtitle: 'Simulate adding completed sessions',
+              icon: Icons.check_circle,
+              onTap: () => _addCompletedSessions(),
+            ),
+          ],
+        ),
+      ],
+    );
+  }
+
   Widget _buildInfoRow(String label, String value) {
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 4),
@@ -627,6 +680,42 @@ class _DebugSettingsViewState extends State<DebugSettingsView> {
             child: const Text('Crash', style: TextStyle(color: Colors.red)),
           ),
         ],
+      ),
+    );
+  }
+
+  void _resetStreak() {
+    final appState = Provider.of<AppStateService>(context, listen: false);
+    appState.resetStreak();
+    TestDataService.debugLog('Streak reset to 0');
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(
+        content: Text('Streak reset to 0'),
+        backgroundColor: Colors.orange,
+      ),
+    );
+  }
+
+  void _addDaysToStreak() {
+    final appState = Provider.of<AppStateService>(context, listen: false);
+    appState.incrementStreak();
+    TestDataService.debugLog('Streak incremented by 1');
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(
+        content: Text('Streak incremented by 1'),
+        backgroundColor: Colors.green,
+      ),
+    );
+  }
+
+  void _addCompletedSessions() {
+    final appState = Provider.of<AppStateService>(context, listen: false);
+    appState.addCompletedSessions(5); // Simulate adding 5 completed sessions
+    TestDataService.debugLog('Simulated adding 5 completed sessions');
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(
+        content: Text('Simulated adding 5 completed sessions'),
+        backgroundColor: Colors.purple,
       ),
     );
   }

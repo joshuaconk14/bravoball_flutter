@@ -57,24 +57,21 @@ class _LoginViewState extends State<LoginView> {
                 // Welcome Back Title
                 Text(
                   'Welcome Back!',
-                  style: AppTheme.headlineLarge.copyWith(
+                  style: TextStyle(
+                    fontFamily: AppTheme.fontPottaOne,
                     fontSize: 32,
-                    color: AppTheme.primaryDark,
+                    color: AppTheme.primaryYellow,
                   ),
                   textAlign: TextAlign.center,
                 ),
                 
                 const SizedBox(height: AppTheme.spacingXLarge),
                 
-                // Logo/Animation with Bravo character
+                // Logo/Animation with Bravo character - no background
                 Container(
                   height: 200,
                   width: 200,
                   margin: const EdgeInsets.symmetric(horizontal: AppTheme.spacingLarge),
-                  decoration: BoxDecoration(
-                    color: AppTheme.primaryYellow.withOpacity(0.1),
-                    borderRadius: BorderRadius.circular(AppTheme.radiusLarge),
-                  ),
                   child: const RiveAnimation.asset(
                     'assets/rive/Bravo_Animation.riv',
                     fit: BoxFit.contain,

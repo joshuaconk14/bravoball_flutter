@@ -8,6 +8,8 @@ class SessionCompletionView extends StatefulWidget {
   final int currentStreak;
   final int completedDrills;
   final int totalDrills;
+  final bool isFirstSessionOfDay;
+  final int sessionsCompletedToday;
   final VoidCallback? onViewProgress;
   final VoidCallback? onBackToHome;
 
@@ -16,6 +18,8 @@ class SessionCompletionView extends StatefulWidget {
     required this.currentStreak,
     required this.completedDrills,
     required this.totalDrills,
+    required this.isFirstSessionOfDay,
+    required this.sessionsCompletedToday,
     this.onViewProgress,
     this.onBackToHome,
   }) : super(key: key);
@@ -134,119 +138,105 @@ class _SessionCompletionViewState extends State<SessionCompletionView>
           ),
         ),
         child: SafeArea(
-          child: Column(
-            children: [
-              // Main content - scrollable to prevent overflow
-              Expanded(
-                child: SingleChildScrollView(
-                  child: Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: 20),
-                    child: Column(
-                      children: [
-                        const SizedBox(height: 16),
-                        
-                        // Success title
-                        AnimatedBuilder(
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 20),
+            child: Column(
+              children: [
+                const SizedBox(height: 15), // Reduced from 16
+                
+                // Success title
+                AnimatedBuilder(
+                  animation: _fadeAnimation,
+                  builder: (context, child) {
+                    return Opacity(
+                      opacity: _fadeAnimation.value,
+                      child: const Text(
+                        "You've completed your session!",
+                        style: TextStyle(
+                          fontFamily: 'Poppins',
+                          fontSize: 24, // Reduced from 28
+                          fontWeight: FontWeight.bold,
+                          color: Colors.white,
+                        ),
+                        textAlign: TextAlign.center,
+                      ),
+                    );
+                  },
+                ),
+                
+                // Bravo character with Rive animation - smaller
+                SlideTransition(
+                  position: _slideAnimation,
+                  child: AnimatedBuilder(
+                    animation: _characterBounceAnimation,
+                    builder: (context, child) {
+                      return Transform.scale(
+                        scale: _characterBounceAnimation.value,
+                        child: AnimatedBuilder(
                           animation: _fadeAnimation,
                           builder: (context, child) {
                             return Opacity(
                               opacity: _fadeAnimation.value,
-                              child: const Text(
-                                "You've completed your session!",
-                                style: TextStyle(
-                                  fontFamily: 'Poppins',
-                                  fontSize: 28,
-                                  fontWeight: FontWeight.bold,
-                                  color: Colors.white,
-                                ),
-                                textAlign: TextAlign.center,
-                              ),
+                              child: _buildBravoCharacter(),
                             );
                           },
                         ),
-                        
-                        const SizedBox(height: 20),
-                        
-                        // Bravo character with Rive animation
-                        SlideTransition(
-                          position: _slideAnimation,
-                          child: AnimatedBuilder(
-                            animation: _characterBounceAnimation,
-                            builder: (context, child) {
-                              return Transform.scale(
-                                scale: _characterBounceAnimation.value,
-                                child: AnimatedBuilder(
-                                  animation: _fadeAnimation,
-                                  builder: (context, child) {
-                                    return Opacity(
-                                      opacity: _fadeAnimation.value,
-                                      child: _buildBravoCharacter(),
-                                    );
-                                  },
-                                ),
-                              );
-                            },
-                          ),
-                        ),
-                        
-                        const SizedBox(height: 30),
-                        
-                        // Streak display with animation
-                        AnimatedBuilder(
-                          animation: _streakAnimation,
-                          builder: (context, child) {
-                            return Transform.scale(
-                              scale: _streakAnimation.value,
-                              child: _buildStreakDisplay(),
-                            );
-                          },
-                        ),
-                        
-                        const SizedBox(height: 16),
-                        
-                        // Day streak text
-                        AnimatedBuilder(
-                          animation: _streakAnimation,
-                          builder: (context, child) {
-                            return Opacity(
-                              opacity: _streakAnimation.value,
-                              child: const Text(
-                                'Day Streak',
-                                style: TextStyle(
-                                  fontFamily: 'Poppins',
-                                  fontSize: 24,
-                                  fontWeight: FontWeight.w600,
-                                  color: Colors.white,
-                                ),
-                              ),
-                            );
-                          },
-                        ),
-                        
-                        const SizedBox(height: 30),
-                        
-                        // Session summary - fixed positioning
-                        AnimatedBuilder(
-                          animation: _fadeAnimation,
-                          builder: (context, child) {
-                            return Opacity(
-                              opacity: _fadeAnimation.value,
-                              child: _buildSessionSummary(),
-                            );
-                          },
-                        ),
-                        
-                        const SizedBox(height: 20),
-                      ],
-                    ),
+                      );
+                    },
                   ),
                 ),
-              ),
-              
-              // Action buttons - always visible at bottom
-              Container(
-                padding: const EdgeInsets.all(20),
-                child: AnimatedBuilder(
+                
+                const SizedBox(height: 16), // Reduced from 30
+                
+                // Streak display with animation
+                AnimatedBuilder(
+                  animation: _streakAnimation,
+                  builder: (context, child) {
+                    return Transform.scale(
+                      scale: _streakAnimation.value,
+                      child: _buildStreakDisplay(),
+                    );
+                  },
+                ),
+                
+                const SizedBox(height: 8), // Reduced from 16
+                
+                // Day streak text
+                AnimatedBuilder(
+                  animation: _streakAnimation,
+                  builder: (context, child) {
+                    return Opacity(
+                      opacity: _streakAnimation.value,
+                      child: const Text(
+                        'Day Streak',
+                        style: TextStyle(
+                          fontFamily: 'Poppins',
+                          fontSize: 20, // Reduced from 24
+                          fontWeight: FontWeight.w600,
+                          color: Colors.white,
+                        ),
+                      ),
+                    );
+                  },
+                ),
+                
+                const SizedBox(height: 16), // Reduced from 30
+                
+                // Session summary - more compact
+                AnimatedBuilder(
+                  animation: _fadeAnimation,
+                  builder: (context, child) {
+                    return Opacity(
+                      opacity: _fadeAnimation.value,
+                      child: _buildSessionSummary(),
+                    );
+                  },
+                ),
+                
+                const Spacer(), // Use spacer to push buttons to bottom
+                
+                // Action buttons - always visible at bottom
+                AnimatedBuilder(
                   animation: _fadeAnimation,
                   builder: (context, child) {
                     return Opacity(
@@ -255,8 +245,10 @@ class _SessionCompletionViewState extends State<SessionCompletionView>
                     );
                   },
                 ),
-              ),
-            ],
+                
+                const SizedBox(height: 16), // Bottom padding
+              ],
+            ),
           ),
         ),
       ),
@@ -305,16 +297,16 @@ class _SessionCompletionViewState extends State<SessionCompletionView>
           
           // Soccer ball with animation
           Positioned(
-            bottom: 20,
-            right: 20,
+            bottom: 16, // Reduced from 20
+            right: 16, // Reduced from 20
             child: AnimatedBuilder(
               animation: _characterController,
               builder: (context, child) {
                 return Transform.rotate(
                   angle: _characterController.value * 2 * 3.14159,
                   child: Container(
-                    width: 35,
-                    height: 35,
+                    width: 28, // Reduced from 35
+                    height: 28, // Reduced from 35
                     decoration: BoxDecoration(
                       color: Colors.white,
                       shape: BoxShape.circle,
@@ -332,8 +324,8 @@ class _SessionCompletionViewState extends State<SessionCompletionView>
                         // Soccer ball pattern
                         Center(
                           child: Container(
-                            width: 12,
-                            height: 12,
+                            width: 10, // Reduced from 12
+                            height: 10, // Reduced from 12
                             decoration: BoxDecoration(
                               color: Colors.black,
                               shape: BoxShape.circle,
@@ -341,11 +333,11 @@ class _SessionCompletionViewState extends State<SessionCompletionView>
                           ),
                         ),
                         Positioned(
-                          top: 8,
-                          left: 8,
+                          top: 6, // Reduced from 8
+                          left: 6, // Reduced from 8
                           child: Container(
-                            width: 6,
-                            height: 6,
+                            width: 4, // Reduced from 6
+                            height: 4, // Reduced from 6
                             decoration: const BoxDecoration(
                               color: Colors.black,
                               shape: BoxShape.circle,
@@ -353,11 +345,11 @@ class _SessionCompletionViewState extends State<SessionCompletionView>
                           ),
                         ),
                         Positioned(
-                          top: 8,
-                          right: 8,
+                          top: 6, // Reduced from 8
+                          right: 6, // Reduced from 8
                           child: Container(
-                            width: 6,
-                            height: 6,
+                            width: 4, // Reduced from 6
+                            height: 4, // Reduced from 6
                             decoration: const BoxDecoration(
                               color: Colors.black,
                               shape: BoxShape.circle,
@@ -365,11 +357,11 @@ class _SessionCompletionViewState extends State<SessionCompletionView>
                           ),
                         ),
                         Positioned(
-                          bottom: 8,
-                          left: 8,
+                          bottom: 6, // Reduced from 8
+                          left: 6, // Reduced from 8
                           child: Container(
-                            width: 6,
-                            height: 6,
+                            width: 4, // Reduced from 6
+                            height: 4, // Reduced from 6
                             decoration: const BoxDecoration(
                               color: Colors.black,
                               shape: BoxShape.circle,
@@ -377,11 +369,11 @@ class _SessionCompletionViewState extends State<SessionCompletionView>
                           ),
                         ),
                         Positioned(
-                          bottom: 8,
-                          right: 8,
+                          bottom: 6, // Reduced from 8
+                          right: 6, // Reduced from 8
                           child: Container(
-                            width: 6,
-                            height: 6,
+                            width: 4, // Reduced from 6
+                            height: 4, // Reduced from 6
                             decoration: const BoxDecoration(
                               color: Colors.black,
                               shape: BoxShape.circle,
@@ -406,8 +398,8 @@ class _SessionCompletionViewState extends State<SessionCompletionView>
       children: [
         // Fire icon
         Container(
-          width: 60,
-          height: 60,
+          width: 50, // Reduced from 60
+          height: 50, // Reduced from 60
           decoration: BoxDecoration(
             color: Colors.orange.shade500,
             shape: BoxShape.circle,
@@ -422,60 +414,86 @@ class _SessionCompletionViewState extends State<SessionCompletionView>
           child: const Icon(
             Icons.local_fire_department,
             color: Colors.white,
-            size: 35,
+            size: 28, // Reduced from 35
           ),
         ),
         
-        const SizedBox(width: 20),
+        const SizedBox(width: 16), // Reduced from 20
         
         // Streak number
         Text(
           widget.currentStreak.toString(),
           style: const TextStyle(
             fontFamily: 'Poppins',
-            fontSize: 64,
+            fontSize: 56, // Reduced from 64
             fontWeight: FontWeight.bold,
             color: Colors.white,
           ),
         ),
         
-        const SizedBox(width: 15),
+        const SizedBox(width: 12), // Reduced from 15
         
-        // +1 indicator
-        Container(
-          width: 50,
-          height: 50,
-          decoration: BoxDecoration(
-            color: AppTheme.primaryGreen,
-            shape: BoxShape.circle,
-            boxShadow: [
-              BoxShadow(
-                color: AppTheme.primaryGreen.withOpacity(0.3),
-                blurRadius: 10,
-                offset: const Offset(0, 4),
+        // Conditional indicator based on first session or additional sessions
+        if (widget.isFirstSessionOfDay)
+          // Show +1 for first session of the day
+          Container(
+            width: 44, // Reduced from 50
+            height: 44, // Reduced from 50
+            decoration: BoxDecoration(
+              color: AppTheme.primaryGreen,
+              shape: BoxShape.circle,
+              boxShadow: [
+                BoxShadow(
+                  color: AppTheme.primaryGreen.withOpacity(0.3),
+                  blurRadius: 10,
+                  offset: const Offset(0, 4),
+                ),
+              ],
+            ),
+            child: const Center(
+              child: Text(
+                '+1',
+                style: TextStyle(
+                  fontFamily: 'Poppins',
+                  fontSize: 14, // Reduced from 16
+                  fontWeight: FontWeight.bold,
+                  color: Colors.white,
+                ),
               ),
-            ],
-          ),
-          child: const Center(
-            child: Text(
-              '+1',
-              style: TextStyle(
-                fontFamily: 'Poppins',
-                fontSize: 16,
-                fontWeight: FontWeight.bold,
+            ),
+          )
+        else
+          // Show checkmark for additional sessions
+          Container(
+            width: 44, // Reduced from 50
+            height: 44, // Reduced from 50
+            decoration: BoxDecoration(
+              color: AppTheme.primaryGreen,
+              shape: BoxShape.circle,
+              boxShadow: [
+                BoxShadow(
+                  color: AppTheme.primaryGreen.withOpacity(0.3),
+                  blurRadius: 10,
+                  offset: const Offset(0, 4),
+                ),
+              ],
+            ),
+            child: const Center(
+              child: Icon(
+                Icons.check,
                 color: Colors.white,
+                size: 20,
               ),
             ),
           ),
-        ),
       ],
     );
   }
 
   Widget _buildSessionSummary() {
     return Container(
-      padding: const EdgeInsets.all(20),
-      margin: const EdgeInsets.symmetric(horizontal: 10),
+      padding: const EdgeInsets.all(16), // Reduced from 20
+      margin: const EdgeInsets.symmetric(horizontal: 5), // Reduced from 10
       decoration: BoxDecoration(
         color: Colors.white.withOpacity(0.2),
         borderRadius: BorderRadius.circular(16),
@@ -493,17 +511,32 @@ class _SessionCompletionViewState extends State<SessionCompletionView>
       ),
       child: Column(
         children: [
-          const Text(
-            'Session Complete!',
-            style: TextStyle(
+          Text(
+            widget.isFirstSessionOfDay 
+                ? 'Session Complete!' 
+                : 'Another Session Complete!',
+            style: const TextStyle(
               fontFamily: 'Poppins',
-              fontSize: 20,
+              fontSize: 18, // Reduced from 20
               fontWeight: FontWeight.bold,
               color: Colors.white,
             ),
           ),
           
-          const SizedBox(height: 16),
+          if (!widget.isFirstSessionOfDay) ...[
+            const SizedBox(height: 4),
+            Text(
+              '${widget.sessionsCompletedToday} session${widget.sessionsCompletedToday == 1 ? '' : 's'} completed today!',
+              style: TextStyle(
+                fontFamily: 'Poppins',
+                fontSize: 14,
+                fontWeight: FontWeight.w500,
+                color: Colors.white.withOpacity(0.9),
+              ),
+            ),
+          ],
+          
+          const SizedBox(height: 12), // Reduced from 16
           
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceEvenly,
@@ -515,7 +548,7 @@ class _SessionCompletionViewState extends State<SessionCompletionView>
               ),
               Container(
                 width: 1,
-                height: 40,
+                height: 32, // Reduced from 40
                 color: Colors.white.withOpacity(0.3),
               ),
               _buildSummaryItem(
@@ -534,7 +567,7 @@ class _SessionCompletionViewState extends State<SessionCompletionView>
     return Column(
       children: [
         Container(
-          padding: const EdgeInsets.all(8),
+          padding: const EdgeInsets.all(6), // Reduced from 8
           decoration: BoxDecoration(
             color: Colors.white.withOpacity(0.2),
             shape: BoxShape.circle,
@@ -542,15 +575,15 @@ class _SessionCompletionViewState extends State<SessionCompletionView>
           child: Icon(
             icon,
             color: Colors.white,
-            size: 20,
+            size: 16, // Reduced from 20
           ),
         ),
-        const SizedBox(height: 8),
+        const SizedBox(height: 6), // Reduced from 8
         Text(
           value,
           style: const TextStyle(
             fontFamily: 'Poppins',
-            fontSize: 16,
+            fontSize: 14, // Reduced from 16
             fontWeight: FontWeight.bold,
             color: Colors.white,
           ),
@@ -559,7 +592,7 @@ class _SessionCompletionViewState extends State<SessionCompletionView>
           label,
           style: TextStyle(
             fontFamily: 'Poppins',
-            fontSize: 11,
+            fontSize: 10, // Reduced from 11
             fontWeight: FontWeight.w500,
             color: Colors.white.withOpacity(0.8),
           ),

@@ -173,7 +173,7 @@ class _SessionGeneratorHomeFieldViewState extends State<SessionGeneratorHomeFiel
           // Status message bubble - speech bubble coming from Bravo
           Positioned(
             top: 100, // Positioned right above Bravo 
-            left: 60,  // Aligned with Bravo's position
+            left: 70,  // Aligned with Bravo's position
             right: 180, // Give enough space
             child: _buildStatusMessage(appState),
           ),
@@ -230,46 +230,49 @@ class _SessionGeneratorHomeFieldViewState extends State<SessionGeneratorHomeFiel
         right: 32,
         bottom: 25, // Increased bottom padding to push drill circles further down
       ),
-      child: BravoButton(
-        text: sessionInProgress ? 'Continue Training' : (hasSessionDrills ? 'Begin Training' : 'Create Session'),
-        onPressed: hasSessionDrills ? () {
-          if (!appState.sessionInProgress) {
-            appState.startSession();
-          }
-          
-          final nextDrill = appState.getNextIncompleteDrill();
-          if (nextDrill != null) {
+      child: SizedBox(
+        width: 180, // Fixed width to match Bravo + backpack width
+        child: BravoButton(
+          text: sessionInProgress ? 'Continue Training' : (hasSessionDrills ? 'Begin Training' : 'Create Session'),
+          onPressed: hasSessionDrills ? () {
+            if (!appState.sessionInProgress) {
+              appState.startSession();
+            }
+            
+            final nextDrill = appState.getNextIncompleteDrill();
+            if (nextDrill != null) {
+              Navigator.of(context).push(
+                MaterialPageRoute(
+                  builder: (_) => DrillFollowAlongView(
+                    editableDrill: nextDrill,
+                    onDrillCompleted: () {
+                      appState.updateDrillProgress(
+                        nextDrill.drill.id,
+                        isCompleted: true,
+                      );
+                    },
+                    onSessionCompleted: () {
+                      appState.completeSession();
+                      _showSessionComplete();
+                    },
+                  ),
+                ),
+              );
+            }
+          } : () {
             Navigator.of(context).push(
               MaterialPageRoute(
-                builder: (_) => DrillFollowAlongView(
-                  editableDrill: nextDrill,
-                  onDrillCompleted: () {
-                    appState.updateDrillProgress(
-                      nextDrill.drill.id,
-                      isCompleted: true,
-                    );
-                  },
-                  onSessionCompleted: () {
-                    appState.completeSession();
-                    _showSessionComplete();
-                  },
-                ),
+                builder: (_) => const SessionGeneratorEditorPage(),
               ),
             );
-          }
-        } : () {
-          Navigator.of(context).push(
-            MaterialPageRoute(
-              builder: (_) => const SessionGeneratorEditorPage(),
-            ),
-          );
-        },
-        color: hasSessionDrills ? AppTheme.buttonPrimary : AppTheme.buttonDisabledGray,
-        backColor: hasSessionDrills ? AppTheme.primaryDarkYellow : AppTheme.buttonDisabledDarkGray,
-        textColor: AppTheme.textOnPrimary,
-        height: 56,
-        textSize: 25,
-        disabled: !hasSessionDrills,
+          },
+          color: hasSessionDrills ? AppTheme.buttonPrimary : AppTheme.buttonDisabledGray,
+          backColor: hasSessionDrills ? AppTheme.primaryDarkYellow : AppTheme.buttonDisabledDarkGray,
+          textColor: AppTheme.textOnPrimary,
+          height: 50, // Reduced from 56 to 50
+          textSize: 15, // Reduced from 25 to 16
+          disabled: !hasSessionDrills,
+        ),
       ),
     );
   }
@@ -308,9 +311,13 @@ class _SessionGeneratorHomeFieldViewState extends State<SessionGeneratorHomeFiel
           const SizedBox(height: 32),
           _TrophyWidget(
             isUnlocked: appState.isSessionComplete,
+            isAlreadyCompleted: appState.currentSessionCompleted, // ✅ NEW: Pass completion state
             onTap: () {
-              if (appState.isSessionComplete) {
-                // ✅ Save the session first
+              if (appState.currentSessionCompleted) {
+                // ✅ Session already completed, just show completion view
+                _showSessionComplete();
+              } else if (appState.isSessionComplete) {
+                // ✅ Session can be completed now
                 appState.completeSession();
                 _showSessionComplete();
               } else {
@@ -370,12 +377,18 @@ class _SessionGeneratorHomeFieldViewState extends State<SessionGeneratorHomeFiel
   void _showSessionComplete() {
     final appState = Provider.of<AppStateService>(context, listen: false);
     
+    // ✅ FIXED: Use actual count without adding extra increment
+    final sessionsToday = appState.sessionsCompletedToday;
+    final isFirstSessionOfDay = sessionsToday == 1; // First session if count is exactly 1
+    
     Navigator.of(context).push(
       MaterialPageRoute(
         builder: (_) => SessionCompletionView(
           currentStreak: appState.currentStreak, // Use actual streak from AppStateService
           completedDrills: appState.editableSessionDrills.where((drill) => drill.isCompleted).length,
           totalDrills: appState.editableSessionDrills.length,
+          isFirstSessionOfDay: isFirstSessionOfDay,
+          sessionsCompletedToday: sessionsToday, // ✅ Use actual count, not incremented
           onViewProgress: () {
             // Navigate to progress tab (index 1)
             Navigator.of(context).pushAndRemoveUntil(
@@ -407,6 +420,9 @@ class _SessionGeneratorHomeFieldViewState extends State<SessionGeneratorHomeFiel
     String message;
     if (!hasSessionDrills) {
       message = "Click on the soccer bag to add drills to your session!";
+    } else if (appState.currentSessionCompleted) {
+      // ✅ UPDATED: Message for already completed session
+      message = "Session complete! Click the trophy to view your progress.";
     } else if (appState.isSessionComplete) {
       message = "Well done! Click on the trophy to claim your prize.";
     } else {
@@ -472,20 +488,24 @@ class _DrillCircle extends StatelessWidget {
   Widget build(BuildContext context) {
     Color backgroundColor;
     Color iconColor;
-    IconData iconData;
+    Widget iconWidget;
     
     if (isCompleted) {
       backgroundColor = AppTheme.success;
       iconColor = AppTheme.white;
-      iconData = Icons.check;
+      iconWidget = Icon(
+        Icons.check,
+        color: iconColor,
+        size: 36,
+      );
     } else if (isActive) {
       backgroundColor = AppTheme.white;
-      iconColor = _getSkillColor(editableDrill.drill.skill);
-      iconData = _getSkillIcon(editableDrill.drill.skill);
+      iconColor = AppTheme.getSkillColor(editableDrill.drill.skill);
+      iconWidget = _buildDrillIcon();
     } else {
       backgroundColor = AppTheme.buttonDisabledGray;
       iconColor = AppTheme.primaryGray;
-      iconData = _getSkillIcon(editableDrill.drill.skill);
+      iconWidget = _buildDrillIcon(disabled: true);
     }
 
     // Return the drill circle with progress ring
@@ -497,8 +517,8 @@ class _DrillCircle extends StatelessWidget {
           // Progress ring (only show if there's progress or completed)
           if (editableDrill.progress > 0 || isCompleted)
             SizedBox(
-              width: 80,
-              height: 80,
+              width: 90, // Increased from 80
+              height: 90, // Increased from 80
               child: CircularProgressIndicator(
                 value: editableDrill.progress,
                 strokeWidth: 6,
@@ -511,12 +531,12 @@ class _DrillCircle extends StatelessWidget {
           
           // Main drill circle
           Container(
-            width: 70,
-            height: 70,
+            width: 80, // Increased from 70
+            height: 80, // Increased from 70
             decoration: BoxDecoration(
               color: backgroundColor,
               shape: BoxShape.circle,
-              border: isActive ? Border.all(color: _getSkillColor(editableDrill.drill.skill), width: 3) : null,
+              border: isActive ? Border.all(color: AppTheme.getSkillColor(editableDrill.drill.skill), width: 3) : null,
               boxShadow: [
                 if (isActive || isCompleted)
                   BoxShadow(
@@ -527,11 +547,7 @@ class _DrillCircle extends StatelessWidget {
               ],
             ),
             child: Center(
-              child: Icon(
-                iconData,
-                color: iconColor,
-                size: 32,
-              ),
+              child: iconWidget,
             ),
           ),
         ],
@@ -539,26 +555,69 @@ class _DrillCircle extends StatelessWidget {
     );
   }
 
-  IconData _getSkillIcon(String skill) {
-    // Always return the running soccer player icon for all drills
-    return Icons.directions_run;
+  Widget _buildDrillIcon({bool disabled = false}) {
+    final skill = editableDrill.drill.skill;
+    final iconColor = disabled ? AppTheme.primaryGray : AppTheme.getSkillColor(skill);
+    
+    final iconWidget = Image.asset(
+      _getSkillIconPath(skill),
+      width: 40,
+      height: 40,
+      fit: BoxFit.contain,
+      errorBuilder: (context, error, stackTrace) {
+        // Fallback to generic icon if image fails to load
+        return Icon(
+          _getSkillIconFallback(skill),
+          color: iconColor,
+          size: 28,
+        );
+      },
+    );
+    
+    // Wrap in Opacity for disabled state instead of using color tinting
+    return disabled 
+      ? Opacity(
+          opacity: 0.4,
+          child: iconWidget,
+        )
+      : iconWidget;
   }
 
-  Color _getSkillColor(String skill) {
-    // Simple color mapping for different skills
+  String _getSkillIconPath(String skill) {
     switch (skill.toLowerCase()) {
-      case 'dribbling':
-        return Colors.orange;
       case 'passing':
-        return Colors.blue;
+        return 'assets/drill-icons/Player_Passing.png';
       case 'shooting':
-        return Colors.red;
+        return 'assets/drill-icons/Player_Shooting.png';
+      case 'dribbling':
+        return 'assets/drill-icons/Player_Dribbling.png';
       case 'first touch':
-        return Colors.green;
+        return 'assets/drill-icons/Player_First_Touch.png';
       case 'defending':
-        return Colors.purple;
+        return 'assets/drill-icons/Player_Dribbling.png'; // Use dribbling as fallback for defending
+      case 'fitness':
+        return 'assets/drill-icons/Player_Dribbling.png'; // Use dribbling as fallback for fitness
       default:
-        return AppTheme.buttonPrimary;
+        return 'assets/drill-icons/Player_Dribbling.png'; // Fallback to dribbling icon
+    }
+  }
+
+  IconData _getSkillIconFallback(String skill) {
+    switch (skill.toLowerCase()) {
+      case 'passing':
+        return Icons.sports_soccer;
+      case 'shooting':
+        return Icons.sports_basketball;
+      case 'dribbling':
+        return Icons.directions_run;
+      case 'first touch':
+        return Icons.touch_app;
+      case 'defending':
+        return Icons.shield;
+      case 'fitness':
+        return Icons.fitness_center;
+      default:
+        return Icons.help_outline;
     }
   }
 }
@@ -566,16 +625,32 @@ class _DrillCircle extends StatelessWidget {
 // Trophy widget at the end of the drill path
 class _TrophyWidget extends StatelessWidget {
   final bool isUnlocked;
+  final bool isAlreadyCompleted;
   final VoidCallback onTap;
 
   const _TrophyWidget({
     required this.isUnlocked,
+    required this.isAlreadyCompleted,
     required this.onTap,
   });
 
   // Build the trophy widget
   @override
   Widget build(BuildContext context) {
+    // Determine trophy color based on state
+    Color backgroundColor;
+    Color iconColor;
+    
+    if (isAlreadyCompleted || isUnlocked) {
+      // Completed or can be completed - bright yellow trophy
+      backgroundColor = AppTheme.primaryYellow;
+      iconColor = AppTheme.white;
+    } else {
+      // Locked - gray trophy
+      backgroundColor = AppTheme.buttonDisabledGray;
+      iconColor = AppTheme.primaryGray;
+    }
+
     // Return the trophy widget
     return GestureDetector(
       onTap: onTap,
@@ -583,7 +658,7 @@ class _TrophyWidget extends StatelessWidget {
         width: 80,
         height: 80,
         decoration: BoxDecoration(
-          color: isUnlocked ? AppTheme.primaryYellow : AppTheme.buttonDisabledGray,
+          color: backgroundColor,
           shape: BoxShape.circle,
           boxShadow: [
             BoxShadow(
@@ -596,7 +671,7 @@ class _TrophyWidget extends StatelessWidget {
         child: Icon(
           Icons.emoji_events,
           size: 48,
-          color: isUnlocked ? AppTheme.white : AppTheme.primaryGray,
+          color: iconColor,
         ),
       ),
     );

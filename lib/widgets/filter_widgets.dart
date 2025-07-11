@@ -8,46 +8,51 @@ import 'package:flutter/foundation.dart';
 class FilterChipWidget extends StatelessWidget {
   final FilterType filterType;
   final String displayText;
-  final VoidCallback onTap;
+  final VoidCallback? onTap;
   final bool isSelected;
 
   const FilterChipWidget({
     Key? key,
     required this.filterType,
     required this.displayText,
-    required this.onTap,
+    this.onTap,
     this.isSelected = false,
   }) : super(key: key);
 
   @override
   Widget build(BuildContext context) {
-    return GestureDetector(
-      onTap: onTap,
-      child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-        decoration: BoxDecoration(
-          color: isSelected ? AppTheme.primaryLightBlue : Colors.grey.shade100,
-          borderRadius: BorderRadius.circular(20),
-          border: Border.all(
-            color: isSelected ? AppTheme.primaryLightBlue : Colors.grey.shade300,
-            width: 1,
-          ),
-        ),
-        child: Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            _getFilterIcon(),
-            const SizedBox(width: 8),
-            Text(
-              displayText,
-              style: TextStyle(
-                fontFamily: 'Poppins',
-                fontWeight: FontWeight.w500,
-                fontSize: 14,
-                color: isSelected ? Colors.white : Colors.grey.shade700,
-              ),
+    final bool isDisabled = onTap == null;
+    
+    return Opacity(
+      opacity: isDisabled ? 0.5 : 1.0,
+      child: GestureDetector(
+        onTap: onTap,
+        child: Container(
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+          decoration: BoxDecoration(
+            color: isSelected ? AppTheme.primaryLightBlue : Colors.grey.shade100,
+            borderRadius: BorderRadius.circular(20),
+            border: Border.all(
+              color: isSelected ? AppTheme.primaryLightBlue : Colors.grey.shade300,
+              width: 1,
             ),
-          ],
+          ),
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              _getFilterIcon(),
+              const SizedBox(width: 8),
+              Text(
+                displayText,
+                style: TextStyle(
+                  fontFamily: 'Poppins',
+                  fontWeight: FontWeight.w500,
+                  fontSize: 14,
+                  color: isSelected ? Colors.white : Colors.grey.shade700,
+                ),
+              ),
+            ],
+          ),
         ),
       ),
     );
@@ -312,7 +317,7 @@ class SkillSelector extends StatelessWidget {
       ),
       leading: Icon(
         _getSkillIcon(category.name),
-        color: _getSkillColor(category.name),
+        color: AppTheme.getSkillColor(category.name),
       ),
       children: [
         Padding(
@@ -370,21 +375,6 @@ class SkillSelector extends StatelessWidget {
         ),
       ],
     );
-  }
-
-  Color _getSkillColor(String skillName) {
-    switch (skillName.toLowerCase()) {
-      case 'passing':
-        return Colors.blue;
-      case 'shooting':
-        return Colors.red;
-      case 'dribbling':
-        return Colors.green;
-      case 'first touch':
-        return Colors.purple;
-      default:
-        return Colors.grey;
-    }
   }
 
   IconData _getSkillIcon(String skillName) {

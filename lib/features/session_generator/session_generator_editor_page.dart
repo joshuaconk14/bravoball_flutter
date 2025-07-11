@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
-import '../../models/drill_model.dart';
 import '../../models/editable_drill_model.dart';
 import '../../models/filter_models.dart';
 import '../../services/app_state_service.dart';
@@ -10,6 +9,7 @@ import '../../widgets/reusable_drill_search_view.dart';
 import 'drill_detail_view.dart';
 import 'edit_drill_view.dart';
 import '../../constants/app_theme.dart';
+import 'package:flutter/foundation.dart'; // Added for kDebugMode
 
 class SessionGeneratorEditorPage extends StatefulWidget {
   const SessionGeneratorEditorPage({Key? key}) : super(key: key);
@@ -130,11 +130,11 @@ class _SessionGeneratorEditorPageState extends State<SessionGeneratorEditorPage>
           ),
         ],
       ),
-      floatingActionButton: appState.sessionDrills.isEmpty || true
+      floatingActionButton: appState.sessionDrills.isEmpty
           ? FloatingActionButton(
               backgroundColor: AppTheme.primaryLightBlue,
               foregroundColor: Colors.white,
-              onPressed: () {
+              onPressed: appState.isLoadingPreferences ? null : () {
                 Navigator.push(
                   context,
                   MaterialPageRoute(
@@ -146,7 +146,6 @@ class _SessionGeneratorEditorPageState extends State<SessionGeneratorEditorPage>
                         for (final drill in selectedDrills) {
                           appState.addDrillToSession(drill);
                         }
-                        Navigator.pop(context);
                         ScaffoldMessenger.of(context).showSnackBar(
                           SnackBar(
                             content: Text('${selectedDrills.length} drill${selectedDrills.length == 1 ? '' : 's'} added to session'),
@@ -197,7 +196,7 @@ class _SessionGeneratorEditorPageState extends State<SessionGeneratorEditorPage>
                 ),
               ),
               backgroundColor: Colors.blue.shade50,
-                  deleteIcon: const Icon(Icons.close, size: 18),
+              deleteIcon: const Icon(Icons.close, size: 18),
               onDeleted: () {
                 final newSkills = Set<String>.from(appState.preferences.selectedSkills);
                 newSkills.remove(skill);
@@ -240,44 +239,44 @@ class _SessionGeneratorEditorPageState extends State<SessionGeneratorEditorPage>
                         ? 'Skills'
                         : 'Skills (${appState.preferences.selectedSkills.length})',
                     isSelected: appState.preferences.selectedSkills.isNotEmpty,
-                    onTap: () => _showSkillsSheet(context, appState),
+                    onTap: appState.isLoadingPreferences ? null : () => _showSkillsSheet(context, appState),
                   ),
                   const SizedBox(width: 8),
                   FilterChipWidget(
                     filterType: FilterType.time,
                     displayText: appState.preferences.selectedTime ?? 'Time',
                     isSelected: appState.preferences.selectedTime != null,
-                    onTap: () => _showFilterSheet(context, FilterType.time, appState),
+                    onTap: appState.isLoadingPreferences ? null : () => _showFilterSheet(context, FilterType.time, appState),
                   ),
                   const SizedBox(width: 8),
                   FilterChipWidget(
                     filterType: FilterType.equipment,
                     displayText: appState.preferences.selectedEquipment.isEmpty
                         ? 'Equipment'
-                        : 'Equipment (${appState.preferences.selectedEquipment.length})',
+                        : 'Equipment (${_getValidEquipmentCount(appState.preferences.selectedEquipment)})',
                     isSelected: appState.preferences.selectedEquipment.isNotEmpty,
-                    onTap: () => _showFilterSheet(context, FilterType.equipment, appState),
+                    onTap: appState.isLoadingPreferences ? null : () => _showFilterSheet(context, FilterType.equipment, appState),
                   ),
                   const SizedBox(width: 8),
                   FilterChipWidget(
                     filterType: FilterType.trainingStyle,
                     displayText: appState.preferences.selectedTrainingStyle ?? 'Style',
                     isSelected: appState.preferences.selectedTrainingStyle != null,
-                    onTap: () => _showFilterSheet(context, FilterType.trainingStyle, appState),
+                    onTap: appState.isLoadingPreferences ? null : () => _showFilterSheet(context, FilterType.trainingStyle, appState),
                   ),
                   const SizedBox(width: 8),
                   FilterChipWidget(
                     filterType: FilterType.location,
                     displayText: appState.preferences.selectedLocation ?? 'Location',
                     isSelected: appState.preferences.selectedLocation != null,
-                    onTap: () => _showFilterSheet(context, FilterType.location, appState),
+                    onTap: appState.isLoadingPreferences ? null : () => _showFilterSheet(context, FilterType.location, appState),
                   ),
                   const SizedBox(width: 8),
                   FilterChipWidget(
                     filterType: FilterType.difficulty,
                     displayText: appState.preferences.selectedDifficulty ?? 'Difficulty',
                     isSelected: appState.preferences.selectedDifficulty != null,
-                    onTap: () => _showFilterSheet(context, FilterType.difficulty, appState),
+                    onTap: appState.isLoadingPreferences ? null : () => _showFilterSheet(context, FilterType.difficulty, appState),
                   ),
                   const SizedBox(width: 60), // Extra space for scroll indicator
                 ],
@@ -344,7 +343,7 @@ class _SessionGeneratorEditorPageState extends State<SessionGeneratorEditorPage>
 
   // Build the session drills section
   Widget _buildSessionDrillsSection(AppStateService appState) {
-    if (appState.sessionDrills.isEmpty) {
+    if (appState.sessionDrills.isEmpty && !appState.isLoadingPreferences) {
       return Column(
         children: [
           const SizedBox(height: 32),
@@ -402,7 +401,7 @@ class _SessionGeneratorEditorPageState extends State<SessionGeneratorEditorPage>
                 elevation: 2,
                 padding: const EdgeInsets.symmetric(vertical: 16),
               ),
-              onPressed: () {
+              onPressed: appState.isLoadingPreferences ? null : () {
                 Navigator.push(
                   context,
                   MaterialPageRoute(
@@ -414,7 +413,7 @@ class _SessionGeneratorEditorPageState extends State<SessionGeneratorEditorPage>
                         for (final drill in selectedDrills) {
                           appState.addDrillToSession(drill);
                         }
-                        Navigator.pop(context);
+                        // Removed Navigator.pop(context) - ReusableDrillSearchView handles navigation
                         ScaffoldMessenger.of(context).showSnackBar(
                           SnackBar(
                             content: Text('${selectedDrills.length} drill${selectedDrills.length == 1 ? '' : 's'} added to session'),
@@ -433,15 +432,19 @@ class _SessionGeneratorEditorPageState extends State<SessionGeneratorEditorPage>
         ],
       );
     }
+    
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
+        // Header row with drill count and clear button - always shown
         Row(
           children: [
             const Spacer(),
-            if (appState.editableSessionDrills.isNotEmpty) ...[
+            if (appState.editableSessionDrills.isNotEmpty || appState.isLoadingPreferences) ...[
               Text(
-                '${appState.editableSessionDrills.length} drill${appState.editableSessionDrills.length == 1 ? '' : 's'}',
+                appState.isLoadingPreferences 
+                  ? 'Updating...' 
+                  : '${appState.editableSessionDrills.length} drill${appState.editableSessionDrills.length == 1 ? '' : 's'}',
                 style: TextStyle(
                   fontFamily: 'Poppins',
                   fontSize: 14,
@@ -450,7 +453,7 @@ class _SessionGeneratorEditorPageState extends State<SessionGeneratorEditorPage>
               ),
               const SizedBox(width: 12),
               GestureDetector(
-                onTap: () {
+                onTap: appState.isLoadingPreferences ? null : () {
                   showDialog(
                     context: context,
                     builder: (context) => AlertDialog(
@@ -475,14 +478,18 @@ class _SessionGeneratorEditorPageState extends State<SessionGeneratorEditorPage>
                 child: Container(
                   padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                   decoration: BoxDecoration(
-                    color: Colors.red.shade50,
+                    color: appState.isLoadingPreferences ? Colors.grey.shade100 : Colors.red.shade50,
                     borderRadius: BorderRadius.circular(12),
-                    border: Border.all(color: Colors.red.shade200),
+                    border: Border.all(color: appState.isLoadingPreferences ? Colors.grey.shade300 : Colors.red.shade200),
                   ),
                   child: Row(
                     mainAxisSize: MainAxisSize.min,
                     children: [
-                      Icon(Icons.clear_all, size: 14, color: Colors.red.shade600),
+                      Icon(
+                        Icons.clear_all, 
+                        size: 14, 
+                        color: appState.isLoadingPreferences ? Colors.grey.shade400 : Colors.red.shade600,
+                      ),
                       const SizedBox(width: 4),
                       Text(
                         'Clear',
@@ -490,7 +497,7 @@ class _SessionGeneratorEditorPageState extends State<SessionGeneratorEditorPage>
                           fontFamily: 'Poppins',
                           fontSize: 12,
                           fontWeight: FontWeight.w500,
-                          color: Colors.red.shade600,
+                          color: appState.isLoadingPreferences ? Colors.grey.shade400 : Colors.red.shade600,
                         ),
                       ),
                     ],
@@ -501,7 +508,10 @@ class _SessionGeneratorEditorPageState extends State<SessionGeneratorEditorPage>
           ],
         ),
         const SizedBox(height: 12),
-        if (appState.editableSessionDrills.isEmpty)
+        // Content area - either loading or drill list
+        if (appState.isLoadingPreferences)
+          _buildDrillsLoadingSection()
+        else if (appState.editableSessionDrills.isEmpty)
           Container(
             height: 120,
             decoration: BoxDecoration(
@@ -534,7 +544,9 @@ class _SessionGeneratorEditorPageState extends State<SessionGeneratorEditorPage>
             physics: const NeverScrollableScrollPhysics(),
             itemCount: appState.editableSessionDrills.length,
             onReorder: (oldIndex, newIndex) {
-              appState.reorderSessionDrills(oldIndex, newIndex);
+              if (!appState.isLoadingPreferences) {
+                appState.reorderSessionDrills(oldIndex, newIndex);
+              }
             },
             itemBuilder: (context, index) {
               final editableDrill = appState.editableSessionDrills[index];
@@ -546,14 +558,62 @@ class _SessionGeneratorEditorPageState extends State<SessionGeneratorEditorPage>
                   sets: editableDrill.totalSets,
                   reps: editableDrill.totalReps,
                   duration: editableDrill.totalDuration,
-                  isDraggable: true,
-                  onTap: () => _navigateToDrillDetail(context, editableDrill, appState),
-                  onDelete: () => appState.removeDrillFromSession(editableDrill.drill),
+                  isDraggable: !appState.isLoadingPreferences,
+                  onTap: appState.isLoadingPreferences ? null : () => _navigateToDrillDetail(context, editableDrill, appState),
+                  onDelete: appState.isLoadingPreferences ? null : () => appState.removeDrillFromSession(editableDrill.drill),
                 ),
               );
             },
           ),
       ],
+    );
+  }
+
+  // ✅ NEW: Build loading section for drills
+  Widget _buildDrillsLoadingSection() {
+    return Container(
+      height: 160,
+      decoration: BoxDecoration(
+        color: Colors.grey.shade50,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: Colors.grey.shade200),
+      ),
+      child: Center(
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            SizedBox(
+              width: 36,
+              height: 36,
+              child: CircularProgressIndicator(
+                strokeWidth: 3,
+                valueColor: AlwaysStoppedAnimation<Color>(AppTheme.primaryLightBlue),
+              ),
+            ),
+            const SizedBox(height: 14),
+            const Text(
+              'Updating your session...',
+              style: TextStyle(
+                fontFamily: 'Poppins',
+                fontWeight: FontWeight.w600,
+                fontSize: 15,
+                color: Colors.black87,
+              ),
+            ),
+            const SizedBox(height: 4),
+            const Text(
+              'Finding the best drills for your preferences',
+              style: TextStyle(
+                fontFamily: 'Poppins',
+                fontWeight: FontWeight.w400,
+                fontSize: 12,
+                color: Colors.grey,
+              ),
+              textAlign: TextAlign.center,
+            ),
+          ],
+        ),
+      ),
     );
   }
 
@@ -575,7 +635,7 @@ class _SessionGeneratorEditorPageState extends State<SessionGeneratorEditorPage>
         color: Colors.transparent,
         child: InkWell(
           borderRadius: BorderRadius.circular(16),
-          onTap: () {
+          onTap: appState.isLoadingPreferences ? null : () {
             Navigator.push(
               context,
               MaterialPageRoute(
@@ -587,7 +647,7 @@ class _SessionGeneratorEditorPageState extends State<SessionGeneratorEditorPage>
                     for (final drill in selectedDrills) {
                       appState.addDrillToSession(drill);
                     }
-                    Navigator.pop(context);
+                    // Removed Navigator.pop(context) - ReusableDrillSearchView handles navigation
                     ScaffoldMessenger.of(context).showSnackBar(
                       SnackBar(
                         content: Text('${selectedDrills.length} drill${selectedDrills.length == 1 ? '' : 's'} added to session'),
@@ -600,55 +660,58 @@ class _SessionGeneratorEditorPageState extends State<SessionGeneratorEditorPage>
               ),
             );
           },
-          child: Padding(
-            padding: const EdgeInsets.all(20),
-            child: Row(
-              children: [
-                Container(
-                  width: 48,
-                  height: 48,
-                  decoration: BoxDecoration(
-                    color: Colors.blue.shade100,
-                    borderRadius: BorderRadius.circular(12),
+          child: Opacity(
+            opacity: appState.isLoadingPreferences ? 0.5 : 1.0,
+            child: Padding(
+              padding: const EdgeInsets.all(20),
+              child: Row(
+                children: [
+                  Container(
+                    width: 48,
+                    height: 48,
+                    decoration: BoxDecoration(
+                      color: Colors.blue.shade100,
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    child: Icon(
+                      Icons.add_circle_outline,
+                      color: Colors.blue.shade700,
+                      size: 28,
+                    ),
                   ),
-                  child: Icon(
-                    Icons.add_circle_outline,
-                    color: Colors.blue.shade700,
-                    size: 28,
-                  ),
-                ),
-                const SizedBox(width: 16),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        'Add More Drills',
-                        style: TextStyle(
-                          fontFamily: 'Poppins',
-                          fontWeight: FontWeight.bold,
-                          fontSize: 16,
-                          color: Colors.blue.shade800,
+                  const SizedBox(width: 16),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          'Add More Drills',
+                          style: TextStyle(
+                            fontFamily: 'Poppins',
+                            fontWeight: FontWeight.bold,
+                            fontSize: 16,
+                            color: Colors.blue.shade800,
+                          ),
                         ),
-                      ),
-                      const SizedBox(height: 2),
-                      Text(
-                        'Browse 78 more drills to customize your session',
-                        style: TextStyle(
-                          fontFamily: 'Poppins',
-                          fontSize: 13,
-                          color: Colors.blue.shade600,
+                        const SizedBox(height: 2),
+                        Text(
+                          'Browse 78 more drills to customize your session',
+                          style: TextStyle(
+                            fontFamily: 'Poppins',
+                            fontSize: 13,
+                            color: Colors.blue.shade600,
+                          ),
                         ),
-                      ),
-                    ],
+                      ],
+                    ),
                   ),
-                ),
-                Icon(
-                  Icons.arrow_forward_ios,
-                  color: Colors.blue.shade600,
-                  size: 20,
-                ),
-              ],
+                  Icon(
+                    Icons.arrow_forward_ios,
+                    color: Colors.blue.shade600,
+                    size: 20,
+                  ),
+                ],
+              ),
             ),
           ),
         ),
@@ -808,5 +871,21 @@ class _SessionGeneratorEditorPageState extends State<SessionGeneratorEditorPage>
         ],
       ),
     );
+  }
+
+  // Helper to get the count of valid equipment
+  int _getValidEquipmentCount(Set<String> equipment) {
+    final validEquipment = equipment.where((e) => FilterOptions.equipmentOptions.contains(e));
+    
+    // Add debug logging to see what's in the equipment set
+    if (kDebugMode && equipment.isNotEmpty) {
+      print('🔧 Equipment Debug:');
+      print('   Full equipment set: $equipment');
+      print('   Valid equipment: $validEquipment');
+      print('   Full count: ${equipment.length}');
+      print('   Valid count: ${validEquipment.length}');
+    }
+    
+    return validEquipment.length;
   }
 } 

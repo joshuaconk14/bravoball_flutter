@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../models/drill_model.dart';
-import '../models/filter_models.dart';
 import '../services/app_state_service.dart';
 import '../constants/app_theme.dart';
 import '../features/session_generator/drill_detail_view.dart';
@@ -75,7 +74,7 @@ class _ReusableDrillSearchViewState extends State<ReusableDrillSearchView> {
   Widget _buildSkillFilterDropdown() {
     // You may want to get this list from your SkillCategories if available
     const skills = [
-      'Passing', 'Shooting', 'Dribbling', 'First Touch', 'Defending', 'Fitness'
+      'Passing', 'Shooting', 'Dribbling', 'First Touch'
     ];
     return Expanded(
       child: DropdownButtonFormField<String>(
@@ -420,7 +419,8 @@ class _ReusableDrillSearchViewState extends State<ReusableDrillSearchView> {
       MaterialPageRoute(
         builder: (context) => DrillDetailView(
           drill: drill,
-          isInSession: false,
+          isInSession: widget.isSelected?.call(drill) ?? false,
+          onAddToSession: null, // Not used in this context
         ),
       ),
     );
@@ -446,6 +446,44 @@ class SelectableDrillCard extends StatelessWidget {
     required this.onSelectionChanged,
     required this.themeColor,
   }) : super(key: key);
+
+  String _getSkillIconPath(String skill) {
+    switch (skill.toLowerCase()) {
+      case 'passing':
+        return 'assets/drill-icons/Player_Passing.png';
+      case 'shooting':
+        return 'assets/drill-icons/Player_Shooting.png';
+      case 'dribbling':
+        return 'assets/drill-icons/Player_Dribbling.png';
+      case 'first touch':
+        return 'assets/drill-icons/Player_First_Touch.png';
+      case 'defending':
+        return 'assets/drill-icons/Player_Dribbling.png'; // Use dribbling as fallback for defending
+      case 'fitness':
+        return 'assets/drill-icons/Player_Dribbling.png'; // Use dribbling as fallback for fitness
+      default:
+        return 'assets/drill-icons/Player_Dribbling.png'; // Fallback to dribbling icon
+    }
+  }
+
+  IconData _getSkillIconFallback(String skill) {
+    switch (skill.toLowerCase()) {
+      case 'passing':
+        return Icons.sports_soccer;
+      case 'shooting':
+        return Icons.sports_basketball;
+      case 'dribbling':
+        return Icons.directions_run;
+      case 'first touch':
+        return Icons.touch_app;
+      case 'defending':
+        return Icons.shield;
+      case 'fitness':
+        return Icons.fitness_center;
+      default:
+        return Icons.help_outline; // Fallback icon
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -517,11 +555,30 @@ class SelectableDrillCard extends StatelessWidget {
                 
                 // Skill indicator
                 Container(
-                  width: 4,
-                  height: 40,
+                  width: 48,
+                  height: 48,
+                  padding: const EdgeInsets.all(4),
                   decoration: BoxDecoration(
-                    color: AppTheme.getSkillColor(drill.skill),
-                    borderRadius: BorderRadius.circular(2),
+                    color: AppTheme.getSkillColor(drill.skill).withOpacity(0.1),
+                    borderRadius: BorderRadius.circular(8),
+                    border: Border.all(
+                      color: AppTheme.getSkillColor(drill.skill).withOpacity(0.3),
+                      width: 1,
+                    ),
+                  ),
+                  child: Image.asset(
+                    _getSkillIconPath(drill.skill),
+                    width: 40,
+                    height: 40,
+                    fit: BoxFit.contain,
+                    errorBuilder: (context, error, stackTrace) {
+                      // Fallback to generic icon if image fails to load
+                      return Icon(
+                        _getSkillIconFallback(drill.skill),
+                        color: AppTheme.getSkillColor(drill.skill),
+                        size: 24,
+                      );
+                    },
                   ),
                 ),
                 

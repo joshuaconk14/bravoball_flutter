@@ -57,10 +57,10 @@ class AppTheme {
   
   // MARK: - Skill Colors (for drill categories)
   static const Color skillPassing = Color(0xFF007AFF);
-  static const Color skillShooting = Color(0xFFFF3B30);
+  static const Color skillShooting = Color(0xFFFF9500); // Changed from red to orange
   static const Color skillDribbling = Color(0xFF34C759);
   static const Color skillFirstTouch = Color(0xFF8E4EC6);
-  static const Color skillDefending = Color(0xFFFF9500);
+  static const Color skillDefending = Color(0xFFFF3B30); // Red moved to defending
   static const Color skillFitness = Color(0xFF32ADE6);
   
   /// Get skill color by skill name

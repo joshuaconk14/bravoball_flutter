@@ -35,9 +35,11 @@ class DrillApiService {
         'limit': limit.toString(),
       };
 
-      // Add optional parameters
+      // Add optional parameters with proper mapping
       if (category != null && category.isNotEmpty) {
-        queryParams['category'] = category;
+        // Map frontend skill name to backend category name
+        final backendCategory = _mapSkillToBackendCategory(category);
+        queryParams['category'] = backendCategory;
       }
       if (difficulty != null && difficulty.isNotEmpty) {
         queryParams['difficulty'] = difficulty;
@@ -173,6 +175,20 @@ class DrillApiService {
   }
 
   // MARK: - Mapping Methods
+
+  /// Map frontend skill name to backend category name
+  String _mapSkillToBackendCategory(String frontendSkill) {
+    const skillToBackendMap = {
+      'Passing': 'passing',
+      'Shooting': 'shooting',
+      'Dribbling': 'dribbling',
+      'First Touch': 'first_touch',
+      'Defending': 'defending',
+      'Fitness': 'fitness',
+    };
+    
+    return skillToBackendMap[frontendSkill] ?? frontendSkill.toLowerCase();
+  }
 
   /// Map API skill category to app skill category
   String _mapSkillCategory(String apiCategory) {

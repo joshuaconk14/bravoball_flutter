@@ -199,8 +199,6 @@ class _DrillSearchViewState extends State<DrillSearchView> {
                 'Shooting', 
                 'Dribbling',
                 'First Touch',
-                'Defending',
-                'Fitness'
               ],
               onChanged: (value) {
                 setState(() {

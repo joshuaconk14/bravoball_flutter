@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import '../models/drill_model.dart';
+import '../constants/app_theme.dart'; // Fixed import path for AppTheme
 
 class DraggableDrillCard extends StatelessWidget {
   final DrillModel drill;
@@ -57,13 +58,32 @@ class DraggableDrillCard extends StatelessWidget {
                       size: 20,
                     ),
                   ),
-                // Skill indicator
+                // Skill indicator - replaced with custom icon
                 Container(
-                  width: 4,
-                  height: 40,
+                  width: 48,
+                  height: 48,
+                  padding: const EdgeInsets.all(4),
                   decoration: BoxDecoration(
-                    color: _getSkillColor(drill.skill),
-                    borderRadius: BorderRadius.circular(2),
+                    color: AppTheme.getSkillColor(drill.skill).withOpacity(0.1),
+                    borderRadius: BorderRadius.circular(8),
+                    border: Border.all(
+                      color: AppTheme.getSkillColor(drill.skill).withOpacity(0.3),
+                      width: 1,
+                    ),
+                  ),
+                  child: Image.asset(
+                    _getSkillIconPath(drill.skill),
+                    width: 40,
+                    height: 40,
+                    fit: BoxFit.contain,
+                    errorBuilder: (context, error, stackTrace) {
+                      // Fallback to generic icon if image fails to load
+                      return Icon(
+                        _getSkillIconFallback(drill.skill),
+                        color: AppTheme.getSkillColor(drill.skill),
+                        size: 24,
+                      );
+                    },
                   ),
                 ),
                 const SizedBox(width: 12),
@@ -144,22 +164,41 @@ class DraggableDrillCard extends StatelessWidget {
     return cardContent;
   }
 
-  Color _getSkillColor(String skill) {
+  String _getSkillIconPath(String skill) {
     switch (skill.toLowerCase()) {
       case 'passing':
-        return Colors.blue;
+        return 'assets/drill-icons/Player_Passing.png';
       case 'shooting':
-        return Colors.red;
+        return 'assets/drill-icons/Player_Shooting.png';
       case 'dribbling':
-        return Colors.green;
+        return 'assets/drill-icons/Player_Dribbling.png';
       case 'first touch':
-        return Colors.purple;
+        return 'assets/drill-icons/Player_First_Touch.png';
       case 'defending':
-        return Colors.orange;
+        return 'assets/drill-icons/Player_Dribbling.png'; // Use dribbling as fallback for defending
       case 'fitness':
-        return Colors.teal;
+        return 'assets/drill-icons/Player_Dribbling.png'; // Use dribbling as fallback for fitness
       default:
-        return Colors.grey;
+        return 'assets/drill-icons/Player_Dribbling.png'; // Fallback to dribbling icon
+    }
+  }
+
+  IconData _getSkillIconFallback(String skill) {
+    switch (skill.toLowerCase()) {
+      case 'passing':
+        return Icons.sports_soccer;
+      case 'shooting':
+        return Icons.sports_basketball;
+      case 'dribbling':
+        return Icons.directions_run;
+      case 'first touch':
+        return Icons.touch_app;
+      case 'defending':
+        return Icons.shield;
+      case 'fitness':
+        return Icons.fitness_center;
+      default:
+        return Icons.help_outline; // Fallback icon
     }
   }
 }
@@ -201,13 +240,32 @@ class SimpleDrillCard extends StatelessWidget {
             padding: const EdgeInsets.all(16),
             child: Row(
               children: [
-                // Skill indicator
+                // Skill indicator - replaced with custom icon
                 Container(
-                  width: 4,
-                  height: 40,
+                  width: 48,
+                  height: 48,
+                  padding: const EdgeInsets.all(4),
                   decoration: BoxDecoration(
-                    color: _getSkillColor(drill.skill),
-                    borderRadius: BorderRadius.circular(2),
+                    color: AppTheme.getSkillColor(drill.skill).withOpacity(0.1),
+                    borderRadius: BorderRadius.circular(8),
+                    border: Border.all(
+                      color: AppTheme.getSkillColor(drill.skill).withOpacity(0.3),
+                      width: 1,
+                    ),
+                  ),
+                  child: Image.asset(
+                    _getSkillIconPath(drill.skill),
+                    width: 40,
+                    height: 40,
+                    fit: BoxFit.contain,
+                    errorBuilder: (context, error, stackTrace) {
+                      // Fallback to generic icon if image fails to load
+                      return Icon(
+                        _getSkillIconFallback(drill.skill),
+                        color: AppTheme.getSkillColor(drill.skill),
+                        size: 24,
+                      );
+                    },
                   ),
                 ),
                 
@@ -289,22 +347,41 @@ class SimpleDrillCard extends StatelessWidget {
     );
   }
 
-  Color _getSkillColor(String skill) {
+  String _getSkillIconPath(String skill) {
     switch (skill.toLowerCase()) {
       case 'passing':
-        return Colors.blue;
+        return 'assets/drill-icons/Player_Passing.png';
       case 'shooting':
-        return Colors.red;
+        return 'assets/drill-icons/Player_Shooting.png';
       case 'dribbling':
-        return Colors.green;
+        return 'assets/drill-icons/Player_Dribbling.png';
       case 'first touch':
-        return Colors.purple;
+        return 'assets/drill-icons/Player_First_Touch.png';
       case 'defending':
-        return Colors.orange;
+        return 'assets/drill-icons/Player_Dribbling.png'; // Use dribbling as fallback for defending
       case 'fitness':
-        return Colors.teal;
+        return 'assets/drill-icons/Player_Dribbling.png'; // Use dribbling as fallback for fitness
       default:
-        return Colors.grey;
+        return 'assets/drill-icons/Player_Dribbling.png'; // Fallback to dribbling icon
+    }
+  }
+
+  IconData _getSkillIconFallback(String skill) {
+    switch (skill.toLowerCase()) {
+      case 'passing':
+        return Icons.sports_soccer;
+      case 'shooting':
+        return Icons.sports_basketball;
+      case 'dribbling':
+        return Icons.directions_run;
+      case 'first touch':
+        return Icons.touch_app;
+      case 'defending':
+        return Icons.shield;
+      case 'fitness':
+        return Icons.fitness_center;
+      default:
+        return Icons.help_outline; // Fallback icon
     }
   }
 }

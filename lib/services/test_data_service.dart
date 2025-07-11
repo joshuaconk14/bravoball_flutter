@@ -1005,18 +1005,10 @@ class TestDataService {
   /// Get available skills/categories
   static List<String> getAvailableSkills() {
     return [
-      'Dribbling',
       'Passing', 
       'Shooting',
+      'Dribbling',
       'First Touch',
-      'Defending',
-      'Fitness',
-      'Goalkeeping',
-      'Set Pieces',
-      'Heading',
-      'Team Play',
-      'Crossing',
-      'Mental',
     ];
   }
 
