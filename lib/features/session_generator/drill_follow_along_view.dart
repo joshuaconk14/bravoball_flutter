@@ -425,7 +425,7 @@ class _DrillFollowAlongViewState extends State<DrillFollowAlongView> {
               
               // Play/Pause button (larger)
               GestureDetector(
-                onTap: _editableDrill.setsDone < _editableDrill.totalSets ? _togglePlayPause : null,
+                onTap: (_editableDrill.setsDone < _editableDrill.totalSets && !_showCountdown) ? _togglePlayPause : null,
                 child: Container(
                   width: 90,
                   height: 90,
@@ -433,7 +433,7 @@ class _DrillFollowAlongViewState extends State<DrillFollowAlongView> {
                     gradient: LinearGradient(
                       begin: Alignment.topLeft,
                       end: Alignment.bottomRight,
-                      colors: _editableDrill.setsDone < _editableDrill.totalSets 
+                      colors: (_editableDrill.setsDone < _editableDrill.totalSets && !_showCountdown)
                           ? [
                               AppTheme.buttonPrimary,
                               AppTheme.buttonPrimary.withOpacity(0.8),
@@ -609,22 +609,30 @@ class _DrillFollowAlongViewState extends State<DrillFollowAlongView> {
   void _togglePlayPause() {
     if (_editableDrill.setsDone >= _editableDrill.totalSets) return;
     
+    // Prevent interaction during countdown
+    if (_showCountdown) return;
+    
     if (!_isPlaying) {
       // If timer was paused (not at initial state), resume immediately
-      if (_elapsedTime < _setDuration && _elapsedTime > 0 && !_showCountdown) {
+      if (_elapsedTime < _setDuration && _elapsedTime > 0) {
         setState(() {
           _isPlaying = true;
         });
         _startTimer();
       } else {
-      _startCountdown();
+        // Start from beginning with countdown
+        _startCountdown();
       }
     } else {
+      // Just pause the timer
       _stopTimer();
     }
   }
 
   void _startCountdown() {
+    // Cancel any existing countdown timer to prevent multiple timers
+    _countdownTimer?.cancel();
+    
     setState(() {
       _showCountdown = true;
       _countdownValue = 3;
@@ -652,6 +660,9 @@ class _DrillFollowAlongViewState extends State<DrillFollowAlongView> {
   }
 
   void _startTimer() {
+    // Cancel any existing timer to prevent multiple timers
+    _timer?.cancel();
+    
     _timer = Timer.periodic(const Duration(seconds: 1), (timer) {
       setState(() {
         if (_elapsedTime > 0) {
@@ -676,8 +687,8 @@ class _DrillFollowAlongViewState extends State<DrillFollowAlongView> {
     _countdownTimer?.cancel();
     setState(() {
       _isPlaying = false;
-      _showCountdown = false;
-      // Do NOT reset _elapsedTime here
+      _showCountdown = false;  // Reset countdown state when stopping
+      // Do NOT reset _elapsedTime here - preserve the current time
     });
   }
 

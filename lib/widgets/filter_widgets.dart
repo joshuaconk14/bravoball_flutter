@@ -3,6 +3,7 @@ import 'package:provider/provider.dart';
 import '../models/filter_models.dart';
 import '../services/app_state_service.dart';
 import '../constants/app_theme.dart';
+import 'package:flutter/foundation.dart';
 
 class FilterChipWidget extends StatelessWidget {
   final FilterType filterType;
@@ -87,6 +88,25 @@ class FilterDropdown extends StatelessWidget {
       builder: (context, appState, child) {
         final selectedValue = _getSelectedValue(filterType, appState);
         
+        // Validate that the selected value exists in the options
+        final validatedValue = (selectedValue != null && options.contains(selectedValue)) 
+            ? selectedValue 
+            : null;
+        
+        // Debug logging and cleanup for invalid values
+        if (selectedValue != null && !options.contains(selectedValue)) {
+          if (kDebugMode) {
+            print('🔧 FilterDropdown: Invalid value "$selectedValue" for $title');
+            print('   Available options: $options');
+            print('   Clearing invalid value from app state');
+          }
+          
+          // Clear the invalid value from app state
+          WidgetsBinding.instance.addPostFrameCallback((_) {
+            _updateFilter(filterType, null, appState);
+          });
+        }
+        
         return Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
@@ -107,7 +127,7 @@ class FilterDropdown extends StatelessWidget {
                 borderRadius: BorderRadius.circular(8),
               ),
               child: DropdownButton<String>(
-                value: selectedValue,
+                value: validatedValue,
                 hint: Text('Select $title'),
                 isExpanded: true,
                 underline: Container(),

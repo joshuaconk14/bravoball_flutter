@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import 'dart:async';
 import '../../models/drill_model.dart';
 import '../../models/editable_drill_model.dart';
 import '../../services/app_state_service.dart';
@@ -26,12 +27,23 @@ class _EditDrillViewState extends State<EditDrillView> {
   late int reps;
   late int duration;
   
+  // Timers for hold-to-repeat functionality
+  Timer? _holdTimer;
+  Timer? _repeatTimer;
+  
   @override
   void initState() {
     super.initState();
     sets = widget.editableDrill.totalSets;
     reps = widget.editableDrill.totalReps;
     duration = widget.editableDrill.totalDuration;
+  }
+
+  @override
+  void dispose() {
+    _holdTimer?.cancel();
+    _repeatTimer?.cancel();
+    super.dispose();
   }
 
   @override
@@ -232,10 +244,21 @@ class _EditDrillViewState extends State<EditDrillView> {
             child: Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
+                // Minus button with hold-to-repeat
                 GestureDetector(
-                  onTap: () {
-                    if (value > 1) onChanged(value - 1);
-                  },
+                  onTapDown: value > 1 ? (_) => _startHoldToRepeat(() {
+                    // Get current value based on label
+                    int currentValue = _getCurrentValue(label);
+                    if (currentValue > 1) {
+                      onChanged(currentValue - 1);
+                    }
+                  }, () {
+                    // Check current value during hold
+                    int currentValue = _getCurrentValue(label);
+                    return currentValue > 1;
+                  }) : null,
+                  onTapUp: (_) => _stopHoldToRepeat(),
+                  onTapCancel: () => _stopHoldToRepeat(),
                   child: Container(
                     width: 32,
                     height: 32,
@@ -259,18 +282,31 @@ class _EditDrillViewState extends State<EditDrillView> {
                     color: Colors.black,
                   ),
                 ),
+                // Plus button with hold-to-repeat
                 GestureDetector(
-                  onTap: () => onChanged(value + 1),
+                  onTapDown: value < _getMaxValue(label) ? (_) => _startHoldToRepeat(() {
+                    int currentValue = _getCurrentValue(label);
+                    int maxValue = _getMaxValue(label);
+                    if (currentValue < maxValue) {
+                      onChanged(currentValue + 1);
+                    }
+                  }, () {
+                    int currentValue = _getCurrentValue(label);
+                    int maxValue = _getMaxValue(label);
+                    return currentValue < maxValue;
+                  }) : null,
+                  onTapUp: (_) => _stopHoldToRepeat(),
+                  onTapCancel: () => _stopHoldToRepeat(),
                   child: Container(
                     width: 32,
                     height: 32,
                     decoration: BoxDecoration(
-                      color: Colors.grey.shade300,
+                      color: value < _getMaxValue(label) ? Colors.grey.shade300 : Colors.grey.shade200,
                       shape: BoxShape.circle,
                     ),
-                    child: const Icon(
+                    child: Icon(
                       Icons.add,
-                      color: Colors.black54,
+                      color: value < _getMaxValue(label) ? Colors.black54 : Colors.grey.shade400,
                       size: 16,
                     ),
                   ),
@@ -281,6 +317,85 @@ class _EditDrillViewState extends State<EditDrillView> {
         ),
       ],
     );
+  }
+
+  int _getCurrentValue(String label) {
+    switch (label) {
+      case 'Sets':
+        return sets;
+      case 'Reps':
+        return reps;
+      case 'Minutes':
+        return duration;
+      default:
+        return 0;
+    }
+  }
+
+  int _getMaxValue(String label) {
+    switch (label) {
+      case 'Sets':
+        return 99; // Maximum 99 sets
+      case 'Reps':
+        return 999; // Maximum 999 reps  
+      case 'Minutes':
+        return 120; // Maximum 120 minutes (2 hours)
+      default:
+        return 99;
+    }
+  }
+
+  void _startHoldToRepeat(VoidCallback action, bool Function() canContinue) {
+    // Cancel any existing timers
+    _holdTimer?.cancel();
+    _repeatTimer?.cancel();
+    
+    // Execute the action immediately
+    action();
+    
+    // Start the hold timer - wait 500ms before starting to repeat
+    _holdTimer = Timer(const Duration(milliseconds: 500), () {
+      if (canContinue()) {
+        _startRepeating(action, canContinue);
+      }
+    });
+  }
+
+  void _startRepeating(VoidCallback action, bool Function() canContinue) {
+    int elapsedMs = 0;
+    int lastActionTime = 0;
+    
+    _repeatTimer = Timer.periodic(const Duration(milliseconds: 50), (timer) {
+      if (!canContinue()) {
+        timer.cancel();
+        return;
+      }
+      
+      elapsedMs += 50;
+      
+      // Determine current speed based on elapsed time
+      int currentInterval;
+      if (elapsedMs < 1000) { // First 1 second
+        currentInterval = 200;
+      } else if (elapsedMs < 2000) { // Next 1 second
+        currentInterval = 150;
+      } else if (elapsedMs < 3000) { // Next 1 second
+        currentInterval = 100;
+      } else { // After 3 seconds
+        currentInterval = 50;
+      }
+      
+      // Execute action if enough time has passed since last action
+      if (elapsedMs - lastActionTime >= currentInterval) {
+        action();
+        lastActionTime = elapsedMs;
+      }
+    });
+  }
+
+  void _stopHoldToRepeat() {
+    _holdTimer?.cancel();
+    _repeatTimer?.cancel();
   }
 
   Widget _buildSaveButton() {

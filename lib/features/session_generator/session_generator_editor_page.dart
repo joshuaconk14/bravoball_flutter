@@ -559,7 +559,6 @@ class _SessionGeneratorEditorPageState extends State<SessionGeneratorEditorPage>
 
   // Build the add more drills button
   Widget _buildAddMoreDrillsButton(AppStateService appState) {
-    final availableDrillsCount = appState.drillsNotInSession.length;
     
     return Container(
       width: double.infinity,
@@ -634,7 +633,7 @@ class _SessionGeneratorEditorPageState extends State<SessionGeneratorEditorPage>
                       ),
                       const SizedBox(height: 2),
                       Text(
-                        'Browse $availableDrillsCount more drills to customize your session',
+                        'Browse 78 more drills to customize your session',
                         style: TextStyle(
                           fontFamily: 'Poppins',
                           fontSize: 13,
