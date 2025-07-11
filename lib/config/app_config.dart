@@ -31,12 +31,21 @@ class AppConfig {
           return 'https://bravoball-backend.onrender.com';
         case 2:
           // Localhost for simulator or computer
-          return 'http://127.0.0.1:8000';
+          // Use 10.0.2.2 for Android emulator, 127.0.0.1 for iOS simulator
+          if (defaultTargetPlatform == TargetPlatform.android) {
+            return 'http://10.0.2.2:8000';
+          } else {
+            return 'http://127.0.0.1:8000';
+          }
         case 3:
           // Wi-Fi IP for phone testing
           return 'http://$phoneWifiIP:8000';
         default:
-          return 'http://127.0.0.1:8000';
+          if (defaultTargetPlatform == TargetPlatform.android) {
+            return 'http://10.0.2.2:8000';
+          } else {
+            return 'http://127.0.0.1:8000';
+          }
       }
     } else {
       // Always use production in release builds

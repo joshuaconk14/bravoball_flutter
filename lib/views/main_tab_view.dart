@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:rive/rive.dart';
 import '../features/session_generator/session_generator_home_field_view.dart';
 import '../features/progression/progress_view.dart';
@@ -35,6 +36,7 @@ class _MainTabViewState extends State<MainTabView> {
     setState(() {
       _selectedIndex = index;
     });
+    HapticFeedback.lightImpact();
   }
 
   @override
