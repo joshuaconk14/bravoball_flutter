@@ -3,7 +3,6 @@ import 'package:provider/provider.dart';
 import 'package:rive/rive.dart';
 import '../../constants/app_theme.dart';
 import '../../services/login_service.dart';
-import '../../services/user_manager_service.dart';
 import 'forgot_password_view.dart';
 import '../../models/login_state_model.dart';
 import '../../widgets/bravo_button.dart';

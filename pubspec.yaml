@@ -69,6 +69,7 @@ flutter:
   assets:
     - .env
     - assets/rive/Bravo_Animation.riv
+    - assets/rive/BravoBall_Intro.riv
     - assets/rive/Backpack.riv
     - assets/rive/Grass_Field.riv
     - assets/rive/Tab_House.riv

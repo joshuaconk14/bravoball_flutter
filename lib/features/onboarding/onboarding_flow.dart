@@ -2,11 +2,11 @@ import 'package:flutter/material.dart';
 import 'package:rive/rive.dart';
 import 'onboarding_questions.dart';
 import '../../widgets/bravo_button.dart';
-import '../../views/main_tab_view.dart';
 import '../../features/auth/login_view.dart';
 import '../../constants/app_theme.dart';
 import '../../services/onboarding_service.dart';
 import '../../models/onboarding_model.dart';
+import '../../main.dart'; // Import for MyApp
 
 class OnboardingFlow extends StatefulWidget {
   const OnboardingFlow({Key? key}) : super(key: key);
@@ -85,9 +85,12 @@ class _OnboardingFlowState extends State<OnboardingFlow> {
       MaterialPageRoute(
         builder: (_) => LoginView(
           onLoginSuccess: () {
-            // Login successful - navigate to main app
+            // Login successful - pop the login view and let AuthenticationWrapper handle navigation
+            Navigator.of(context).pop(); // Pop the login view
+            
+            // Navigate back to the root and let AuthenticationWrapper detect the login state
             Navigator.of(context).pushAndRemoveUntil(
-              MaterialPageRoute(builder: (_) => const MainTabView()),
+              MaterialPageRoute(builder: (_) => const MyApp()),
               (route) => false,
             );
           },
@@ -478,9 +481,10 @@ class _OnboardingFlowState extends State<OnboardingFlow> {
                     // Working Skip button
                     TextButton(
                       onPressed: () {
-                        Navigator.pushReplacement(
-                          context,
-                          MaterialPageRoute(builder: (context) => const MainTabView()),
+                        // Skip registration and let AuthenticationWrapper handle navigation
+                        Navigator.of(context).pushAndRemoveUntil(
+                          MaterialPageRoute(builder: (context) => const MyApp()),
+                          (route) => false,
                         );
                       },
                       child: const Text(
@@ -635,9 +639,10 @@ class _OnboardingFlowState extends State<OnboardingFlow> {
                                   );
                                   if (success) {
                                     if (mounted) {
-                                      Navigator.pushReplacement(
-                                        context,
-                                        MaterialPageRoute(builder: (context) => const MainTabView()),
+                                      // Registration successful - let AuthenticationWrapper handle navigation
+                                      Navigator.of(context).pushAndRemoveUntil(
+                                        MaterialPageRoute(builder: (context) => const MyApp()),
+                                        (route) => false,
                                       );
                                     }
                                   } else {
