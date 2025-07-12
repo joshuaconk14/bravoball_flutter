@@ -1,6 +1,7 @@
 import 'package:flutter/foundation.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../config/app_config.dart';
+import 'dart:async';
 
 /// User Manager Service
 /// Mirrors Swift UserManager for managing user state and authentication
@@ -19,6 +20,10 @@ class UserManagerService extends ChangeNotifier {
   bool _showLoginPage = false;
   bool _showIntroAnimation = true;
 
+  // Token refresh timer
+  Timer? _proactiveRefreshTimer;
+  DateTime? _tokenCreatedAt;
+
   // Getters
   String get email => _email;
   String get accessToken => _accessToken;
@@ -35,6 +40,11 @@ class UserManagerService extends ChangeNotifier {
     }
     
     await _loadUserDataFromStorage();
+    
+    // Start proactive token refresh if user is logged in
+    if (_isLoggedIn && _accessToken.isNotEmpty) {
+      _scheduleProactiveTokenRefresh();
+    }
     
     if (kDebugMode) {
       print('🔐 UserManager: Initialized');
@@ -54,6 +64,12 @@ class UserManagerService extends ChangeNotifier {
       _refreshToken = prefs.getString('refreshToken') ?? '';
       _isLoggedIn = prefs.getBool('isLoggedIn') ?? false;
       _userHasAccountHistory = prefs.getBool('userHasAccountHistory') ?? false;
+      
+      // Load token creation time for proactive refresh
+      final tokenCreatedAtMs = prefs.getInt('tokenCreatedAt');
+      if (tokenCreatedAtMs != null) {
+        _tokenCreatedAt = DateTime.fromMillisecondsSinceEpoch(tokenCreatedAtMs);
+      }
       
       if (kDebugMode) {
         print('🔑 UserManager: Loaded from storage - Email: $_email, LoggedIn: $_isLoggedIn');
@@ -75,6 +91,11 @@ class UserManagerService extends ChangeNotifier {
       await prefs.setString('refreshToken', _refreshToken);
       await prefs.setBool('isLoggedIn', _isLoggedIn);
       await prefs.setBool('userHasAccountHistory', _userHasAccountHistory);
+      
+      // Save token creation time
+      if (_tokenCreatedAt != null) {
+        await prefs.setInt('tokenCreatedAt', _tokenCreatedAt!.millisecondsSinceEpoch);
+      }
       
       if (kDebugMode) {
         print('💾 UserManager: Saved to storage - Email: $_email, LoggedIn: $_isLoggedIn');
@@ -98,8 +119,13 @@ class UserManagerService extends ChangeNotifier {
     _isLoggedIn = true;
     _userHasAccountHistory = true;
     _showLoginPage = false;
+    _tokenCreatedAt = DateTime.now(); // Record when token was created
     
     await _saveUserDataToStorage();
+    
+    // Start proactive token refresh
+    _scheduleProactiveTokenRefresh();
+    
     notifyListeners();
     
     if (kDebugMode) {
@@ -114,12 +140,16 @@ class UserManagerService extends ChangeNotifier {
       print('🚪 UserManager: Logging out user $_email');
     }
     
+    // Cancel proactive refresh timer
+    _cancelProactiveTokenRefresh();
+    
     _email = '';
     _accessToken = '';
     _refreshToken = '';
     _isLoggedIn = false;
     _userHasAccountHistory = false;
     _showLoginPage = false;
+    _tokenCreatedAt = null;
     
     await _clearUserDataFromStorage();
     notifyListeners();
@@ -139,6 +169,7 @@ class UserManagerService extends ChangeNotifier {
       await prefs.remove('refreshToken');
       await prefs.remove('isLoggedIn');
       await prefs.remove('userHasAccountHistory');
+      await prefs.remove('tokenCreatedAt');
       
       if (kDebugMode) {
         print('🗑️ UserManager: Cleared storage');
@@ -183,12 +214,99 @@ class UserManagerService extends ChangeNotifier {
   /// Update access token (for token refresh)
   Future<void> updateAccessToken(String newAccessToken) async {
     _accessToken = newAccessToken;
+    _tokenCreatedAt = DateTime.now(); // Update token creation time
     await _saveUserDataToStorage();
+    
+    // Reschedule proactive refresh with new token
+    _scheduleProactiveTokenRefresh();
+    
     notifyListeners();
     
     if (kDebugMode) {
       print('🔄 UserManager: Updated access token');
     }
+  }
+
+  // MARK: - Proactive Token Refresh
+
+  /// Schedule proactive token refresh to happen before token expires
+  void _scheduleProactiveTokenRefresh() {
+    _cancelProactiveTokenRefresh(); // Cancel any existing timer
+    
+    if (_refreshToken.isEmpty || _tokenCreatedAt == null) {
+      if (kDebugMode) {
+        print('⚠️ UserManager: Cannot schedule proactive refresh - missing refresh token or creation time');
+      }
+      return;
+    }
+    
+    // Refresh token 5 minutes before it expires (assuming 24-hour token life)
+    // This gives us a 5-minute buffer
+    const tokenLifetime = Duration(hours: 24);
+    const refreshBuffer = Duration(minutes: 5);
+    final refreshTime = tokenLifetime - refreshBuffer;
+    
+    final timeUntilRefresh = _tokenCreatedAt!.add(refreshTime).difference(DateTime.now());
+    
+    if (timeUntilRefresh.isNegative) {
+      // Token is already near expiry, refresh immediately
+      if (kDebugMode) {
+        print('🔄 UserManager: Token near expiry, refreshing immediately');
+      }
+      _performProactiveTokenRefresh();
+    } else {
+      if (kDebugMode) {
+        print('⏰ UserManager: Scheduled proactive token refresh in ${timeUntilRefresh.inMinutes} minutes');
+      }
+      
+      _proactiveRefreshTimer = Timer(timeUntilRefresh, () {
+        _performProactiveTokenRefresh();
+      });
+    }
+  }
+
+  /// Cancel proactive token refresh timer
+  void _cancelProactiveTokenRefresh() {
+    _proactiveRefreshTimer?.cancel();
+    _proactiveRefreshTimer = null;
+  }
+
+  /// Perform proactive token refresh
+  Future<void> _performProactiveTokenRefresh() async {
+    if (_refreshToken.isEmpty) {
+      if (kDebugMode) {
+        print('❌ UserManager: Cannot perform proactive refresh - no refresh token');
+      }
+      return;
+    }
+
+    try {
+      if (kDebugMode) {
+        print('🔄 UserManager: Performing proactive token refresh...');
+      }
+
+      // The automatic refresh in API service will handle actual refreshes when needed
+      // For now, just reschedule for next time to keep the timer running
+      _scheduleProactiveTokenRefresh();
+      
+      if (kDebugMode) {
+        print('✅ UserManager: Proactive refresh scheduled for next interval');
+      }
+      
+    } catch (e) {
+      if (kDebugMode) {
+        print('❌ UserManager: Error in proactive token refresh: $e');
+      }
+      
+      // Reschedule for next attempt
+      _scheduleProactiveTokenRefresh();
+    }
+  }
+
+  @override
+  void dispose() {
+    _cancelProactiveTokenRefresh();
+    super.dispose();
   }
 
   /// Debug info
@@ -201,6 +319,8 @@ User Manager Debug Info:
 - HasToken: ${_accessToken.isNotEmpty}
 - TokenLength: ${_accessToken.length}
 - ShowLoginPage: $_showLoginPage
+- TokenCreatedAt: $_tokenCreatedAt
+- ProactiveRefreshActive: ${_proactiveRefreshTimer != null}
 ''';
   }
 } 

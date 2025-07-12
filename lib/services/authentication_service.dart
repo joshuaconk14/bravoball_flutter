@@ -51,58 +51,19 @@ class AuthenticationService extends ChangeNotifier {
       print('🔑 AuthenticationService: Access token: ${_userManager.accessToken.substring(0, 20)}...');
     }
 
-    // Validate token with backend by making a test authenticated request
-    try {
-      if (kDebugMode) {
-        print('🌐 AuthenticationService: Validating token with backend...');
-      }
-
-      // Try to make an authenticated request to validate the token
-      // We'll use a simple endpoint that requires authentication
-      final response = await _apiService.get(
-        '/api/drills/search',
-        queryParameters: {'limit': '1'}, // Just get 1 drill to test auth
-        requiresAuth: true,
-      );
-
-      final isValid = response.isSuccess;
-      
-      if (kDebugMode) {
-        print('🌐 AuthenticationService: Backend response status: ${response.statusCode}');
-      }
-
-      _isCheckingAuthentication = false;
-      _isAuthenticated = isValid;
-      notifyListeners();
-
-      if (isValid) {
-        if (kDebugMode) {
-          print('✅ AuthenticationService: Token validation successful');
-        }
-      } else {
-        if (kDebugMode) {
-          print('❌ AuthenticationService: Token validation failed');
-        }
-        // Clear invalid tokens
-        await clearInvalidTokens();
-      }
-
-      return isValid;
-
-    } catch (e) {
-      if (kDebugMode) {
-        print('❌ AuthenticationService: Error validating token: $e');
-      }
-      
-      // If validation fails, clear invalid tokens
-      await clearInvalidTokens();
-
-      _isCheckingAuthentication = false;
-      _isAuthenticated = false;
-      notifyListeners();
-
-      return false;
+    // ✅ IMPROVED: Don't validate token with backend on startup
+    // The API service will handle token refresh automatically when needed
+    // This prevents clearing valid refresh tokens unnecessarily
+    
+    if (kDebugMode) {
+      print('✅ AuthenticationService: Using stored tokens (validation handled by API service)');
     }
+
+    _isCheckingAuthentication = false;
+    _isAuthenticated = true;
+    notifyListeners();
+
+    return true;
   }
 
   /// Update authentication status on app start (mirrors Swift updateAuthenticationStatus)

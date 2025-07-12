@@ -186,9 +186,11 @@ class _SessionGeneratorEditorPageState extends State<SessionGeneratorEditorPage>
                 spacing: 8,
                 runSpacing: 4,
           children: appState.preferences.selectedSkills.map((skill) {
+            // ✅ Strip underscores and replace with spaces
+            final displaySkill = skill.replaceAll('_', ' ');
             return Chip(
               label: Text(
-                skill,
+                displaySkill,
                 style: const TextStyle(
                   fontFamily: 'Poppins',
                   fontWeight: FontWeight.w500,
@@ -244,7 +246,7 @@ class _SessionGeneratorEditorPageState extends State<SessionGeneratorEditorPage>
                   const SizedBox(width: 8),
                   FilterChipWidget(
                     filterType: FilterType.time,
-                    displayText: appState.preferences.selectedTime ?? 'Time',
+                    displayText: appState.preferences.selectedTime?.replaceAll('_', ' ') ?? 'Time',
                     isSelected: appState.preferences.selectedTime != null,
                     onTap: appState.isLoadingPreferences ? null : () => _showFilterSheet(context, FilterType.time, appState),
                   ),
@@ -254,27 +256,27 @@ class _SessionGeneratorEditorPageState extends State<SessionGeneratorEditorPage>
                     displayText: appState.preferences.selectedEquipment.isEmpty
                         ? 'Equipment'
                         : 'Equipment (${_getValidEquipmentCount(appState.preferences.selectedEquipment)})',
-                    isSelected: appState.preferences.selectedEquipment.isNotEmpty,
+                    isSelected: _getValidEquipmentCount(appState.preferences.selectedEquipment) > 0, // ✅ Fixed: Only selected if valid equipment count > 0
                     onTap: appState.isLoadingPreferences ? null : () => _showFilterSheet(context, FilterType.equipment, appState),
                   ),
                   const SizedBox(width: 8),
                   FilterChipWidget(
                     filterType: FilterType.trainingStyle,
-                    displayText: appState.preferences.selectedTrainingStyle ?? 'Style',
+                    displayText: appState.preferences.selectedTrainingStyle?.replaceAll('_', ' ') ?? 'Style',
                     isSelected: appState.preferences.selectedTrainingStyle != null,
                     onTap: appState.isLoadingPreferences ? null : () => _showFilterSheet(context, FilterType.trainingStyle, appState),
                   ),
                   const SizedBox(width: 8),
                   FilterChipWidget(
                     filterType: FilterType.location,
-                    displayText: appState.preferences.selectedLocation ?? 'Location',
+                    displayText: appState.preferences.selectedLocation?.replaceAll('_', ' ') ?? 'Location',
                     isSelected: appState.preferences.selectedLocation != null,
                     onTap: appState.isLoadingPreferences ? null : () => _showFilterSheet(context, FilterType.location, appState),
                   ),
                   const SizedBox(width: 8),
                   FilterChipWidget(
                     filterType: FilterType.difficulty,
-                    displayText: appState.preferences.selectedDifficulty ?? 'Difficulty',
+                    displayText: appState.preferences.selectedDifficulty?.replaceAll('_', ' ') ?? 'Difficulty',
                     isSelected: appState.preferences.selectedDifficulty != null,
                     onTap: appState.isLoadingPreferences ? null : () => _showFilterSheet(context, FilterType.difficulty, appState),
                   ),
@@ -883,8 +885,22 @@ class _SessionGeneratorEditorPageState extends State<SessionGeneratorEditorPage>
       print('🔧 Equipment Debug:');
       print('   Full equipment set: $equipment');
       print('   Valid equipment: $validEquipment');
+      print('   FilterOptions.equipmentOptions: ${FilterOptions.equipmentOptions}');
       print('   Full count: ${equipment.length}');
       print('   Valid count: ${validEquipment.length}');
+      
+      // Clean up invalid equipment if any
+      if (validEquipment.length != equipment.length) {
+        final invalidEquipment = equipment.where((e) => !FilterOptions.equipmentOptions.contains(e));
+        print('   Invalid equipment found: $invalidEquipment');
+        print('   Cleaning up invalid equipment...');
+        
+        // Clean up the invalid equipment
+        Future.delayed(Duration.zero, () {
+          final appState = Provider.of<AppStateService>(context, listen: false);
+          appState.updateEquipmentFilter(validEquipment.toSet());
+        });
+      }
     }
     
     return validEquipment.length;

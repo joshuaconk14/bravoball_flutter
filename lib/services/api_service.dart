@@ -19,6 +19,10 @@ class ApiService {
   // MARK: - HTTP Client
   late final http.Client _client;
 
+  // MARK: - Token Refresh State
+  bool _isRefreshingToken = false;
+  List<Function> _failedRequestQueue = [];
+
   /// Initialize the API service
   void initialize() {
     _client = http.Client();
@@ -30,7 +34,7 @@ class ApiService {
   }
 
   // MARK: - Generic Request Method
-  /// Generic HTTP request method
+  /// Generic HTTP request method with automatic token refresh
   /// Similar to Swift's APIService.request method
   Future<ApiResponse<Map<String, dynamic>>> request({
     required String endpoint,
@@ -39,6 +43,7 @@ class ApiService {
     Map<String, dynamic>? body,
     Map<String, String>? queryParameters,
     bool requiresAuth = false,
+    bool isRetry = false, // Flag to prevent infinite refresh loops
   }) async {
     try {
       // Build the full URL
@@ -65,7 +70,42 @@ class ApiService {
         _logResponse(response);
       }
 
-      // Handle the response
+      // Check if we got a 401 error and should try to refresh token
+      if (response.statusCode == 401 && requiresAuth && !isRetry && !_isRefreshingToken) {
+        if (kDebugMode) {
+          print('🔄 Got 401 error, attempting token refresh...');
+        }
+        
+        // Try to refresh the token
+        final refreshSuccess = await _refreshAccessToken();
+        
+        if (refreshSuccess) {
+          if (kDebugMode) {
+            print('✅ Token refresh successful, retrying original request...');
+          }
+          
+          // Retry the original request with the new token
+          return await request(
+            endpoint: endpoint,
+            method: method,
+            headers: headers,
+            body: body,
+            queryParameters: queryParameters,
+            requiresAuth: requiresAuth,
+            isRetry: true, // Prevent infinite loops
+          );
+        } else {
+          if (kDebugMode) {
+            print('❌ Token refresh failed, user needs to re-login');
+          }
+          
+          // Clear invalid tokens and force re-login
+          await _clearTokensAndForceLogin();
+          return ApiResponse.error('Session expired. Please log in again.', 401);
+        }
+      }
+
+      // Handle the response normally
       return _handleResponse(response);
 
     } on SocketException catch (e) {
@@ -76,6 +116,98 @@ class ApiService {
       return ApiResponse.error('Data format error: ${e.message}');
     } catch (e) {
       return ApiResponse.error('Unexpected error: $e');
+    }
+  }
+
+  // MARK: - Token Refresh Logic
+
+  /// Refresh the access token using the refresh token
+  Future<bool> _refreshAccessToken() async {
+    if (_isRefreshingToken) {
+      // If already refreshing, wait for it to complete
+      await Future.delayed(const Duration(milliseconds: 100));
+      return _isRefreshingToken == false;
+    }
+
+    _isRefreshingToken = true;
+
+    try {
+      final userManager = UserManagerService.instance;
+      
+      if (userManager.refreshToken.isEmpty) {
+        if (kDebugMode) {
+          print('❌ No refresh token available');
+        }
+        return false;
+      }
+
+      if (kDebugMode) {
+        print('🔄 Refreshing access token...');
+      }
+
+      // Make refresh request without authentication headers
+      final refreshResponse = await _client.post(
+        _buildUri('/refresh/', null),
+        headers: {
+          'Content-Type': 'application/json',
+          'Accept': 'application/json',
+        },
+        body: json.encode({
+          'refresh_token': userManager.refreshToken,
+        }),
+      ).timeout(AppConfig.apiTimeout);
+
+      if (refreshResponse.statusCode == 200) {
+        final responseData = json.decode(refreshResponse.body) as Map<String, dynamic>;
+        
+        final newAccessToken = responseData['access_token'] as String?;
+        final newRefreshToken = responseData['refresh_token'] as String?;
+
+        if (newAccessToken != null) {
+          // Update tokens in user manager
+          await userManager.updateUserData(
+            email: userManager.email,
+            accessToken: newAccessToken,
+            refreshToken: newRefreshToken ?? userManager.refreshToken,
+          );
+
+          if (kDebugMode) {
+            print('✅ Access token refreshed successfully');
+          }
+
+          return true;
+        }
+      }
+
+      if (kDebugMode) {
+        print('❌ Token refresh failed with status: ${refreshResponse.statusCode}');
+      }
+      
+      return false;
+
+    } catch (e) {
+      if (kDebugMode) {
+        print('❌ Token refresh error: $e');
+      }
+      return false;
+    } finally {
+      _isRefreshingToken = false;
+    }
+  }
+
+  /// Clear tokens and force user to re-login
+  Future<void> _clearTokensAndForceLogin() async {
+    try {
+      final userManager = UserManagerService.instance;
+      await userManager.logout();
+      
+      if (kDebugMode) {
+        print('🚪 Cleared tokens and logged out user');
+      }
+    } catch (e) {
+      if (kDebugMode) {
+        print('❌ Error clearing tokens: $e');
+      }
     }
   }
 
@@ -283,7 +415,7 @@ class ApiService {
       case 400:
         return 'Bad request';
       case 401:
-        return 'Unauthorized';
+        return 'Session expired. Please log in again.';
       case 403:
         return 'Forbidden';
       case 404:

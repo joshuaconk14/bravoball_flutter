@@ -219,6 +219,8 @@ class DrillDetailView extends StatelessWidget {
                 spacing: 8,
                 runSpacing: 8,
                 children: drill.subSkills.map((subSkill) {
+                  // ✅ Strip underscores and replace with spaces
+                  final displaySubSkill = subSkill.replaceAll('_', ' ');
                   return Container(
                     padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
                     decoration: BoxDecoration(
@@ -227,7 +229,7 @@ class DrillDetailView extends StatelessWidget {
                       border: Border.all(color: AppTheme.getSkillColor(drill.skill).withOpacity(0.3)),
                     ),
                     child: Text(
-                      subSkill,
+                      displaySubSkill,
                       style: TextStyle(
                         fontFamily: 'Poppins',
                         fontSize: 14,

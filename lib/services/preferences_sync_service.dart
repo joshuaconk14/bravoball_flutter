@@ -295,21 +295,55 @@ class PreferencesSyncService {
     try {
       if (kDebugMode) {
         print('🔄 [PREFERENCES] Loading preferences from backend...');
+        final appState = AppStateService.instance;
+        print('   Current equipment before backend load: ${appState.preferences.selectedEquipment}');
       }
 
       final preferencesData = await fetchPreferences();
       if (preferencesData != null) {
         final appState = AppStateService.instance;
         
+        // ✅ PRESERVE ONBOARDING EQUIPMENT: Don't overwrite if equipment was set during onboarding
+        final currentEquipment = appState.preferences.selectedEquipment;
+        final backendEquipment = preferencesData.availableEquipment?.toSet() ?? {};
+        
+        // If we have equipment from onboarding (contains soccer ball), preserve it
+        Set<String> finalEquipment;
+        if (currentEquipment.contains('soccer ball') && !backendEquipment.contains('soccer ball')) {
+          finalEquipment = Set<String>.from(currentEquipment)..addAll(backendEquipment);
+          if (kDebugMode) {
+            print('🔧 [PREFERENCES] Preserving onboarding equipment (soccer ball) over backend data');
+          }
+        } else {
+          finalEquipment = backendEquipment;
+        }
+        
+        // ✅ PRESERVE ONBOARDING NULLS: Keep training style, location, and difficulty empty if they're currently null
+        // This indicates they should remain empty after onboarding
+        final currentTrainingStyle = appState.preferences.selectedTrainingStyle;
+        final currentLocation = appState.preferences.selectedLocation;
+        final currentDifficulty = appState.preferences.selectedDifficulty;
+        
+        final finalTrainingStyle = currentTrainingStyle == null ? null : preferencesData.trainingStyle;
+        final finalLocation = currentLocation == null ? null : preferencesData.trainingLocation;
+        final finalDifficulty = currentDifficulty == null ? null : preferencesData.difficulty;
+        
+        if (kDebugMode) {
+          print('🔧 [PREFERENCES] Preference preservation logic:');
+          print('   Training Style: current=$currentTrainingStyle, backend=${preferencesData.trainingStyle}, final=$finalTrainingStyle');
+          print('   Location: current=$currentLocation, backend=${preferencesData.trainingLocation}, final=$finalLocation');
+          print('   Difficulty: current=$currentDifficulty, backend=${preferencesData.difficulty}, final=$finalDifficulty');
+        }
+        
         // Convert backend data to UserPreferences
         final userPreferences = UserPreferences(
           selectedTime: preferencesData.duration != null 
               ? _convertMinutesToTimeString(preferencesData.duration!)
               : null,
-          selectedEquipment: preferencesData.availableEquipment?.toSet() ?? {},
-          selectedTrainingStyle: preferencesData.trainingStyle,
-          selectedLocation: preferencesData.trainingLocation,
-          selectedDifficulty: preferencesData.difficulty,
+          selectedEquipment: finalEquipment,
+          selectedTrainingStyle: finalTrainingStyle,
+          selectedLocation: finalLocation,
+          selectedDifficulty: finalDifficulty,
           selectedSkills: preferencesData.targetSkills?.toSet() ?? {},
         );
 
@@ -319,10 +353,12 @@ class PreferencesSyncService {
         if (kDebugMode) {
           print('✅ [PREFERENCES] Successfully loaded preferences from backend');
           print('   Time: ${userPreferences.selectedTime}');
-          print('   Equipment: ${userPreferences.selectedEquipment}');
-          print('   Training Style: ${userPreferences.selectedTrainingStyle}');
-          print('   Location: ${userPreferences.selectedLocation}');
-          print('   Difficulty: ${userPreferences.selectedDifficulty}');
+          print('   Equipment (final): ${userPreferences.selectedEquipment}');
+          print('   Equipment (from backend): ${backendEquipment}');
+          print('   Equipment (preserved from onboarding): ${currentEquipment.contains('soccer ball')}');
+          print('   Training Style (final): ${userPreferences.selectedTrainingStyle}');
+          print('   Location (final): ${userPreferences.selectedLocation}');
+          print('   Difficulty (final): ${userPreferences.selectedDifficulty}');
           print('   Skills: ${userPreferences.selectedSkills}');
         }
       } else {

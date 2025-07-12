@@ -141,7 +141,7 @@ class FilterDropdown extends StatelessWidget {
                   return DropdownMenuItem<String>(
                     value: option,
                     child: Text(
-                      option,
+                      option.replaceAll('_', ' '), // ✅ Strip underscores and replace with spaces
                       style: const TextStyle(
                         fontFamily: 'Poppins',
                         fontSize: 14,
@@ -247,7 +247,7 @@ class EquipmentMultiSelect extends StatelessWidget {
                           ),
                         if (isSelected) const SizedBox(width: 6),
                         Text(
-                          equipment,
+                          equipment.replaceAll('_', ' '), // ✅ Strip underscores and replace with spaces
                           style: TextStyle(
                             fontFamily: 'Poppins',
                             fontSize: 14,
@@ -358,7 +358,7 @@ class SkillSelector extends StatelessWidget {
                         ),
                       if (isSelected) const SizedBox(width: 4),
                       Text(
-                        subSkill,
+                        subSkill.replaceAll('_', ' '), // ✅ Strip underscores and replace with spaces
                         style: TextStyle(
                           fontFamily: 'Poppins',
                           fontSize: 12,

@@ -494,40 +494,39 @@ class DrillGroupSyncService {
       // Sync liked drills group - use UUIDs directly
       final likedDrillUuids = likedGroup.drills.map((drill) => drill.id).toList();
       
-      if (likedDrillUuids.isNotEmpty) {
-        DrillGroupResponse? existingLikedGroup;
-        try {
-          existingLikedGroup = existingGroups.firstWhere(
-            (group) => group.isLikedGroup,
-          );
-        } catch (e) {
-          // No existing liked group found
-          existingLikedGroup = null;
+      // Always sync liked drills group, even if empty
+      DrillGroupResponse? existingLikedGroup;
+      try {
+        existingLikedGroup = existingGroups.firstWhere(
+          (group) => group.isLikedGroup,
+        );
+      } catch (e) {
+        // No existing liked group found
+        existingLikedGroup = null;
+      }
+      
+      if (existingLikedGroup != null) {
+        // Update existing liked group (even if empty)
+        await updateDrillGroup(
+          groupId: existingLikedGroup.id,
+          name: 'Liked Drills',
+          description: 'Your favorite drills',
+          drillUuids: likedDrillUuids,
+          isLikedGroup: true,
+        );
+        if (kDebugMode) {
+          print('✅ Updated liked drills group with ${likedDrillUuids.length} drills');
         }
-        
-        if (existingLikedGroup != null) {
-          // Update existing liked group
-          await updateDrillGroup(
-            groupId: existingLikedGroup.id,
-            name: 'Liked Drills',
-            description: 'Your favorite drills',
-            drillUuids: likedDrillUuids,
-            isLikedGroup: true,
-          );
-          if (kDebugMode) {
-            print('✅ Updated liked drills group');
-          }
-        } else {
-          // Create new liked group
-          await createDrillGroup(
-            name: 'Liked Drills',
-            description: 'Your favorite drills',
-            drillUuids: likedDrillUuids,
-            isLikedGroup: true,
-          );
-          if (kDebugMode) {
-            print('✅ Created new liked drills group');
-          }
+      } else if (likedDrillUuids.isNotEmpty) {
+        // Only create new liked group if there are drills to add
+        await createDrillGroup(
+          name: 'Liked Drills',
+          description: 'Your favorite drills',
+          drillUuids: likedDrillUuids,
+          isLikedGroup: true,
+        );
+        if (kDebugMode) {
+          print('✅ Created new liked drills group with ${likedDrillUuids.length} drills');
         }
       }
       

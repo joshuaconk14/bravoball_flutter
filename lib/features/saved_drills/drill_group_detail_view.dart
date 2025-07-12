@@ -22,7 +22,6 @@ class DrillGroupDetailView extends StatefulWidget {
 
 class _DrillGroupDetailViewState extends State<DrillGroupDetailView> {
   bool _isEditMode = false;
-  bool _isEditingGroupInfo = false;
   final TextEditingController _nameController = TextEditingController();
   final TextEditingController _descriptionController = TextEditingController();
 
@@ -122,29 +121,44 @@ class _DrillGroupDetailViewState extends State<DrillGroupDetailView> {
               
               const Spacer(),
               
-              // Edit mode toggle (only for custom groups)
-              if (!group.isLikedDrillsGroup)
-                Container(
-                  decoration: BoxDecoration(
-                    color: Colors.white.withOpacity(0.2),
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                  child: IconButton(
-                    onPressed: () {
-                      if (_isEditMode) {
-                        // If we're in edit mode, finish editing
-                        _finishEditingGroupInfo(appState);
+              // Edit mode toggle - now available for both liked groups and custom groups
+              Container(
+                decoration: BoxDecoration(
+                  color: Colors.white.withOpacity(0.2),
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: IconButton(
+                  onPressed: () {
+                    if (_isEditMode) {
+                      // If we're in edit mode, finish editing
+                      if (group.isLikedDrillsGroup) {
+                        // For liked group, just exit quick remove mode
+                        setState(() {
+                          _isEditMode = false;
+                        });
                       } else {
-                        // Start editing group info
+                        // For custom groups, save changes and exit edit mode
+                        _finishEditingGroupInfo(appState);
+                      }
+                    } else {
+                      // Start edit mode
+                      if (group.isLikedDrillsGroup) {
+                        // For liked group, enter quick remove mode
+                        setState(() {
+                          _isEditMode = true;
+                        });
+                      } else {
+                        // For custom groups, start editing group info
                         _startEditingGroupInfo(group);
                       }
-                    },
-                    icon: Icon(
-                      _isEditMode ? Icons.done : Icons.edit,
-                      color: Colors.white,
-                    ),
+                    }
+                  },
+                  icon: Icon(
+                    _isEditMode ? Icons.done : Icons.edit,
+                    color: Colors.white,
                   ),
                 ),
+              ),
             ],
           ),
           
@@ -172,8 +186,8 @@ class _DrillGroupDetailViewState extends State<DrillGroupDetailView> {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    // Group name - editable when in edit mode
-                    if (_isEditMode)
+                    // Group name - editable when in edit mode (only for custom groups)
+                    if (_isEditMode && !group.isLikedDrillsGroup)
                       TextField(
                         controller: _nameController,
                         style: AppTheme.headlineMedium.copyWith(
@@ -237,7 +251,7 @@ class _DrillGroupDetailViewState extends State<DrillGroupDetailView> {
                 color: AppTheme.lightGray,
                 borderRadius: BorderRadius.circular(12),
               ),
-              child: _isEditMode
+              child: (_isEditMode && !group.isLikedDrillsGroup)
                   ? TextField(
                       controller: _descriptionController,
                       style: AppTheme.bodyMedium.copyWith(
@@ -341,9 +355,11 @@ class _DrillGroupDetailViewState extends State<DrillGroupDetailView> {
                 ),
               ),
               const Spacer(),
-              if (_isEditMode && !group.isLikedDrillsGroup)
+              if (_isEditMode)
                 Text(
-                  'Edit group info • Tap drills to remove',
+                  group.isLikedDrillsGroup 
+                      ? 'Tap drills to remove from liked'
+                      : 'Edit group info • Tap drills to remove',
                   style: AppTheme.bodySmall.copyWith(
                     color: AppTheme.primaryGray,
                   ),
@@ -377,7 +393,7 @@ class _DrillGroupDetailViewState extends State<DrillGroupDetailView> {
           DraggableDrillCard(
             drill: drill,
             onTap: () => _navigateToDrillDetail(drill),
-            onDelete: _isEditMode && !group.isLikedDrillsGroup
+            onDelete: _isEditMode
                 ? () => _removeDrillFromGroup(drill, group, appState)
                 : null,
           ),
@@ -460,13 +476,25 @@ class _DrillGroupDetailViewState extends State<DrillGroupDetailView> {
   }
 
   void _removeDrillFromGroup(DrillModel drill, DrillGroup group, AppStateService appState) {
-    appState.removeDrillFromGroup(group.id, drill);
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text('${drill.title} removed from ${group.name}'),
-        duration: const Duration(seconds: 2),
-      ),
-    );
+    if (group.isLikedDrillsGroup) {
+      // For liked group, toggle the liked status (which removes it from liked drills)
+      appState.toggleLikedDrill(drill);
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('${drill.title} removed from liked drills'),
+          duration: const Duration(seconds: 2),
+        ),
+      );
+    } else {
+      // For custom groups, remove from the specific group
+      appState.removeDrillFromGroup(group.id, drill);
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('${drill.title} removed from ${group.name}'),
+          duration: const Duration(seconds: 2),
+        ),
+      );
+    }
   }
 
   void _showAddDrillsDialog(DrillGroup group, AppStateService appState) {
