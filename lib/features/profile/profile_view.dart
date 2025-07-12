@@ -12,6 +12,7 @@ import 'edit_details_view.dart';
 import 'change_password_view.dart';
 import 'privacy_policy_view.dart';
 import 'terms_of_service_view.dart';
+import '../../utils/haptic_utils.dart';
 
 class ProfileView extends StatefulWidget {
   const ProfileView({Key? key}) : super(key: key);
@@ -45,17 +46,26 @@ class _ProfileViewState extends State<ProfileView> {
                       _buildMenuItem(
                         icon: Icons.edit_outlined,
                         title: 'Edit your details',
-                        onTap: () => _handleEditDetails(),
+                        onTap: () {
+                          HapticUtils.lightImpact(); // Light haptic for profile edit
+                          _handleEditDetails();
+                        },
                       ),
                       _buildMenuItem(
                         icon: Icons.lock_outline,
                         title: 'Change Password',
-                        onTap: () => _handleChangePassword(),
+                        onTap: () {
+                          HapticUtils.lightImpact(); // Light haptic for password change
+                          _handleChangePassword();
+                        },
                       ),
                       _buildMenuItem(
                         icon: Icons.share_outlined,
                         title: 'Share With a Friend',
-                        onTap: () => _handleShareApp(),
+                        onTap: () {
+                          HapticUtils.lightImpact(); // Light haptic for sharing
+                          _handleShareApp();
+                        },
                       ),
                     ],
                   ),
@@ -69,22 +79,34 @@ class _ProfileViewState extends State<ProfileView> {
                       _buildMenuItem(
                         icon: Icons.chat_outlined,
                         title: 'Join our Discord',
-                        onTap: () => _handleDiscordCommunity(),
+                        onTap: () {
+                          HapticUtils.lightImpact(); // Light haptic for community access
+                          _handleDiscordCommunity();
+                        },
                       ),
                       _buildMenuItem(
                         icon: Icons.privacy_tip_outlined,
                         title: 'Privacy Policy',
-                        onTap: () => _handlePrivacyPolicy(),
+                        onTap: () {
+                          HapticUtils.lightImpact(); // Light haptic for privacy policy
+                          _handlePrivacyPolicy();
+                        },
                       ),
                       _buildMenuItem(
                         icon: Icons.description_outlined,
                         title: 'Terms of Service',
-                        onTap: () => _handleTermsOfService(),
+                        onTap: () {
+                          HapticUtils.lightImpact(); // Light haptic for terms of service
+                          _handleTermsOfService();
+                        },
                       ),
                       _buildMenuItem(
                         icon: Icons.link_outlined,
                         title: 'Follow our Socials',
-                        onTap: () => _handleFollowSocials(),
+                        onTap: () {
+                          HapticUtils.lightImpact(); // Light haptic for social links
+                          _handleFollowSocials();
+                        },
                       ),
                     ],
                   ),
@@ -99,13 +121,19 @@ class _ProfileViewState extends State<ProfileView> {
                           icon: Icons.bug_report,
                           title: 'Debug Settings',
                           subtitle: AppConfig.useTestData ? 'Test Mode' : 'Backend Mode',
-                          onTap: () => _handleDebugSettings(),
+                          onTap: () {
+                            HapticUtils.lightImpact(); // Light haptic for debug settings
+                            _handleDebugSettings();
+                          },
                         ),
                         _buildDebugMenuItem(
                           icon: Icons.info_outline,
                           title: 'Auth Debug Info',
                           subtitle: userManager.isLoggedIn ? 'Authenticated' : 'Not Authenticated',
-                          onTap: () => _showAuthDebugInfo(userManager),
+                          onTap: () {
+                            HapticUtils.lightImpact(); // Light haptic for debug info
+                            _showAuthDebugInfo(userManager);
+                          },
                         ),
                       ],
                     ),
@@ -259,7 +287,10 @@ class _ProfileViewState extends State<ProfileView> {
     return Material(
       color: Colors.transparent,
       child: InkWell(
-        onTap: onTap,
+        onTap: () {
+          HapticUtils.lightImpact(); // Light haptic for profile item interaction
+          onTap();
+        },
         borderRadius: BorderRadius.circular(12),
         child: Container(
           padding: const EdgeInsets.all(12), // Reduced from 16
@@ -310,7 +341,10 @@ class _ProfileViewState extends State<ProfileView> {
     return Material(
       color: Colors.transparent,
       child: InkWell(
-        onTap: onTap,
+        onTap: () {
+          HapticUtils.lightImpact(); // Light haptic for profile item interaction
+          onTap();
+        },
         borderRadius: BorderRadius.circular(12),
         child: Container(
           padding: const EdgeInsets.all(12), // Reduced from 16
@@ -375,7 +409,10 @@ class _ProfileViewState extends State<ProfileView> {
               SizedBox(
                 width: double.infinity,
                 child: ElevatedButton(
-                  onPressed: () => _handleLogout(userManager),
+                  onPressed: () {
+                    HapticUtils.mediumImpact(); // Medium haptic for logout
+                    _handleLogout(userManager);
+                  },
                   style: ElevatedButton.styleFrom(
                     backgroundColor: AppTheme.primaryYellow,
                     foregroundColor: Colors.white,
@@ -398,7 +435,10 @@ class _ProfileViewState extends State<ProfileView> {
               SizedBox(
                 width: double.infinity,
                 child: ElevatedButton(
-                  onPressed: () => _handleDeleteAccount(),
+                  onPressed: () {
+                    HapticUtils.heavyImpact(); // Heavy haptic for destructive action
+                    _handleDeleteAccount();
+                  },
                   style: ElevatedButton.styleFrom(
                     backgroundColor: AppTheme.error,
                     foregroundColor: Colors.white,
@@ -493,7 +533,10 @@ class _ProfileViewState extends State<ProfileView> {
         ),
         actions: [
           TextButton(
-            onPressed: () => Navigator.pop(context),
+            onPressed: () {
+              HapticUtils.lightImpact(); // Light haptic for cancel
+              Navigator.pop(context);
+            },
             child: const Text(
               'Cancel',
               style: TextStyle(fontFamily: AppTheme.fontPoppins),
@@ -501,6 +544,7 @@ class _ProfileViewState extends State<ProfileView> {
           ),
           TextButton(
             onPressed: () async {
+              HapticUtils.heavyImpact(); // Heavy haptic for destructive confirmation
               Navigator.pop(context);
               
               // Show loading indicator
@@ -582,7 +626,10 @@ class _ProfileViewState extends State<ProfileView> {
         ),
         actions: [
           TextButton(
-            onPressed: () => Navigator.pop(context),
+            onPressed: () {
+              HapticUtils.lightImpact(); // Light haptic for close
+              Navigator.pop(context);
+            },
             child: const Text('Close'),
           ),
         ],
@@ -654,6 +701,7 @@ class _ProfileViewState extends State<ProfileView> {
       color: Colors.transparent,
       child: InkWell(
         onTap: () {
+          HapticUtils.lightImpact(); // Light haptic for tap to close
           Navigator.pop(context);
           _launchUrl(url);
         },
@@ -705,7 +753,10 @@ class _ProfileViewState extends State<ProfileView> {
         ),
         actions: [
           TextButton(
-            onPressed: () => Navigator.pop(context),
+            onPressed: () {
+              HapticUtils.lightImpact(); // Light haptic for cancel
+              Navigator.pop(context);
+            },
             child: const Text(
               'Cancel',
               style: TextStyle(fontFamily: AppTheme.fontPoppins),
@@ -713,6 +764,7 @@ class _ProfileViewState extends State<ProfileView> {
           ),
           TextButton(
             onPressed: () async {
+              HapticUtils.mediumImpact(); // Medium haptic for password confirmation
               Navigator.pop(context);
               
               // Show loading indicator

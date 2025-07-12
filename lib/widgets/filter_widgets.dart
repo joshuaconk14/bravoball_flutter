@@ -3,6 +3,7 @@ import 'package:provider/provider.dart';
 import '../models/filter_models.dart';
 import '../services/app_state_service.dart';
 import '../constants/app_theme.dart';
+import '../utils/haptic_utils.dart';
 import 'package:flutter/foundation.dart';
 
 class FilterChipWidget extends StatelessWidget {
@@ -26,7 +27,12 @@ class FilterChipWidget extends StatelessWidget {
     return Opacity(
       opacity: isDisabled ? 0.5 : 1.0,
       child: GestureDetector(
-        onTap: onTap,
+        onTap: () {
+          if (onTap != null) {
+            HapticUtils.lightImpact(); // Light haptic for filter interaction
+            onTap!();
+          }
+        },
         child: Container(
           padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
           decoration: BoxDecoration(
@@ -218,6 +224,7 @@ class EquipmentMultiSelect extends StatelessWidget {
                 final isSelected = appState.preferences.selectedEquipment.contains(equipment);
                 return GestureDetector(
                   onTap: () {
+                    HapticUtils.lightImpact(); // Light haptic for skill selection
                     final newSelection = Set<String>.from(appState.preferences.selectedEquipment);
                     if (isSelected) {
                       newSelection.remove(equipment);
@@ -329,6 +336,7 @@ class SkillSelector extends StatelessWidget {
               final isSelected = selectedSkills.contains(subSkill);
               return GestureDetector(
                 onTap: () {
+                  HapticUtils.lightImpact(); // Light haptic for sub-skill selection
                   final newSelection = Set<String>.from(selectedSkills);
                   if (isSelected) {
                     newSelection.remove(subSkill);
@@ -427,7 +435,10 @@ class FilterBottomSheet extends StatelessWidget {
             children: [
               Expanded(
                 child: TextButton(
-                  onPressed: () => Navigator.pop(context),
+                  onPressed: () {
+                    HapticUtils.lightImpact(); // Light haptic for cancel
+                    Navigator.pop(context);
+                  },
                   child: const Text(
                     'Cancel',
                     style: TextStyle(
@@ -440,7 +451,10 @@ class FilterBottomSheet extends StatelessWidget {
               const SizedBox(width: 16),
               Expanded(
                 child: ElevatedButton(
-                  onPressed: () => Navigator.pop(context),
+                  onPressed: () {
+                    HapticUtils.lightImpact(); // Light haptic for apply
+                    Navigator.pop(context);
+                  },
                   style: ElevatedButton.styleFrom(
                     backgroundColor: const Color(0xFFF9CC53),
                     foregroundColor: Colors.white,

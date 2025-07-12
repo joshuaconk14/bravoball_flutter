@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:rive/rive.dart';
+import '../../utils/haptic_utils.dart';
 import 'onboarding_questions.dart';
 import '../../widgets/bravo_button.dart';
 import '../../features/auth/login_view.dart';
@@ -164,6 +165,7 @@ class _TypewriterTextState extends State<TypewriterText>
     with SingleTickerProviderStateMixin {
   late AnimationController _controller;
   late Animation<int> _characterCount;
+  int _lastCharacterCount = 0;
 
   @override
   void initState() {
@@ -185,6 +187,20 @@ class _TypewriterTextState extends State<TypewriterText>
       if (status == AnimationStatus.completed) {
         widget.onComplete?.call();
       }
+    });
+
+    // Add listener for haptic feedback during typing
+    _characterCount.addListener(() {
+      final currentCharacterCount = _characterCount.value;
+      
+      // Trigger haptic feedback every 3-4 characters to simulate typing feel
+      if (currentCharacterCount > _lastCharacterCount && 
+          currentCharacterCount % 3 == 0 && 
+          currentCharacterCount < widget.text.length) {
+        HapticUtils.mediumImpact(); // Medium haptic for typing feel
+      }
+      
+      _lastCharacterCount = currentCharacterCount;
     });
 
     // Start animation after a short delay
@@ -298,6 +314,9 @@ class _OnboardingFlowState extends State<OnboardingFlow> {
         }
       });
     }
+    
+    // Add light haptic feedback for back navigation
+    HapticUtils.lightImpact();
   }
 
   // ✅ NEW: Reset animation states for preview screen
@@ -351,12 +370,12 @@ class _OnboardingFlowState extends State<OnboardingFlow> {
     return SafeArea(
       child: Column(
         children: [
-          const SizedBox(height: 48),
+          const Spacer(flex: 2), // More space at top to center content
           // ✅ Animated Bravo entrance
           StaggeredFadeInUp(
             delay: 200,
             child: SizedBox(
-              height: 220,
+              height: 250,
               child: RiveAnimation.asset(
                 'assets/rive/Bravo_Animation.riv',
                 fit: BoxFit.contain,
@@ -378,7 +397,7 @@ class _OnboardingFlowState extends State<OnboardingFlow> {
               ),
             ),
           ),
-          const SizedBox(height: 12),
+          const SizedBox(height: 14),
           // ✅ Animated subtitle
           StaggeredFadeInUp(
             delay: 800,
@@ -392,7 +411,7 @@ class _OnboardingFlowState extends State<OnboardingFlow> {
               ),
             ),
           ),
-          const Spacer(),
+          const Spacer(flex: 3), // Larger space below to push buttons to bottom
           // ✅ Animated buttons
           Padding(
             padding: const EdgeInsets.symmetric(horizontal: 24.0),
@@ -402,16 +421,22 @@ class _OnboardingFlowState extends State<OnboardingFlow> {
                 StaggeredFadeInUp(
                   delay: 1200,
                   child: BouncyButton(
-                    onTap: () => setState(() {
-                      _previousStep = _step;
-                      _step = 1;
-                    }),
-                    child: BravoButton(
-                      text: 'Create an account',
-                      onPressed: () => setState(() {
+                    onTap: () {
+                      HapticUtils.mediumImpact(); // Medium haptic for major action
+                      setState(() {
                         _previousStep = _step;
                         _step = 1;
-                      }),
+                      });
+                    },
+                    child: BravoButton(
+                      text: 'Create an account',
+                      onPressed: () {
+                        HapticUtils.mediumImpact(); // Medium haptic for major action
+                        setState(() {
+                          _previousStep = _step;
+                          _step = 1;
+                        });
+                      },
                       color: yellow,
                       backColor: AppTheme.primaryDarkYellow,
                       textColor: Colors.white,
@@ -423,10 +448,16 @@ class _OnboardingFlowState extends State<OnboardingFlow> {
                 StaggeredFadeInUp(
                   delay: 1400,
                   child: BouncyButton(
-                    onTap: _goToLogin,
+                    onTap: () {
+                      HapticUtils.mediumImpact(); // Medium haptic for major action
+                      _goToLogin();
+                    },
                     child: BravoButton(
                       text: 'Login',
-                      onPressed: _goToLogin,
+                      onPressed: () {
+                        HapticUtils.mediumImpact(); // Medium haptic for major action
+                        _goToLogin();
+                      },
                       color: Colors.white,
                       backColor: AppTheme.lightGray,
                       textColor: AppTheme.primaryYellow,
@@ -449,16 +480,55 @@ class _OnboardingFlowState extends State<OnboardingFlow> {
     return SafeArea(
       child: Column(
         children: [
+          // ✅ CONSISTENT: Use same top navigation bar as question screens
           Padding(
-            padding: const EdgeInsets.only(left: 8, top: 8),
-            child: Align(
-              alignment: Alignment.topLeft,
-              child: IconButton(
-                icon: const Icon(Icons.arrow_back_ios_new, color: darkGray),
-                onPressed: _back,
-              ),
+            padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 16.0),
+            child: Row(
+              children: [
+                // Back button on the left
+                IconButton(
+                  icon: const Icon(Icons.arrow_back_ios_new, color: darkGray),
+                  onPressed: () {
+                    HapticUtils.lightImpact(); // Light haptic for back navigation
+                    _back();
+                  },
+                ),
+                // Progress bar in the middle (show as beginning of flow)
+                Expanded(
+                  child: LinearProgressIndicator(
+                    value: 0.0, // Start at 0% since this is the beginning of the flow
+                    backgroundColor: Colors.grey.shade200,
+                    valueColor: const AlwaysStoppedAnimation<Color>(yellow),
+                    minHeight: 8,
+                    borderRadius: BorderRadius.circular(4),
+                  ),
+                ),
+                const SizedBox(width: 8),
+                // Skip button on the right
+                TextButton(
+                  onPressed: () {
+                    HapticUtils.lightImpact(); // Light haptic for skip
+                    // Skip to the first question, not to registration
+                    setState(() {
+                      _previousStep = _step;
+                      _step = stepFirstQuestion;
+                      _resetAnimationStates();
+                    });
+                  },
+                  child: const Text(
+                    'Skip',
+                    style: TextStyle(
+                      fontFamily: 'Poppins',
+                      fontWeight: FontWeight.bold,
+                      color: darkGray,
+                      fontSize: 16,
+                    ),
+                  ),
+                ),
+              ],
             ),
           ),
+          
           const SizedBox(height: 8),
           // ✅ ENHANCED: Animated Bravo with bounce effect
           TweenAnimationBuilder<double>(
@@ -571,7 +641,10 @@ class _OnboardingFlowState extends State<OnboardingFlow> {
                   width: double.infinity,
                   child: BravoButton(
                     text: 'Let\'s Go!',
-                    onPressed: _showNextButton ? _next : null,
+                    onPressed: _showNextButton ? () {
+                      HapticUtils.mediumImpact(); // Medium haptic for major action
+                      _next();
+                    } : null,
                     color: yellow,
                     backColor: AppTheme.primaryDarkYellow,
                     textColor: Colors.white,
@@ -607,7 +680,10 @@ class _OnboardingFlowState extends State<OnboardingFlow> {
                 if (_step >= stepFirstQuestion)
                   IconButton(
                     icon: const Icon(Icons.arrow_back_ios_new, color: darkGray),
-                    onPressed: _back,
+                    onPressed: () {
+                      HapticUtils.lightImpact(); // Light haptic for back navigation
+                      _back();
+                    },
                   ),
                 Expanded(
                   child: LinearProgressIndicator(
@@ -620,7 +696,10 @@ class _OnboardingFlowState extends State<OnboardingFlow> {
                 ),
                 const SizedBox(width: 8),
                 TextButton(
-                  onPressed: _skip,
+                  onPressed: () {
+                    HapticUtils.lightImpact(); // Light haptic for skip
+                    _skip();
+                  },
                   child: const Text('Skip',
                     style: TextStyle(
                       fontFamily: 'Poppins',
@@ -697,8 +776,14 @@ class _OnboardingFlowState extends State<OnboardingFlow> {
               child: BravoButton(
                 text: 'Next',
                 onPressed: question.isMultiSelect
-                    ? (selected as Set<int>).isNotEmpty ? _next : null
-                    : selected != null ? _next : null,
+                    ? (selected as Set<int>).isNotEmpty ? () {
+                        HapticUtils.mediumImpact(); // Medium haptic for next
+                        _next();
+                      } : null
+                    : selected != null ? () {
+                        HapticUtils.mediumImpact(); // Medium haptic for next
+                        _next();
+                      } : null,
                 color: yellow,
                 backColor: AppTheme.primaryDarkYellow,
                 textColor: Colors.white,
@@ -719,7 +804,7 @@ class _OnboardingFlowState extends State<OnboardingFlow> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          // Top bar with progress indicator (NO SKIP BUTTON)
+          // ✅ STATIC: Top bar (same as question screens)
           Padding(
             padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 16.0),
             child: Row(
@@ -754,45 +839,37 @@ class _OnboardingFlowState extends State<OnboardingFlow> {
               ],
             ),
           ),
-          // Bravo and speech bubble
+          
+          // ✅ STATIC: Bravo and message bubble (same as question screens)
           Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 24.0, vertical: 8.0),
+            padding: const EdgeInsets.symmetric(horizontal: 24.0, vertical: 16.0),
             child: Row(
-              crossAxisAlignment: CrossAxisAlignment.start,
+              crossAxisAlignment: CrossAxisAlignment.center,
               children: [
                 SizedBox(
-                  width: 80,
-                  height: 80,
+                  width: 100,
+                  height: 100,
                   child: RiveAnimation.asset(
                     'assets/rive/Bravo_Animation.riv',
                     stateMachines: const ['State Machine 2'],
                     fit: BoxFit.contain,
                   ),
                 ),
-                const SizedBox(width: 12),
+                const SizedBox(width: 8),
                 Expanded(
-                  child: Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 16),
-                    decoration: BoxDecoration(
-                      color: Colors.grey.shade100,
-                      borderRadius: BorderRadius.circular(18),
-                    ),
-                    child: const Text(
-                      'Enter your Registration Info below!',
-                      style: TextStyle(
-                        fontFamily: 'Poppins',
-                        fontWeight: FontWeight.bold,
-                        fontSize: 18,
-                        color: darkGray,
-                      ),
-                    ),
+                  child: _MessageBubble(
+                    key: ValueKey<int>(_step),
+                    message: "Enter your Registration Info below!",
+                    isMovingForward: true,
                   ),
                 ),
               ],
             ),
           ),
+          
           const SizedBox(height: 16),
-          // Scrollable form fields
+          
+          // ✅ Registration form fields (scrollable content)
           Expanded(
             child: SingleChildScrollView(
               padding: const EdgeInsets.symmetric(horizontal: 24.0),
@@ -855,7 +932,8 @@ class _OnboardingFlowState extends State<OnboardingFlow> {
               ),
             ),
           ),
-          // Fixed Submit button
+          
+          // ✅ STATIC: Submit button (same style as question screens)
           Padding(
             padding: const EdgeInsets.symmetric(horizontal: 20.0, vertical: 16.0),
             child: SizedBox(
@@ -871,6 +949,7 @@ class _OnboardingFlowState extends State<OnboardingFlow> {
                       onPressed: (_regEmail.isEmpty || _regPassword.isEmpty || _regConfirmPassword.isEmpty)
                           ? null
                           : () async {
+                              HapticUtils.mediumImpact(); // Medium haptic for registration
                               setState(() {
                                 _regError = '';
                               });
@@ -953,6 +1032,7 @@ class _OnboardingFlowState extends State<OnboardingFlow> {
     if (_step == stepRegistration) {
       // Do nothing, already on registration
     } else {
+      HapticUtils.lightImpact(); // Light haptic for skip
       _next();
     }
   }
@@ -1064,7 +1144,7 @@ class _MessageBubbleState extends State<_MessageBubble>
   Widget build(BuildContext context) {
     if (!_showBubble) {
       return Container(
-        height: 55, // Slightly smaller fixed height
+        height: 70, // Increased from 55 to 70
         alignment: Alignment.centerLeft,
       );
     }
@@ -1081,18 +1161,18 @@ class _MessageBubbleState extends State<_MessageBubble>
               // Speech bubble tail pointing left to Bravo - centered vertically
               Container(
                 child: CustomPaint(
-                  size: const Size(10, 14), // Slightly smaller
+                  size: const Size(12, 16), // Slightly bigger tail
                   painter: _BubbleTailPainter(),
                 ),
               ),
               // Main speech bubble with fixed size
               Expanded(
                 child: Container(
-                  height: 55, // Slightly smaller fixed height
-                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+                  height: 70, // Increased from 55 to 70
+                  padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 14), // Increased padding
                   decoration: BoxDecoration(
                     color: const Color(0xFFF5F5F5), // Lighter gray, no shadow
-                    borderRadius: BorderRadius.circular(18), // Slightly smaller radius
+                    borderRadius: BorderRadius.circular(20), // Slightly larger radius
                   ),
                   child: Center(
                     child: _showTypewriter
@@ -1102,9 +1182,9 @@ class _MessageBubbleState extends State<_MessageBubble>
                                 style: const TextStyle(
                                   fontFamily: 'Poppins',
                                   fontWeight: FontWeight.w600,
-                                  fontSize: 14,
+                                  fontSize: 16, // Increased from 14 to 16
                                   color: Color(0xFF333333),
-                                  height: 1.2,
+                                  height: 1.3, // Slightly increased line height
                                 ),
                                 duration: const Duration(milliseconds: 15), // Much faster
                                 // No callback needed anymore
@@ -1114,9 +1194,9 @@ class _MessageBubbleState extends State<_MessageBubble>
                                 style: const TextStyle(
                                   fontFamily: 'Poppins',
                                   fontWeight: FontWeight.w600,
-                                  fontSize: 14,
+                                  fontSize: 16, // Increased from 14 to 16
                                   color: Color(0xFF333333),
-                                  height: 1.2,
+                                  height: 1.3, // Slightly increased line height
                                 ),
                                 textAlign: TextAlign.center,
                               )
@@ -1252,7 +1332,10 @@ class _SimplifiedSlidingOptionsState extends State<_SimplifiedSlidingOptions>
                 return Padding(
                   padding: const EdgeInsets.symmetric(horizontal: 20.0, vertical: 6.0),
                   child: BouncyButton(
-                    onTap: () => widget.onOptionSelected(i),
+                    onTap: () {
+                      HapticUtils.lightImpact(); // Light haptic for option selection
+                      widget.onOptionSelected(i);
+                    },
                     child: AnimatedContainer(
                       duration: const Duration(milliseconds: 200),
                       curve: Curves.ease,
@@ -1300,7 +1383,10 @@ class _SimplifiedSlidingOptionsState extends State<_SimplifiedSlidingOptions>
                 return Padding(
                   padding: const EdgeInsets.symmetric(horizontal: 20.0, vertical: 6.0),
                   child: BouncyButton(
-                    onTap: () => widget.onOptionSelected(i),
+                    onTap: () {
+                      HapticUtils.lightImpact(); // Light haptic for option selection
+                      widget.onOptionSelected(i);
+                    },
                     child: AnimatedContainer(
                       duration: const Duration(milliseconds: 200),
                       curve: Curves.ease,
@@ -1402,7 +1488,12 @@ class _BravoTextField extends StatelessWidget {
                   passwordVisible ? Icons.visibility : Icons.visibility_off,
                   color: yellow,
                 ),
-                onPressed: onToggleVisibility,
+                onPressed: () {
+                  if (onToggleVisibility != null) {
+                    HapticUtils.lightImpact(); // Light haptic for password toggle
+                    onToggleVisibility!();
+                  }
+                },
               )
             : null,
       ),

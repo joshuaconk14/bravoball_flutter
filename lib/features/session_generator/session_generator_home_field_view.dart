@@ -6,6 +6,7 @@ import '../../models/drill_model.dart';
 import '../../models/editable_drill_model.dart';
 import '../../services/app_state_service.dart';
 import '../../constants/app_theme.dart';
+import '../../utils/haptic_utils.dart';
 import 'session_generator_editor_page.dart';
 import 'edit_drill_view.dart';
 import 'drill_follow_along_view.dart';
@@ -83,6 +84,7 @@ class _SessionGeneratorHomeFieldViewState extends State<SessionGeneratorHomeFiel
             children: [
               GestureDetector(
                 onTap: () {
+                  HapticUtils.heavyImpact(); // Heavy haptic for major navigation
                   Navigator.of(context).pushAndRemoveUntil(
                     MaterialPageRoute(
                       builder: (_) => const MainTabView(initialIndex: 3),
@@ -113,6 +115,7 @@ class _SessionGeneratorHomeFieldViewState extends State<SessionGeneratorHomeFiel
               
               GestureDetector(
                 onTap: () {
+                  HapticUtils.heavyImpact(); // Heavy haptic for major navigation  
                   Navigator.of(context).pushAndRemoveUntil(
                     MaterialPageRoute(
                       builder: (_) => const MainTabView(initialIndex: 1),
@@ -174,7 +177,7 @@ class _SessionGeneratorHomeFieldViewState extends State<SessionGeneratorHomeFiel
           Positioned(
             top: 100, // Positioned right above Bravo 
             left: 70,  // Aligned with Bravo's position
-            right: 180, // Give enough space
+            right: 190, // Give enough space
             child: _buildStatusMessage(appState),
           ),
           
@@ -198,6 +201,7 @@ class _SessionGeneratorHomeFieldViewState extends State<SessionGeneratorHomeFiel
             right: screenWidth * 0.25,
             child: GestureDetector(
               onTap: () {
+                HapticUtils.mediumImpact(); // Medium haptic for drill editor access
                 Navigator.of(context).push(
                   MaterialPageRoute(
                     builder: (_) => const SessionGeneratorEditorPage(),
@@ -315,12 +319,15 @@ class _SessionGeneratorHomeFieldViewState extends State<SessionGeneratorHomeFiel
             onTap: () {
               if (appState.currentSessionCompleted) {
                 // ✅ Session already completed, just show completion view
+                HapticUtils.mediumImpact(); // Medium haptic for completion view
                 _showSessionComplete();
               } else if (appState.isSessionComplete) {
                 // ✅ Session can be completed now
+                HapticUtils.heavyImpact(); // Heavy haptic for session completion
                 appState.completeSession();
                 _showSessionComplete();
               } else {
+                HapticUtils.lightImpact(); // Light haptic for locked action
                 ScaffoldMessenger.of(context).showSnackBar(
                   const SnackBar(content: Text('Complete all drills to unlock the trophy!')),
                 );
@@ -338,6 +345,7 @@ class _SessionGeneratorHomeFieldViewState extends State<SessionGeneratorHomeFiel
     
     // Only allow follow-along for the current active drill
     if (nextIncompleteDrill?.drill.id == editableDrill.drill.id || editableDrill.isCompleted) {
+      HapticUtils.mediumImpact(); // Medium haptic for drill interaction
       Navigator.of(context).push(
         MaterialPageRoute(
           builder: (_) => DrillFollowAlongView(
@@ -359,6 +367,7 @@ class _SessionGeneratorHomeFieldViewState extends State<SessionGeneratorHomeFiel
       );
     } else {
       // Show edit drill view for inactive drills
+      HapticUtils.lightImpact(); // Light haptic for edit access
       Navigator.of(context).push(
         MaterialPageRoute(
           builder: (_) => EditDrillView(
@@ -419,7 +428,7 @@ class _SessionGeneratorHomeFieldViewState extends State<SessionGeneratorHomeFiel
     
     String message;
     if (!hasSessionDrills) {
-      message = "Click on the soccer bag to add drills to your session!";
+      message = "Click the soccer bag to make a session!";
     } else if (appState.currentSessionCompleted) {
       // ✅ UPDATED: Message for already completed session
       message = "Session complete! Click the trophy to view your progress.";

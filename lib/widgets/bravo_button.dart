@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import '../constants/app_theme.dart';
+import '../utils/haptic_utils.dart';
 
 class BravoButton extends StatefulWidget {
   final String text;
@@ -74,7 +75,7 @@ class _BravoButtonState extends State<BravoButton> with SingleTickerProviderStat
       setState(() => _isPressed = false);
       _controller.reverse();
       if (widget.enableHaptics) {
-        HapticFeedback.mediumImpact();
+        HapticUtils.mediumImpact(); // Use our haptic utility
       }
       if (widget.onPressed != null) widget.onPressed!();
     }

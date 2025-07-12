@@ -6,6 +6,7 @@ import '../features/progression/progress_view.dart';
 import '../features/saved_drills/saved_drills_view.dart';
 import '../features/profile/profile_view.dart';
 import '../constants/app_theme.dart';
+import '../utils/haptic_utils.dart';
 
 class MainTabView extends StatefulWidget {
   final int initialIndex;
@@ -36,7 +37,7 @@ class _MainTabViewState extends State<MainTabView> {
     setState(() {
       _selectedIndex = index;
     });
-    HapticFeedback.lightImpact();
+    HapticUtils.heavyImpact(); // Heavy haptic for major navigation
   }
 
   @override

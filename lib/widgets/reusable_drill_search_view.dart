@@ -3,6 +3,7 @@ import 'package:provider/provider.dart';
 import '../models/drill_model.dart';
 import '../services/app_state_service.dart';
 import '../constants/app_theme.dart';
+import '../utils/haptic_utils.dart';
 import '../features/session_generator/drill_detail_view.dart';
 
 class ReusableDrillSearchView extends StatefulWidget {
@@ -224,7 +225,10 @@ class _ReusableDrillSearchViewState extends State<ReusableDrillSearchView> {
                 padding: const EdgeInsets.all(16),
                 child: Center(
                   child: ElevatedButton(
-                    onPressed: () => appState.loadMoreSearchResults(),
+                    onPressed: () {
+                      HapticUtils.lightImpact(); // Light haptic for load more
+                      appState.loadMoreSearchResults();
+                    },
                     child: const Text('Load More'),
                   ),
                 ),
@@ -241,7 +245,10 @@ class _ReusableDrillSearchViewState extends State<ReusableDrillSearchView> {
             isDisabled: isDisabled,
             isPreSelected: isPreSelected,
             themeColor: widget.themeColor,
-            onTap: () => _navigateToDrillDetail(context, drill, appState),
+            onTap: () {
+              HapticUtils.lightImpact(); // Light haptic for drill view
+              _navigateToDrillDetail(context, drill, appState);
+            },
             onSelectionChanged: (selected) {
               setState(() {
                 if (widget.allowMultipleSelection) {
@@ -290,6 +297,7 @@ class _ReusableDrillSearchViewState extends State<ReusableDrillSearchView> {
             actions: [
               TextButton(
                 onPressed: () {
+                  HapticUtils.mediumImpact(); // Medium haptic for major action
                   widget.onDrillsSelected(_selectedDrills.toList());
                   Navigator.pop(context);
                 },
@@ -385,6 +393,7 @@ class _ReusableDrillSearchViewState extends State<ReusableDrillSearchView> {
                   padding: const EdgeInsets.all(16),
                   child: ElevatedButton(
                     onPressed: () {
+                      HapticUtils.mediumImpact(); // Medium haptic for major action
                       widget.onDrillsSelected(_selectedDrills.toList());
                       Navigator.pop(context);
                     },
@@ -521,7 +530,10 @@ class SelectableDrillCard extends StatelessWidget {
                 GestureDetector(
                   onTap: isDisabled || isPreSelected 
                       ? null 
-                      : () => onSelectionChanged(!isSelected),
+                      : () {
+                          HapticUtils.selectionClick(); // Selection haptic for checkbox
+                          onSelectionChanged(!isSelected);
+                        },
                   child: Container(
                     width: 24,
                     height: 24,

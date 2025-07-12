@@ -11,6 +11,7 @@ import '../../widgets/bravo_button.dart';
 import '../../widgets/drill_video_player.dart';
 import 'drill_detail_view.dart';
 import 'session_completion_view.dart';
+import '../../utils/haptic_utils.dart';
 
 class DrillFollowAlongView extends StatefulWidget {
   final EditableDrillModel editableDrill;
@@ -94,7 +95,10 @@ class _DrillFollowAlongViewState extends State<DrillFollowAlongView> {
             // Back button
             IconButton(
               icon: const Icon(Icons.close, color: Colors.black),
-              onPressed: () => Navigator.pop(context),
+              onPressed: () {
+                HapticUtils.lightImpact(); // Light haptic for navigation
+                Navigator.pop(context);
+              },
             ),
             
             const Spacer(),
@@ -103,7 +107,10 @@ class _DrillFollowAlongViewState extends State<DrillFollowAlongView> {
             Container(
               margin: const EdgeInsets.only(right: 8),
               child: ElevatedButton(
-                onPressed: () => _showDrillDetails(context),
+                onPressed: () {
+                  HapticUtils.lightImpact(); // Light haptic for details
+                  _showDrillDetails(context);
+                },
                 style: ElevatedButton.styleFrom(
                   backgroundColor: Colors.grey.shade600,
                   foregroundColor: Colors.white,
@@ -420,14 +427,20 @@ class _DrillFollowAlongViewState extends State<DrillFollowAlongView> {
               // Info button
               _buildControlButton(
                 icon: Icons.info_outline,
-                onTap: () => setState(() => _showInfoSheet = true),
+                onTap: () {
+                  HapticUtils.lightImpact(); // Light haptic for info
+                  setState(() => _showInfoSheet = true);
+                },
                 color: Colors.grey.shade400,
                 size: 40,
               ),
               
               // Play/Pause button (larger)
               GestureDetector(
-                onTap: (_editableDrill.setsDone < _editableDrill.totalSets && (!_showCountdown || AppConfig.debug)) ? _togglePlayPause : null,
+                onTap: (_editableDrill.setsDone < _editableDrill.totalSets && (!_showCountdown || AppConfig.debug)) ? () {
+                  HapticUtils.mediumImpact(); // Medium haptic for play/pause
+                  _togglePlayPause();
+                } : null,
                 child: Container(
                   width: 90,
                   height: 90,
@@ -501,6 +514,7 @@ class _DrillFollowAlongViewState extends State<DrillFollowAlongView> {
               _buildControlButton(
                 icon: Icons.more_vert,
                 onTap: () {
+                  HapticUtils.lightImpact(); // Light haptic for more options
                   // Could add more options here
                 },
                 color: Colors.grey.shade400,
@@ -541,7 +555,10 @@ class _DrillFollowAlongViewState extends State<DrillFollowAlongView> {
     required double size,
   }) {
     return GestureDetector(
-      onTap: onTap,
+      onTap: () {
+        HapticUtils.lightImpact(); // Light haptic for control button
+        onTap();
+      },
       child: Container(
         width: size,
         height: size,
@@ -571,7 +588,10 @@ class _DrillFollowAlongViewState extends State<DrillFollowAlongView> {
         // Done button
         Expanded(
           child: ElevatedButton(
-            onPressed: _editableDrill.setsDone >= _editableDrill.totalSets ? _completeDrill : null,
+            onPressed: _editableDrill.setsDone >= _editableDrill.totalSets ? () {
+              HapticUtils.mediumImpact(); // Medium haptic for completion
+              _completeDrill();
+            } : null,
             style: ElevatedButton.styleFrom(
               backgroundColor: _editableDrill.setsDone >= _editableDrill.totalSets 
                   ? AppTheme.success
@@ -597,10 +617,12 @@ class _DrillFollowAlongViewState extends State<DrillFollowAlongView> {
         const SizedBox(width: 12),
         
         // Skip button
-        SizedBox(
-          width: 100,
+        Expanded(
           child: ElevatedButton(
-            onPressed: _skipDrill,
+            onPressed: () {
+              HapticUtils.lightImpact(); // Light haptic for skip
+              _skipDrill();
+            },
             style: ElevatedButton.styleFrom(
               backgroundColor: AppTheme.buttonPrimary,
               foregroundColor: Colors.white,

@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../../services/app_state_service.dart';
 import '../../constants/app_theme.dart';
+import '../../utils/haptic_utils.dart';
 
 class ProgressView extends StatefulWidget {
   const ProgressView({Key? key}) : super(key: key);
@@ -177,6 +178,7 @@ class _ProgressViewState extends State<ProgressView> {
                 const Spacer(),
                 GestureDetector(
                   onTap: () {
+                    HapticUtils.lightImpact(); // Light haptic for view toggle
                     setState(() {
                       showWeekView = !showWeekView;
                     });
@@ -212,6 +214,7 @@ class _ProgressViewState extends State<ProgressView> {
                 children: [
                   IconButton(
                     onPressed: () {
+                      HapticUtils.lightImpact(); // Light haptic for month navigation
                       setState(() {
                         selectedDate = DateTime(selectedDate.year, selectedDate.month - 1, 1);
                       });
@@ -232,6 +235,7 @@ class _ProgressViewState extends State<ProgressView> {
                   ),
                   IconButton(
                     onPressed: () {
+                      HapticUtils.lightImpact(); // Light haptic for month navigation
                       setState(() {
                         selectedDate = DateTime(selectedDate.year, selectedDate.month + 1, 1);
                       });
@@ -342,6 +346,7 @@ class _ProgressViewState extends State<ProgressView> {
             (s) => s.date.year == date.year && s.date.month == date.month && s.date.day == date.day,
           );
           if (sessions.isNotEmpty) {
+            HapticUtils.lightImpact(); // Light haptic for session view
             final session = sessions.first;
             _showSessionResults(session);
           }
@@ -502,7 +507,10 @@ class _DrillResultsViewState extends State<DrillResultsView> with SingleTickerPr
             children: [
               IconButton(
                 icon: const Icon(Icons.close),
-                onPressed: () => Navigator.of(context).pop(),
+                onPressed: () {
+                  HapticUtils.lightImpact(); // Light haptic for close
+                  Navigator.of(context).pop();
+                },
               ),
               const Spacer(),
             ],

@@ -69,8 +69,15 @@ class MyApp extends StatelessWidget {
 
 /// Authentication Wrapper
 /// Determines whether to show welcome page or main app based on auth state
-class AuthenticationWrapper extends StatelessWidget {
+class AuthenticationWrapper extends StatefulWidget {
   const AuthenticationWrapper({super.key});
+
+  @override
+  State<AuthenticationWrapper> createState() => _AuthenticationWrapperState();
+}
+
+class _AuthenticationWrapperState extends State<AuthenticationWrapper> {
+  bool _hasCompletedInitialStartup = false;
 
   @override
   Widget build(BuildContext context) {
@@ -81,24 +88,41 @@ class AuthenticationWrapper extends StatelessWidget {
           return const AuthLoadingScreen();
         }
 
-        // Show intro animation if needed
-        if (userManager.showIntroAnimation) {
-          return IntroAnimationScreen(
-            onComplete: () {
-              userManager.hideIntroAnimation();
-            },
-          );
-        }
+        // Get the content that should be shown
+        final backgroundContent = _buildBackgroundContent(userManager);
 
-        // Show main app if user is logged in
-        if (userManager.isLoggedIn) {
-          return MainTabViewWrapper();
-        }
+        // Only show intro animation on true app startup (not after login/onboarding)
+        final shouldShowIntro = !_hasCompletedInitialStartup;
 
-        // User is not logged in - show welcome page with create account and login buttons
-        return const OnboardingFlow();
+        // Always show content with intro animation overlay if needed
+        return Stack(
+          children: [
+            // Always show the background content immediately
+            backgroundContent,
+            
+            // Intro animation overlay - only on app startup
+            if (shouldShowIntro)
+              IntroAnimationScreen(
+                onComplete: () {
+                  // Mark startup as completed - won't show again this session
+                  setState(() {
+                    _hasCompletedInitialStartup = true;
+                  });
+                },
+              ),
+          ],
+        );
       },
     );
+  }
+
+  Widget _buildBackgroundContent(UserManagerService userManager) {
+    // Always build and return the content immediately
+    if (userManager.isLoggedIn) {
+      return MainTabViewWrapper();
+    } else {
+      return const OnboardingFlow();
+    }
   }
 }
 
@@ -229,41 +253,13 @@ class IntroAnimationScreen extends StatefulWidget {
   State<IntroAnimationScreen> createState() => _IntroAnimationScreenState();
 }
 
-class _IntroAnimationScreenState extends State<IntroAnimationScreen>
-    with SingleTickerProviderStateMixin {
-  late AnimationController _controller;
-  late Animation<double> _fadeAnimation;
-  late Animation<double> _scaleAnimation;
-
+class _IntroAnimationScreenState extends State<IntroAnimationScreen> {
   @override
   void initState() {
     super.initState();
     
-    _controller = AnimationController(
-      duration: const Duration(seconds: 2),
-      vsync: this,
-    );
-    
-    _fadeAnimation = Tween<double>(
-      begin: 0.0,
-      end: 1.0,
-    ).animate(CurvedAnimation(
-      parent: _controller,
-      curve: Curves.easeIn,
-    ));
-    
-    _scaleAnimation = Tween<double>(
-      begin: 0.5,
-      end: 1.0,
-    ).animate(CurvedAnimation(
-      parent: _controller,
-      curve: Curves.elasticOut,
-    ));
-    
-    _controller.forward();
-    
-    // Auto-complete after animation
-    Future.delayed(const Duration(seconds: 3), () {
+    // Auto-complete after animation - 6 seconds to allow full Bravo animation including lick
+    Future.delayed(const Duration(seconds: 6), () {
       if (mounted) {
         widget.onComplete();
       }
@@ -271,35 +267,15 @@ class _IntroAnimationScreenState extends State<IntroAnimationScreen>
   }
 
   @override
-  void dispose() {
-    _controller.dispose();
-    super.dispose();
-  }
-
-  @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: Colors.white,
-      body: Center(
-        child: AnimatedBuilder(
-          animation: _controller,
-          builder: (context, child) {
-            return FadeTransition(
-              opacity: _fadeAnimation,
-              child: ScaleTransition(
-                scale: _scaleAnimation,
-                child: SizedBox(
-                  width: MediaQuery.of(context).size.width,
-                  height: MediaQuery.of(context).size.height,
-                  child: const RiveAnimation.asset(
-                    'assets/rive/BravoBall_Intro.riv',
-                    fit: BoxFit.cover,
-                  ),
-                ),
-              ),
-            );
-          },
-        ),
+    // Transparent overlay with just the Rive animation - no background
+    return Container(
+      width: MediaQuery.of(context).size.width,
+      height: MediaQuery.of(context).size.height,
+      color: Colors.transparent, // Transparent background
+      child: const RiveAnimation.asset(
+        'assets/rive/BravoBall_Intro.riv',
+        fit: BoxFit.cover,
       ),
     );
   }

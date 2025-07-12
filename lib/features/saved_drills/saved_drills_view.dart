@@ -4,6 +4,7 @@ import '../../constants/app_theme.dart';
 import '../../services/app_state_service.dart';
 import '../../models/drill_group_model.dart';
 import '../../widgets/reusable_drill_search_view.dart';
+import '../../utils/haptic_utils.dart';
 import 'drill_group_detail_view.dart';
 
 class SavedDrillsView extends StatefulWidget {
@@ -55,6 +56,7 @@ class _SavedDrillsViewState extends State<SavedDrillsView> {
                             ),
                             child: IconButton(
                               onPressed: () {
+                                HapticUtils.mediumImpact(); // Medium haptic for create action
                                 _showCreateGroupDialog(context, appState);
                               },
                               icon: const Icon(
@@ -104,6 +106,7 @@ class _SavedDrillsViewState extends State<SavedDrillsView> {
                               const Spacer(),
                               IconButton(
                                 onPressed: () {
+                                  HapticUtils.lightImpact(); // Light haptic for info
                                   _showInfoDialog(context);
                                 },
                                 icon: const Icon(
@@ -158,6 +161,7 @@ class _SavedDrillsViewState extends State<SavedDrillsView> {
   Widget _buildGroupCard(DrillGroup group, AppStateService appState) {
     return GestureDetector(
       onTap: () {
+        HapticUtils.mediumImpact(); // Medium haptic for group navigation
         Navigator.push(
           context,
           MaterialPageRoute(
@@ -205,6 +209,7 @@ class _SavedDrillsViewState extends State<SavedDrillsView> {
                   PopupMenuButton<String>(
                     onSelected: (value) {
                       if (value == 'delete') {
+                        HapticUtils.lightImpact(); // Light haptic for delete initiation
                         _showDeleteConfirmation(group, appState);
                       }
                     },
@@ -321,6 +326,7 @@ class _SavedDrillsViewState extends State<SavedDrillsView> {
             const SizedBox(height: 24),
             ElevatedButton.icon(
               onPressed: () {
+                HapticUtils.mediumImpact(); // Medium haptic for create collection
                 _showCreateGroupDialog(context, appState);
               },
               icon: const Icon(Icons.add),
@@ -373,7 +379,10 @@ class _SavedDrillsViewState extends State<SavedDrillsView> {
         ),
         actions: [
           TextButton(
-            onPressed: () => Navigator.pop(context),
+            onPressed: () {
+              HapticUtils.lightImpact(); // Light haptic for cancel
+              Navigator.pop(context);
+            },
             child: const Text(
               'Cancel',
               style: TextStyle(fontFamily: AppTheme.fontPoppins),
@@ -382,6 +391,7 @@ class _SavedDrillsViewState extends State<SavedDrillsView> {
           ElevatedButton(
             onPressed: () {
               if (nameController.text.isNotEmpty) {
+                HapticUtils.mediumImpact(); // Medium haptic for create confirmation
                 appState.createDrillGroup(
                   nameController.text,
                   descriptionController.text.isEmpty
@@ -419,7 +429,10 @@ class _SavedDrillsViewState extends State<SavedDrillsView> {
         ),
         actions: [
           TextButton(
-            onPressed: () => Navigator.pop(context),
+            onPressed: () {
+              HapticUtils.lightImpact(); // Light haptic for cancel
+              Navigator.pop(context);
+            },
             child: const Text(
               'Cancel',
               style: TextStyle(fontFamily: AppTheme.fontPoppins),
@@ -427,6 +440,7 @@ class _SavedDrillsViewState extends State<SavedDrillsView> {
           ),
           TextButton(
             onPressed: () {
+              HapticUtils.mediumImpact(); // Medium haptic for delete confirmation
               appState.deleteDrillGroup(group.id);
               Navigator.pop(context);
             },
@@ -460,7 +474,10 @@ class _SavedDrillsViewState extends State<SavedDrillsView> {
         ),
         actions: [
           TextButton(
-            onPressed: () => Navigator.pop(context),
+            onPressed: () {
+              HapticUtils.lightImpact(); // Light haptic for close
+              Navigator.pop(context);
+            },
             child: const Text(
               'Got it',
               style: TextStyle(fontFamily: AppTheme.fontPoppins),

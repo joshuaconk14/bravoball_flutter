@@ -3,6 +3,7 @@ import '../../models/drill_model.dart';
 import '../../widgets/bravo_button.dart';
 import '../../widgets/drill_video_player.dart';
 import '../../constants/app_theme.dart';
+import '../../utils/haptic_utils.dart';
 
 class DrillDetailView extends StatelessWidget {
   final DrillModel drill;
@@ -24,8 +25,11 @@ class DrillDetailView extends StatelessWidget {
         backgroundColor: Colors.white,
         elevation: 0.5,
         leading: IconButton(
-          icon: const Icon(Icons.arrow_back_ios, color: Colors.black),
-          onPressed: () => Navigator.pop(context),
+          icon: const Icon(Icons.arrow_back, color: Colors.black),
+          onPressed: () {
+            HapticUtils.lightImpact(); // Light haptic for navigation
+            Navigator.pop(context);
+          },
         ),
         title: Text(
           drill.title,
@@ -261,7 +265,10 @@ class DrillDetailView extends StatelessWidget {
         child: SafeArea(
           child: BravoButton(
             text: isInSession ? 'Remove from Session' : 'Add to Session',
-            onPressed: onAddToSession,
+            onPressed: () {
+              HapticUtils.mediumImpact(); // Medium haptic for add to session
+              onAddToSession?.call();
+            },
             color: isInSession ? Colors.red : const Color(0xFFF9CC53),
             backColor: isInSession ? Colors.red.shade700 : AppTheme.primaryDarkYellow,
             textColor: Colors.white,

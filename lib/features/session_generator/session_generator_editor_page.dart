@@ -6,6 +6,7 @@ import '../../services/app_state_service.dart';
 import '../../widgets/filter_widgets.dart';
 import '../../widgets/drill_card_widget.dart';
 import '../../widgets/reusable_drill_search_view.dart';
+import '../../utils/haptic_utils.dart';
 import 'drill_detail_view.dart';
 import 'edit_drill_view.dart';
 import '../../constants/app_theme.dart';
@@ -61,7 +62,10 @@ class _SessionGeneratorEditorPageState extends State<SessionGeneratorEditorPage>
         elevation: 0.5,
         leading: IconButton(
           icon: const Icon(Icons.info_outline, color: Colors.white, size: 28),
-          onPressed: () => _showInfoDialog(context),
+          onPressed: () {
+            HapticUtils.lightImpact(); // Light haptic for info
+            _showInfoDialog(context);
+          },
         ),
         title: const Text(
           'Edit Session',
@@ -74,7 +78,10 @@ class _SessionGeneratorEditorPageState extends State<SessionGeneratorEditorPage>
         centerTitle: true,
         actions: [
           TextButton(
-            onPressed: () => Navigator.of(context).pop(),
+            onPressed: () {
+              HapticUtils.lightImpact(); // Light haptic for navigation
+              Navigator.of(context).pop();
+            },
             child: const Text(
               'Done',
               style: TextStyle(
@@ -135,6 +142,7 @@ class _SessionGeneratorEditorPageState extends State<SessionGeneratorEditorPage>
               backgroundColor: AppTheme.primaryLightBlue,
               foregroundColor: Colors.white,
               onPressed: appState.isLoadingPreferences ? null : () {
+                HapticUtils.mediumImpact(); // Medium haptic for major action
                 Navigator.push(
                   context,
                   MaterialPageRoute(
@@ -241,14 +249,20 @@ class _SessionGeneratorEditorPageState extends State<SessionGeneratorEditorPage>
                         ? 'Skills'
                         : 'Skills (${appState.preferences.selectedSkills.length})',
                     isSelected: appState.preferences.selectedSkills.isNotEmpty,
-                    onTap: appState.isLoadingPreferences ? null : () => _showSkillsSheet(context, appState),
+                    onTap: appState.isLoadingPreferences ? null : () {
+                      HapticUtils.lightImpact(); // Light haptic for filter selection
+                      _showSkillsSheet(context, appState);
+                    },
                   ),
                   const SizedBox(width: 8),
                   FilterChipWidget(
                     filterType: FilterType.time,
                     displayText: appState.preferences.selectedTime?.replaceAll('_', ' ') ?? 'Time',
                     isSelected: appState.preferences.selectedTime != null,
-                    onTap: appState.isLoadingPreferences ? null : () => _showFilterSheet(context, FilterType.time, appState),
+                    onTap: appState.isLoadingPreferences ? null : () {
+                      HapticUtils.lightImpact(); // Light haptic for filter selection
+                      _showFilterSheet(context, FilterType.time, appState);
+                    },
                   ),
                   const SizedBox(width: 8),
                   FilterChipWidget(
@@ -257,28 +271,40 @@ class _SessionGeneratorEditorPageState extends State<SessionGeneratorEditorPage>
                         ? 'Equipment'
                         : 'Equipment (${_getValidEquipmentCount(appState.preferences.selectedEquipment)})',
                     isSelected: _getValidEquipmentCount(appState.preferences.selectedEquipment) > 0, // ✅ Fixed: Only selected if valid equipment count > 0
-                    onTap: appState.isLoadingPreferences ? null : () => _showFilterSheet(context, FilterType.equipment, appState),
+                    onTap: appState.isLoadingPreferences ? null : () {
+                      HapticUtils.lightImpact(); // Light haptic for filter selection
+                      _showFilterSheet(context, FilterType.equipment, appState);
+                    },
                   ),
                   const SizedBox(width: 8),
                   FilterChipWidget(
                     filterType: FilterType.trainingStyle,
                     displayText: appState.preferences.selectedTrainingStyle?.replaceAll('_', ' ') ?? 'Style',
                     isSelected: appState.preferences.selectedTrainingStyle != null,
-                    onTap: appState.isLoadingPreferences ? null : () => _showFilterSheet(context, FilterType.trainingStyle, appState),
+                    onTap: appState.isLoadingPreferences ? null : () {
+                      HapticUtils.lightImpact(); // Light haptic for filter selection
+                      _showFilterSheet(context, FilterType.trainingStyle, appState);
+                    },
                   ),
                   const SizedBox(width: 8),
                   FilterChipWidget(
                     filterType: FilterType.location,
                     displayText: appState.preferences.selectedLocation?.replaceAll('_', ' ') ?? 'Location',
                     isSelected: appState.preferences.selectedLocation != null,
-                    onTap: appState.isLoadingPreferences ? null : () => _showFilterSheet(context, FilterType.location, appState),
+                    onTap: appState.isLoadingPreferences ? null : () {
+                      HapticUtils.lightImpact(); // Light haptic for filter selection
+                      _showFilterSheet(context, FilterType.location, appState);
+                    },
                   ),
                   const SizedBox(width: 8),
                   FilterChipWidget(
                     filterType: FilterType.difficulty,
                     displayText: appState.preferences.selectedDifficulty?.replaceAll('_', ' ') ?? 'Difficulty',
                     isSelected: appState.preferences.selectedDifficulty != null,
-                    onTap: appState.isLoadingPreferences ? null : () => _showFilterSheet(context, FilterType.difficulty, appState),
+                    onTap: appState.isLoadingPreferences ? null : () {
+                      HapticUtils.lightImpact(); // Light haptic for filter selection
+                      _showFilterSheet(context, FilterType.difficulty, appState);
+                    },
                   ),
                   const SizedBox(width: 60), // Extra space for scroll indicator
                 ],
@@ -404,6 +430,7 @@ class _SessionGeneratorEditorPageState extends State<SessionGeneratorEditorPage>
                 padding: const EdgeInsets.symmetric(vertical: 16),
               ),
               onPressed: appState.isLoadingPreferences ? null : () {
+                HapticUtils.mediumImpact(); // Medium haptic for major action
                 Navigator.push(
                   context,
                   MaterialPageRoute(
@@ -456,6 +483,7 @@ class _SessionGeneratorEditorPageState extends State<SessionGeneratorEditorPage>
               const SizedBox(width: 12),
               GestureDetector(
                 onTap: appState.isLoadingPreferences ? null : () {
+                  HapticUtils.lightImpact(); // Light haptic for clear action
                   showDialog(
                     context: context,
                     builder: (context) => AlertDialog(
@@ -463,11 +491,15 @@ class _SessionGeneratorEditorPageState extends State<SessionGeneratorEditorPage>
                       content: const Text('Are you sure you want to remove all drills from your session?'),
                       actions: [
                         TextButton(
-                          onPressed: () => Navigator.pop(context),
+                          onPressed: () {
+                            HapticUtils.lightImpact(); // Light haptic for cancel
+                            Navigator.pop(context);
+                          },
                           child: const Text('Cancel'),
                         ),
                         TextButton(
                           onPressed: () {
+                            HapticUtils.mediumImpact(); // Medium haptic for clear confirmation
                             appState.clearSession();
                             Navigator.pop(context);
                           },
@@ -561,7 +593,10 @@ class _SessionGeneratorEditorPageState extends State<SessionGeneratorEditorPage>
                   reps: editableDrill.totalReps,
                   duration: editableDrill.totalDuration,
                   isDraggable: !appState.isLoadingPreferences,
-                  onTap: appState.isLoadingPreferences ? null : () => _navigateToDrillDetail(context, editableDrill, appState),
+                  onTap: appState.isLoadingPreferences ? null : () {
+                    HapticUtils.lightImpact(); // Light haptic for drill interaction
+                    _navigateToDrillDetail(context, editableDrill, appState);
+                  },
                   onDelete: appState.isLoadingPreferences ? null : () => appState.removeDrillFromSession(editableDrill.drill),
                   showOverlayIcons: false,
                 ),
@@ -639,6 +674,7 @@ class _SessionGeneratorEditorPageState extends State<SessionGeneratorEditorPage>
         child: InkWell(
           borderRadius: BorderRadius.circular(16),
           onTap: appState.isLoadingPreferences ? null : () {
+            HapticUtils.mediumImpact(); // Medium haptic for major action
             Navigator.push(
               context,
               MaterialPageRoute(
@@ -832,14 +868,20 @@ class _SessionGeneratorEditorPageState extends State<SessionGeneratorEditorPage>
               children: [
                 Expanded(
                   child: TextButton(
-                    onPressed: () => Navigator.pop(context),
+                    onPressed: () {
+                      HapticUtils.lightImpact(); // Light haptic for cancel
+                      Navigator.pop(context);
+                    },
                     child: const Text('Cancel'),
                   ),
                 ),
                 const SizedBox(width: 16),
                 Expanded(
                   child: ElevatedButton(
-                    onPressed: () => Navigator.pop(context),
+                    onPressed: () {
+                      HapticUtils.lightImpact(); // Light haptic for apply
+                      Navigator.pop(context);
+                    },
                     style: ElevatedButton.styleFrom(
                       backgroundColor: const Color(0xFFF9CC53),
                       foregroundColor: Colors.white,
@@ -868,7 +910,10 @@ class _SessionGeneratorEditorPageState extends State<SessionGeneratorEditorPage>
         ),
         actions: [
           TextButton(
-            onPressed: () => Navigator.pop(context),
+            onPressed: () {
+              HapticUtils.lightImpact(); // Light haptic for cancel/close
+              Navigator.pop(context);
+            },
             child: const Text('Got it'),
           ),
         ],

@@ -7,6 +7,7 @@ import '../../services/app_state_service.dart';
 import '../../constants/app_theme.dart';
 import '../../widgets/drill_video_player.dart';
 import 'drill_detail_view.dart';
+import '../../utils/haptic_utils.dart';
 
 class EditDrillView extends StatefulWidget {
   final EditableDrillModel editableDrill;
@@ -55,7 +56,10 @@ class _EditDrillViewState extends State<EditDrillView> {
         elevation: 0,
         leading: IconButton(
           icon: const Icon(Icons.close, color: Colors.black),
-          onPressed: () => Navigator.pop(context),
+          onPressed: () {
+            HapticUtils.lightImpact(); // Light haptic for navigation
+            Navigator.pop(context);
+          },
         ),
         title: const Text(
           'Edit Drill',
@@ -71,7 +75,10 @@ class _EditDrillViewState extends State<EditDrillView> {
           Padding(
             padding: const EdgeInsets.only(right: 8.0),
             child: ElevatedButton(
-              onPressed: () => _showDrillDetails(context),
+              onPressed: () {
+                HapticUtils.lightImpact(); // Light haptic for details
+                _showDrillDetails(context);
+              },
               style: ElevatedButton.styleFrom(
                 backgroundColor: Colors.grey.shade600,
                 foregroundColor: Colors.white,
@@ -246,17 +253,20 @@ class _EditDrillViewState extends State<EditDrillView> {
               children: [
                 // Minus button with hold-to-repeat
                 GestureDetector(
-                  onTapDown: value > 1 ? (_) => _startHoldToRepeat(() {
-                    // Get current value based on label
-                    int currentValue = _getCurrentValue(label);
-                    if (currentValue > 1) {
-                      onChanged(currentValue - 1);
-                    }
-                  }, () {
-                    // Check current value during hold
-                    int currentValue = _getCurrentValue(label);
-                    return currentValue > 1;
-                  }) : null,
+                  onTapDown: value > 1 ? (_) {
+                    HapticUtils.lightImpact(); // Light haptic for decrement
+                    _startHoldToRepeat(() {
+                      // Get current value based on label
+                      int currentValue = _getCurrentValue(label);
+                      if (currentValue > 1) {
+                        onChanged(currentValue - 1);
+                      }
+                    }, () {
+                      // Check current value during hold
+                      int currentValue = _getCurrentValue(label);
+                      return currentValue > 1;
+                    });
+                  } : null,
                   onTapUp: (_) => _stopHoldToRepeat(),
                   onTapCancel: () => _stopHoldToRepeat(),
                   child: Container(
@@ -284,17 +294,20 @@ class _EditDrillViewState extends State<EditDrillView> {
                 ),
                 // Plus button with hold-to-repeat
                 GestureDetector(
-                  onTapDown: value < _getMaxValue(label) ? (_) => _startHoldToRepeat(() {
-                    int currentValue = _getCurrentValue(label);
-                    int maxValue = _getMaxValue(label);
-                    if (currentValue < maxValue) {
-                      onChanged(currentValue + 1);
-                    }
-                  }, () {
-                    int currentValue = _getCurrentValue(label);
-                    int maxValue = _getMaxValue(label);
-                    return currentValue < maxValue;
-                  }) : null,
+                  onTapDown: value < _getMaxValue(label) ? (_) {
+                    HapticUtils.lightImpact(); // Light haptic for increment
+                    _startHoldToRepeat(() {
+                      // Get current value based on label
+                      int currentValue = _getCurrentValue(label);
+                      if (currentValue < _getMaxValue(label)) {
+                        onChanged(currentValue + 1);
+                      }
+                    }, () {
+                      // Check current value during hold
+                      int currentValue = _getCurrentValue(label);
+                      return currentValue < _getMaxValue(label);
+                    });
+                  } : null,
                   onTapUp: (_) => _stopHoldToRepeat(),
                   onTapCancel: () => _stopHoldToRepeat(),
                   child: Container(
@@ -405,7 +418,10 @@ class _EditDrillViewState extends State<EditDrillView> {
         width: double.infinity,
         height: 56,
         child: ElevatedButton(
-          onPressed: _saveChanges,
+          onPressed: () {
+            HapticUtils.mediumImpact(); // Medium haptic for save action
+            _saveChanges();
+          },
           style: ElevatedButton.styleFrom(
             backgroundColor: AppTheme.buttonPrimary,
             foregroundColor: AppTheme.textOnPrimary,

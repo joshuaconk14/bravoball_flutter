@@ -6,6 +6,7 @@ import '../../services/login_service.dart';
 import 'forgot_password_view.dart';
 import '../../models/login_state_model.dart';
 import '../../widgets/bravo_button.dart';
+import '../../utils/haptic_utils.dart';
 
 /// Login View
 /// Mirrors Swift LoginView for user authentication UI
@@ -185,7 +186,10 @@ class _LoginViewState extends State<LoginView> {
                 hintText: 'Enter your password',
                 prefixIcon: const Icon(Icons.lock_outline),
                 suffixIcon: IconButton(
-                  onPressed: model.togglePasswordVisibility,
+                  onPressed: () {
+                    HapticUtils.lightImpact(); // Light haptic for password toggle
+                    model.togglePasswordVisibility();
+                  },
                   icon: Icon(
                     model.isPasswordVisible
                         ? Icons.visibility_off
@@ -210,7 +214,10 @@ class _LoginViewState extends State<LoginView> {
     return Align(
       alignment: Alignment.centerRight,
       child: TextButton(
-        onPressed: _handleForgotPassword,
+        onPressed: () {
+          HapticUtils.lightImpact(); // Light haptic for forgot password
+          _handleForgotPassword();
+        },
         child: Text(
           'Forgot Password?',
           style: AppTheme.bodyMedium.copyWith(
@@ -230,7 +237,10 @@ class _LoginViewState extends State<LoginView> {
           height: 50,
           child: BravoButton(
               text: 'Login',
-              onPressed: model.isLoading || !model.isFormValid ? null : _handleLogin,
+              onPressed: model.isLoading || !model.isFormValid ? null : () {
+                HapticUtils.mediumImpact(); // Medium haptic for login
+                _handleLogin();
+              },
               color: AppTheme.primaryYellow,
               backColor: AppTheme.primaryDarkYellow,
               textColor: Colors.white,
@@ -249,7 +259,10 @@ class _LoginViewState extends State<LoginView> {
       height: 50,
       child: BravoButton(
         text: 'Cancel',
-        onPressed: _handleCancel,
+        onPressed: () {
+          HapticUtils.mediumImpact(); // Medium haptic for cancel
+          _handleCancel();
+        },
         color: Colors.white,
         backColor: AppTheme.lightGray,
         textColor: AppTheme.primaryYellow,

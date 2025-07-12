@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import '../models/drill_model.dart';
 import '../constants/app_theme.dart'; // Fixed import path for AppTheme
+import '../utils/haptic_utils.dart';
 import 'package:provider/provider.dart'; // Added for Provider
 import '../services/app_state_service.dart'; // Added for AppStateService
 
@@ -46,7 +47,12 @@ class DraggableDrillCard extends StatelessWidget {
         color: Colors.transparent,
         child: InkWell(
           borderRadius: BorderRadius.circular(12),
-          onTap: onTap,
+          onTap: () {
+            if (onTap != null) {
+              HapticUtils.mediumImpact(); // Medium haptic for drill interaction
+              onTap!();
+            }
+          },
           child: Padding(
             padding: const EdgeInsets.all(16),
             child: Row(
@@ -135,7 +141,12 @@ class DraggableDrillCard extends StatelessWidget {
                   children: [
                     if (onDelete != null)
                       IconButton(
-                        onPressed: onDelete,
+                        onPressed: () {
+                          if (onDelete != null) {
+                            HapticUtils.lightImpact(); // Light haptic for delete action
+                            onDelete!();
+                          }
+                        },
                         icon: Icon(
                           Icons.delete_outline,
                           color: Colors.red.shade400,
@@ -333,7 +344,12 @@ class SimpleDrillCard extends StatelessWidget {
         color: Colors.transparent,
         child: InkWell(
           borderRadius: BorderRadius.circular(12),
-          onTap: onTap,
+          onTap: () {
+            if (onTap != null) {
+              HapticUtils.mediumImpact(); // Medium haptic for drill interaction
+              onTap!();
+            }
+          },
           child: Padding(
             padding: const EdgeInsets.all(16),
             child: Row(
@@ -412,21 +428,39 @@ class SimpleDrillCard extends StatelessWidget {
                 if (onAdd != null)
                   Container(
                     margin: const EdgeInsets.only(left: 8),
-                    child: IconButton(
-                      onPressed: onAdd,
-                      icon: Container(
-                        padding: const EdgeInsets.all(4),
-                        decoration: BoxDecoration(
-                          color: const Color(0xFFF9CC53),
+                    child: ElevatedButton(
+                      onPressed: () {
+                        if (onAdd != null) {
+                          HapticUtils.mediumImpact(); // Medium haptic for add action
+                          onAdd!();
+                        }
+                      },
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: const Color(0xFFF9CC53),
+                        shape: RoundedRectangleBorder(
                           borderRadius: BorderRadius.circular(16),
                         ),
-                        child: const Icon(
-                          Icons.add,
-                          color: Colors.white,
-                          size: 16,
-                        ),
+                        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
                       ),
-                      visualDensity: VisualDensity.compact,
+                      child: const Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Icon(
+                            Icons.add,
+                            color: Colors.white,
+                            size: 16,
+                          ),
+                          SizedBox(width: 4),
+                          Text(
+                            'Add',
+                            style: TextStyle(
+                              color: Colors.white,
+                              fontSize: 14,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                        ],
+                      ),
                     ),
                   ),
                 
