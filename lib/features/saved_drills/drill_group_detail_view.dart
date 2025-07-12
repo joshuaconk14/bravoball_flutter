@@ -319,7 +319,7 @@ class _DrillGroupDetailViewState extends State<DrillGroupDetailView> {
                                 ),
                               ),
                               child: Text(
-                                skill,
+                                skill.replaceAll('_', ' '),
                                 style: TextStyle(
                                   fontFamily: AppTheme.fontPoppins,
                                   fontSize: 12,
@@ -528,6 +528,7 @@ class _DrillGroupDetailViewState extends State<DrillGroupDetailView> {
                   '${group.isLikedDrillsGroup ? 'liked' : 'added to ${group.name}'}',
                 ),
                 duration: const Duration(seconds: 2),
+                backgroundColor: Colors.green,
               ),
             );
           },

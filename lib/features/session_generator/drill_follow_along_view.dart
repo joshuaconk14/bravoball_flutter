@@ -9,6 +9,7 @@ import '../../constants/app_theme.dart';
 import '../../config/app_config.dart';
 import '../../widgets/bravo_button.dart';
 import '../../widgets/drill_video_player.dart';
+import '../../widgets/info_popup_widget.dart';
 import 'drill_detail_view.dart';
 import 'session_completion_view.dart';
 import '../../utils/haptic_utils.dart';
@@ -142,24 +143,24 @@ class _DrillFollowAlongViewState extends State<DrillFollowAlongView> {
       ),
       body: Column(
         children: [
-          // Progress section at top
+          // Progress section at top - cleaner design
           _buildProgressSection(),
           
           // Main content - flexible layout
           Expanded(
-            child: Padding(
+            child: SingleChildScrollView(
               padding: const EdgeInsets.symmetric(horizontal: 20),
               child: Column(
                 children: [
-                  const SizedBox(height: 16),
+                  const SizedBox(height: 12), // Reduced from 16
                   _buildDrillHeader(),
-                  const SizedBox(height: 20),
+                  const SizedBox(height: 16), // Reduced from 20
                   _buildVideoPlayer(),
-                  const SizedBox(height: 20),
+                  const SizedBox(height: 16), // Reduced from 20
                   _buildPlayControls(),
-                  const SizedBox(height: 12),
+                  const SizedBox(height: 12), // Reduced from 16
                   _buildActionButtons(),
-                  const SizedBox(height: 12),
+                  const SizedBox(height: 20), // Reduced from 40
                 ],
               ),
             ),
@@ -171,12 +172,12 @@ class _DrillFollowAlongViewState extends State<DrillFollowAlongView> {
 
   Widget _buildProgressSection() {
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
       decoration: BoxDecoration(
-        color: Colors.grey.shade50,
+        color: AppTheme.lightGray,
         border: Border(
           bottom: BorderSide(
-            color: Colors.grey.shade200,
+            color: Colors.grey.shade300,
             width: 1,
           ),
         ),
@@ -187,58 +188,75 @@ class _DrillFollowAlongViewState extends State<DrillFollowAlongView> {
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              Text(
-                _editableDrill.setsDone >= _editableDrill.totalSets 
-                    ? 'All Sets Complete!' 
-                    : 'Set ${_editableDrill.setsDone + 1} of ${_editableDrill.totalSets}',
-                style: const TextStyle(
-                  fontFamily: 'Poppins',
-                  fontWeight: FontWeight.w600,
-                  fontSize: 14,
-                  color: Colors.black87,
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                decoration: BoxDecoration(
+                  color: AppTheme.primaryYellow,
+                  borderRadius: BorderRadius.circular(20),
+                  boxShadow: [
+                    BoxShadow(
+                      color: AppTheme.primaryYellow.withOpacity(0.3),
+                      blurRadius: 4,
+                      offset: const Offset(0, 2),
+                    ),
+                  ],
+                ),
+                child: Text(
+                  _editableDrill.setsDone >= _editableDrill.totalSets 
+                      ? 'All Sets Complete! 🎉' 
+                      : 'Set ${_editableDrill.setsDone + 1} of ${_editableDrill.totalSets}',
+                  style: const TextStyle(
+                    fontFamily: 'Poppins',
+                    fontWeight: FontWeight.bold,
+                    fontSize: 14,
+                    color: Colors.white,
+                  ),
                 ),
               ),
-              Text(
-                '${(_editableDrill.progress * 100).toInt()}% Complete',
-                style: TextStyle(
-                  fontFamily: 'Poppins',
-                  fontWeight: FontWeight.w500,
-                  fontSize: 12,
-                  color: Colors.grey.shade600,
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                decoration: BoxDecoration(
+                  color: Colors.white,
+                  borderRadius: BorderRadius.circular(12),
+                  border: Border.all(
+                    color: Colors.grey.shade300,
+                  ),
+                ),
+                child: Text(
+                  '${(_editableDrill.progress * 100).toInt()}% Complete',
+                  style: TextStyle(
+                    fontFamily: 'Poppins',
+                    fontWeight: FontWeight.w600,
+                    fontSize: 12,
+                    color: Colors.grey.shade700,
+                  ),
                 ),
               ),
             ],
           ),
           
-          const SizedBox(height: 8),
+          const SizedBox(height: 12),
           
-          // Progress bar - clearly left to right
+          // Progress bar - simple and clean
           LayoutBuilder(
             builder: (context, constraints) {
               return Container(
                 width: double.infinity,
-                height: 6,
+                height: 8,
                 decoration: BoxDecoration(
-                  color: Colors.grey.shade300,
-                  borderRadius: BorderRadius.circular(3),
+                  color: Colors.white,
+                  borderRadius: BorderRadius.circular(4),
                 ),
                 child: Stack(
                   children: [
-                    // Progress fill - animated from left to right
+                    // Progress fill - simple color
                     AnimatedContainer(
-                      duration: const Duration(milliseconds: 300),
+                      duration: const Duration(milliseconds: 500),
                       width: constraints.maxWidth * _editableDrill.progress,
-                      height: 6,
+                      height: 8,
                       decoration: BoxDecoration(
-                        gradient: LinearGradient(
-                          begin: Alignment.centerLeft,
-                          end: Alignment.centerRight,
-                          colors: [
-                            AppTheme.buttonPrimary,
-                            AppTheme.buttonPrimary.withOpacity(0.8),
-                          ],
-                        ),
-                        borderRadius: BorderRadius.circular(3),
+                        color: AppTheme.primaryYellow,
+                        borderRadius: BorderRadius.circular(4),
                       ),
                     ),
                   ],
@@ -340,16 +358,19 @@ class _DrillFollowAlongViewState extends State<DrillFollowAlongView> {
 
   Widget _buildVideoPlayer() {
     if (_editableDrill.drill.videoUrl.isNotEmpty) {
-      return DrillVideoPlayer(
-        videoUrl: _editableDrill.drill.videoUrl,
-        aspectRatio: 16 / 9,
-        showControls: true,
+      return Container(
+        height: 180, // Reduced from default to make it more compact
+        child: DrillVideoPlayer(
+          videoUrl: _editableDrill.drill.videoUrl,
+          aspectRatio: 16 / 9,
+          showControls: true,
+        ),
       );
     } else {
       // Fallback placeholder when no video URL
       return Container(
         width: double.infinity,
-        height: 200,
+        height: 160, // Reduced from 200
         decoration: BoxDecoration(
           color: Colors.grey.shade200,
           borderRadius: BorderRadius.circular(16),
@@ -359,15 +380,15 @@ class _DrillFollowAlongViewState extends State<DrillFollowAlongView> {
           children: [
             Icon(
               Icons.videocam_off,
-              size: 48,
+              size: 40, // Reduced from 48
               color: Colors.grey.shade600,
             ),
-            const SizedBox(height: 8),
+            const SizedBox(height: 6), // Reduced from 8
             Text(
               'No video available',
               style: TextStyle(
                 fontFamily: 'Poppins',
-                fontSize: 14,
+                fontSize: 12, // Reduced from 14
                 color: Colors.grey.shade600,
               ),
             ),
@@ -379,46 +400,64 @@ class _DrillFollowAlongViewState extends State<DrillFollowAlongView> {
 
   Widget _buildPlayControls() {
     return Container(
-      padding: const EdgeInsets.all(16),
+      padding: const EdgeInsets.all(16), // Reduced from 20
       decoration: BoxDecoration(
         color: Colors.white,
-        borderRadius: BorderRadius.circular(12),
+        borderRadius: BorderRadius.circular(16),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.06),
-            blurRadius: 8,
+            color: Colors.black.withOpacity(0.08),
+            blurRadius: 10,
             offset: const Offset(0, 2),
           ),
         ],
       ),
       child: Column(
         children: [
-          // Timer display
-          Column(
-            children: [
-              const Text(
-                'Time Remaining',
-                style: TextStyle(
-                  fontFamily: 'Poppins',
-                  fontWeight: FontWeight.w500,
-                  fontSize: 12,
-                  color: Colors.grey,
+          // Timer display - more compact
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8), // Reduced padding
+            decoration: BoxDecoration(
+              color: AppTheme.lightGray,
+              borderRadius: BorderRadius.circular(12),
+            ),
+            child: Column(
+              children: [
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Icon(
+                      Icons.timer,
+                      color: AppTheme.primaryYellow,
+                      size: 16, // Reduced from 18
+                    ),
+                    const SizedBox(width: 6), // Reduced from 8
+                    const Text(
+                      'Time Remaining',
+                      style: TextStyle(
+                        fontFamily: 'Poppins',
+                        fontWeight: FontWeight.w600,
+                        fontSize: 12, // Reduced from 14
+                        color: AppTheme.primaryDark,
+                      ),
+                    ),
+                  ],
                 ),
-              ),
-              const SizedBox(height: 4),
-              Text(
-                _formatTime(_elapsedTime),
-                style: const TextStyle(
-                  fontFamily: 'Poppins',
-                  fontWeight: FontWeight.bold,
-                  fontSize: 36,
-                  color: Colors.black,
+                const SizedBox(height: 6), // Reduced from 8
+                Text(
+                  _formatTime(_elapsedTime),
+                  style: const TextStyle(
+                    fontFamily: 'Poppins',
+                    fontWeight: FontWeight.bold,
+                    fontSize: 32, // Reduced from 38
+                    color: AppTheme.primaryDark,
+                  ),
                 ),
-              ),
-            ],
+              ],
+            ),
           ),
           
-          const SizedBox(height: 20),
+          const SizedBox(height: 16), // Reduced from 20
           
           // Control buttons row
           Row(
@@ -429,41 +468,33 @@ class _DrillFollowAlongViewState extends State<DrillFollowAlongView> {
                 icon: Icons.info_outline,
                 onTap: () {
                   HapticUtils.lightImpact(); // Light haptic for info
-                  setState(() => _showInfoSheet = true);
+                  _showInfoPopup();
                 },
-                color: Colors.grey.shade400,
-                size: 40,
+                color: AppTheme.primaryLightBlue,
+                size: 44, // Reduced from 50
               ),
               
-              // Play/Pause button (larger)
+              // Play/Pause button (larger) - more compact
               GestureDetector(
                 onTap: (_editableDrill.setsDone < _editableDrill.totalSets && (!_showCountdown || AppConfig.debug)) ? () {
                   HapticUtils.mediumImpact(); // Medium haptic for play/pause
                   _togglePlayPause();
                 } : null,
                 child: Container(
-                  width: 90,
-                  height: 90,
+                  width: 80, // Reduced from 90
+                  height: 80, // Reduced from 90
                   decoration: BoxDecoration(
-                    gradient: LinearGradient(
-                      begin: Alignment.topLeft,
-                      end: Alignment.bottomRight,
-                      colors: (_editableDrill.setsDone < _editableDrill.totalSets && (!_showCountdown || AppConfig.debug))
-                          ? [
-                              AppTheme.buttonPrimary,
-                              AppTheme.buttonPrimary.withOpacity(0.8),
-                            ]
-                          : [
-                              Colors.grey.shade400,
-                              Colors.grey.shade500,
-                            ],
-                    ),
+                    color: (_editableDrill.setsDone < _editableDrill.totalSets && (!_showCountdown || AppConfig.debug))
+                        ? AppTheme.primaryYellow
+                        : Colors.grey.shade400,
                     shape: BoxShape.circle,
                     boxShadow: [
                       BoxShadow(
-                        color: Colors.black.withOpacity(0.15),
-                        blurRadius: 10,
-                        offset: const Offset(0, 4),
+                        color: (_editableDrill.setsDone < _editableDrill.totalSets) 
+                            ? AppTheme.primaryYellow.withOpacity(0.3)
+                            : Colors.grey.withOpacity(0.3),
+                        blurRadius: 8, // Reduced from 10
+                        offset: const Offset(0, 3), // Reduced from 4
                       ),
                     ],
                   ),
@@ -477,20 +508,20 @@ class _DrillFollowAlongViewState extends State<DrillFollowAlongView> {
                                 style: const TextStyle(
                                   fontFamily: 'Poppins',
                                   fontWeight: FontWeight.bold,
-                                  fontSize: 36,
+                                  fontSize: 32, // Reduced from 36
                                   color: Colors.white,
                                 ),
                               )
                             : Icon(
                                 _isPlaying ? Icons.pause : Icons.play_arrow,
-                                size: 36,
+                                size: 32, // Reduced from 36
                                 color: Colors.white,
                               ),
                         // Debug mode indicator
                         if (AppConfig.debug && _showCountdown)
                           Positioned(
-                            top: 8,
-                            right: 8,
+                            top: 6, // Reduced from 8
+                            right: 6, // Reduced from 8
                             child: Container(
                               padding: const EdgeInsets.all(2),
                               decoration: const BoxDecoration(
@@ -499,7 +530,7 @@ class _DrillFollowAlongViewState extends State<DrillFollowAlongView> {
                               ),
                               child: const Icon(
                                 Icons.bug_report,
-                                size: 12,
+                                size: 10, // Reduced from 12
                                 color: Colors.purple,
                               ),
                             ),
@@ -510,39 +541,65 @@ class _DrillFollowAlongViewState extends State<DrillFollowAlongView> {
                 ),
               ),
               
-              // Settings/menu button
+              // Settings/menu button - smaller
               _buildControlButton(
                 icon: Icons.more_vert,
                 onTap: () {
                   HapticUtils.lightImpact(); // Light haptic for more options
                   // Could add more options here
                 },
-                color: Colors.grey.shade400,
-                size: 40,
+                color: Colors.grey.shade500,
+                size: 44, // Reduced from 50
               ),
             ],
           ),
           
-          const SizedBox(height: 12),
+          const SizedBox(height: 10), // Reduced from 12
           
-          // Current set indicator
-          if (_editableDrill.setsDone < _editableDrill.totalSets)
-            Container(
-              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-              decoration: BoxDecoration(
-                color: AppTheme.buttonPrimary.withOpacity(0.1),
-                borderRadius: BorderRadius.circular(6),
-              ),
-              child: Text(
-                'Set ${_editableDrill.setsDone + 1} of ${_editableDrill.totalSets}',
-                style: TextStyle(
-                  fontFamily: 'Poppins',
-                  fontWeight: FontWeight.w600,
-                  fontSize: 12,
-                  color: AppTheme.buttonPrimary,
-                ),
+          // Current set indicator or completion message - always show something
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4), // Reduced padding
+            decoration: BoxDecoration(
+              color: _editableDrill.setsDone >= _editableDrill.totalSets
+                  ? AppTheme.success.withOpacity(0.1)
+                  : AppTheme.primaryGreen.withOpacity(0.1),
+              borderRadius: BorderRadius.circular(12), // Reduced from 16
+              border: Border.all(
+                color: _editableDrill.setsDone >= _editableDrill.totalSets
+                    ? AppTheme.success.withOpacity(0.3)
+                    : AppTheme.primaryGreen.withOpacity(0.3),
+                width: 1,
               ),
             ),
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Icon(
+                  _editableDrill.setsDone >= _editableDrill.totalSets
+                      ? Icons.check_circle
+                      : Icons.fitness_center,
+                  size: 12, // Reduced from 14
+                  color: _editableDrill.setsDone >= _editableDrill.totalSets
+                      ? AppTheme.success
+                      : AppTheme.primaryGreen,
+                ),
+                const SizedBox(width: 4), // Reduced from 6
+                Text(
+                  _editableDrill.setsDone >= _editableDrill.totalSets
+                      ? 'All sets completed!'
+                      : 'Set ${_editableDrill.setsDone + 1} of ${_editableDrill.totalSets}',
+                  style: TextStyle(
+                    fontFamily: 'Poppins',
+                    fontWeight: FontWeight.w600,
+                    fontSize: 11, // Reduced from 12
+                    color: _editableDrill.setsDone >= _editableDrill.totalSets
+                        ? AppTheme.success
+                        : AppTheme.primaryGreen,
+                  ),
+                ),
+              ],
+            ),
+          ),
         ],
       ),
     );
@@ -567,15 +624,15 @@ class _DrillFollowAlongViewState extends State<DrillFollowAlongView> {
           shape: BoxShape.circle,
           boxShadow: [
             BoxShadow(
-              color: Colors.black.withOpacity(0.08),
-              blurRadius: 4,
-              offset: const Offset(0, 2),
+              color: color.withOpacity(0.3),
+              blurRadius: 6,
+              offset: const Offset(0, 3),
             ),
           ],
         ),
         child: Icon(
           icon,
-          size: size * 0.5,
+          size: size * 0.4,
           color: Colors.white,
         ),
       ),
@@ -583,73 +640,91 @@ class _DrillFollowAlongViewState extends State<DrillFollowAlongView> {
   }
 
   Widget _buildActionButtons() {
-    return Row(
-      children: [
-        // Done button
-        Expanded(
-          child: ElevatedButton(
-            onPressed: _editableDrill.setsDone >= _editableDrill.totalSets ? () {
-              HapticUtils.mediumImpact(); // Medium haptic for completion
-              _completeDrill();
-            } : null,
-            style: ElevatedButton.styleFrom(
-              backgroundColor: _editableDrill.setsDone >= _editableDrill.totalSets 
-                  ? AppTheme.success
-                  : Colors.grey.shade400,
-              foregroundColor: Colors.white,
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(8),
-              ),
-              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
-              minimumSize: const Size(0, 44),
-            ),
-            child: const Text(
-              'Done',
-              style: TextStyle(
-                fontFamily: 'Poppins',
-                fontWeight: FontWeight.w600,
-                fontSize: 14,
-              ),
-            ),
-          ),
-        ),
-        
-        const SizedBox(width: 12),
-        
-        // Skip button
-        Expanded(
-          child: ElevatedButton(
-            onPressed: () {
-              HapticUtils.lightImpact(); // Light haptic for skip
-              _skipDrill();
-            },
-            style: ElevatedButton.styleFrom(
-              backgroundColor: AppTheme.buttonPrimary,
-              foregroundColor: Colors.white,
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(8),
-              ),
-              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
-              minimumSize: const Size(0, 44),
-            ),
-            child: const Row(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Icon(Icons.skip_next, size: 16),
-                SizedBox(width: 4),
-                Text(
-                  'Skip',
-                  style: TextStyle(
-                    fontFamily: 'Poppins',
-                    fontWeight: FontWeight.w600,
-                    fontSize: 14,
-                  ),
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 4),
+      child: Row(
+        children: [
+          // Done button - more compact
+          Expanded(
+            child: ElevatedButton(
+              onPressed: _editableDrill.setsDone >= _editableDrill.totalSets ? () {
+                HapticUtils.mediumImpact(); // Medium haptic for completion
+                _completeDrill();
+              } : null,
+              style: ElevatedButton.styleFrom(
+                backgroundColor: _editableDrill.setsDone >= _editableDrill.totalSets 
+                    ? AppTheme.success
+                    : Colors.grey.shade400,
+                foregroundColor: Colors.white,
+                elevation: _editableDrill.setsDone >= _editableDrill.totalSets ? 2 : 0,
+                shadowColor: _editableDrill.setsDone >= _editableDrill.totalSets 
+                    ? AppTheme.success.withOpacity(0.3) 
+                    : Colors.transparent,
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(16),
                 ),
-              ],
+                padding: const EdgeInsets.symmetric(vertical: 10), // Reduced from 14
+              ),
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  if (_editableDrill.setsDone >= _editableDrill.totalSets) ...[
+                    const Icon(Icons.check_circle, size: 16, color: Colors.white), // Reduced from 18
+                    const SizedBox(width: 4), // Reduced from 6
+                  ],
+                  const Text(
+                    'Done',
+                    style: TextStyle(
+                      fontFamily: 'Poppins',
+                      fontWeight: FontWeight.bold,
+                      fontSize: 14, // Reduced from 16
+                      color: Colors.white,
+                    ),
+                  ),
+                ],
+              ),
             ),
           ),
-        ),
-      ],
+          
+          const SizedBox(width: 12), // Reduced from 16
+          
+          // Skip button - more compact
+          Expanded(
+            child: ElevatedButton(
+              onPressed: () {
+                HapticUtils.lightImpact(); // Light haptic for skip
+                _skipDrill();
+              },
+              style: ElevatedButton.styleFrom(
+                backgroundColor: AppTheme.primaryLightBlue,
+                foregroundColor: Colors.white,
+                elevation: 2,
+                shadowColor: AppTheme.primaryLightBlue.withOpacity(0.3),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(16),
+                ),
+                padding: const EdgeInsets.symmetric(vertical: 10), // Reduced from 14
+              ),
+              child: const Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Icon(Icons.skip_next, size: 16, color: Colors.white), // Reduced from 18
+                  SizedBox(width: 4), // Reduced from 6
+                  Text(
+                    'Skip',
+                    style: TextStyle(
+                      fontFamily: 'Poppins',
+                      fontWeight: FontWeight.bold,
+                      fontSize: 14, // Reduced from 16
+                      color: Colors.white,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ],
+      ),
     );
   }
 
@@ -831,6 +906,15 @@ class _DrillFollowAlongViewState extends State<DrillFollowAlongView> {
           isInSession: true,
         ),
       ),
+    );
+  }
+
+  void _showInfoPopup() {
+    InfoPopupWidget.show(
+      context,
+      title: 'How to Use Drill Follow Along',
+      description: 'Press play to start the 3-second countdown, then use the timer to pace yourself during reps.\n\nComplete all reps within the set time, then move to the next set. Press "Done" when you finish all sets to complete the drill.\n\nYou can skip drills if needed, but they won\'t count toward session completion.',
+      riveFileName: 'Bravo_Animation.riv',
     );
   }
 

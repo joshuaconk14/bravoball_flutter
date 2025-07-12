@@ -572,7 +572,7 @@ class _ProfileViewState extends State<ProfileView> {
                       duration: Duration(seconds: 2),
                     ),
                   );
-                  // Navigate to onboarding and clear stack
+                  // ✅ QUICK FIX: Force navigation to onboarding immediately
                   Navigator.of(context).pushAndRemoveUntil(
                     MaterialPageRoute(builder: (context) => const OnboardingFlow()),
                     (route) => false,
@@ -790,7 +790,7 @@ class _ProfileViewState extends State<ProfileView> {
                     duration: Duration(seconds: 2),
                   ),
                 );
-                // Navigate to onboarding and clear stack
+                // ✅ QUICK FIX: Force navigation to onboarding immediately
                 Navigator.of(context).pushAndRemoveUntil(
                   MaterialPageRoute(builder: (context) => const OnboardingFlow()),
                   (route) => false,

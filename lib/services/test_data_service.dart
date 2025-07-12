@@ -76,7 +76,7 @@ class TestDataService {
         subSkills: ['Ball Control', 'Agility', 'Both Feet'],
         difficulty: 'Beginner',
         equipment: ['Cones', 'Ball'],
-        trainingStyle: 'Individual',
+        trainingStyle: 'low intensity',
         duration: 12,
         videoUrl: 'https://example.com/cone-weaving',
         instructions: [
@@ -100,7 +100,7 @@ class TestDataService {
         subSkills: ['Skill Moves', 'Flair', 'Timing'],
         difficulty: 'Advanced',
         equipment: ['Ball', 'Wall'],
-        trainingStyle: 'Individual',
+        trainingStyle: 'low intensity',
         duration: 20,
         videoUrl: 'https://example.com/rainbow-flick',
         instructions: [
@@ -124,7 +124,7 @@ class TestDataService {
         subSkills: ['Speed', 'Control', 'Acceleration'],
         difficulty: 'Intermediate',
         equipment: ['Cones', 'Ball', 'Stopwatch'],
-        trainingStyle: 'Individual',
+        trainingStyle: 'low intensity',
         duration: 15,
         videoUrl: 'https://example.com/speed-dribbling',
         instructions: [
@@ -149,7 +149,7 @@ class TestDataService {
         subSkills: ['Accuracy', 'Weight of Pass', 'Vision'],
         difficulty: 'Beginner',
         equipment: ['Cones', 'Ball', 'Targets'],
-        trainingStyle: 'Individual',
+        trainingStyle: 'low intensity',
         duration: 18,
         videoUrl: 'https://example.com/precision-passing',
         instructions: [
@@ -173,7 +173,7 @@ class TestDataService {
         subSkills: ['Long Pass', 'Technique', 'Power'],
         difficulty: 'Advanced',
         equipment: ['Ball', 'Targets', 'Markers'],
-        trainingStyle: 'Individual',
+        trainingStyle: 'low intensity',
         duration: 25,
         videoUrl: 'https://example.com/long-passing',
         instructions: [
@@ -197,7 +197,7 @@ class TestDataService {
         subSkills: ['Quick Passing', 'First Touch', 'Pressure'],
         difficulty: 'Intermediate',
         equipment: ['Ball', 'Wall'],
-        trainingStyle: 'Individual',
+        trainingStyle: 'low intensity',
         duration: 16,
         videoUrl: 'https://example.com/one-touch-passing',
         instructions: [
@@ -222,7 +222,7 @@ class TestDataService {
         subSkills: ['Power', 'Accuracy', 'Technique'],
         difficulty: 'Intermediate',
         equipment: ['Ball', 'Goal', 'Markers'],
-        trainingStyle: 'Individual',
+        trainingStyle: 'high intensity',
         duration: 22,
         videoUrl: 'https://example.com/power-shooting',
         instructions: [
@@ -246,7 +246,7 @@ class TestDataService {
         subSkills: ['Placement', 'Curve', 'Finesse'],
         difficulty: 'Advanced',
         equipment: ['Ball', 'Goal', 'Cones'],
-        trainingStyle: 'Individual',
+        trainingStyle: 'medium intensity',
         duration: 20,
         videoUrl: 'https://example.com/finesse-shooting',
         instructions: [
@@ -270,7 +270,7 @@ class TestDataService {
         subSkills: ['Volleys', 'Timing', 'Balance'],
         difficulty: 'Advanced',
         equipment: ['Ball', 'Goal', 'Wall'],
-        trainingStyle: 'Individual',
+        trainingStyle: 'high intensity',
         duration: 24,
         videoUrl: 'https://example.com/volley-shooting',
         instructions: [
@@ -295,7 +295,7 @@ class TestDataService {
         subSkills: ['Ball Control', 'Reaction', 'Softness'],
         difficulty: 'Beginner',
         equipment: ['Ball', 'Wall'],
-        trainingStyle: 'Individual',
+        trainingStyle: 'low intensity',
         duration: 14,
         videoUrl: 'https://example.com/wall-control',
         instructions: [
@@ -319,7 +319,7 @@ class TestDataService {
         subSkills: ['Aerial Control', 'Cushioning', 'Body Position'],
         difficulty: 'Intermediate',
         equipment: ['Ball'],
-        trainingStyle: 'Individual',
+        trainingStyle: 'low intensity',
         duration: 18,
         videoUrl: 'https://example.com/aerial-control',
         instructions: [
@@ -343,7 +343,7 @@ class TestDataService {
         subSkills: ['Pressure', 'Quick Feet', 'Composure'],
         difficulty: 'Advanced',
         equipment: ['Ball', 'Cones', 'Wall'],
-        trainingStyle: 'Individual',
+        trainingStyle: 'high intensity',
         duration: 16,
         videoUrl: 'https://example.com/pressure-touch',
         instructions: [
@@ -368,7 +368,7 @@ class TestDataService {
         subSkills: ['Positioning', 'Stance', 'Awareness'],
         difficulty: 'Beginner',
         equipment: ['Cones', 'Ball'],
-        trainingStyle: 'Individual',
+        trainingStyle: 'low intensity',
         duration: 15,
         videoUrl: 'https://example.com/defensive-positioning',
         instructions: [
@@ -392,7 +392,7 @@ class TestDataService {
         subSkills: ['Tackling', 'Timing', 'Technique'],
         difficulty: 'Intermediate',
         equipment: ['Ball', 'Cones'],
-        trainingStyle: 'Individual',
+        trainingStyle: 'low intensity',
         duration: 20,
         videoUrl: 'https://example.com/tackling-technique',
         instructions: [
@@ -416,7 +416,7 @@ class TestDataService {
         subSkills: ['Jockeying', 'Patience', 'Positioning'],
         difficulty: 'Advanced',
         equipment: ['Cones', 'Ball'],
-        trainingStyle: 'Individual',
+        trainingStyle: 'low intensity',
         duration: 18,
         videoUrl: 'https://example.com/jockeying',
         instructions: [
@@ -441,7 +441,7 @@ class TestDataService {
         subSkills: ['Speed', 'Endurance', 'Recovery'],
         difficulty: 'Intermediate',
         equipment: ['Cones', 'Stopwatch'],
-        trainingStyle: 'Individual',
+        trainingStyle: 'high intensity',
         duration: 25,
         videoUrl: 'https://example.com/sprint-intervals',
         instructions: [
@@ -465,7 +465,7 @@ class TestDataService {
         subSkills: ['Agility', 'Coordination', 'Quick Feet'],
         difficulty: 'Beginner',
         equipment: ['Agility Ladder', 'Cones'],
-        trainingStyle: 'Individual',
+        trainingStyle: 'medium intensity',
         duration: 12,
         videoUrl: 'https://example.com/agility-ladder',
         instructions: [
@@ -489,7 +489,7 @@ class TestDataService {
         subSkills: ['Power', 'Explosiveness', 'Jumping'],
         difficulty: 'Advanced',
         equipment: ['Cones', 'Markers'],
-        trainingStyle: 'Individual',
+        trainingStyle: 'high intensity',
         duration: 20,
         videoUrl: 'https://example.com/plyometric-training',
         instructions: [
@@ -514,7 +514,7 @@ class TestDataService {
         subSkills: ['Reactions', 'Diving', 'Positioning'],
         difficulty: 'Intermediate',
         equipment: ['Ball', 'Goal', 'Wall'],
-        trainingStyle: 'Individual',
+        trainingStyle: 'low intensity',
         duration: 18,
         videoUrl: 'https://example.com/goalkeeper-reactions',
         instructions: [
@@ -538,7 +538,7 @@ class TestDataService {
         subSkills: ['Free Kicks', 'Corners', 'Technique'],
         difficulty: 'Advanced',
         equipment: ['Ball', 'Goal', 'Wall'],
-        trainingStyle: 'Individual',
+        trainingStyle: 'low intensity',
         duration: 30,
         videoUrl: 'https://example.com/set-pieces',
         instructions: [
@@ -563,7 +563,7 @@ class TestDataService {
         subSkills: ['Close Control', 'Balance', 'Creativity'],
         difficulty: 'Advanced',
         equipment: ['Ball', 'Cones'],
-        trainingStyle: 'Individual',
+        trainingStyle: 'low intensity',
         duration: 22,
         videoUrl: 'https://example.com/messi-control',
         instructions: [
@@ -587,7 +587,7 @@ class TestDataService {
         subSkills: ['Quick Passing', 'Accuracy', 'Movement'],
         difficulty: 'Intermediate',
         equipment: ['Ball', 'Cones', 'Wall'],
-        trainingStyle: 'Individual',
+        trainingStyle: 'low intensity',
         duration: 20,
         videoUrl: 'https://example.com/tiki-taka',
         instructions: [
@@ -611,7 +611,7 @@ class TestDataService {
         subSkills: ['Power', 'Accuracy', 'Timing'],
         difficulty: 'Intermediate',
         equipment: ['Ball', 'Goal', 'Partner'],
-        trainingStyle: 'Partner',
+        trainingStyle: 'low intensity',
         duration: 16,
         videoUrl: 'https://example.com/power-headers',
         instructions: [
@@ -635,7 +635,7 @@ class TestDataService {
         subSkills: ['Skill Moves', 'Creativity', 'Flair'],
         difficulty: 'Advanced',
         equipment: ['Ball', 'Cones'],
-        trainingStyle: 'Individual',
+        trainingStyle: 'low intensity',
         duration: 25,
         videoUrl: 'https://example.com/neymar-skills',
         instructions: [
@@ -659,7 +659,7 @@ class TestDataService {
         subSkills: ['Distribution', 'Accuracy', 'Range'],
         difficulty: 'Intermediate',
         equipment: ['Ball', 'Targets', 'Goal'],
-        trainingStyle: 'Individual',
+        trainingStyle: 'low intensity',
         duration: 18,
         videoUrl: 'https://example.com/goalkeeper-distribution',
         instructions: [
@@ -684,7 +684,7 @@ class TestDataService {
         subSkills: ['Decision Making', 'Passing', 'Movement'],
         difficulty: 'Intermediate',
         equipment: ['Ball', 'Cones', 'Partners'],
-        trainingStyle: 'Small Group',
+        trainingStyle: 'low intensity',
         duration: 20,
         videoUrl: 'https://example.com/2v1-attack',
         instructions: [
@@ -708,7 +708,7 @@ class TestDataService {
         subSkills: ['All Skills', 'Decision Making', 'Fitness'],
         difficulty: 'All Levels',
         equipment: ['Ball', 'Cones', 'Partners'],
-        trainingStyle: 'Small Group',
+        trainingStyle: 'low intensity',
         duration: 30,
         videoUrl: 'https://example.com/small-sided-games',
         instructions: [
@@ -732,7 +732,7 @@ class TestDataService {
         subSkills: ['Crossing', 'Finishing', 'Timing'],
         difficulty: 'Intermediate',
         equipment: ['Ball', 'Goal', 'Cones'],
-        trainingStyle: 'Individual',
+        trainingStyle: 'low intensity',
         duration: 22,
         videoUrl: 'https://example.com/crossing-finishing',
         instructions: [
@@ -756,7 +756,7 @@ class TestDataService {
         subSkills: ['Pressing', 'Teamwork', 'Intensity'],
         difficulty: 'Advanced',
         equipment: ['Ball', 'Cones', 'Partners'],
-        trainingStyle: 'Small Group',
+        trainingStyle: 'low intensity',
         duration: 18,
         videoUrl: 'https://example.com/defensive-pressing',
         instructions: [
@@ -780,7 +780,7 @@ class TestDataService {
         subSkills: ['Concentration', 'Resilience', 'Focus'],
         difficulty: 'All Levels',
         equipment: ['Ball', 'Cones'],
-        trainingStyle: 'Individual',
+        trainingStyle: 'low intensity',
         duration: 15,
         videoUrl: 'https://example.com/mental-training',
         instructions: [

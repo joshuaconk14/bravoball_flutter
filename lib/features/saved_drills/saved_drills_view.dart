@@ -4,6 +4,7 @@ import '../../constants/app_theme.dart';
 import '../../services/app_state_service.dart';
 import '../../models/drill_group_model.dart';
 import '../../widgets/reusable_drill_search_view.dart';
+import '../../widgets/info_popup_widget.dart';
 import '../../utils/haptic_utils.dart';
 import 'drill_group_detail_view.dart';
 
@@ -272,7 +273,7 @@ class _SavedDrillsViewState extends State<SavedDrillsView> {
                               borderRadius: BorderRadius.circular(8),
                             ),
                             child: Text(
-                              skill,
+                              skill.replaceAll('_', ' '),
                               style: const TextStyle(
                                 fontFamily: AppTheme.fontPoppins,
                                 fontSize: 10,
@@ -458,33 +459,11 @@ class _SavedDrillsViewState extends State<SavedDrillsView> {
   }
 
   void _showInfoDialog(BuildContext context) {
-    showDialog(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: const Text(
-          'Saved Drills',
-          style: TextStyle(fontFamily: AppTheme.fontPoppins),
-        ),
-        content: const Text(
-          'Organize your favorite drills into collections for easy access.\n\n'
-          '• Heart icon shows your liked drills\n'
-          '• Create custom collections with the + button\n'
-          '• Tap any collection to view and manage drills',
-          style: TextStyle(fontFamily: AppTheme.fontPoppins),
-        ),
-        actions: [
-          TextButton(
-            onPressed: () {
-              HapticUtils.lightImpact(); // Light haptic for close
-              Navigator.pop(context);
-            },
-            child: const Text(
-              'Got it',
-              style: TextStyle(fontFamily: AppTheme.fontPoppins),
-            ),
-          ),
-        ],
-      ),
+    InfoPopupWidget.show(
+      context,
+      title: 'Your Drill Collections',
+      description: 'Create collections to organize your favorite drills for easy access.\n\nHeart drills you like and create custom playlists with the + button.',
+      riveFileName: 'Bravo_Animation.riv',
     );
   }
 } 

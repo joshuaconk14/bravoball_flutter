@@ -73,31 +73,40 @@ class AuthenticationService extends ChangeNotifier {
       print('📅 Timestamp: ${DateTime.now()}');
     }
 
-    // Check if user has valid stored credentials
-    final isAuthenticated = await checkAuthenticationStatus();
+    try {
+      // Check if user has valid stored credentials
+      final isAuthenticated = await checkAuthenticationStatus();
 
-    // Add a minimum delay to show any loading animation
-    await Future.delayed(const Duration(milliseconds: 800));
+      // Add a minimum delay to show any loading animation
+      await Future.delayed(const Duration(milliseconds: 800));
 
-    if (isAuthenticated) {
-      // User has valid tokens, authentication already handled in UserManager
-      if (kDebugMode) {
-        print('✅ Authentication check passed - user is logged in');
-        print('📱 User: ${_userManager.email}');
+      if (isAuthenticated) {
+        // User has valid tokens, authentication already handled in UserManager
+        if (kDebugMode) {
+          print('✅ Authentication check passed - user is logged in');
+          print('📱 User: ${_userManager.email}');
+        }
+      } else {
+        if (kDebugMode) {
+          print('❌ Authentication check failed - user needs to login');
+          print('📱 No valid tokens found or backend validation failed');
+        }
       }
-    } else {
+    } catch (e) {
       if (kDebugMode) {
-        print('❌ Authentication check failed - user needs to login');
-        print('📱 No valid tokens found or backend validation failed');
+        print('💥 Error in authentication check: $e');
       }
-    }
-
-    // End loading state
-    _isCheckingAuth = false;
-    notifyListeners();
-    
-    if (kDebugMode) {
-      print('🏁 Authentication check complete - isCheckingAuth: $_isCheckingAuth');
+      // Ensure we don't get stuck in loading state on error
+      _isAuthenticated = false;
+    } finally {
+      // ✅ ALWAYS end loading state to prevent endless loading
+      _isCheckingAuth = false;
+      notifyListeners();
+      
+      if (kDebugMode) {
+        print('🏁 Authentication check complete - isCheckingAuth: $_isCheckingAuth');
+        print('🔐 ===== AUTHENTICATION CHECK FINISHED =====\n');
+      }
     }
   }
 

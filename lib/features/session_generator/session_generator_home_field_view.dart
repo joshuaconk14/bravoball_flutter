@@ -255,8 +255,8 @@ class _SessionGeneratorHomeFieldViewState extends State<SessionGeneratorHomeFiel
                         isCompleted: true,
                       );
                     },
-                    onSessionCompleted: () {
-                      appState.completeSession();
+                    onSessionCompleted: () async {
+                      await appState.completeSession();
                       _showSessionComplete();
                     },
                   ),
@@ -316,15 +316,15 @@ class _SessionGeneratorHomeFieldViewState extends State<SessionGeneratorHomeFiel
           _TrophyWidget(
             isUnlocked: appState.isSessionComplete,
             isAlreadyCompleted: appState.currentSessionCompleted, // ✅ NEW: Pass completion state
-            onTap: () {
+            onTap: () async {
               if (appState.currentSessionCompleted) {
                 // ✅ Session already completed, just show completion view
                 HapticUtils.mediumImpact(); // Medium haptic for completion view
                 _showSessionComplete();
               } else if (appState.isSessionComplete) {
-                // ✅ Session can be completed now
+                // ✅ Session can be completed now - await the completion
                 HapticUtils.heavyImpact(); // Heavy haptic for session completion
-                appState.completeSession();
+                await appState.completeSession();
                 _showSessionComplete();
               } else {
                 HapticUtils.lightImpact(); // Light haptic for locked action
@@ -357,9 +357,9 @@ class _SessionGeneratorHomeFieldViewState extends State<SessionGeneratorHomeFiel
                 isCompleted: true,
               );
             },
-            onSessionCompleted: () {
+            onSessionCompleted: () async {
               // Handle session completion
-              appState.completeSession();
+              await appState.completeSession();
               _showSessionComplete();
             },
           ),
@@ -428,22 +428,25 @@ class _SessionGeneratorHomeFieldViewState extends State<SessionGeneratorHomeFiel
     
     String message;
     if (!hasSessionDrills) {
-      message = "Click the soccer bag to make a session!";
+      message = "Tap the bag to create a session!";
     } else if (appState.currentSessionCompleted) {
-      // ✅ UPDATED: Message for already completed session
-      message = "Session complete! Click the trophy to view your progress.";
+      message = "Session complete, good job today!";
     } else if (appState.isSessionComplete) {
-      message = "Well done! Click on the trophy to claim your prize.";
+      message = "Well done! Tap the trophy!";
     } else {
       final incompleteDrills = editableSessionDrills.where((drill) => !drill.isCompleted).length;
-      message = "You have $incompleteDrills drill${incompleteDrills == 1 ? '' : 's'} to complete.";
+      message = "You have $incompleteDrills drill${incompleteDrills == 1 ? '' : 's'} to complete!";
     }
 
     return Column(
       children: [
         // Main bubble
         Container(
-          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+          constraints: const BoxConstraints(
+            maxWidth: 180, // Limit maximum width
+            minWidth: 120,  // Ensure minimum width
+          ),
+          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
           decoration: BoxDecoration(
             color: AppTheme.speechBubbleBackground,
             borderRadius: BorderRadius.circular(12),

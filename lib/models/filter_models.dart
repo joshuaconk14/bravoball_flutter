@@ -10,7 +10,7 @@ class FilterOptions {
   ];
   
   static const List<String> trainingStyleOptions = [
-    "medium intensity", "high intensity", "game prep", "game recovery", "rest day"
+    "low intensity", "medium intensity", "high intensity"
   ];
   
   static const List<String> locationOptions = [

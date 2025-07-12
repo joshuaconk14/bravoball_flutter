@@ -6,6 +6,7 @@ import 'api_service.dart';
 import 'user_manager_service.dart';
 import 'authentication_service.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'app_state_service.dart';
 
 /// Login Service
 /// Mirrors Swift LoginService for handling authentication API calls
@@ -200,6 +201,10 @@ class LoginService {
       print('🚪 LoginService: Logging out user');
     }
 
+    // ✅ FORCE RESET: Clear any lingering session state that might interfere with navigation
+    final appState = AppStateService.instance;
+    appState.clearUserData();
+    
     // Clear user data
     await _userManager.logout();
     
@@ -220,6 +225,10 @@ class LoginService {
     try {
       // Store email before clearing for logging
       final userEmail = _userManager.email;
+      
+      // ✅ FORCE RESET: Clear any lingering session state that might interfere with navigation
+      final appState = AppStateService.instance;
+      appState.clearUserData();
       
       // Make DELETE request to backend
       final response = await _apiService.delete(

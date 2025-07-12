@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../../services/app_state_service.dart';
 import '../../constants/app_theme.dart';
+import '../../widgets/info_popup_widget.dart';
 import '../../utils/haptic_utils.dart';
 
 class ProgressView extends StatefulWidget {
@@ -87,7 +88,7 @@ class _ProgressViewState extends State<ProgressView> {
           children: [
             const SizedBox(height: 20),
             
-            // Progress title
+            // Progress title - remove info icon from here
             Text(
               'Progress',
               style: TextStyle(
@@ -157,7 +158,7 @@ class _ProgressViewState extends State<ProgressView> {
         ),
         child: Column(
           children: [
-            // Calendar header
+            // Calendar header with info icon moved here
             Row(
               children: [
                 Text(
@@ -170,10 +171,16 @@ class _ProgressViewState extends State<ProgressView> {
                   ),
                 ),
                 const SizedBox(width: 8),
-                Icon(
-                  Icons.info_outline,
-                  color: Colors.grey.shade600,
-                  size: 20,
+                GestureDetector(
+                  onTap: () {
+                    HapticUtils.lightImpact(); // Light haptic for info
+                    _showInfoDialog(context);
+                  },
+                  child: Icon(
+                    Icons.info_outline,
+                    color: AppTheme.primaryGray,
+                    size: 22,
+                  ),
                 ),
                 const Spacer(),
                 GestureDetector(
@@ -455,6 +462,15 @@ class _ProgressViewState extends State<ProgressView> {
     return date1.year == date2.year &&
            date1.month == date2.month &&
            date1.day == date2.day;
+  }
+
+  void _showInfoDialog(BuildContext context) {
+    InfoPopupWidget.show(
+      context,
+      title: 'Track Your Progress',
+      description: 'View your weekly and monthly progress with the calendar.\n\nSee your current streak, highest streak, and total sessions completed.\n\nTap on calendar days to view session details.',
+      riveFileName: 'Bravo_Animation.riv',
+    );
   }
 } 
 

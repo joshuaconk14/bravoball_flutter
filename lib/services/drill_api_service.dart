@@ -219,13 +219,13 @@ class DrillApiService {
   String _mapIntensityToTrainingStyle(String intensity) {
     switch (intensity.toLowerCase()) {
       case 'low':
-        return 'Low intensity';
+        return 'low intensity';
       case 'medium':
-        return 'Medium intensity';
+        return 'medium intensity';
       case 'high':
-        return 'High intensity';
+        return 'high intensity';
       default:
-        return 'Medium intensity';
+        return 'medium intensity';
     }
   }
 

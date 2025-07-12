@@ -6,6 +6,7 @@ import '../../services/app_state_service.dart';
 import '../../widgets/filter_widgets.dart';
 import '../../widgets/drill_card_widget.dart';
 import '../../widgets/reusable_drill_search_view.dart';
+import '../../widgets/info_popup_widget.dart';
 import '../../utils/haptic_utils.dart';
 import 'drill_detail_view.dart';
 import 'edit_drill_view.dart';
@@ -61,10 +62,10 @@ class _SessionGeneratorEditorPageState extends State<SessionGeneratorEditorPage>
         backgroundColor: AppTheme.primaryLightBlue,
         elevation: 0.5,
         leading: IconButton(
-          icon: const Icon(Icons.info_outline, color: Colors.white, size: 28),
+          icon: const Icon(Icons.arrow_back, color: Colors.white, size: 28),
           onPressed: () {
-            HapticUtils.lightImpact(); // Light haptic for info
-            _showInfoDialog(context);
+            HapticUtils.lightImpact(); // Light haptic for navigation
+            Navigator.of(context).pop();
           },
         ),
         title: const Text(
@@ -158,6 +159,7 @@ class _SessionGeneratorEditorPageState extends State<SessionGeneratorEditorPage>
                           SnackBar(
                             content: Text('${selectedDrills.length} drill${selectedDrills.length == 1 ? '' : 's'} added to session'),
                             duration: const Duration(seconds: 2),
+                            backgroundColor: Colors.green,
                           ),
                         );
                       },
@@ -447,6 +449,7 @@ class _SessionGeneratorEditorPageState extends State<SessionGeneratorEditorPage>
                           SnackBar(
                             content: Text('${selectedDrills.length} drill${selectedDrills.length == 1 ? '' : 's'} added to session'),
                             duration: const Duration(seconds: 2),
+                            backgroundColor: Colors.green,
                           ),
                         );
                       },
@@ -468,6 +471,21 @@ class _SessionGeneratorEditorPageState extends State<SessionGeneratorEditorPage>
         // Header row with drill count and clear button - always shown
         Row(
           children: [
+            // Info icon on the left
+            GestureDetector(
+              onTap: () {
+                HapticUtils.lightImpact(); // Light haptic for info
+                _showInfoDialog(context);
+              },
+              child: Container(
+                padding: const EdgeInsets.all(8),
+                child: Icon(
+                  Icons.info_outline,
+                  color: AppTheme.primaryGray,
+                  size: 24,
+                ),
+              ),
+            ),
             const Spacer(),
             if (appState.editableSessionDrills.isNotEmpty || appState.isLoadingPreferences) ...[
               Text(
@@ -691,6 +709,7 @@ class _SessionGeneratorEditorPageState extends State<SessionGeneratorEditorPage>
                       SnackBar(
                         content: Text('${selectedDrills.length} drill${selectedDrills.length == 1 ? '' : 's'} added to session'),
                         duration: const Duration(seconds: 2),
+                        backgroundColor: Colors.green,
                       ),
                     );
                   },
@@ -899,25 +918,11 @@ class _SessionGeneratorEditorPageState extends State<SessionGeneratorEditorPage>
 
   // Show the info dialog
   void _showInfoDialog(BuildContext context) {
-    showDialog(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('Session Generator'),
-        content: const Text(
-          'Set your training preferences and we\'ll automatically generate '
-          'a personalized session for you. You can then add more drills '
-          'from our full catalog to customize your workout.',
-        ),
-        actions: [
-          TextButton(
-            onPressed: () {
-              HapticUtils.lightImpact(); // Light haptic for cancel/close
-              Navigator.pop(context);
-            },
-            child: const Text('Got it'),
-          ),
-        ],
-      ),
+    InfoPopupWidget.show(
+      context,
+      title: 'How to Edit Your Session',
+      description: 'Set your training preferences above to automatically generate drills based on your time, equipment, and skill focus.\n\nYou can then add more drills from our full catalog to customize your workout further.',
+      riveFileName: 'Bravo_Animation.riv',
     );
   }
 

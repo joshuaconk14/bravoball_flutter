@@ -112,6 +112,13 @@ class AppStateService extends ChangeNotifier {
   bool _isLoadingMore = false;
   bool get isLoadingMore => _isLoadingMore;
 
+  // ✅ NEW: Loading state for session completion
+  bool _isCompletingSession = false;
+  bool get isCompletingSession => _isCompletingSession;
+  
+  // ✅ NEW: Flag to prevent unnecessary notifyListeners after session completion
+  bool _sessionCompletionFinished = false;
+
   // ✅ NEW: Loading state for preference updates
   bool _isLoadingPreferences = false;
   bool get isLoadingPreferences => _isLoadingPreferences;
@@ -202,14 +209,56 @@ class AppStateService extends ChangeNotifier {
       print('  Completed Sessions: $_countOfFullyCompletedSessions (from backend)');
     }
     
-    // Schedule syncs
-    _scheduleCompletedSessionSync(session);
-    
-    // Refresh progress history from backend after session completion
-    // This ensures we get the latest streaks and completed sessions count
-    refreshProgressHistoryFromBackend();
+    // ✅ FIXED: Immediate sync instead of timer-based
+    _syncCompletedSessionImmediate(session);
     
     notifyListeners();
+  }
+
+  // ✅ NEW: Immediate sync method (replaces timer-based approach)
+  Future<void> _syncCompletedSessionImmediate(CompletedSession session) async {
+    try {
+      if (kDebugMode) {
+        print('🔄 Starting immediate session sync to backend...');
+      }
+      
+      // Sync completed session to backend
+      final syncSuccess = await _progressSyncService.syncCompletedSession(
+        date: session.date,
+        drills: session.drills,
+        totalCompleted: session.totalCompletedDrills,
+        total: session.totalDrills,
+      );
+      
+      if (syncSuccess) {
+        if (kDebugMode) {
+          print('✅ Session sync successful, now refreshing progress history...');
+        }
+        
+        // Refresh progress history from backend after session sync
+        await refreshProgressHistoryFromBackend();
+        
+        // ✅ FINAL UI UPDATE: Mark completion as finished to prevent further updates
+        _sessionCompletionFinished = true;
+        notifyListeners();
+        
+        if (kDebugMode) {
+          print('✅ Progress history refreshed, session completion flow complete');
+          print('   - Updated Current Streak: $_currentStreak');
+          print('   - Updated Highest Streak: $_highestStreak');
+          print('   - Updated Sessions Count: $_countOfFullyCompletedSessions');
+          print('🔒 Session completion finished - preventing further UI updates');
+        }
+      } else {
+        if (kDebugMode) {
+          print('❌ Session sync failed');
+        }
+      }
+    } catch (e) {
+      if (kDebugMode) {
+        print('❌ Error in immediate session sync: $e');
+      }
+    }
   }
 
   // Schedule completed session sync
@@ -382,13 +431,24 @@ class AppStateService extends ChangeNotifier {
           print('   - Highest Streak: $_highestStreak');
           print('   - Completed Sessions Count: $_countOfFullyCompletedSessions');
         }
+        
+        // ✅ MINIMAL FIX: Only notify listeners if not called during session completion
+        if (!_sessionCompletionFinished) {
+          notifyListeners();
+          if (kDebugMode) {
+            print('🔔 Called notifyListeners() for progress update');
+          }
+        } else {
+          if (kDebugMode) {
+            print('🔇 Skipping notifyListeners() - session completion finished');
+          }
+        }
       } else {
         if (kDebugMode) {
           print('⚠️ No progress history data returned from backend');
         }
       }
       
-      notifyListeners();
     } catch (e) {
       if (kDebugMode) {
         print('❌ Error refreshing progress history: $e');
@@ -412,18 +472,58 @@ class AppStateService extends ChangeNotifier {
     _savedDrillGroups.clear();
     _likedDrills.clear();
     
-    // Reset session state
-    _sessionInProgress = false;
-    _currentSessionCompleted = false; // ✅ Reset completion flag
+    // ✅ FORCE RESET: Clear all session completion state
+    _forceResetSessionCompletionState();
     
-    // Cancel sync timers
-    _sessionDrillsSyncTimer?.cancel();
-    _completedSessionSyncTimer?.cancel();
-    _drillGroupsSyncTimer?.cancel();
+    // ✅ FIXED: Cancel ALL sync timers to prevent memory leaks
+    _cancelAllTimers();
     
     if (kDebugMode) {
       print('✅ User data cleared');
     }
+  }
+
+  /// ✅ NEW: Force reset all session completion state and flags
+  void _forceResetSessionCompletionState() {
+    _sessionInProgress = false;
+    _currentSessionCompleted = false;
+    _sessionCompletionFinished = false;
+    _isCompletingSession = false;
+    _isLoadingPreferences = false;
+    _isLoading = false;
+    _isLoadingMore = false;
+    
+    if (kDebugMode) {
+      print('🔄 Force reset all session completion state');
+    }
+    
+    // ✅ ENSURE UI UPDATE: Force immediate UI update after state reset
+    notifyListeners();
+  }
+
+  /// ✅ NEW: Cancel all timers to prevent memory leaks
+  void _cancelAllTimers() {
+    _sessionDrillsSyncTimer?.cancel();
+    _sessionDrillsSyncTimer = null;
+    
+    _completedSessionSyncTimer?.cancel();
+    _completedSessionSyncTimer = null;
+    
+    _drillGroupsSyncTimer?.cancel();
+    _drillGroupsSyncTimer = null;
+    
+    _preferencesSyncTimer?.cancel();
+    _preferencesSyncTimer = null;
+    
+    if (kDebugMode) {
+      print('🗑️ All sync timers cancelled');
+    }
+  }
+
+  /// ✅ NEW: Dispose method to clean up resources
+  void dispose() {
+    _cancelAllTimers();
+    // Don't call super.dispose() as this is not a ChangeNotifier subclass in typical sense
   }
 
   /// Set initial load state (public method)
@@ -797,6 +897,12 @@ class AppStateService extends ChangeNotifier {
     if (loading) _clearError();
   }
 
+  // ✅ NEW: Set session completion loading state
+  void _setCompletingSession(bool completing) {
+    _isCompletingSession = completing;
+    notifyListeners();
+  }
+
   // ✅ NEW: Set preference loading state
   void _setLoadingPreferences(bool loading) {
     _isLoadingPreferences = loading;
@@ -993,6 +1099,14 @@ class AppStateService extends ChangeNotifier {
   
   bool isDrillLiked(DrillModel drill) {
     return _likedDrills.contains(drill);
+  }
+  
+  // ✅ NEW: Check if drill is saved in any collection
+  bool isDrillSavedInAnyCollection(DrillModel drill) {
+    // Check if drill is in any saved drill group (excluding liked drills group)
+    return _savedDrillGroups.any((group) => 
+      group.drills.any((d) => d.id == drill.id)
+    );
   }
   
   DrillGroup get likedDrillsGroup {
@@ -1210,13 +1324,8 @@ class AppStateService extends ChangeNotifier {
         isCompleted: isCompleted,
       );
       
-      // ✅ AUTO-COMPLETE SESSION: Check if all drills are now completed
-      if (isCompleted == true && canCompleteSession) {
-        if (kDebugMode) {
-          print('🎉 All drills completed! Auto-completing session...');
-        }
-        _completeSessionOnce();
-      }
+      // ✅ FIXED: Don't auto-complete here to avoid issues
+      // The completion should be handled explicitly by the UI
       
       notifyListeners();
       _scheduleSessionDrillsSync();
@@ -1227,46 +1336,81 @@ class AppStateService extends ChangeNotifier {
   void startSession() {
     _sessionInProgress = true;
     _currentSessionCompleted = false; // ✅ Reset completion flag when starting
+    _sessionCompletionFinished = false; // ✅ Reset to allow future updates
     notifyListeners();
   }
   
   // ✅ UPDATED: Prevent duplicate session completions
-  void completeSession() {
+  Future<void> completeSession() async {
     if (_currentSessionCompleted) {
       if (kDebugMode) {
         print('⚠️ Session already completed, ignoring duplicate completion request');
       }
       return;
     }
-    _completeSessionOnce();
+    
+    if (_isCompletingSession) {
+      if (kDebugMode) {
+        print('⚠️ Session completion already in progress, ignoring duplicate request');
+      }
+      return;
+    }
+    
+    await _completeSessionOnce();
   }
   
   // ✅ NEW: Private method that actually completes the session once
-  void _completeSessionOnce() {
-    if (_currentSessionCompleted) return; // Double-check protection
+  Future<void> _completeSessionOnce() async {
+    if (_currentSessionCompleted || _isCompletingSession) return; // Double-check protection
     
-    _sessionInProgress = false;
-    _currentSessionCompleted = true; // ✅ Mark as completed
-    
-    // Mark all drills as completed
-    for (int i = 0; i < _editableSessionDrills.length; i++) {
-      _editableSessionDrills[i] = _editableSessionDrills[i].copyWith(isCompleted: true);
+    try {
+      _setCompletingSession(true);
+      
+      _sessionInProgress = false;
+      _currentSessionCompleted = true; // ✅ Mark as completed
+      
+      // Mark all drills as completed
+      for (int i = 0; i < _editableSessionDrills.length; i++) {
+        _editableSessionDrills[i] = _editableSessionDrills[i].copyWith(isCompleted: true);
+      }
+      
+      // Save completed session
+      final completedSession = CompletedSession(
+        date: DateTime.now(),
+        drills: List.from(_editableSessionDrills),
+        totalCompletedDrills: _editableSessionDrills.where((d) => d.isCompleted).length,
+        totalDrills: _editableSessionDrills.length,
+      );
+      
+      // ✅ FIXED: Await the session sync to complete before continuing
+      await _addCompletedSessionWithSync(completedSession);
+      
+      if (kDebugMode) {
+        print('✅ Session completed and synced to backend.');
+      }
+    } catch (e) {
+      if (kDebugMode) {
+        print('❌ Error completing session: $e');
+      }
+    } finally {
+      _setCompletingSession(false);
     }
-    
-    // Save completed session
-    final completedSession = CompletedSession(
-      date: DateTime.now(),
-      drills: List.from(_editableSessionDrills),
-      totalCompletedDrills: _editableSessionDrills.where((d) => d.isCompleted).length,
-      totalDrills: _editableSessionDrills.length,
-    );
-    addCompletedSession(completedSession);
+  }
+
+  // ✅ NEW: Add completed session and wait for sync to complete
+  Future<void> _addCompletedSessionWithSync(CompletedSession session) async {
+    _completedSessions.add(session);
     
     if (kDebugMode) {
-      print('✅ Session completed and added to completedSessions (once only).');
+      print('✅ CompletedSession saved locally!');
+      print('  Date: ${session.date}');
+      print('  Drills: ${session.drills.length}');
+      print('  Total Completed: ${session.totalCompletedDrills}');
+      print('  Total Drills: ${session.totalDrills}');
     }
     
-    notifyListeners();
+    // ✅ FIXED: Await immediate sync instead of timer-based
+    await _syncCompletedSessionImmediate(session);
   }
   
   // Get the next incomplete drill
@@ -1434,11 +1578,8 @@ class AppStateService extends ChangeNotifier {
     _highestStreak = 0;
     _countOfFullyCompletedSessions = 0;
     
-    // Cancel sync timers
-    _sessionDrillsSyncTimer?.cancel();
-    _completedSessionSyncTimer?.cancel();
-    _drillGroupsSyncTimer?.cancel();
-    _preferencesSyncTimer?.cancel();
+    // ✅ FIXED: Use centralized timer cleanup
+    _cancelAllTimers();
     
     notifyListeners();
   }
@@ -1537,7 +1678,7 @@ class AppStateService extends ChangeNotifier {
       instructions: ['Use both feet', 'Keep head up', 'Vary pace'],
       tips: ['Small touches', 'Stay relaxed', 'Practice daily'],
       equipment: ['soccer ball'],
-      trainingStyle: 'medium intensity',
+      trainingStyle: 'low intensity',
       difficulty: 'beginner',
       videoUrl: '',
     ),
@@ -1569,7 +1710,7 @@ class AppStateService extends ChangeNotifier {
       instructions: ['Watch the ball', 'Use all surfaces', 'Keep it up'],
       tips: ['Relax your body', 'Small touches', 'Be patient'],
       equipment: ['soccer ball'],
-      trainingStyle: 'medium intensity',
+      trainingStyle: 'low intensity',
       difficulty: 'beginner',
       videoUrl: '',
     ),

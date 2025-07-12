@@ -261,9 +261,12 @@ class _OnboardingFlowState extends State<OnboardingFlow> {
   // Additional state for animations
   bool _showNextButton = false;
   bool _textAnimationComplete = false;
-  bool _questionTypewriterComplete = false; // ✅ NEW: Track question typewriter completion
   bool _secondTextComplete = false; // ✅ NEW: Track second text completion
-  bool _thirdTextComplete = false; // ✅ NEW: Track third text completion
+  
+  // ✅ NEW: Bravo transition animation state
+  bool _isBravoTransitioning = false;
+  bool _showQuestionContent = false;
+  bool _isSkipButtonDisabled = false; // Prevent spam clicking
 
   static const yellow = Color(0xFFF9CC53);
   static const darkGray = Color(0xFF444444);
@@ -283,18 +286,38 @@ class _OnboardingFlowState extends State<OnboardingFlow> {
   }
 
   void _next() {
-    // Only advance if not past registration
-    if (_step < stepRegistration) {
+    // ✅ NEW: Handle smooth transition from preview to first question
+    if (_step == stepPreview) {
+      print('🎬 Starting Bravo transition animation');
+      // Start Bravo transition animation
       setState(() {
-        _previousStep = _step; // ✅ Track previous step
-        _step++;
-        // Reset animation states when leaving preview
-        if (_previousStep == stepPreview) {
-          _resetAnimationStates();
+        _isBravoTransitioning = true;
+      });
+      
+      // After a short delay, advance to the next step and show question content
+      Future.delayed(const Duration(milliseconds: 600), () {
+        if (mounted) {
+          print('🎬 Advancing to question step and showing content');
+          setState(() {
+            _previousStep = _step;
+            _step++;
+            _showQuestionContent = true;
+          });
         }
       });
+    } else {
+      // Normal next for other steps
+      if (_step < stepRegistration) {
+        setState(() {
+          _previousStep = _step;
+          _step++;
+          // Reset animation states when leaving preview
+          if (_previousStep == stepPreview) {
+            _resetAnimationStates();
+          }
+        });
+      }
     }
-    // Do not automatically go to login page here
   }
 
   void _back() {
@@ -311,6 +334,17 @@ class _OnboardingFlowState extends State<OnboardingFlow> {
         // Reset animation states when returning to preview
         if (_step == stepPreview) {
           _resetAnimationStates();
+          // Restart preview animations after a short delay
+          Future.delayed(const Duration(milliseconds: 100), () {
+            if (mounted) {
+              _startPreviewAnimations();
+            }
+          });
+        }
+        // Reset Bravo transition state when going back to preview
+        if (_step == stepPreview) {
+          _isBravoTransitioning = false;
+          _showQuestionContent = false;
         }
       });
     }
@@ -319,13 +353,27 @@ class _OnboardingFlowState extends State<OnboardingFlow> {
     HapticUtils.lightImpact();
   }
 
+  // ✅ NEW: Start preview animations when entering preview screen
+  void _startPreviewAnimations() {
+    // Start the typewriter animation for "Hello! I'm Bravo!"
+    setState(() {
+      _textAnimationComplete = false;
+      _secondTextComplete = false; // User hasn't tapped to continue yet
+      _showNextButton = false;
+      _isSkipButtonDisabled = false; // Reset skip button
+    });
+    
+    // The TypewriterText widgets will handle their own animation timing
+  }
+
   // ✅ NEW: Reset animation states for preview screen
   void _resetAnimationStates() {
     _showNextButton = false;
     _textAnimationComplete = false;
-    _questionTypewriterComplete = false;
-    _secondTextComplete = false;
-    _thirdTextComplete = false;
+    _secondTextComplete = false; // Reset tap-to-continue state
+    _isBravoTransitioning = false;
+    _showQuestionContent = false;
+    _isSkipButtonDisabled = false; // Reset skip button
   }
 
   // Build the onboarding flow with static background and content animations
@@ -344,24 +392,31 @@ class _OnboardingFlowState extends State<OnboardingFlow> {
 
   /// ✅ NEW: Build the current screen based on step
   Widget _buildCurrentScreen() {
+    print('🖥️ Building screen for step: $_step, _isBravoTransitioning: $_isBravoTransitioning, _showQuestionContent: $_showQuestionContent');
+    
     if (_step == stepInitial) {
+      print('🖥️ Showing initial screen');
       return _buildInitialScreen();
     }
 
-    if (_step == stepPreview) {
+    if (_step == stepPreview || (_step >= stepFirstQuestion && _step < stepRegistration && _isBravoTransitioning)) {
+      print('🖥️ Showing unified preview/question screen');
       return _buildPreviewScreen();
     }
 
-    // Question screens
-    if (_step >= stepFirstQuestion && _step < stepRegistration) {
+    // Question screens (only when not transitioning)
+    if (_step >= stepFirstQuestion && _step < stepRegistration && !_isBravoTransitioning) {
+      print('🖥️ Showing standalone question screen');
       return _buildQuestionScreen();
     }
 
     if (_step == stepRegistration) {
+      print('🖥️ Showing registration screen');
       return _buildRegistrationScreen();
     }
 
     // Fallback (should never hit)
+    print('🖥️ Showing fallback screen');
     return const SizedBox.shrink();
   }
 
@@ -480,7 +535,7 @@ class _OnboardingFlowState extends State<OnboardingFlow> {
     return SafeArea(
       child: Column(
         children: [
-          // ✅ CONSISTENT: Use same top navigation bar as question screens
+          // ✅ CONSISTENT: Navigation bar that stays throughout the flow
           Padding(
             padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 16.0),
             child: Row(
@@ -493,10 +548,10 @@ class _OnboardingFlowState extends State<OnboardingFlow> {
                     _back();
                   },
                 ),
-                // Progress bar in the middle (show as beginning of flow)
+                // Progress bar in the middle
                 Expanded(
                   child: LinearProgressIndicator(
-                    value: 0.0, // Start at 0% since this is the beginning of the flow
+                    value: _step >= stepFirstQuestion ? ((_step - stepFirstQuestion + 1) / (onboardingQuestions.length + 1)) : (_isBravoTransitioning ? 0.1 : 0.0),
                     backgroundColor: Colors.grey.shade200,
                     valueColor: const AlwaysStoppedAnimation<Color>(yellow),
                     minHeight: 8,
@@ -506,21 +561,17 @@ class _OnboardingFlowState extends State<OnboardingFlow> {
                 const SizedBox(width: 8),
                 // Skip button on the right
                 TextButton(
-                  onPressed: () {
+                  onPressed: _isSkipButtonDisabled ? null : () {
                     HapticUtils.lightImpact(); // Light haptic for skip
-                    // Skip to the first question, not to registration
-                    setState(() {
-                      _previousStep = _step;
-                      _step = stepFirstQuestion;
-                      _resetAnimationStates();
-                    });
+                    // Use the same transition animation as "Let's Go!"
+                    _next();
                   },
-                  child: const Text(
+                  child: Text(
                     'Skip',
                     style: TextStyle(
                       fontFamily: 'Poppins',
                       fontWeight: FontWeight.bold,
-                      color: darkGray,
+                      color: _isSkipButtonDisabled ? Colors.grey.shade400 : darkGray,
                       fontSize: 16,
                     ),
                   ),
@@ -529,132 +580,215 @@ class _OnboardingFlowState extends State<OnboardingFlow> {
             ),
           ),
           
-          const SizedBox(height: 8),
-          // ✅ ENHANCED: Animated Bravo with bounce effect
-          TweenAnimationBuilder<double>(
+          // ✅ Main content area with single Bravo
+          Expanded(
+            child: Stack(
+              children: [
+                // ✅ Single Bravo that transitions from center to upper left
+                AnimatedPositioned(
+                  duration: const Duration(milliseconds: 1200),
+                  curve: Curves.easeInOutCubic,
+                  // Animation: center when showing preview, upper left when transitioning/showing questions
+                  top: (_isBravoTransitioning || _step >= stepFirstQuestion) ? 10 : MediaQuery.of(context).size.height / 2 - 180,
+                  left: (_isBravoTransitioning || _step >= stepFirstQuestion) ? 30 : MediaQuery.of(context).size.width / 2 - 90,
+                  child: AnimatedContainer(
+                    duration: const Duration(milliseconds: 1200),
+                    curve: Curves.easeInOutCubic,
+                    width: (_isBravoTransitioning || _step >= stepFirstQuestion) ? 110 : 180,
+                    height: (_isBravoTransitioning || _step >= stepFirstQuestion) ? 110 : 180,
+                    child: RiveAnimation.asset(
+                      'assets/rive/Bravo_Animation.riv',
+                      stateMachines: const ['State Machine 2'],
+                      fit: BoxFit.contain,
+                    ),
+                  ),
+                ),
+                
+                // ✅ Preview content that fades out
+                AnimatedOpacity(
+                  duration: const Duration(milliseconds: 600),
+                  opacity: _isBravoTransitioning ? 0.0 : 1.0,
+                  child: Column(
+                    children: [
+                      // Space for Bravo (he's positioned absolutely above)
+                      const SizedBox(height: 160), // Move bubble higher
+                      
+                      // ✅ Message bubble above Bravo
+                      _buildBravoMessageBubble(),
+                      
+                      const SizedBox(height: 160), // More space for Bravo
+                      
+                      const Spacer(),
+                      // ✅ ENHANCED: Dynamic button (Next or Let's Go!)
+                      AnimatedSlide(
+                        duration: const Duration(milliseconds: 600),
+                        offset: _showNextButton ? Offset.zero : const Offset(0, 1),
+                        curve: Curves.elasticOut,
+                        child: AnimatedOpacity(
+                          duration: const Duration(milliseconds: 400),
+                          opacity: _showNextButton ? 1.0 : 0.0,
+                          child: Padding(
+                            padding: const EdgeInsets.symmetric(horizontal: 24.0),
+                            child: SizedBox(
+                              width: double.infinity,
+                              child: BravoButton(
+                                text: _secondTextComplete ? 'Let\'s Go!' : 'Next',
+                                onPressed: _showNextButton ? () {
+                                  HapticUtils.mediumImpact(); // Medium haptic for major action
+                                  if (!_secondTextComplete) {
+                                    // First click: show second message
+                                    setState(() {
+                                      _secondTextComplete = true;
+                                      _showNextButton = false; // Hide button during message typing
+                                    });
+                                  } else {
+                                    // Second click: start onboarding
+                                    print('🎬 Let\'s Go button clicked - triggering transition');
+                                    _next();
+                                  }
+                                } : null,
+                                color: yellow,
+                                backColor: AppTheme.primaryDarkYellow,
+                                textColor: Colors.white,
+                                disabled: false,
+                              ),
+                            ),
+                          ),
+                        ),
+                      ),
+                      const SizedBox(height: 32),
+                    ],
+                  ),
+                ),
+                
+                // ✅ Question content that fades in (only when step has changed)
+                if (_step >= stepFirstQuestion)
+                  AnimatedOpacity(
+                    duration: const Duration(milliseconds: 600),
+                    opacity: _showQuestionContent ? 1.0 : 0.0,
+                    child: _buildQuestionContent(),
+                  ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  // ✅ NEW: Build just the question content (without navigation bar)
+  Widget _buildQuestionContent() {
+    final qIdx = _step - stepFirstQuestion;
+    final question = onboardingQuestions[qIdx];
+    final selected = question.isMultiSelect ? _multiAnswers[_step] ?? <int>{} : _answers[_step];
+    final isMovingForward = _step > _previousStep;
+
+    // ✅ NEW: Determine if Next button should be enabled
+    final bool canProceed = question.isMultiSelect 
+        ? (selected as Set<int>).isNotEmpty 
+        : selected != null;
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        // Add spacing to push content down for better balance
+        const SizedBox(height: 10),
+        
+        // ✅ Message bubble in upper left (Bravo is positioned absolutely in the parent Stack)
+        Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 24.0, vertical: 16.0),
+          child: Row(
+            crossAxisAlignment: CrossAxisAlignment.center,
+            children: [
+              // Space for Bravo (he's positioned absolutely above)
+              const SizedBox(width: 100),
+              const SizedBox(width: 8),
+              Expanded(
+                child: _MessageBubble(
+                  key: ValueKey<int>(_step),
+                  message: question.question,
+                  isMovingForward: isMovingForward,
+                ),
+              ),
+            ],
+          ),
+        ),
+        
+        const SizedBox(height: 16),
+        
+        // ✅ Options
+        Expanded(
+          child: _SimplifiedSlidingOptions(
+            key: ValueKey<int>(_step),
+            question: question,
+            selected: selected,
+            isMovingForward: isMovingForward,
+            onOptionSelected: (index) {
+              if (question.isMultiSelect) {
+                setState(() {
+                  final set = _multiAnswers[_step] ?? <int>{};
+                  if (set.contains(index)) {
+                    set.remove(index);
+                  } else {
+                    set.add(index);
+                  }
+                  _multiAnswers[_step] = set;
+                });
+              } else {
+                _selectOption(index);
+              }
+            },
+          ),
+        ),
+        
+        // ✅ FIXED: Next button with conditional styling
+        Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 20.0, vertical: 16.0),
+          child: SizedBox(
+            width: double.infinity,
+            child: BravoButton(
+              text: 'Next',
+              onPressed: canProceed ? () {
+                HapticUtils.mediumImpact(); // Medium haptic for next
+                _next();
+              } : null,
+              color: canProceed ? yellow : Colors.grey.shade300,
+              backColor: canProceed ? AppTheme.primaryDarkYellow : Colors.grey.shade400,
+              textColor: Colors.white,
+              disabled: !canProceed,
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+
+  /// ✅ NEW: Build the smooth Bravo transition from center to upper left
+  Widget _buildBravoTransition() {
+    return Container(
+      width: MediaQuery.of(context).size.width,
+      height: MediaQuery.of(context).size.height,
+      color: Colors.white, // White background during transition
+      child: Stack(
+        children: [
+          AnimatedPositioned(
             duration: const Duration(milliseconds: 1200),
-            tween: Tween(begin: 0.0, end: 1.0),
-            curve: Curves.elasticOut,
-            builder: (context, value, child) {
-              return Transform.scale(
-                scale: value,
-                child: SizedBox(
-                  height: 180,
-                  child: RiveAnimation.asset(
-                    'assets/rive/Bravo_Animation.riv',
-                    stateMachines: const ['State Machine 2'],
-                    fit: BoxFit.contain,
-                  ),
-                ),
-              );
-            },
-          ),
-          const SizedBox(height: 32),
-          // ✅ FIRST: "Hello! I'm Bravo!"
-          TypewriterText(
-            text: "Hello! I'm Bravo!",
-            style: const TextStyle(
-              fontFamily: 'Poppins',
-              fontWeight: FontWeight.bold,
-              fontSize: 20,
-              color: darkGray,
-            ),
-            duration: const Duration(milliseconds: 80),
-            onComplete: () {
-              setState(() {
-                _textAnimationComplete = true;
-              });
-            },
-          ),
-          const SizedBox(height: 24),
-          // ✅ SECOND: "I'll help you improve as a soccer player and achieve your goals."
-          AnimatedOpacity(
-            duration: const Duration(milliseconds: 600),
-            opacity: _textAnimationComplete ? 1.0 : 0.0,
-            child: Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 32.0),
-              child: _textAnimationComplete
-                  ? TypewriterText(
-                      text: "I'll help you improve as a soccer player and achieve your goals.",
-                      style: const TextStyle(
-                        fontFamily: 'Poppins',
-                        fontWeight: FontWeight.normal,
-                        fontSize: 15,
-                        color: darkGray,
-                      ),
-                      duration: const Duration(milliseconds: 25),
-                      onComplete: () {
-                        setState(() {
-                          _secondTextComplete = true;
-                        });
-                      },
-                    )
-                  : Container(),
-            ),
-          ),
-          const SizedBox(height: 16),
-          // ✅ THIRD: "Let me ask you a few quick questions to create your personalized training plan."
-          AnimatedOpacity(
-            duration: const Duration(milliseconds: 600),
-            opacity: _secondTextComplete ? 1.0 : 0.0,
-            child: Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 32.0),
-              child: _secondTextComplete
-                  ? TypewriterText(
-                      text: "Let me ask you a few quick questions to create your personalized training plan.",
-                      style: const TextStyle(
-                        fontFamily: 'Poppins',
-                        fontWeight: FontWeight.normal,
-                        fontSize: 15,
-                        color: darkGray,
-                      ),
-                      duration: const Duration(milliseconds: 25),
-                      onComplete: () {
-                        setState(() {
-                          _thirdTextComplete = true;
-                        });
-                        // Show button after a short pause
-                        Future.delayed(const Duration(milliseconds: 800), () {
-                          if (mounted) {
-                            setState(() {
-                              _showNextButton = true;
-                            });
-                          }
-                        });
-                      },
-                    )
-                  : Container(),
-            ),
-          ),
-          const Spacer(),
-          // ✅ ENHANCED: Animated Next button (shows after all text completes)
-          AnimatedSlide(
-            duration: const Duration(milliseconds: 600),
-            offset: _showNextButton ? Offset.zero : const Offset(0, 1),
-            curve: Curves.elasticOut,
-            child: AnimatedOpacity(
-              duration: const Duration(milliseconds: 400),
-              opacity: _showNextButton ? 1.0 : 0.0,
-              child: Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 24.0),
-                child: SizedBox(
-                  width: double.infinity,
-                  child: BravoButton(
-                    text: 'Let\'s Go!',
-                    onPressed: _showNextButton ? () {
-                      HapticUtils.mediumImpact(); // Medium haptic for major action
-                      _next();
-                    } : null,
-                    color: yellow,
-                    backColor: AppTheme.primaryDarkYellow,
-                    textColor: Colors.white,
-                    disabled: false,
-                  ),
-                ),
+            curve: Curves.easeInOutCubic,
+            // Animation: start from center, move to upper left when _bravoAnimationStarted is true
+            top: _isBravoTransitioning ? 100 : MediaQuery.of(context).size.height / 2 - 90,
+            left: _isBravoTransitioning ? 24 : MediaQuery.of(context).size.width / 2 - 90,
+            child: AnimatedContainer(
+              duration: const Duration(milliseconds: 1200),
+              curve: Curves.easeInOutCubic,
+              width: _isBravoTransitioning ? 100 : 180,
+              height: _isBravoTransitioning ? 100 : 180,
+              child: RiveAnimation.asset(
+                'assets/rive/Bravo_Animation.riv',
+                stateMachines: const ['State Machine 2'],
+                fit: BoxFit.contain,
               ),
             ),
           ),
-          const SizedBox(height: 32),
         ],
       ),
     );
@@ -667,45 +801,140 @@ class _OnboardingFlowState extends State<OnboardingFlow> {
     final selected = question.isMultiSelect ? _multiAnswers[_step] ?? <int>{} : _answers[_step];
     final progress = (_step - stepFirstQuestion + 1) / (onboardingQuestions.length + 1);
     final isMovingForward = _step > _previousStep;
+    
+    // ✅ NEW: Determine if Next button should be enabled
+    final bool canProceed = question.isMultiSelect 
+        ? (selected as Set<int>).isNotEmpty 
+        : selected != null;
+    
+    // ✅ NEW: Show question content with delay if transitioning from preview
+    final isTransitioningFromPreview = _previousStep == stepPreview && _step == stepFirstQuestion;
+    
+    print('🎬 Question screen - isTransitioningFromPreview: $isTransitioningFromPreview, _isBravoTransitioning: $_isBravoTransitioning, _showQuestionContent: $_showQuestionContent');
 
     return SafeArea(
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
+      child: Stack(
         children: [
-          // ✅ STATIC: Top bar (never animates)
-          Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 16.0),
-            child: Row(
+          // ✅ Main question content
+          AnimatedOpacity(
+            duration: const Duration(milliseconds: 600),
+            opacity: isTransitioningFromPreview ? (_showQuestionContent ? 1.0 : 0.0) : 1.0,
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
-                if (_step >= stepFirstQuestion)
-                  IconButton(
-                    icon: const Icon(Icons.arrow_back_ios_new, color: darkGray),
-                    onPressed: () {
-                      HapticUtils.lightImpact(); // Light haptic for back navigation
-                      _back();
-                    },
-                  ),
-                Expanded(
-                  child: LinearProgressIndicator(
-                    value: progress,
-                    backgroundColor: Colors.grey.shade200,
-                    valueColor: const AlwaysStoppedAnimation<Color>(yellow),
-                    minHeight: 8,
-                    borderRadius: BorderRadius.circular(4),
+                // ✅ STATIC: Top bar (never animates)
+                Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 16.0),
+                  child: Row(
+                    children: [
+                      if (_step >= stepFirstQuestion)
+                        IconButton(
+                          icon: const Icon(Icons.arrow_back_ios_new, color: darkGray),
+                          onPressed: () {
+                            HapticUtils.lightImpact(); // Light haptic for back navigation
+                            _back();
+                          },
+                        ),
+                      Expanded(
+                        child: LinearProgressIndicator(
+                          value: progress,
+                          backgroundColor: Colors.grey.shade200,
+                          valueColor: const AlwaysStoppedAnimation<Color>(yellow),
+                          minHeight: 8,
+                          borderRadius: BorderRadius.circular(4),
+                        ),
+                      ),
+                      const SizedBox(width: 8),
+                      TextButton(
+                        onPressed: _isSkipButtonDisabled ? null : () {
+                          HapticUtils.lightImpact(); // Light haptic for skip
+                          _skip();
+                        },
+                        child: Text('Skip',
+                          style: TextStyle(
+                            fontFamily: 'Poppins',
+                            fontWeight: FontWeight.bold,
+                            color: _isSkipButtonDisabled ? Colors.grey.shade400 : darkGray,
+                            fontSize: 16,
+                          ),
+                        ),
+                      ),
+                    ],
                   ),
                 ),
-                const SizedBox(width: 8),
-                TextButton(
-                  onPressed: () {
-                    HapticUtils.lightImpact(); // Light haptic for skip
-                    _skip();
-                  },
-                  child: const Text('Skip',
-                    style: TextStyle(
-                      fontFamily: 'Poppins',
-                      fontWeight: FontWeight.bold,
-                      color: darkGray,
-                      fontSize: 16,
+                
+                // ✅ STATIC: Bravo and message bubble (never animates position)
+                Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 24.0, vertical: 16.0),
+                  child: Row(
+                    crossAxisAlignment: CrossAxisAlignment.center,
+                    children: [
+                      // ✅ Only show Bravo if not transitioning from preview (it's handled by transition animation)
+                      if (!isTransitioningFromPreview || _showQuestionContent)
+                        SizedBox(
+                          width: 100,
+                          height: 100,
+                          child: RiveAnimation.asset(
+                            'assets/rive/Bravo_Animation.riv',
+                            stateMachines: const ['State Machine 2'],
+                            fit: BoxFit.contain,
+                          ),
+                        ),
+                      const SizedBox(width: 8),
+                      Expanded(
+                        child: _MessageBubble(
+                          key: ValueKey<int>(_step),
+                          message: question.question,
+                          isMovingForward: isMovingForward,
+                          // Remove the callback - we'll use a timer instead
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                
+                const SizedBox(height: 16),
+                
+                // ✅ SIMPLIFIED: Options with timer-based showing
+                Expanded(
+                  child: _SimplifiedSlidingOptions(
+                    key: ValueKey<int>(_step),
+                    question: question,
+                    selected: selected,
+                    isMovingForward: isMovingForward,
+                    onOptionSelected: (index) {
+                      if (question.isMultiSelect) {
+                        setState(() {
+                          final set = _multiAnswers[_step] ?? <int>{};
+                          if (set.contains(index)) {
+                            set.remove(index);
+                          } else {
+                            set.add(index);
+                          }
+                          _multiAnswers[_step] = set;
+                        });
+                      } else {
+                        _selectOption(index);
+                      }
+                    },
+                  ),
+                ),
+                
+                // ✅ FIXED: Next button with conditional styling
+                Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 20.0, vertical: 16.0),
+                  child: SizedBox(
+                    width: double.infinity,
+                    child: BravoButton(
+                      text: 'Next',
+                      onPressed: canProceed ? () {
+                        HapticUtils.mediumImpact(); // Medium haptic for next
+                        _next();
+                      } : null,
+                      color: canProceed ? yellow : Colors.grey.shade300,
+                      backColor: canProceed ? AppTheme.primaryDarkYellow : Colors.grey.shade400,
+                      textColor: Colors.white,
+                      disabled: !canProceed,
                     ),
                   ),
                 ),
@@ -713,84 +942,9 @@ class _OnboardingFlowState extends State<OnboardingFlow> {
             ),
           ),
           
-          // ✅ STATIC: Bravo and message bubble (never animates position)
-          Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 24.0, vertical: 16.0),
-            child: Row(
-              crossAxisAlignment: CrossAxisAlignment.center,
-              children: [
-                SizedBox(
-                  width: 100,
-                  height: 100,
-                  child: RiveAnimation.asset(
-                    'assets/rive/Bravo_Animation.riv',
-                    stateMachines: const ['State Machine 2'],
-                    fit: BoxFit.contain,
-                  ),
-                ),
-                const SizedBox(width: 8),
-                Expanded(
-                  child: _MessageBubble(
-                    key: ValueKey<int>(_step),
-                    message: question.question,
-                    isMovingForward: isMovingForward,
-                    // Remove the callback - we'll use a timer instead
-                  ),
-                ),
-              ],
-            ),
-          ),
-          
-          const SizedBox(height: 16),
-          
-          // ✅ SIMPLIFIED: Options with timer-based showing
-          Expanded(
-            child: _SimplifiedSlidingOptions(
-              key: ValueKey<int>(_step),
-              question: question,
-              selected: selected,
-              isMovingForward: isMovingForward,
-              onOptionSelected: (index) {
-                if (question.isMultiSelect) {
-                  setState(() {
-                    final set = _multiAnswers[_step] ?? <int>{};
-                    if (set.contains(index)) {
-                      set.remove(index);
-                    } else {
-                      set.add(index);
-                    }
-                    _multiAnswers[_step] = set;
-                  });
-                } else {
-                  _selectOption(index);
-                }
-              },
-            ),
-          ),
-          
-          // ✅ STATIC: Next button (never animates)
-          Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 20.0, vertical: 16.0),
-            child: SizedBox(
-              width: double.infinity,
-              child: BravoButton(
-                text: 'Next',
-                onPressed: question.isMultiSelect
-                    ? (selected as Set<int>).isNotEmpty ? () {
-                        HapticUtils.mediumImpact(); // Medium haptic for next
-                        _next();
-                      } : null
-                    : selected != null ? () {
-                        HapticUtils.mediumImpact(); // Medium haptic for next
-                        _next();
-                      } : null,
-                color: yellow,
-                backColor: AppTheme.primaryDarkYellow,
-                textColor: Colors.white,
-                disabled: false,
-              ),
-            ),
-          ),
+          // ✅ NEW: Bravo transition overlay for question screen
+          if (isTransitioningFromPreview && !_showQuestionContent)
+            _buildBravoTransition(),
         ],
       ),
     );
@@ -1028,9 +1182,26 @@ class _OnboardingFlowState extends State<OnboardingFlow> {
   }
 
   void _skip() {
+    // Prevent spam clicking
+    if (_isSkipButtonDisabled) return;
+    
+    setState(() {
+      _isSkipButtonDisabled = true;
+    });
+    
+    // Re-enable skip button after delay
+    Future.delayed(const Duration(milliseconds: 800), () {
+      if (mounted) {
+        setState(() {
+          _isSkipButtonDisabled = false;
+        });
+      }
+    });
+
     // If on registration, do nothing
     if (_step == stepRegistration) {
       // Do nothing, already on registration
+      return;
     } else {
       HapticUtils.lightImpact(); // Light haptic for skip
       _next();
@@ -1058,6 +1229,97 @@ class _OnboardingFlowState extends State<OnboardingFlow> {
         ),
       ),
     );
+  }
+
+  // Message bubble above Bravo
+  Widget _buildBravoMessageBubble() {
+    return Column(
+      children: [
+        // Message bubble with same styling as question bubbles
+        Container(
+          constraints: const BoxConstraints(maxWidth: 280),
+          padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
+          decoration: BoxDecoration(
+            color: const Color(0xFFF5F5F5), // Same gray as question bubbles
+            borderRadius: BorderRadius.circular(20),
+            // No shadow - clean simple look
+          ),
+          child: _buildMessageContent(),
+        ),
+        // Triangle pointing down to Bravo - positioned slightly higher
+        Transform.translate(
+          offset: const Offset(0, -4), // Move triangle up by 4 pixels
+          child: CustomPaint(
+            size: const Size(24, 15),
+            painter: _MessageBubbleTrianglePainter(),
+          ),
+        ),
+      ],
+    );
+  }
+
+  // ✅ NEW: Build the message content with user interaction
+  Widget _buildMessageContent() {
+    if (!_textAnimationComplete) {
+      // First message: "Hello! I'm Bravo!"
+      return TypewriterText(
+        key: ValueKey('bubble_hello_$_step'),
+        text: "Hello! I'm Bravo!",
+        style: const TextStyle(
+          fontFamily: 'Poppins',
+          fontWeight: FontWeight.bold,
+          fontSize: 16,
+          color: Color(0xFF333333), // Dark gray text like question bubbles
+        ),
+        duration: const Duration(milliseconds: 60), // Faster typing
+        onComplete: () {
+          // Show Next button after first message completes
+          Future.delayed(const Duration(milliseconds: 500), () {
+            if (mounted) {
+              setState(() {
+                _textAnimationComplete = true;
+                _showNextButton = true; // Show Next button
+              });
+            }
+          });
+        },
+      );
+    } else if (!_secondTextComplete) {
+      // Keep showing first message while Next button is visible
+      return const Text(
+        "Hello! I'm Bravo!",
+        style: TextStyle(
+          fontFamily: 'Poppins',
+          fontWeight: FontWeight.bold,
+          fontSize: 16,
+          color: Color(0xFF333333),
+        ),
+        textAlign: TextAlign.center,
+      );
+    } else {
+      // Second message after user clicks Next
+      return TypewriterText(
+        key: ValueKey('bubble_help_$_step'),
+        text: "I'll help you start training after 6 quick questions!",
+        style: const TextStyle(
+          fontFamily: 'Poppins',
+          fontWeight: FontWeight.w500,
+          fontSize: 15,
+          color: Color(0xFF333333), // Dark gray text
+        ),
+        duration: const Duration(milliseconds: 40), // Even faster
+        onComplete: () {
+          // After second message, button becomes "Let's Go!"
+          Future.delayed(const Duration(milliseconds: 800), () {
+            if (mounted) {
+              setState(() {
+                _showNextButton = true; // Show "Let's Go!" button
+              });
+            }
+          });
+        },
+      );
+    }
   }
 }
 
@@ -1091,7 +1353,7 @@ class _MessageBubbleState extends State<_MessageBubble>
       vsync: this,
     );
 
-    // Duolingo-style left-to-right expansion
+    // Left-to-right expansion
     _scaleAnimation = Tween<double>(
       begin: 0.0,
       end: 1.0,
@@ -1153,7 +1415,7 @@ class _MessageBubbleState extends State<_MessageBubble>
       animation: _scaleAnimation,
       builder: (context, child) {
         return Transform(
-          alignment: Alignment.centerLeft, // Expand from left like Duolingo
+          alignment: Alignment.centerLeft, // Expand from left
           transform: Matrix4.identity()..scale(_scaleAnimation.value, 1.0), // Only scale horizontally
           child: Row(
             crossAxisAlignment: CrossAxisAlignment.center, // Center the triangle
@@ -1210,6 +1472,28 @@ class _MessageBubbleState extends State<_MessageBubble>
       },
     );
   }
+}
+
+/// ✅ NEW: Custom painter for message bubble triangle pointing down to Bravo
+class _MessageBubbleTrianglePainter extends CustomPainter {
+  @override
+  void paint(Canvas canvas, Size size) {
+    final paint = Paint()
+      ..color = const Color(0xFFF5F5F5) // Same gray as bubble
+      ..style = PaintingStyle.fill;
+
+    final path = Path();
+    // Create a downward-pointing triangle
+    path.moveTo(size.width * 0.5, size.height); // Bottom center (point)
+    path.lineTo(0, 0); // Top left
+    path.lineTo(size.width, 0); // Top right
+    path.close();
+
+    canvas.drawPath(path, paint);
+  }
+
+  @override
+  bool shouldRepaint(covariant CustomPainter oldDelegate) => false;
 }
 
 /// ✅ NEW: Custom painter for speech bubble tail pointing left

@@ -140,22 +140,35 @@ class UserManagerService extends ChangeNotifier {
       print('🚪 UserManager: Logging out user $_email');
     }
     
-    // Cancel proactive refresh timer
-    _cancelProactiveTokenRefresh();
-    
-    _email = '';
-    _accessToken = '';
-    _refreshToken = '';
-    _isLoggedIn = false;
-    _userHasAccountHistory = false;
-    _showLoginPage = false;
-    _tokenCreatedAt = null;
-    
-    await _clearUserDataFromStorage();
-    notifyListeners();
-    
-    if (kDebugMode) {
-      print('✅ UserManager: User logged out successfully');
+    try {
+      // Cancel proactive refresh timer first
+      _cancelProactiveTokenRefresh();
+      
+      // Clear all user state
+      _email = '';
+      _accessToken = '';
+      _refreshToken = '';
+      _isLoggedIn = false;
+      _userHasAccountHistory = false;
+      _showLoginPage = false;
+      _tokenCreatedAt = null;
+      
+      // Clear storage
+      await _clearUserDataFromStorage();
+      
+      // Notify listeners
+      notifyListeners();
+      
+      if (kDebugMode) {
+        print('✅ UserManager: User logged out successfully');
+      }
+    } catch (e) {
+      if (kDebugMode) {
+        print('❌ UserManager: Error during logout: $e');
+      }
+      // Even if there's an error, ensure we clear the login state
+      _isLoggedIn = false;
+      notifyListeners();
     }
   }
 

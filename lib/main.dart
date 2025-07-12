@@ -14,6 +14,9 @@ import 'services/user_manager_service.dart';
 import 'constants/app_theme.dart';
 import 'config/app_config.dart';
 
+// Global flag to track intro animation - persists across widget rebuilds
+bool _hasShownIntroAnimation = false;
+
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
   
@@ -44,8 +47,39 @@ void main() async {
   runApp(const MyApp());
 }
 
-class MyApp extends StatelessWidget {
+class MyApp extends StatefulWidget {
   const MyApp({super.key});
+
+  @override
+  State<MyApp> createState() => _MyAppState();
+}
+
+class _MyAppState extends State<MyApp> {
+  bool _isShowingIntro = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _showIntroIfNeeded();
+  }
+
+  void _showIntroIfNeeded() {
+    if (!_hasShownIntroAnimation) {
+      setState(() {
+        _isShowingIntro = true;
+        _hasShownIntroAnimation = true; // Set global flag
+      });
+      
+      // Auto-complete intro after 6 seconds
+      Future.delayed(const Duration(seconds: 6), () {
+        if (mounted) {
+          setState(() {
+            _isShowingIntro = false;
+          });
+        }
+      });
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -58,7 +92,24 @@ class MyApp extends StatelessWidget {
       child: MaterialApp(
         title: 'BravoBall',
         theme: AppTheme.lightTheme,
-        home: const AuthenticationWrapper(),
+        home: Stack(
+          children: [
+            // Main app content
+            const AuthenticationChecker(),
+            
+            // Intro animation overlay (only on true app startup)
+            if (_isShowingIntro)
+              Container(
+                width: MediaQuery.of(context).size.width,
+                height: MediaQuery.of(context).size.height,
+                color: Colors.transparent,
+                child: const RiveAnimation.asset(
+                  'assets/rive/BravoBall_Intro.riv',
+                  fit: BoxFit.cover,
+                ),
+              ),
+          ],
+        ),
         debugShowCheckedModeBanner: false,
         // Show performance overlay if enabled in debug mode
         showPerformanceOverlay: AppConfig.showPerformanceOverlay,
@@ -67,17 +118,9 @@ class MyApp extends StatelessWidget {
   }
 }
 
-/// Authentication Wrapper
-/// Determines whether to show welcome page or main app based on auth state
-class AuthenticationWrapper extends StatefulWidget {
-  const AuthenticationWrapper({super.key});
-
-  @override
-  State<AuthenticationWrapper> createState() => _AuthenticationWrapperState();
-}
-
-class _AuthenticationWrapperState extends State<AuthenticationWrapper> {
-  bool _hasCompletedInitialStartup = false;
+/// Authentication Checker - Simple widget that checks auth state and shows appropriate content
+class AuthenticationChecker extends StatelessWidget {
+  const AuthenticationChecker({super.key});
 
   @override
   Widget build(BuildContext context) {
@@ -88,54 +131,26 @@ class _AuthenticationWrapperState extends State<AuthenticationWrapper> {
           return const AuthLoadingScreen();
         }
 
-        // Get the content that should be shown
-        final backgroundContent = _buildBackgroundContent(userManager);
-
-        // Only show intro animation on true app startup (not after login/onboarding)
-        final shouldShowIntro = !_hasCompletedInitialStartup;
-
-        // Always show content with intro animation overlay if needed
-        return Stack(
-          children: [
-            // Always show the background content immediately
-            backgroundContent,
-            
-            // Intro animation overlay - only on app startup
-            if (shouldShowIntro)
-              IntroAnimationScreen(
-                onComplete: () {
-                  // Mark startup as completed - won't show again this session
-                  setState(() {
-                    _hasCompletedInitialStartup = true;
-                  });
-                },
-              ),
-          ],
-        );
+        // Return appropriate content based on authentication state
+        if (userManager.isLoggedIn) {
+          return const AuthenticatedApp();
+        } else {
+          return const UnauthenticatedApp();
+        }
       },
     );
   }
-
-  Widget _buildBackgroundContent(UserManagerService userManager) {
-    // Always build and return the content immediately
-    if (userManager.isLoggedIn) {
-      return MainTabViewWrapper();
-    } else {
-      return const OnboardingFlow();
-    }
-  }
 }
 
-/// Main Tab View Wrapper
-/// Handles backend data loading when user is authenticated
-class MainTabViewWrapper extends StatefulWidget {
-  const MainTabViewWrapper({super.key});
+/// Authenticated App - Handles logged-in user flow
+class AuthenticatedApp extends StatefulWidget {
+  const AuthenticatedApp({super.key});
 
   @override
-  State<MainTabViewWrapper> createState() => _MainTabViewWrapperState();
+  State<AuthenticatedApp> createState() => _AuthenticatedAppState();
 }
 
-class _MainTabViewWrapperState extends State<MainTabViewWrapper> {
+class _AuthenticatedAppState extends State<AuthenticatedApp> {
   bool _hasLoadedBackendData = false;
 
   @override
@@ -177,8 +192,17 @@ class _MainTabViewWrapperState extends State<MainTabViewWrapper> {
   }
 }
 
-/// Auth Loading Screen
-/// Shows while checking authentication status on app start
+/// Unauthenticated App - Handles onboarding and login flow
+class UnauthenticatedApp extends StatelessWidget {
+  const UnauthenticatedApp({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return const OnboardingFlow();
+  }
+}
+
+/// Auth Loading Screen - Shows while checking authentication status on app start
 class AuthLoadingScreen extends StatelessWidget {
   const AuthLoadingScreen({super.key});
 
@@ -234,48 +258,6 @@ class AuthLoadingScreen extends StatelessWidget {
             ),
           ],
         ),
-      ),
-    );
-  }
-}
-
-/// Intro Animation Screen
-/// Shows app intro animation (you can replace with Rive animation)
-class IntroAnimationScreen extends StatefulWidget {
-  final VoidCallback onComplete;
-
-  const IntroAnimationScreen({
-    Key? key,
-    required this.onComplete,
-  }) : super(key: key);
-
-  @override
-  State<IntroAnimationScreen> createState() => _IntroAnimationScreenState();
-}
-
-class _IntroAnimationScreenState extends State<IntroAnimationScreen> {
-  @override
-  void initState() {
-    super.initState();
-    
-    // Auto-complete after animation - 6 seconds to allow full Bravo animation including lick
-    Future.delayed(const Duration(seconds: 6), () {
-      if (mounted) {
-        widget.onComplete();
-      }
-    });
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    // Transparent overlay with just the Rive animation - no background
-    return Container(
-      width: MediaQuery.of(context).size.width,
-      height: MediaQuery.of(context).size.height,
-      color: Colors.transparent, // Transparent background
-      child: const RiveAnimation.asset(
-        'assets/rive/BravoBall_Intro.riv',
-        fit: BoxFit.cover,
       ),
     );
   }

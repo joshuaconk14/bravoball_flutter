@@ -567,7 +567,7 @@ class _DrillSearchViewState extends State<DrillSearchView> {
                     Row(
                       children: [
                         Text(
-                          drill.skill,
+                          drill.skill.replaceAll('_', ' '),
                           style: AppTheme.bodySmall.copyWith(
                             color: AppTheme.getSkillColor(drill.skill),
                             fontWeight: FontWeight.w500,
