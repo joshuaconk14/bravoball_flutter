@@ -13,9 +13,10 @@ import '../../config/app_config.dart';
 import '../../widgets/bravo_button.dart';
 import '../../widgets/drill_video_player.dart';
 import '../../widgets/info_popup_widget.dart';
+import '../../utils/haptic_utils.dart';
+import '../../utils/skill_utils.dart'; // ✅ ADDED: Import centralized skill utilities
 import 'drill_detail_view.dart';
 import 'session_completion_view.dart';
-import '../../utils/haptic_utils.dart';
 
 class DrillFollowAlongView extends StatefulWidget {
   final EditableDrillModel editableDrill;
@@ -300,7 +301,7 @@ class _DrillFollowAlongViewState extends State<DrillFollowAlongView> {
             ),
           ),
           child: Text(
-            _editableDrill.drill.skill,
+            SkillUtils.formatSkillForDisplay(_editableDrill.drill.skill), // ✅ UPDATED: Use centralized skill formatting
             style: TextStyle(
               fontFamily: 'Poppins',
               fontWeight: FontWeight.w600,
@@ -914,7 +915,7 @@ class _DrillFollowAlongViewState extends State<DrillFollowAlongView> {
     InfoPopupWidget.show(
       context,
       title: 'Background Timer & Lock Screen Widget',
-      description: 'This drill timer will continue running even when your phone screen is off!\n\n🔒 **Lock Screen Widget**: See live countdown and progress on your lock screen - just like RunKeeper!\n\n🎵 **Audio Cues**: Turn off silent mode and turn up your audio to hear countdown sounds and completion alerts.\n\n⏱️ **Background Timer**: The timer uses background audio to keep running when you lock your phone or switch apps.\n\n▶️ **Controls**: Use pause/resume buttons in the lock screen notification.\n\nPress play to start the 3-second countdown, then use the timer to pace yourself during reps.',
+      description: 'This drill timer will continue running even when your phone screen is off!\n\n🔒 Lock Screen Widget: See live countdown and progress on your lock screen\n\n🎵 Audio Cues: Turn off silent mode and turn up your audio to hear countdown sounds and completion alerts.\n\n⏱️ Background Timer: The timer uses background audio to keep running when you lock your phone or switch apps.\n\n▶️ Controls: Use pause/resume buttons in the lock screen notification.\n\nPress play to start the 3-second countdown, then use the timer to pace yourself during reps.',
       riveFileName: 'Bravo_Animation.riv',
     );
   }

@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import '../models/drill_model.dart';
 import '../constants/app_theme.dart'; // Fixed import path for AppTheme
 import '../utils/haptic_utils.dart';
+import '../utils/skill_utils.dart'; // ✅ ADDED: Import centralized skill utilities
 import 'package:provider/provider.dart'; // Added for Provider
 import '../services/app_state_service.dart'; // Added for AppStateService
 
@@ -115,7 +116,7 @@ class DraggableDrillCard extends StatelessWidget {
                       ),
                       const SizedBox(height: 4),
                       Text(
-                        drill.skill,
+                        SkillUtils.formatSkillForDisplay(drill.skill), // ✅ UPDATED: Use centralized skill formatting
                         style: TextStyle(
                           fontFamily: 'Poppins',
                           fontSize: 12,
@@ -403,7 +404,7 @@ class SimpleDrillCard extends StatelessWidget {
                       ),
                       const SizedBox(height: 4),
                       Text(
-                        drill.skill,
+                        SkillUtils.formatSkillForDisplay(drill.skill), // ✅ UPDATED: Use centralized skill formatting
                         style: TextStyle(
                           fontFamily: 'Poppins',
                           fontSize: 12,

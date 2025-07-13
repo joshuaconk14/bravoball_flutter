@@ -15,7 +15,7 @@ class AppConfig {
   static const int appDevCase = 3; // CHANGE THIS TO SWITCH ENVIRONMENTS
 
   /// Debug mode toggle
-  static const bool debug = true; // Set false in production
+  static const bool debug = false; // Set false in production
 
   /// Wi-Fi IP address for phone testing - loaded from .env file
   /// You can find this by running `ipconfig getifaddr en0` on macOS

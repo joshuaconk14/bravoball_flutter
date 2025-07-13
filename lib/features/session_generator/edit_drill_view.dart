@@ -8,6 +8,7 @@ import '../../constants/app_theme.dart';
 import '../../widgets/drill_video_player.dart';
 import 'drill_detail_view.dart';
 import '../../utils/haptic_utils.dart';
+import '../../utils/skill_utils.dart'; // ✅ ADDED: Import centralized skill utilities
 
 class EditDrillView extends StatefulWidget {
   final EditableDrillModel editableDrill;
@@ -145,7 +146,7 @@ class _EditDrillViewState extends State<EditDrillView> {
                       ),
                     ),
                     child: Text(
-                      widget.editableDrill.drill.skill,
+                      SkillUtils.formatSkillForDisplay(widget.editableDrill.drill.skill), // ✅ UPDATED: Use centralized skill formatting
                       style: TextStyle(
                         fontFamily: 'Poppins',
                         fontWeight: FontWeight.w600,

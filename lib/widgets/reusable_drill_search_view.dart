@@ -1,9 +1,12 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../models/drill_model.dart';
+import '../models/filter_models.dart'; // ✅ ADDED: Import filter models for FilterOptions
 import '../services/app_state_service.dart';
 import '../constants/app_theme.dart';
 import '../utils/haptic_utils.dart';
+import '../utils/skill_utils.dart'; // ✅ ADDED: Import centralized skill utilities
+import '../utils/preference_utils.dart'; // ✅ ADDED: Import centralized preference utilities
 import '../features/session_generator/drill_detail_view.dart';
 
 class ReusableDrillSearchView extends StatefulWidget {
@@ -113,7 +116,6 @@ class _ReusableDrillSearchViewState extends State<ReusableDrillSearchView> {
   }
 
   Widget _buildDifficultyFilterDropdown() {
-    const difficulties = ['Beginner', 'Intermediate', 'Advanced'];
     return Expanded(
       child: DropdownButtonFormField<String>(
         value: _selectedDifficultyFilter,
@@ -132,9 +134,12 @@ class _ReusableDrillSearchViewState extends State<ReusableDrillSearchView> {
             value: null,
             child: Text('All', style: TextStyle(color: widget.themeColor)),
           ),
-          ...difficulties.map((diff) => DropdownMenuItem<String>(
+          ...FilterOptions.difficultyOptions.map((diff) => DropdownMenuItem<String>( // ✅ UPDATED: Use FilterOptions for consistency
             value: diff,
-            child: Text(diff, style: TextStyle(color: widget.themeColor)),
+            child: Text(
+              PreferenceUtils.formatDifficultyForDisplay(diff), // ✅ UPDATED: Use centralized difficulty formatting
+              style: TextStyle(color: widget.themeColor)
+            ),
           )),
         ],
         onChanged: (value) {
@@ -614,7 +619,7 @@ class SelectableDrillCard extends StatelessWidget {
                       ),
                       const SizedBox(height: 4),
                       Text(
-                        drill.skill,
+                        SkillUtils.formatSkillForDisplay(drill.skill), // ✅ UPDATED: Use centralized skill formatting
                         style: TextStyle(
                           fontFamily: AppTheme.fontPoppins,
                           fontSize: 12,

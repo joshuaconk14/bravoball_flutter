@@ -5,6 +5,7 @@ import '../../widgets/bravo_button.dart';
 import '../../widgets/drill_video_player.dart';
 import '../../constants/app_theme.dart';
 import '../../utils/haptic_utils.dart';
+import '../../utils/skill_utils.dart'; // ✅ ADDED: Import centralized skill utilities
 import '../../services/app_state_service.dart';
 
 class DrillDetailView extends StatelessWidget {
@@ -267,7 +268,7 @@ class DrillDetailView extends StatelessWidget {
                     runSpacing: 8,
                     children: drill.subSkills.map((subSkill) {
                       // ✅ Strip underscores and replace with spaces
-                      final displaySubSkill = subSkill.replaceAll('_', ' ');
+                      final displaySubSkill = SkillUtils.formatSkillForDisplay(subSkill); // ✅ UPDATED: Use centralized skill formatting
                       return Container(
                         padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
                         decoration: BoxDecoration(
@@ -579,7 +580,7 @@ class DrillDetailView extends StatelessWidget {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  drill.skill,
+                  SkillUtils.formatSkillForDisplay(drill.skill), // ✅ UPDATED: Use centralized skill formatting
                   style: TextStyle(
                     fontFamily: 'Poppins',
                     fontWeight: FontWeight.w600,

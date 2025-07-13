@@ -6,6 +6,9 @@ import '../../models/drill_group_model.dart';
 import '../../models/drill_model.dart';
 import '../../widgets/drill_card_widget.dart';
 import '../../widgets/reusable_drill_search_view.dart';
+import '../../widgets/info_popup_widget.dart';
+import '../../utils/haptic_utils.dart';
+import '../../utils/skill_utils.dart'; // ✅ ADDED: Import centralized skill utilities
 import '../session_generator/drill_detail_view.dart';
 
 class DrillGroupDetailView extends StatefulWidget {
@@ -319,7 +322,7 @@ class _DrillGroupDetailViewState extends State<DrillGroupDetailView> {
                                 ),
                               ),
                               child: Text(
-                                skill.replaceAll('_', ' '),
+                                SkillUtils.formatSkillForDisplay(skill), // ✅ UPDATED: Use centralized skill formatting
                                 style: TextStyle(
                                   fontFamily: AppTheme.fontPoppins,
                                   fontSize: 12,

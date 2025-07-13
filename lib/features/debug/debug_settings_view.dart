@@ -5,6 +5,7 @@ import '../../constants/app_theme.dart';
 import '../../config/app_config.dart';
 import '../../services/test_data_service.dart';
 import '../../services/app_state_service.dart';
+import '../../utils/skill_utils.dart'; // ✅ ADDED: Import centralized skill utilities
 
 class DebugSettingsView extends StatefulWidget {
   const DebugSettingsView({Key? key}) : super(key: key);
@@ -646,7 +647,7 @@ class _DebugSettingsViewState extends State<DebugSettingsView> {
               final drill = testDrills[index];
               return ListTile(
                 title: Text(drill.title),
-                subtitle: Text('${drill.skill} - ${drill.duration}min'),
+                subtitle: Text('${SkillUtils.formatSkillForDisplay(drill.skill)} - ${drill.duration}min'), // ✅ UPDATED: Use centralized skill formatting
               );
             },
           ),

@@ -7,6 +7,10 @@ import '../../config/app_config.dart';
 import '../../constants/app_theme.dart';
 import '../../widgets/drill_card_widget.dart';
 import 'drill_detail_view.dart';
+import '../../models/filter_models.dart';
+import '../../utils/haptic_utils.dart';
+import '../../utils/skill_utils.dart';
+import '../../utils/preference_utils.dart'; // ✅ ADDED: Import centralized preference utilities
 
 class DrillSearchView extends StatefulWidget {
   const DrillSearchView({Key? key}) : super(key: key);
@@ -216,7 +220,7 @@ class _DrillSearchViewState extends State<DrillSearchView> {
             child: _buildFilterDropdown(
               label: 'Difficulty',
               value: _selectedDifficultyFilter,
-              items: const ['Beginner', 'Intermediate', 'Advanced'],
+              items: FilterOptions.difficultyOptions, // ✅ UPDATED: Use FilterOptions for consistency
               onChanged: (value) {
                 setState(() {
                   _selectedDifficultyFilter = value;
@@ -274,7 +278,12 @@ class _DrillSearchViewState extends State<DrillSearchView> {
         ),
         ...items.map((item) => DropdownMenuItem<String>(
           value: item,
-          child: Text(item, style: AppTheme.bodySmall),
+          child: Text(
+            label == 'Difficulty' 
+                ? PreferenceUtils.formatDifficultyForDisplay(item) 
+                : item, // ✅ UPDATED: Use centralized difficulty formatting
+            style: AppTheme.bodySmall
+          ),
         )),
       ],
       onChanged: onChanged,
@@ -567,7 +576,7 @@ class _DrillSearchViewState extends State<DrillSearchView> {
                     Row(
                       children: [
                         Text(
-                          drill.skill.replaceAll('_', ' '),
+                          SkillUtils.formatSkillForDisplay(drill.skill),
                           style: AppTheme.bodySmall.copyWith(
                             color: AppTheme.getSkillColor(drill.skill),
                             fontWeight: FontWeight.w500,

@@ -1,9 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import '../constants/app_theme.dart';
 import '../models/filter_models.dart';
 import '../services/app_state_service.dart';
-import '../constants/app_theme.dart';
 import '../utils/haptic_utils.dart';
+import '../utils/skill_utils.dart'; // ✅ ADDED: Import centralized skill utilities
+import '../utils/preference_utils.dart'; // ✅ ADDED: Import centralized preference utilities
 import 'package:flutter/foundation.dart';
 
 class FilterChipWidget extends StatelessWidget {
@@ -147,7 +149,7 @@ class FilterDropdown extends StatelessWidget {
                   return DropdownMenuItem<String>(
                     value: option,
                     child: Text(
-                      option.replaceAll('_', ' '), // ✅ Strip underscores and replace with spaces
+                      PreferenceUtils.formatPreferenceForDisplay(option), // ✅ UPDATED: Use centralized preference formatting
                       style: const TextStyle(
                         fontFamily: 'Poppins',
                         fontSize: 14,
@@ -254,7 +256,7 @@ class EquipmentMultiSelect extends StatelessWidget {
                           ),
                         if (isSelected) const SizedBox(width: 6),
                         Text(
-                          equipment.replaceAll('_', ' '), // ✅ Strip underscores and replace with spaces
+                          PreferenceUtils.formatEquipmentForDisplay(equipment), // ✅ UPDATED: Use centralized equipment formatting
                           style: TextStyle(
                             fontFamily: 'Poppins',
                             fontSize: 14,
@@ -366,7 +368,7 @@ class SkillSelector extends StatelessWidget {
                         ),
                       if (isSelected) const SizedBox(width: 4),
                       Text(
-                        subSkill.replaceAll('_', ' '), // ✅ Strip underscores and replace with spaces
+                        SkillUtils.formatSkillForDisplay(subSkill), // ✅ UPDATED: Use centralized skill formatting
                         style: TextStyle(
                           fontFamily: 'Poppins',
                           fontSize: 12,

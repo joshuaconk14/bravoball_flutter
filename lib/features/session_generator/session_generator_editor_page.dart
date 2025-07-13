@@ -8,6 +8,8 @@ import '../../widgets/drill_card_widget.dart';
 import '../../widgets/reusable_drill_search_view.dart';
 import '../../widgets/info_popup_widget.dart';
 import '../../utils/haptic_utils.dart';
+import '../../utils/skill_utils.dart'; // ✅ ADDED: Import centralized skill utilities
+import '../../utils/preference_utils.dart'; // ✅ ADDED: Import centralized preference utilities
 import 'drill_detail_view.dart';
 import 'edit_drill_view.dart';
 import '../../constants/app_theme.dart';
@@ -197,7 +199,7 @@ class _SessionGeneratorEditorPageState extends State<SessionGeneratorEditorPage>
                 runSpacing: 4,
           children: appState.preferences.selectedSkills.map((skill) {
             // ✅ Strip underscores and replace with spaces
-            final displaySkill = skill.replaceAll('_', ' ');
+            final displaySkill = SkillUtils.formatSkillForDisplay(skill); // ✅ UPDATED: Use centralized skill formatting
             return Chip(
               label: Text(
                 displaySkill,
@@ -259,7 +261,9 @@ class _SessionGeneratorEditorPageState extends State<SessionGeneratorEditorPage>
                   const SizedBox(width: 8),
                   FilterChipWidget(
                     filterType: FilterType.time,
-                    displayText: appState.preferences.selectedTime?.replaceAll('_', ' ') ?? 'Time',
+                    displayText: appState.preferences.selectedTime != null 
+                        ? PreferenceUtils.formatTimeForDisplay(appState.preferences.selectedTime!) 
+                        : 'Time', // ✅ UPDATED: Use centralized time formatting
                     isSelected: appState.preferences.selectedTime != null,
                     onTap: appState.isLoadingPreferences ? null : () {
                       HapticUtils.lightImpact(); // Light haptic for filter selection
@@ -281,7 +285,9 @@ class _SessionGeneratorEditorPageState extends State<SessionGeneratorEditorPage>
                   const SizedBox(width: 8),
                   FilterChipWidget(
                     filterType: FilterType.trainingStyle,
-                    displayText: appState.preferences.selectedTrainingStyle?.replaceAll('_', ' ') ?? 'Style',
+                    displayText: appState.preferences.selectedTrainingStyle != null 
+                        ? PreferenceUtils.formatTrainingStyleForDisplay(appState.preferences.selectedTrainingStyle!) 
+                        : 'Style', // ✅ UPDATED: Use centralized training style formatting
                     isSelected: appState.preferences.selectedTrainingStyle != null,
                     onTap: appState.isLoadingPreferences ? null : () {
                       HapticUtils.lightImpact(); // Light haptic for filter selection
@@ -291,7 +297,9 @@ class _SessionGeneratorEditorPageState extends State<SessionGeneratorEditorPage>
                   const SizedBox(width: 8),
                   FilterChipWidget(
                     filterType: FilterType.location,
-                    displayText: appState.preferences.selectedLocation?.replaceAll('_', ' ') ?? 'Location',
+                    displayText: appState.preferences.selectedLocation != null 
+                        ? PreferenceUtils.formatLocationForDisplay(appState.preferences.selectedLocation!) 
+                        : 'Location', // ✅ UPDATED: Use centralized location formatting
                     isSelected: appState.preferences.selectedLocation != null,
                     onTap: appState.isLoadingPreferences ? null : () {
                       HapticUtils.lightImpact(); // Light haptic for filter selection
@@ -301,7 +309,9 @@ class _SessionGeneratorEditorPageState extends State<SessionGeneratorEditorPage>
                   const SizedBox(width: 8),
                   FilterChipWidget(
                     filterType: FilterType.difficulty,
-                    displayText: appState.preferences.selectedDifficulty?.replaceAll('_', ' ') ?? 'Difficulty',
+                    displayText: appState.preferences.selectedDifficulty != null 
+                        ? PreferenceUtils.formatDifficultyForDisplay(appState.preferences.selectedDifficulty!) 
+                        : 'Difficulty', // ✅ UPDATED: Use centralized difficulty formatting
                     isSelected: appState.preferences.selectedDifficulty != null,
                     onTap: appState.isLoadingPreferences ? null : () {
                       HapticUtils.lightImpact(); // Light haptic for filter selection

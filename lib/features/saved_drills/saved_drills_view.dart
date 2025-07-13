@@ -6,6 +6,7 @@ import '../../models/drill_group_model.dart';
 import '../../widgets/reusable_drill_search_view.dart';
 import '../../widgets/info_popup_widget.dart';
 import '../../utils/haptic_utils.dart';
+import '../../utils/skill_utils.dart'; // ✅ ADDED: Import centralized skill utilities
 import 'drill_group_detail_view.dart';
 
 class SavedDrillsView extends StatefulWidget {
@@ -273,7 +274,7 @@ class _SavedDrillsViewState extends State<SavedDrillsView> {
                               borderRadius: BorderRadius.circular(8),
                             ),
                             child: Text(
-                              skill.replaceAll('_', ' '),
+                              SkillUtils.formatSkillForDisplay(skill), // ✅ UPDATED: Use centralized skill formatting
                               style: const TextStyle(
                                 fontFamily: AppTheme.fontPoppins,
                                 fontSize: 10,

@@ -166,6 +166,7 @@ class _TypewriterTextState extends State<TypewriterText>
   late AnimationController _controller;
   late Animation<int> _characterCount;
   int _lastCharacterCount = 0;
+  bool _isAnimationComplete = false; // ✅ NEW: Track animation completion
 
   @override
   void initState() {
@@ -185,6 +186,7 @@ class _TypewriterTextState extends State<TypewriterText>
 
     _controller.addStatusListener((status) {
       if (status == AnimationStatus.completed) {
+        _isAnimationComplete = true; // ✅ NEW: Set completion flag
         widget.onComplete?.call();
       }
     });
@@ -193,10 +195,17 @@ class _TypewriterTextState extends State<TypewriterText>
     _characterCount.addListener(() {
       final currentCharacterCount = _characterCount.value;
       
+      // ✅ IMPROVED: Multiple checks to ensure haptics stop when animation completes
+      if (_isAnimationComplete || 
+          currentCharacterCount >= widget.text.length ||
+          !mounted ||
+          _controller.status == AnimationStatus.completed) {
+        return; // Stop all haptics when animation is done
+      }
+      
       // Trigger haptic feedback every 3-4 characters to simulate typing feel
       if (currentCharacterCount > _lastCharacterCount && 
-          currentCharacterCount % 3 == 0 && 
-          currentCharacterCount < widget.text.length) {
+          currentCharacterCount % 3 == 0) {
         HapticUtils.mediumImpact(); // Medium haptic for typing feel
       }
       

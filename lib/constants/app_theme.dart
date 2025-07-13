@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../utils/skill_utils.dart'; // ✅ ADDED: Import skill utilities
 
 /// Global app theme and color definitions
 /// Centralizes all design tokens for consistent styling across the app
@@ -65,7 +66,10 @@ class AppTheme {
   
   /// Get skill color by skill name
   static Color getSkillColor(String skill) {
-    switch (skill.toLowerCase()) {
+    // ✅ UPDATED: Use centralized skill normalization
+    final normalizedSkill = SkillUtils.normalizeSkill(skill);
+    
+    switch (normalizedSkill) {
       case 'passing':
         return skillPassing;
       case 'shooting':

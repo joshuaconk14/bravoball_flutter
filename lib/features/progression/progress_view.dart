@@ -4,6 +4,7 @@ import '../../services/app_state_service.dart';
 import '../../constants/app_theme.dart';
 import '../../widgets/info_popup_widget.dart';
 import '../../utils/haptic_utils.dart';
+import '../../utils/skill_utils.dart'; // ✅ ADDED: Import centralized skill utilities
 
 class ProgressView extends StatefulWidget {
   const ProgressView({Key? key}) : super(key: key);
@@ -599,7 +600,7 @@ class _DrillResultsViewState extends State<DrillResultsView> with SingleTickerPr
                   ),
                   const SizedBox(height: 6),
                   Text(
-                    'Skill: ${drill.drill.skill}',
+                    'Skill: ${SkillUtils.formatSkillForDisplay(drill.drill.skill)}', // ✅ UPDATED: Use centralized skill formatting
                     style: const TextStyle(fontSize: 14, color: Colors.black87),
                   ),
                   Text(

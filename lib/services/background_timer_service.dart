@@ -50,11 +50,17 @@ class BackgroundTimerService {
       await _backgroundPlayer.setPlayerMode(PlayerMode.mediaPlayer);
       await _backgroundPlayer.setReleaseMode(ReleaseMode.loop);
       
+      // ✅ IMPROVED: Configure effects player for better background compatibility
+      await _effectsPlayer.setPlayerMode(PlayerMode.lowLatency);
+      await _effectsPlayer.setReleaseMode(ReleaseMode.release);
+      await _effectsPlayer.setVolume(1.0); // Full volume for effects
+      
       // Initialize notification service
       await _notificationService.initialize();
       
       if (kDebugMode) {
         print('🎵 Background timer session initialized with lock screen widget support');
+        print('🔊 Effects player configured for background audio compatibility');
       }
     } catch (e) {
       if (kDebugMode) {
@@ -80,8 +86,8 @@ class BackgroundTimerService {
     // Cancel any existing countdown
     _countdownTimer?.cancel();
     
-    // Play countdown start sound
-    AudioService.playCountdownStart();
+    // ✅ FIXED: Use dedicated effects player for background audio compatibility
+    await _playCountdownStartSound();
     HapticFeedback.mediumImpact();
     
     if (kDebugMode) {
@@ -173,10 +179,14 @@ class BackgroundTimerService {
           );
         }
         
+        // ✅ FIXED: Use dedicated effects player for background audio compatibility  
         // Play final countdown at 3 seconds (only once)
         if (elapsedTime <= 3 && elapsedTime > 0 && !finalCountdownPlayed) {
           finalCountdownPlayed = true;
-          AudioService.playCountdownFinal();
+          _playCountdownFinalSound(); // ✅ FIXED: Remove await since Timer callback cannot be async
+          if (kDebugMode) {
+            print('🔊 Playing final countdown sound using effects player');
+          }
         }
         
         // Haptic feedback at intervals (only in normal mode)
@@ -323,6 +333,44 @@ class BackgroundTimerService {
     
     if (kDebugMode) {
       print('🗑️ Background timer service disposed');
+    }
+  }
+
+  /// ✅ NEW: Play countdown start sound using effects player for background compatibility
+  Future<void> _playCountdownStartSound() async {
+    // ✅ ADDED: Respect mute status
+    if (AudioService.isMuted) return;
+    
+    try {
+      await _effectsPlayer.setPlayerMode(PlayerMode.lowLatency);
+      await _effectsPlayer.play(AssetSource('audio/321-start.MP3'));
+      
+      if (kDebugMode) {
+        print('🔊 Playing countdown start sound using effects player');
+      }
+    } catch (e) {
+      if (kDebugMode) {
+        print('❌ Error playing countdown start sound: $e');
+      }
+    }
+  }
+
+  /// ✅ NEW: Play countdown final sound using effects player for background compatibility
+  Future<void> _playCountdownFinalSound() async {
+    // ✅ ADDED: Respect mute status
+    if (AudioService.isMuted) return;
+    
+    try {
+      await _effectsPlayer.setPlayerMode(PlayerMode.lowLatency);
+      await _effectsPlayer.play(AssetSource('audio/321-done.MP3'));
+      
+      if (kDebugMode) {
+        print('🔊 Playing countdown final sound using effects player');
+      }
+    } catch (e) {
+      if (kDebugMode) {
+        print('❌ Error playing countdown final sound: $e');
+      }
     }
   }
 } 
