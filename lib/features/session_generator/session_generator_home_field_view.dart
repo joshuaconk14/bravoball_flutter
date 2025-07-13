@@ -5,6 +5,7 @@ import '../../widgets/bravo_button.dart';
 import '../../models/drill_model.dart';
 import '../../models/editable_drill_model.dart';
 import '../../services/app_state_service.dart';
+import '../../services/audio_service.dart';
 import '../../constants/app_theme.dart';
 import '../../utils/haptic_utils.dart';
 import 'session_generator_editor_page.dart';
@@ -250,10 +251,12 @@ class _SessionGeneratorHomeFieldViewState extends State<SessionGeneratorHomeFiel
                   builder: (_) => DrillFollowAlongView(
                     editableDrill: nextDrill,
                     onDrillCompleted: () {
-                      appState.updateDrillProgress(
-                        nextDrill.drill.id,
-                        isCompleted: true,
-                      );
+                      // The drill state is already properly updated in the drill follow-along view
+                      // Don't override it here to preserve skip state
+                      // appState.updateDrillProgress(
+                      //   nextDrill.drill.id,
+                      //   isCompleted: true,
+                      // );
                     },
                     onSessionCompleted: () async {
                       await appState.completeSession();
@@ -302,6 +305,7 @@ class _SessionGeneratorHomeFieldViewState extends State<SessionGeneratorHomeFiel
                 editableDrill: editableDrill,
                 isActive: isActive,
                 isCompleted: editableDrill.isCompleted,
+                isSkipped: editableDrill.isSkipped,
                 onTap: () => _openFollowAlong(editableDrill, appState),
               ),
               if (index < editableSessionDrills.length - 1)
@@ -318,12 +322,12 @@ class _SessionGeneratorHomeFieldViewState extends State<SessionGeneratorHomeFiel
             isAlreadyCompleted: appState.currentSessionCompleted, // ✅ NEW: Pass completion state
             onTap: () async {
               if (appState.currentSessionCompleted) {
-                // ✅ Session already completed, just show completion view
-                HapticUtils.mediumImpact(); // Medium haptic for completion view
+                // ✅ Session already completed, just show completion view (no audio)
+                HapticUtils.lightImpact(); // Light haptic for viewing completed session
                 _showSessionComplete();
               } else if (appState.isSessionComplete) {
-                // ✅ Session can be completed now - await the completion
-                HapticUtils.heavyImpact(); // Heavy haptic for session completion
+                // ✅ Session can be completed now - await the completion (play audio for first time)
+                AudioService.playSuccess(); // Play success audio (includes haptic feedback)
                 await appState.completeSession();
                 _showSessionComplete();
               } else {
@@ -343,19 +347,14 @@ class _SessionGeneratorHomeFieldViewState extends State<SessionGeneratorHomeFiel
   void _openFollowAlong(EditableDrillModel editableDrill, AppStateService appState) {
     final nextIncompleteDrill = appState.getNextIncompleteDrill();
     
-    // Only allow follow-along for the current active drill
-    if (nextIncompleteDrill?.drill.id == editableDrill.drill.id || editableDrill.isCompleted) {
+    // Only allow follow-along for the current active drill or already done drills
+    if (nextIncompleteDrill?.drill.id == editableDrill.drill.id || editableDrill.isDone) {
       HapticUtils.mediumImpact(); // Medium haptic for drill interaction
       Navigator.of(context).push(
         MaterialPageRoute(
           builder: (_) => DrillFollowAlongView(
             editableDrill: editableDrill,
             onDrillCompleted: () {
-              // Update progress in app state
-              appState.updateDrillProgress(
-                editableDrill.drill.id,
-                isCompleted: true,
-              );
             },
             onSessionCompleted: () async {
               // Handle session completion
@@ -394,7 +393,7 @@ class _SessionGeneratorHomeFieldViewState extends State<SessionGeneratorHomeFiel
       MaterialPageRoute(
         builder: (_) => SessionCompletionView(
           currentStreak: appState.currentStreak, // Use actual streak from AppStateService
-          completedDrills: appState.editableSessionDrills.where((drill) => drill.isCompleted).length,
+          completedDrills: appState.editableSessionDrills.where((drill) => drill.isFullyCompleted).length,
           totalDrills: appState.editableSessionDrills.length,
           isFirstSessionOfDay: isFirstSessionOfDay,
           sessionsCompletedToday: sessionsToday, // ✅ Use actual count, not incremented
@@ -434,7 +433,7 @@ class _SessionGeneratorHomeFieldViewState extends State<SessionGeneratorHomeFiel
     } else if (appState.isSessionComplete) {
       message = "Well done! Tap the trophy!";
     } else {
-      final incompleteDrills = editableSessionDrills.where((drill) => !drill.isCompleted).length;
+      final incompleteDrills = editableSessionDrills.where((drill) => !drill.isDone).length;
       message = "You have $incompleteDrills drill${incompleteDrills == 1 ? '' : 's'} to complete!";
     }
 
@@ -486,12 +485,14 @@ class _DrillCircle extends StatelessWidget {
   final EditableDrillModel editableDrill;
   final bool isActive;
   final bool isCompleted;
+  final bool isSkipped;
   final VoidCallback onTap;
 
   const _DrillCircle({
     required this.editableDrill,
     required this.isActive,
     required this.isCompleted,
+    required this.isSkipped,
     required this.onTap,
   });
 
@@ -502,7 +503,17 @@ class _DrillCircle extends StatelessWidget {
     Color iconColor;
     Widget iconWidget;
     
-    if (isCompleted) {
+    if (isSkipped) {
+      // Show skipped drills in orange with skip icon
+      backgroundColor = Colors.orange;
+      iconColor = AppTheme.white;
+      iconWidget = Icon(
+        Icons.skip_next,
+        color: iconColor,
+        size: 36,
+      );
+    } else if (isCompleted) {
+      // Show completed drills in green with check mark
       backgroundColor = AppTheme.success;
       iconColor = AppTheme.white;
       iconWidget = Icon(
@@ -526,8 +537,8 @@ class _DrillCircle extends StatelessWidget {
       child: Stack(
         alignment: Alignment.center,
         children: [
-          // Progress ring (only show if there's progress or completed)
-          if (editableDrill.progress > 0 || isCompleted)
+          // Progress ring (only show if there's progress or completed/skipped)
+          if (editableDrill.progress > 0 || isCompleted || isSkipped)
             SizedBox(
               width: 90, // Increased from 80
               height: 90, // Increased from 80
@@ -536,7 +547,7 @@ class _DrillCircle extends StatelessWidget {
                 strokeWidth: 6,
                 backgroundColor: Colors.grey.shade300,
                 valueColor: AlwaysStoppedAnimation<Color>(
-                  isCompleted ? AppTheme.success : AppTheme.buttonPrimary,
+                  isSkipped ? Colors.orange : (isCompleted ? AppTheme.success : AppTheme.buttonPrimary),
                 ),
               ),
             ),
@@ -550,7 +561,7 @@ class _DrillCircle extends StatelessWidget {
               shape: BoxShape.circle,
               border: isActive ? Border.all(color: AppTheme.getSkillColor(editableDrill.drill.skill), width: 3) : null,
               boxShadow: [
-                if (isActive || isCompleted)
+                if (isActive || isCompleted || isSkipped)
                   BoxShadow(
                     color: Colors.black.withOpacity(0.2),
                     blurRadius: 8,

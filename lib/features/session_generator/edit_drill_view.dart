@@ -401,6 +401,7 @@ class _EditDrillViewState extends State<EditDrillView> {
       // Execute action if enough time has passed since last action
       if (elapsedMs - lastActionTime >= currentInterval) {
         action();
+        HapticUtils.lightImpact(); // Add haptic feedback for rapid changes
         lastActionTime = elapsedMs;
       }
     });

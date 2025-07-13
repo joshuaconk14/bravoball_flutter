@@ -1315,13 +1315,15 @@ class AppStateService extends ChangeNotifier {
   }
   
   // Update drill progress during follow-along
-  void updateDrillProgress(String drillId, {int? setsDone, bool? isCompleted}) {
+  void updateDrillProgress(String drillId, {int? setsDone, bool? isCompleted, bool? isSkipped}) {
     final editableDrillIndex = _editableSessionDrills.indexWhere((drill) => drill.drill.id == drillId);
     if (editableDrillIndex != -1) {
       final currentEditableDrill = _editableSessionDrills[editableDrillIndex];
       _editableSessionDrills[editableDrillIndex] = currentEditableDrill.copyWith(
         setsDone: setsDone,
         isCompleted: isCompleted,
+        // Use explicit isSkipped if provided, otherwise reset when completed
+        isSkipped: isSkipped ?? (isCompleted == true ? false : currentEditableDrill.isSkipped),
       );
       
       // ✅ FIXED: Don't auto-complete here to avoid issues
@@ -1369,16 +1371,14 @@ class AppStateService extends ChangeNotifier {
       _sessionInProgress = false;
       _currentSessionCompleted = true; // ✅ Mark as completed
       
-      // Mark all drills as completed
-      for (int i = 0; i < _editableSessionDrills.length; i++) {
-        _editableSessionDrills[i] = _editableSessionDrills[i].copyWith(isCompleted: true);
-      }
+      // Don't force-complete drills, use their current state
+      // Session completion should only be allowed when all drills are already fully completed
       
-      // Save completed session
+      // Save completed session with current drill states
       final completedSession = CompletedSession(
         date: DateTime.now(),
         drills: List.from(_editableSessionDrills),
-        totalCompletedDrills: _editableSessionDrills.where((d) => d.isCompleted).length,
+        totalCompletedDrills: _editableSessionDrills.where((d) => d.isFullyCompleted).length,
         totalDrills: _editableSessionDrills.length,
       );
       
@@ -1387,6 +1387,8 @@ class AppStateService extends ChangeNotifier {
       
       if (kDebugMode) {
         print('✅ Session completed and synced to backend.');
+        print('   - Fully completed drills: ${completedSession.totalCompletedDrills}');
+        print('   - Total drills: ${completedSession.totalDrills}');
       }
     } catch (e) {
       if (kDebugMode) {
@@ -1416,7 +1418,7 @@ class AppStateService extends ChangeNotifier {
   // Get the next incomplete drill
   EditableDrillModel? getNextIncompleteDrill() {
     try {
-      return _editableSessionDrills.firstWhere((drill) => !drill.isCompleted);
+      return _editableSessionDrills.firstWhere((drill) => !drill.isDone);
     } catch (e) {
       return null;
     }
@@ -1424,21 +1426,21 @@ class AppStateService extends ChangeNotifier {
   
   // Check if session has any progress
   bool get hasSessionProgress {
-    return _editableSessionDrills.any((drill) => drill.setsDone > 0 || drill.isCompleted);
+    return _editableSessionDrills.any((drill) => drill.setsDone > 0 || drill.isDone);
   }
   
   // Get session completion percentage
   double get sessionCompletionPercentage {
     if (_editableSessionDrills.isEmpty) return 0.0;
     
-    final completedDrills = _editableSessionDrills.where((drill) => drill.isCompleted).length;
+    final completedDrills = _editableSessionDrills.where((drill) => drill.isFullyCompleted).length;
     return completedDrills / _editableSessionDrills.length;
   }
   
   // Check if all drills are completed
   bool get isSessionComplete {
     if (_editableSessionDrills.isEmpty) return false;
-    return _editableSessionDrills.every((drill) => drill.isCompleted);
+    return _editableSessionDrills.every((drill) => drill.isFullyCompleted);
   }
   
   // ✅ NEW: Check if current session can be completed (not already completed)

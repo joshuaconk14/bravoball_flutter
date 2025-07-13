@@ -3,6 +3,7 @@ import 'package:rive/rive.dart' hide LinearGradient;
 import '../../constants/app_theme.dart';
 import '../../widgets/bravo_button.dart';
 import '../../views/main_tab_view.dart';
+import '../../services/audio_service.dart';
 
 class SessionCompletionView extends StatefulWidget {
   final int currentStreak;

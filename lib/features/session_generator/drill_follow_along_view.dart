@@ -5,6 +5,7 @@ import 'package:provider/provider.dart';
 import 'dart:async';
 import '../../models/editable_drill_model.dart';
 import '../../services/app_state_service.dart';
+import '../../services/audio_service.dart';
 import '../../constants/app_theme.dart';
 import '../../config/app_config.dart';
 import '../../widgets/bravo_button.dart';
@@ -45,35 +46,17 @@ class _DrillFollowAlongViewState extends State<DrillFollowAlongView> {
   // UI state
   bool _showInfoSheet = false;
   
+  // Audio state
+  bool _finalCountdownPlayed = false;
+
   @override
   void initState() {
     super.initState();
     
-    print('🔍 [DRILL_FOLLOW_ALONG] initState() called');
-    print('📥 [DRILL_FOLLOW_ALONG] Received editableDrill from widget:');
-    print('   - Drill ID: ${widget.editableDrill.drill.id}');
-    print('   - Drill Title: ${widget.editableDrill.drill.title}');
-    print('   - Total Sets: ${widget.editableDrill.totalSets}');
-    print('   - Total Reps: ${widget.editableDrill.totalReps}');
-    print('   - Total Duration: ${widget.editableDrill.totalDuration}');
-    print('   - Sets Done: ${widget.editableDrill.setsDone}');
-    print('   - Is Completed: ${widget.editableDrill.isCompleted}');
-    
     _editableDrill = widget.editableDrill;
-    
-    print('📊 [DRILL_FOLLOW_ALONG] After assignment to _editableDrill:');
-    print('   - Total Sets: ${_editableDrill.totalSets}');
-    print('   - Total Reps: ${_editableDrill.totalReps}');
-    print('   - Total Duration: ${_editableDrill.totalDuration}');
-    print('   - Sets Done: ${_editableDrill.setsDone}');
     
     _setDuration = _editableDrill.calculateSetDuration();
     _elapsedTime = _setDuration;
-    
-    print('⏱️ [DRILL_FOLLOW_ALONG] Timer setup:');
-    print('   - Set Duration: $_setDuration');
-    print('   - Elapsed Time: $_elapsedTime');
-    print('✅ [DRILL_FOLLOW_ALONG] initState() completed');
   }
 
   @override
@@ -359,7 +342,7 @@ class _DrillFollowAlongViewState extends State<DrillFollowAlongView> {
   Widget _buildVideoPlayer() {
     if (_editableDrill.drill.videoUrl.isNotEmpty) {
       return Container(
-        height: 180, // Reduced from default to make it more compact
+        height: 240, // Increased from 180 to make video bigger and easier to see
         child: DrillVideoPlayer(
           videoUrl: _editableDrill.drill.videoUrl,
           aspectRatio: 16 / 9,
@@ -370,7 +353,7 @@ class _DrillFollowAlongViewState extends State<DrillFollowAlongView> {
       // Fallback placeholder when no video URL
       return Container(
         width: double.infinity,
-        height: 160, // Reduced from 200
+        height: 200, // Increased from 160 to match bigger video size
         decoration: BoxDecoration(
           color: Colors.grey.shade200,
           borderRadius: BorderRadius.circular(16),
@@ -774,6 +757,9 @@ class _DrillFollowAlongViewState extends State<DrillFollowAlongView> {
       _countdownValue = 3;
     });
     
+    // Play countdown start audio
+    AudioService.playCountdownStart();
+    
     // Provide haptic feedback
     HapticFeedback.mediumImpact();
     
@@ -799,6 +785,9 @@ class _DrillFollowAlongViewState extends State<DrillFollowAlongView> {
     // Cancel any existing timer to prevent multiple timers
     _timer?.cancel();
     
+    // Reset final countdown flag for new timer start
+    _finalCountdownPlayed = false;
+    
     // Use faster timer in debug mode for testing
     final timerInterval = AppConfig.debug ? const Duration(milliseconds: 100) : const Duration(seconds: 1);
     final timeDecrement = AppConfig.debug ? 1.0 : 1.0; // In debug mode, decrease by 1 second every 100ms
@@ -811,6 +800,12 @@ class _DrillFollowAlongViewState extends State<DrillFollowAlongView> {
       setState(() {
         if (_elapsedTime > 0) {
           _elapsedTime -= timeDecrement;
+          
+          // Play final countdown audio when timer hits 3 seconds (only once per set)
+          if (_elapsedTime <= 3 && _elapsedTime > 0 && !_finalCountdownPlayed) {
+            _finalCountdownPlayed = true;
+            AudioService.playCountdownFinal();
+          }
           
           // Provide haptic feedback at certain intervals (only in normal mode)
           if (!AppConfig.debug) {
@@ -852,49 +847,62 @@ class _DrillFollowAlongViewState extends State<DrillFollowAlongView> {
     _updateDrillInSession();
   }
 
-  void _completeDrill() {
+  void _completeDrill() async {
     _stopTimer();
     _editableDrill.isCompleted = true;
+    _editableDrill.isSkipped = false; // Reset skipped flag when completing
+    
+    // Update the drill in the session and ensure it propagates
     _updateDrillInSession();
+    
+    // Give the UI time to update by waiting for the next frame
+    await Future.delayed(const Duration(milliseconds: 50));
     
     widget.onDrillCompleted?.call();
     
-    // Always just go back to the main page
-    // The trophy will be highlighted if session is complete
-    Navigator.pop(context);
+    // Navigate back after state has had time to propagate
+    if (mounted) {
+      Navigator.pop(context);
+    }
   }
 
-  void _skipDrill() {
+  void _skipDrill() async {
     _stopTimer();
-    _editableDrill.isCompleted = true;
+    // Mark as skipped, not completed - skipped drills shouldn't count toward session completion
+    _editableDrill.isSkipped = true;
+    _editableDrill.isCompleted = false; // Ensure completed is false when skipping
     _elapsedTime = _setDuration; // Only reset here
     _updateDrillInSession();
     
+    // Give the UI time to update by waiting for the next frame
+    await Future.delayed(const Duration(milliseconds: 50));
+    
     widget.onDrillCompleted?.call();
-    Navigator.pop(context);
+    
+    // Navigate back after state has had time to propagate
+    if (mounted) {
+      Navigator.pop(context);
+    }
   }
 
   void _updateDrillInSession() {
-    print('🔄 [DRILL_FOLLOW_ALONG] _updateDrillInSession() called');
-    print('📊 [DRILL_FOLLOW_ALONG] Current _editableDrill values:');
-    print('   - Total Sets: ${_editableDrill.totalSets}');
-    print('   - Total Reps: ${_editableDrill.totalReps}');
-    print('   - Total Duration: ${_editableDrill.totalDuration}');
-    print('   - Sets Done: ${_editableDrill.setsDone}');
-    
     final appState = Provider.of<AppStateService>(context, listen: false);
+    
+    // Update drill properties (sets, reps, duration)
     appState.updateDrillInSession(
       _editableDrill.drill.id,
-      sets: _editableDrill.totalSets,      // Fixed: use totalSets instead of setsDone
+      sets: _editableDrill.totalSets,
       reps: _editableDrill.totalReps,
       duration: _editableDrill.totalDuration,
     );
     
-    print('📤 [DRILL_FOLLOW_ALONG] Called appState.updateDrillInSession with:');
-    print('   - Drill ID: ${_editableDrill.drill.id}');
-    print('   - Sets: ${_editableDrill.totalSets}');
-    print('   - Reps: ${_editableDrill.totalReps}');
-    print('   - Duration: ${_editableDrill.totalDuration}');
+    // Update drill progress (completion state, sets done, skip state)
+    appState.updateDrillProgress(
+      _editableDrill.drill.id,
+      setsDone: _editableDrill.setsDone,
+      isCompleted: _editableDrill.isCompleted,
+      isSkipped: _editableDrill.isSkipped, // Explicitly pass skip state
+    );
   }
 
   void _showDrillDetails(BuildContext context) {
@@ -913,7 +921,7 @@ class _DrillFollowAlongViewState extends State<DrillFollowAlongView> {
     InfoPopupWidget.show(
       context,
       title: 'How to Use Drill Follow Along',
-      description: 'Press play to start the 3-second countdown, then use the timer to pace yourself during reps.\n\nComplete all reps within the set time, then move to the next set. Press "Done" when you finish all sets to complete the drill.\n\nYou can skip drills if needed, but they won\'t count toward session completion.',
+      description: 'Turn off silent mode and turn up your audio to hear countdown sounds.\n\nPress play to start the 3-second countdown, then use the timer to pace yourself during reps.\n\nComplete all reps within the set time, then move to the next set. Press "Done" when you finish all sets to complete the drill.\n\nYou can skip drills if needed, but they won\'t count toward session completion.',
       riveFileName: 'Bravo_Animation.riv',
     );
   }
