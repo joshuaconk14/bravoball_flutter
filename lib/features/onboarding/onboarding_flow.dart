@@ -428,7 +428,7 @@ class _OnboardingFlowState extends State<OnboardingFlow> {
           const Spacer(flex: 2), // More space at top to center content
           // ✅ Animated Bravo entrance
           StaggeredFadeInUp(
-            delay: 200,
+            delay: 100, // Reduced from 200
             child: SizedBox(
               height: 250,
               child: RiveAnimation.asset(
@@ -440,7 +440,7 @@ class _OnboardingFlowState extends State<OnboardingFlow> {
           const SizedBox(height: 32),
           // ✅ Animated title
           StaggeredFadeInUp(
-            delay: 600,
+            delay: 300, // Reduced from 600
             child: Text(
               'BravoBall',
               style: const TextStyle(
@@ -455,7 +455,7 @@ class _OnboardingFlowState extends State<OnboardingFlow> {
           const SizedBox(height: 14),
           // ✅ Animated subtitle
           StaggeredFadeInUp(
-            delay: 800,
+            delay: 400, // Reduced from 800
             child: Text(
               'Start Small. Dream Big',
               style: const TextStyle(
@@ -474,7 +474,7 @@ class _OnboardingFlowState extends State<OnboardingFlow> {
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
                 StaggeredFadeInUp(
-                  delay: 1200,
+                  delay: 600, // Reduced from 1200
                   child: BouncyButton(
                     onTap: () {
                       HapticUtils.mediumImpact(); // Medium haptic for major action
@@ -501,7 +501,7 @@ class _OnboardingFlowState extends State<OnboardingFlow> {
                 ),
                 const SizedBox(height: 16),
                 StaggeredFadeInUp(
-                  delay: 1400,
+                  delay: 700, // Reduced from 1400
                   child: BouncyButton(
                     onTap: () {
                       HapticUtils.mediumImpact(); // Medium haptic for major action
