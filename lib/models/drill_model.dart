@@ -1,5 +1,3 @@
-import 'package:flutter/foundation.dart';
-
 class DrillModel {
   final String id; // This will store the UUID from backend
   final String title;

@@ -34,11 +34,14 @@ dependencies:
   provider: ^6.1.1
   rive: ^0.12.4
   video_player: ^2.8.1
-  audioplayers: ^5.0.0
+  audioplayers: ^5.2.1  # Downgrade to stable version that works well with iOS
   url_launcher: ^6.2.5
   flutter_dotenv: ^5.1.0
   shared_preferences: ^2.2.3
   http: ^1.1.2
+  wakelock_plus: ^1.2.1  # Keep screen on during workouts
+  flutter_local_notifications: ^17.2.2  # Local notifications for timer alerts
+  timezone: ^0.9.4  # Required for scheduled notifications
 
 dev_dependencies:
   flutter_test:
@@ -76,6 +79,10 @@ flutter:
     - assets/fonts/
     - assets/drill-icons/
     - assets/audio/
+    - assets/audio/321-start.MP3
+    - assets/audio/321-done.MP3
+    - assets/audio/success.MP3
+    - assets/audio/silent-timer.mp3  # Silent audio for background timer
 
   # An image asset can refer to one or more resolution-specific "variants", see
   # https://flutter.dev/to/resolution-aware-images

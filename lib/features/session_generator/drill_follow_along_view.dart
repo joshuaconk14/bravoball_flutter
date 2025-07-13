@@ -6,6 +6,8 @@ import 'dart:async';
 import '../../models/editable_drill_model.dart';
 import '../../services/app_state_service.dart';
 import '../../services/audio_service.dart';
+import '../../services/background_timer_service.dart';
+import '../../services/wake_lock_service.dart';
 import '../../constants/app_theme.dart';
 import '../../config/app_config.dart';
 import '../../widgets/bravo_button.dart';
@@ -33,8 +35,9 @@ class DrillFollowAlongView extends StatefulWidget {
 
 class _DrillFollowAlongViewState extends State<DrillFollowAlongView> {
   late EditableDrillModel _editableDrill;
-  Timer? _timer;
-  Timer? _countdownTimer;
+  
+  // Background timer service
+  final BackgroundTimerService _backgroundTimer = BackgroundTimerService.shared;
   
   // Timer state
   bool _isPlaying = false;
@@ -54,16 +57,31 @@ class _DrillFollowAlongViewState extends State<DrillFollowAlongView> {
     super.initState();
     
     _editableDrill = widget.editableDrill;
-    
     _setDuration = _editableDrill.calculateSetDuration();
     _elapsedTime = _setDuration;
+    
+    // Initialize background timer service
+    _initializeBackgroundTimer();
+  }
+
+  Future<void> _initializeBackgroundTimer() async {
+    await _backgroundTimer.initializeBackgroundSession();
+    
+    if (kDebugMode) {
+      print('🎯 Background timer initialized for drill: ${_editableDrill.drill.title}');
+    }
   }
 
   @override
   void dispose() {
-    _timer?.cancel();
-    _countdownTimer?.cancel();
+    // Clean up background timer and wake lock
+    _stopAllTimers();
     super.dispose();
+  }
+
+  Future<void> _stopAllTimers() async {
+    await _backgroundTimer.stopTimer();
+    await WakeLockService.disableWakeLock();
   }
 
   @override
@@ -719,7 +737,6 @@ class _DrillFollowAlongViewState extends State<DrillFollowAlongView> {
       if (kDebugMode) {
         print('🐛 DEBUG: Skipping countdown');
       }
-      _countdownTimer?.cancel();
       setState(() {
         _showCountdown = false;
         _isPlaying = true;
@@ -749,137 +766,111 @@ class _DrillFollowAlongViewState extends State<DrillFollowAlongView> {
   }
 
   void _startCountdown() {
-    // Cancel any existing countdown timer to prevent multiple timers
-    _countdownTimer?.cancel();
-    
     setState(() {
       _showCountdown = true;
       _countdownValue = 3;
     });
     
-    // Play countdown start audio
-    AudioService.playCountdownStart();
+    // Enable wake lock for workout
+    WakeLockService.enableWakeLock();
     
-    // Provide haptic feedback
-    HapticFeedback.mediumImpact();
-    
-    _countdownTimer = Timer.periodic(const Duration(seconds: 1), (timer) {
-      if (_countdownValue > 1) {
-        setState(() {
-          _countdownValue--;
-        });
-        HapticFeedback.lightImpact();
-      } else {
-        timer.cancel();
-        setState(() {
-          _showCountdown = false;
-          _isPlaying = true;
-        });
-        HapticFeedback.heavyImpact();
-        _startTimer();
-      }
-    });
+    // Start background countdown
+    _backgroundTimer.startCountdown(
+      countdownValue: 3,
+      onTick: (value) {
+        if (mounted) {
+          setState(() {
+            _countdownValue = value;
+          });
+        }
+      },
+      onComplete: () {
+        if (mounted) {
+          setState(() {
+            _showCountdown = false;
+            _isPlaying = true;
+          });
+          _startTimer();
+        }
+      },
+    );
   }
 
   void _startTimer() {
-    // Cancel any existing timer to prevent multiple timers
-    _timer?.cancel();
-    
-    // Reset final countdown flag for new timer start
-    _finalCountdownPlayed = false;
-    
-    // Use faster timer in debug mode for testing
-    final timerInterval = AppConfig.debug ? const Duration(milliseconds: 100) : const Duration(seconds: 1);
-    final timeDecrement = AppConfig.debug ? 1.0 : 1.0; // In debug mode, decrease by 1 second every 100ms
-    
-    if (AppConfig.debug) {
-      print('🐛 DEBUG: Starting timer with fast mode (100ms intervals)');
-    }
-    
-    _timer = Timer.periodic(timerInterval, (timer) {
-      setState(() {
-        if (_elapsedTime > 0) {
-          _elapsedTime -= timeDecrement;
-          
-          // Play final countdown audio when timer hits 3 seconds (only once per set)
-          if (_elapsedTime <= 3 && _elapsedTime > 0 && !_finalCountdownPlayed) {
-            _finalCountdownPlayed = true;
-            AudioService.playCountdownFinal();
-          }
-          
-          // Provide haptic feedback at certain intervals (only in normal mode)
-          if (!AppConfig.debug) {
-            if (_elapsedTime == 30 || _elapsedTime == 10) {
-              HapticFeedback.lightImpact();
-            } else if (_elapsedTime <= 3 && _elapsedTime > 0) {
-              HapticFeedback.mediumImpact();
-            }
-          }
-        } else {
-          // Time's up for this set
+    // Start background timer with callbacks
+    _backgroundTimer.startTimer(
+      durationSeconds: _elapsedTime,
+      debugMode: AppConfig.debug,
+      onTick: (remainingTime) {
+        if (mounted) {
+          setState(() {
+            _elapsedTime = remainingTime.toDouble();
+          });
+        }
+      },
+      onComplete: () {
+        if (mounted) {
           _completeSet();
         }
-      });
-    });
+      },
+    );
   }
 
   void _stopTimer() {
-    _timer?.cancel();
-    _countdownTimer?.cancel();
+    _backgroundTimer.pauseTimer();
     setState(() {
       _isPlaying = false;
-      _showCountdown = false;  // Reset countdown state when stopping
-      // Do NOT reset _elapsedTime here - preserve the current time
+      _showCountdown = false;
     });
   }
 
   void _completeSet() {
-    _stopTimer();
-    HapticFeedback.heavyImpact();
-    
     setState(() {
       _editableDrill.setsDone++;
-      _elapsedTime = _setDuration; // Only reset here
+      _elapsedTime = _setDuration; // Reset for next set
       _isPlaying = false;
     });
     
     // Update the drill in the session
     _updateDrillInSession();
+    
+    if (kDebugMode) {
+      print('✅ Set ${_editableDrill.setsDone}/${_editableDrill.totalSets} completed');
+    }
   }
 
   void _completeDrill() async {
-    _stopTimer();
-    _editableDrill.isCompleted = true;
-    _editableDrill.isSkipped = false; // Reset skipped flag when completing
+    await _stopAllTimers();
     
-    // Update the drill in the session and ensure it propagates
+    _editableDrill.isCompleted = true;
+    _editableDrill.isSkipped = false;
+    
+    // Update the drill in the session
     _updateDrillInSession();
     
-    // Give the UI time to update by waiting for the next frame
+    // Give the UI time to update
     await Future.delayed(const Duration(milliseconds: 50));
     
     widget.onDrillCompleted?.call();
     
-    // Navigate back after state has had time to propagate
     if (mounted) {
       Navigator.pop(context);
     }
   }
 
   void _skipDrill() async {
-    _stopTimer();
-    // Mark as skipped, not completed - skipped drills shouldn't count toward session completion
+    await _stopAllTimers();
+    
     _editableDrill.isSkipped = true;
-    _editableDrill.isCompleted = false; // Ensure completed is false when skipping
-    _elapsedTime = _setDuration; // Only reset here
+    _editableDrill.isCompleted = false;
+    _elapsedTime = _setDuration;
     _updateDrillInSession();
     
-    // Give the UI time to update by waiting for the next frame
+    // Give the UI time to update
     await Future.delayed(const Duration(milliseconds: 50));
     
     widget.onDrillCompleted?.call();
     
-    // Navigate back after state has had time to propagate
     if (mounted) {
       Navigator.pop(context);
     }
@@ -920,8 +911,8 @@ class _DrillFollowAlongViewState extends State<DrillFollowAlongView> {
   void _showInfoPopup() {
     InfoPopupWidget.show(
       context,
-      title: 'How to Use Drill Follow Along',
-      description: 'Turn off silent mode and turn up your audio to hear countdown sounds.\n\nPress play to start the 3-second countdown, then use the timer to pace yourself during reps.\n\nComplete all reps within the set time, then move to the next set. Press "Done" when you finish all sets to complete the drill.\n\nYou can skip drills if needed, but they won\'t count toward session completion.',
+      title: 'Background Timer Feature',
+      description: 'This drill timer will continue running even when your phone screen is off!\n\nTurn off silent mode and turn up your audio to hear countdown sounds and completion alerts.\n\nThe timer uses background audio to keep running when you lock your phone or switch apps.\n\nPress play to start the 3-second countdown, then use the timer to pace yourself during reps.',
       riveFileName: 'Bravo_Animation.riv',
     );
   }

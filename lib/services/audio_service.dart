@@ -40,18 +40,18 @@ class AudioService {
     }
   }
   
-  /// Play success sound when trophy is tapped or drill/session completed
-  static Future<void> playSuccess() async {
-    if (_isMuted) return;
+  // /// Play success sound when trophy is tapped or drill/session completed
+  // static Future<void> playSuccess() async {
+  //   if (_isMuted) return;
     
-    try {
-      await _player.play(AssetSource('audio/success.MP3'));
-      // Add haptic feedback alongside the success sound
-      HapticFeedback.heavyImpact();
-    } catch (e) {
-      print('Error playing success sound: $e');
-    }
-  }
+  //   try {
+  //     await _player.play(AssetSource('audio/success.MP3'));
+  //     // Add haptic feedback alongside the success sound
+  //     HapticFeedback.heavyImpact();
+  //   } catch (e) {
+  //     print('Error playing success sound: $e');
+  //   }
+  // }
   
   /// Stop any currently playing audio
   static Future<void> stop() async {

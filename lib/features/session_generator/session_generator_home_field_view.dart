@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:rive/rive.dart';
 import '../../widgets/bravo_button.dart';
-import '../../models/drill_model.dart';
 import '../../models/editable_drill_model.dart';
 import '../../services/app_state_service.dart';
 import '../../services/audio_service.dart';
@@ -227,7 +226,6 @@ class _SessionGeneratorHomeFieldViewState extends State<SessionGeneratorHomeFiel
   // Begin button
   Widget _buildBeginButton(AppStateService appState) {
     final hasSessionDrills = appState.editableSessionDrills.isNotEmpty;
-    final sessionInProgress = appState.hasSessionProgress;
     
     return Padding(
       padding: const EdgeInsets.only(
@@ -324,11 +322,6 @@ class _SessionGeneratorHomeFieldViewState extends State<SessionGeneratorHomeFiel
               if (appState.currentSessionCompleted) {
                 // ✅ Session already completed, just show completion view (no audio)
                 HapticUtils.lightImpact(); // Light haptic for viewing completed session
-                _showSessionComplete();
-              } else if (appState.isSessionComplete) {
-                // ✅ Session can be completed now - await the completion (play audio for first time)
-                AudioService.playSuccess(); // Play success audio (includes haptic feedback)
-                await appState.completeSession();
                 _showSessionComplete();
               } else {
                 HapticUtils.lightImpact(); // Light haptic for locked action
