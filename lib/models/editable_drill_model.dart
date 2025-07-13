@@ -7,7 +7,6 @@ class EditableDrillModel {
   int totalReps;
   int totalDuration;
   bool isCompleted;
-  bool isSkipped;
 
   EditableDrillModel({
     required this.drill,
@@ -16,7 +15,6 @@ class EditableDrillModel {
     required this.totalReps,
     required this.totalDuration,
     this.isCompleted = false,
-    this.isSkipped = false,
   });
 
   // Copy constructor for creating copies with modifications
@@ -27,7 +25,6 @@ class EditableDrillModel {
     int? totalReps,
     int? totalDuration,
     bool? isCompleted,
-    bool? isSkipped,
   }) {
     return EditableDrillModel(
       drill: drill ?? this.drill,
@@ -36,7 +33,6 @@ class EditableDrillModel {
       totalReps: totalReps ?? this.totalReps,
       totalDuration: totalDuration ?? this.totalDuration,
       isCompleted: isCompleted ?? this.isCompleted,
-      isSkipped: isSkipped ?? this.isSkipped,
     );
   }
 
@@ -48,12 +44,12 @@ class EditableDrillModel {
 
   // Check if the drill is fully completed (not skipped)
   bool get isFullyCompleted {
-    return isCompleted && setsDone >= totalSets && !isSkipped;
+    return isCompleted || setsDone >= totalSets;
   }
 
   // Check if the drill is done (either completed or skipped)
   bool get isDone {
-    return isCompleted || isSkipped;
+    return isCompleted;
   }
 
   // Calculate time per set based on total duration
@@ -93,7 +89,6 @@ class EditableDrillModel {
       'totalReps': totalReps,
       'totalDuration': totalDuration,
       'isCompleted': isCompleted,
-      'isSkipped': isSkipped,
     };
   }
 
@@ -105,7 +100,6 @@ class EditableDrillModel {
       totalReps: json['totalReps'] ?? json['reps'] ?? 0,
       totalDuration: json['totalDuration'] ?? json['duration'] ?? 0,
       isCompleted: json['isCompleted'] ?? json['is_completed'] ?? false,
-      isSkipped: json['isSkipped'] ?? json['is_skipped'] ?? false,
     );
   }
 

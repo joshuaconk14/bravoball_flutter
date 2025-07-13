@@ -12,6 +12,7 @@ import 'edit_drill_view.dart';
 import 'drill_follow_along_view.dart';
 import 'session_completion_view.dart';
 import '../../views/main_tab_view.dart';
+import 'package:flutter/foundation.dart'; // Added for kDebugMode
 
 class SessionGeneratorHomeFieldView extends StatefulWidget {
   const SessionGeneratorHomeFieldView({Key? key}) : super(key: key);
@@ -43,9 +44,6 @@ class _SessionGeneratorHomeFieldViewState extends State<SessionGeneratorHomeFiel
                       children: [
                         // Field area with controlled height
                         _buildFieldArea(context, appState),
-                        
-                        // Begin button
-                        _buildBeginButton(appState),
                         
                         // Drill circles and trophy
                         _buildDrillPath(appState),
@@ -201,6 +199,17 @@ class _SessionGeneratorHomeFieldViewState extends State<SessionGeneratorHomeFiel
             right: screenWidth * 0.25,
             child: GestureDetector(
               onTap: () {
+                // Disable bag tap if session is complete and trophy is clickable
+                if (appState.isSessionComplete && !appState.currentSessionCompleted) {
+                  HapticUtils.lightImpact();
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(
+                      content: Text('Tap on the trophy first to claim your prize'),
+                      duration: Duration(seconds: 2),
+                    ),
+                  );
+                  return;
+                }
                 HapticUtils.mediumImpact(); // Medium haptic for drill editor access
                 Navigator.of(context).push(
                   MaterialPageRoute(
@@ -222,70 +231,13 @@ class _SessionGeneratorHomeFieldViewState extends State<SessionGeneratorHomeFiel
       ),
     );
   }
-
-  // Begin button
-  Widget _buildBeginButton(AppStateService appState) {
-    final hasSessionDrills = appState.editableSessionDrills.isNotEmpty;
-    
-    return Padding(
-      padding: const EdgeInsets.only(
-        left: 32,
-        right: 32,
-        bottom: 25, // Increased bottom padding to push drill circles further down
-      ),
-      child: SizedBox(
-        width: 180, // Fixed width to match Bravo + backpack width
-        child: BravoButton(
-          text: 'Begin Training',
-          onPressed: hasSessionDrills ? () {
-            if (!appState.sessionInProgress) {
-              appState.startSession();
-            }
-            
-            final nextDrill = appState.getNextIncompleteDrill();
-            if (nextDrill != null) {
-              Navigator.of(context).push(
-                MaterialPageRoute(
-                  builder: (_) => DrillFollowAlongView(
-                    editableDrill: nextDrill,
-                    onDrillCompleted: () {
-                      // The drill state is already properly updated in the drill follow-along view
-                      // Don't override it here to preserve skip state
-                      // appState.updateDrillProgress(
-                      //   nextDrill.drill.id,
-                      //   isCompleted: true,
-                      // );
-                    },
-                    onSessionCompleted: () async {
-                      await appState.completeSession();
-                      _showSessionComplete();
-                    },
-                  ),
-                ),
-              );
-            }
-          } : () {
-            Navigator.of(context).push(
-              MaterialPageRoute(
-                builder: (_) => const SessionGeneratorEditorPage(),
-              ),
-            );
-          },
-          color: hasSessionDrills ? AppTheme.buttonPrimary : AppTheme.buttonDisabledGray,
-          backColor: hasSessionDrills ? AppTheme.primaryDarkYellow : AppTheme.buttonDisabledDarkGray,
-          textColor: AppTheme.textOnPrimary,
-          height: 50, // Reduced from 56 to 50
-          textSize: 15, // Reduced from 25 to 16
-          disabled: !hasSessionDrills,
-        ),
-      ),
-    );
-  }
   
   // Drill path with circles and trophy
   Widget _buildDrillPath(AppStateService appState) {
     final editableSessionDrills = appState.editableSessionDrills;
     final hasSessionDrills = editableSessionDrills.isNotEmpty;
+    final sessionComplete = appState.isSessionComplete;
+    final nextIncompleteDrill = appState.getNextIncompleteDrill();
     
     return Column(
       mainAxisAlignment: MainAxisAlignment.start,
@@ -294,16 +246,13 @@ class _SessionGeneratorHomeFieldViewState extends State<SessionGeneratorHomeFiel
         ...editableSessionDrills.asMap().entries.map((entry) {
           final index = entry.key;
           final editableDrill = entry.value;
-          final nextIncompleteDrill = appState.getNextIncompleteDrill();
-          final isActive = nextIncompleteDrill?.drill.id == editableDrill.drill.id;
-          
+          final isActive = !sessionComplete && nextIncompleteDrill?.drill.id == editableDrill.drill.id;
           return Column(
             children: [
               _DrillCircle(
                 editableDrill: editableDrill,
                 isActive: isActive,
                 isCompleted: editableDrill.isCompleted,
-                isSkipped: editableDrill.isSkipped,
                 onTap: () => _openFollowAlong(editableDrill, appState),
               ),
               if (index < editableSessionDrills.length - 1)
@@ -317,14 +266,36 @@ class _SessionGeneratorHomeFieldViewState extends State<SessionGeneratorHomeFiel
           const SizedBox(height: 32),
           _TrophyWidget(
             isUnlocked: appState.isSessionComplete,
-            isAlreadyCompleted: appState.currentSessionCompleted, // ✅ NEW: Pass completion state
+            isAlreadyCompleted: appState.currentSessionCompleted,
+            isLarge: sessionComplete && !appState.currentSessionCompleted,
+            isGlowing: sessionComplete && !appState.currentSessionCompleted,
             onTap: () async {
+              if (kDebugMode) {
+                print('🏆 Trophy tapped!');
+                print('  - isSessionComplete:  [38;5;10m${appState.isSessionComplete} [0m');
+                print('  - currentSessionCompleted:  [38;5;10m${appState.currentSessionCompleted} [0m');
+                print('  - Total drills: ${appState.editableSessionDrills.length}');
+                print('  - Fully completed drills: ${appState.editableSessionDrills.where((d) => d.isFullyCompleted).length}');
+                print('  - Completed drills: ${appState.editableSessionDrills.where((d) => d.isCompleted).length}');
+                for (int i = 0; i < appState.editableSessionDrills.length; i++) {
+                  final drill = appState.editableSessionDrills[i];
+                  print('    Drill $i: ${drill.drill.title} - setsDone: ${drill.setsDone}/${drill.totalSets}, isCompleted: ${drill.isCompleted}, isFullyCompleted: ${drill.isFullyCompleted}');
+                }
+              }
               if (appState.currentSessionCompleted) {
-                // ✅ Session already completed, just show completion view (no audio)
-                HapticUtils.lightImpact(); // Light haptic for viewing completed session
+                HapticUtils.lightImpact();
                 _showSessionComplete();
+              } else if (appState.isSessionComplete) {
+                HapticUtils.mediumImpact();
+                await appState.completeSession();
+                _showSessionComplete();
+                await Future.delayed(const Duration(milliseconds: 100));
+                appState.resetDrillProgressForNewSession();
+                if (kDebugMode) {
+                  print('🔄 Drill progress reset for new session');
+                }
               } else {
-                HapticUtils.lightImpact(); // Light haptic for locked action
+                HapticUtils.lightImpact();
                 ScaffoldMessenger.of(context).showSnackBar(
                   const SnackBar(content: Text('Complete all drills to unlock the trophy!')),
                 );
@@ -422,7 +393,16 @@ class _SessionGeneratorHomeFieldViewState extends State<SessionGeneratorHomeFiel
     if (!hasSessionDrills) {
       message = "Tap the bag to create a session!";
     } else if (appState.currentSessionCompleted) {
-      message = "Session complete, good job today!";
+      // Check if drills have been reset (all progress is 0)
+      final allDrillsReset = editableSessionDrills.every((drill) => 
+        drill.setsDone == 0 && !drill.isCompleted
+      );
+      
+      if (allDrillsReset) {
+        message = "Ready for another session! Tap Begin Training to start.";
+      } else {
+        message = "Session complete, good job today!";
+      }
     } else if (appState.isSessionComplete) {
       message = "Well done! Tap the trophy!";
     } else {
@@ -435,10 +415,10 @@ class _SessionGeneratorHomeFieldViewState extends State<SessionGeneratorHomeFiel
         // Main bubble
         Container(
           constraints: const BoxConstraints(
-            maxWidth: 180, // Limit maximum width
+            maxWidth: 260, // Increased from 180 for more space
             minWidth: 120,  // Ensure minimum width
           ),
-          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10), // Slightly more vertical padding
           decoration: BoxDecoration(
             color: AppTheme.speechBubbleBackground,
             borderRadius: BorderRadius.circular(12),
@@ -452,8 +432,8 @@ class _SessionGeneratorHomeFieldViewState extends State<SessionGeneratorHomeFiel
               color: Colors.white,
             ),
             textAlign: TextAlign.center,
-            maxLines: 2,
-            overflow: TextOverflow.ellipsis,
+            maxLines: 4, // Allow up to 4 lines
+            // Removed overflow: TextOverflow.ellipsis to allow wrapping
           ),
         ),
         // Speech bubble tail pointing down to Bravo
@@ -478,119 +458,133 @@ class _DrillCircle extends StatelessWidget {
   final EditableDrillModel editableDrill;
   final bool isActive;
   final bool isCompleted;
-  final bool isSkipped;
   final VoidCallback onTap;
 
   const _DrillCircle({
     required this.editableDrill,
     required this.isActive,
     required this.isCompleted,
-    required this.isSkipped,
     required this.onTap,
   });
 
-  // Build the drill circle
   @override
   Widget build(BuildContext context) {
     Color backgroundColor;
     Color iconColor;
     Widget iconWidget;
-    
-    if (isSkipped) {
-      // Show skipped drills in orange with skip icon
-      backgroundColor = Colors.orange;
-      iconColor = AppTheme.white;
-      iconWidget = Icon(
-        Icons.skip_next,
-        color: iconColor,
-        size: 36,
-      );
-    } else if (isCompleted) {
-      // Show completed drills in green with check mark
+    double circleSize = isActive ? 100 : 80; // Enlarge active drill
+    double progressSize = isActive ? 110 : 90;
+    double iconSize = isActive ? 48 : 40;
+    final glowColor = AppTheme.primaryYellow.withOpacity(0.5);
+
+    if (isCompleted) {
       backgroundColor = AppTheme.success;
       iconColor = AppTheme.white;
       iconWidget = Icon(
         Icons.check,
         color: iconColor,
-        size: 36,
+        size: iconSize,
       );
     } else if (isActive) {
       backgroundColor = AppTheme.white;
       iconColor = AppTheme.getSkillColor(editableDrill.drill.skill);
-      iconWidget = _buildDrillIcon();
+      iconWidget = _buildDrillIcon(size: iconSize);
     } else {
       backgroundColor = AppTheme.buttonDisabledGray;
       iconColor = AppTheme.primaryGray;
-      iconWidget = _buildDrillIcon(disabled: true);
+      iconWidget = _buildDrillIcon(disabled: true, size: iconSize);
     }
 
-    // Return the drill circle with progress ring
     return GestureDetector(
       onTap: onTap,
-      child: Stack(
-        alignment: Alignment.center,
+      child: Column(
         children: [
-          // Progress ring (only show if there's progress or completed/skipped)
-          if (editableDrill.progress > 0 || isCompleted || isSkipped)
-            SizedBox(
-              width: 90, // Increased from 80
-              height: 90, // Increased from 80
-              child: CircularProgressIndicator(
-                value: editableDrill.progress,
-                strokeWidth: 6,
-                backgroundColor: Colors.grey.shade300,
-                valueColor: AlwaysStoppedAnimation<Color>(
-                  isSkipped ? Colors.orange : (isCompleted ? AppTheme.success : AppTheme.buttonPrimary),
+          Stack(
+            alignment: Alignment.center,
+            children: [
+              // Animated glow for active drill
+              if (isActive)
+                TweenAnimationBuilder<double>(
+                  tween: Tween(begin: 0.7, end: 1.0),
+                  duration: const Duration(seconds: 1),
+                  curve: Curves.easeInOut,
+                  builder: (context, value, child) {
+                    final skillColor = AppTheme.getSkillColor(editableDrill.drill.skill).withOpacity(0.5);
+                    return Container(
+                      width: progressSize * value + 16,
+                      height: progressSize * value + 16,
+                      decoration: BoxDecoration(
+                        shape: BoxShape.circle,
+                        boxShadow: [
+                          BoxShadow(
+                            color: skillColor,
+                            blurRadius: 24 * value,
+                            spreadRadius: 6 * value,
+                          ),
+                        ],
+                      ),
+                    );
+                  },
+                  onEnd: () {},
+                ),
+              // Progress ring (only show if there's progress or completed)
+              if (editableDrill.progress > 0 || isCompleted)
+                SizedBox(
+                  width: progressSize, // Increased for active
+                  height: progressSize,
+                  child: CircularProgressIndicator(
+                    value: editableDrill.progress,
+                    strokeWidth: 6,
+                    backgroundColor: Colors.grey.shade300,
+                    valueColor: AlwaysStoppedAnimation<Color>(
+                      isCompleted ? AppTheme.success : AppTheme.buttonPrimary,
+                    ),
+                  ),
+                ),
+              // Main drill circle
+              Container(
+                width: circleSize,
+                height: circleSize,
+                decoration: BoxDecoration(
+                  color: backgroundColor,
+                  shape: BoxShape.circle,
+                  border: isActive ? Border.all(color: AppTheme.getSkillColor(editableDrill.drill.skill), width: 4) : null,
+                  boxShadow: [
+                    if (isActive || isCompleted)
+                      BoxShadow(
+                        color: Colors.black.withOpacity(0.22),
+                        blurRadius: 10,
+                        offset: const Offset(0, 5),
+                      ),
+                  ],
+                ),
+                child: Center(
+                  child: iconWidget,
                 ),
               ),
-            ),
-          
-          // Main drill circle
-          Container(
-            width: 80, // Increased from 70
-            height: 80, // Increased from 70
-            decoration: BoxDecoration(
-              color: backgroundColor,
-              shape: BoxShape.circle,
-              border: isActive ? Border.all(color: AppTheme.getSkillColor(editableDrill.drill.skill), width: 3) : null,
-              boxShadow: [
-                if (isActive || isCompleted || isSkipped)
-                  BoxShadow(
-                    color: Colors.black.withOpacity(0.2),
-                    blurRadius: 8,
-                    offset: const Offset(0, 4),
-                  ),
-              ],
-            ),
-            child: Center(
-              child: iconWidget,
-            ),
+            ],
           ),
         ],
       ),
     );
   }
 
-  Widget _buildDrillIcon({bool disabled = false}) {
+  Widget _buildDrillIcon({bool disabled = false, double size = 40}) {
     final skill = editableDrill.drill.skill;
     final iconColor = disabled ? AppTheme.primaryGray : AppTheme.getSkillColor(skill);
-    
     final iconWidget = Image.asset(
       _getSkillIconPath(skill),
-      width: 40,
-      height: 40,
+      width: size,
+      height: size,
       fit: BoxFit.contain,
       errorBuilder: (context, error, stackTrace) {
-        // Fallback to generic icon if image fails to load
         return Icon(
           _getSkillIconFallback(skill),
           color: iconColor,
-          size: 28,
+          size: size * 0.7,
         );
       },
     );
-    
-    // Wrap in Opacity for disabled state instead of using color tinting
     return disabled 
       ? Opacity(
           opacity: 0.4,
@@ -642,53 +636,82 @@ class _DrillCircle extends StatelessWidget {
 class _TrophyWidget extends StatelessWidget {
   final bool isUnlocked;
   final bool isAlreadyCompleted;
+  final bool isLarge;
+  final bool isGlowing;
   final VoidCallback onTap;
 
   const _TrophyWidget({
     required this.isUnlocked,
     required this.isAlreadyCompleted,
+    this.isLarge = false,
+    this.isGlowing = false,
     required this.onTap,
   });
 
-  // Build the trophy widget
   @override
   Widget build(BuildContext context) {
-    // Determine trophy color based on state
     Color backgroundColor;
     Color iconColor;
-    
     if (isAlreadyCompleted || isUnlocked) {
-      // Completed or can be completed - bright yellow trophy
       backgroundColor = AppTheme.primaryYellow;
       iconColor = AppTheme.white;
     } else {
-      // Locked - gray trophy
       backgroundColor = AppTheme.buttonDisabledGray;
       iconColor = AppTheme.primaryGray;
     }
 
-    // Return the trophy widget
+    final double size = isLarge ? 110 : 80;
+    final double iconSize = isLarge ? 64 : 48;
+
     return GestureDetector(
       onTap: onTap,
-      child: Container(
-        width: 80,
-        height: 80,
-        decoration: BoxDecoration(
-          color: backgroundColor,
-          shape: BoxShape.circle,
-          boxShadow: [
-            BoxShadow(
-              color: AppTheme.black.withOpacity(0.2),
-              blurRadius: AppTheme.elevationHigh,
-              offset: const Offset(0, 4),
+      child: Stack(
+        alignment: Alignment.center,
+        children: [
+          if (isGlowing)
+            TweenAnimationBuilder<double>(
+              tween: Tween(begin: 0.7, end: 1.0),
+              duration: const Duration(seconds: 1),
+              curve: Curves.easeInOut,
+              builder: (context, value, child) {
+                return Container(
+                  width: size * value + 24,
+                  height: size * value + 24,
+                  decoration: BoxDecoration(
+                    shape: BoxShape.circle,
+                    boxShadow: [
+                      BoxShadow(
+                        color: AppTheme.primaryYellow.withOpacity(0.5),
+                        blurRadius: 32 * value,
+                        spreadRadius: 10 * value,
+                      ),
+                    ],
+                  ),
+                );
+              },
+              onEnd: () {},
             ),
-          ],
-        ),
-        child: Icon(
-          Icons.emoji_events,
-          size: 48,
-          color: iconColor,
-        ),
+          Container(
+            width: size,
+            height: size,
+            decoration: BoxDecoration(
+              color: backgroundColor,
+              shape: BoxShape.circle,
+              boxShadow: [
+                BoxShadow(
+                  color: AppTheme.black.withOpacity(0.2),
+                  blurRadius: AppTheme.elevationHigh,
+                  offset: const Offset(0, 4),
+                ),
+              ],
+            ),
+            child: Icon(
+              Icons.emoji_events,
+              size: iconSize,
+              color: iconColor,
+            ),
+          ),
+        ],
       ),
     );
   }

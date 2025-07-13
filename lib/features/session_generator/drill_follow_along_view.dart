@@ -558,50 +558,6 @@ class _DrillFollowAlongViewState extends State<DrillFollowAlongView> {
           
           const SizedBox(height: 10), // Reduced from 12
           
-          // Current set indicator or completion message - always show something
-          Container(
-            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4), // Reduced padding
-            decoration: BoxDecoration(
-              color: _editableDrill.setsDone >= _editableDrill.totalSets
-                  ? AppTheme.success.withOpacity(0.1)
-                  : AppTheme.primaryGreen.withOpacity(0.1),
-              borderRadius: BorderRadius.circular(12), // Reduced from 16
-              border: Border.all(
-                color: _editableDrill.setsDone >= _editableDrill.totalSets
-                    ? AppTheme.success.withOpacity(0.3)
-                    : AppTheme.primaryGreen.withOpacity(0.3),
-                width: 1,
-              ),
-            ),
-            child: Row(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Icon(
-                  _editableDrill.setsDone >= _editableDrill.totalSets
-                      ? Icons.check_circle
-                      : Icons.fitness_center,
-                  size: 12, // Reduced from 14
-                  color: _editableDrill.setsDone >= _editableDrill.totalSets
-                      ? AppTheme.success
-                      : AppTheme.primaryGreen,
-                ),
-                const SizedBox(width: 4), // Reduced from 6
-                Text(
-                  _editableDrill.setsDone >= _editableDrill.totalSets
-                      ? 'All sets completed!'
-                      : 'Set ${_editableDrill.setsDone + 1} of ${_editableDrill.totalSets}',
-                  style: TextStyle(
-                    fontFamily: 'Poppins',
-                    fontWeight: FontWeight.w600,
-                    fontSize: 11, // Reduced from 12
-                    color: _editableDrill.setsDone >= _editableDrill.totalSets
-                        ? AppTheme.success
-                        : AppTheme.primaryGreen,
-                  ),
-                ),
-              ],
-            ),
-          ),
         ],
       ),
     );
@@ -676,44 +632,6 @@ class _DrillFollowAlongViewState extends State<DrillFollowAlongView> {
                   ],
                   const Text(
                     'Done',
-                    style: TextStyle(
-                      fontFamily: 'Poppins',
-                      fontWeight: FontWeight.bold,
-                      fontSize: 14, // Reduced from 16
-                      color: Colors.white,
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          ),
-          
-          const SizedBox(width: 12), // Reduced from 16
-          
-          // Skip button - more compact
-          Expanded(
-            child: ElevatedButton(
-              onPressed: () {
-                HapticUtils.lightImpact(); // Light haptic for skip
-                _skipDrill();
-              },
-              style: ElevatedButton.styleFrom(
-                backgroundColor: AppTheme.primaryLightBlue,
-                foregroundColor: Colors.white,
-                elevation: 2,
-                shadowColor: AppTheme.primaryLightBlue.withOpacity(0.3),
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(16),
-                ),
-                padding: const EdgeInsets.symmetric(vertical: 10), // Reduced from 14
-              ),
-              child: const Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Icon(Icons.skip_next, size: 16, color: Colors.white), // Reduced from 18
-                  SizedBox(width: 4), // Reduced from 6
-                  Text(
-                    'Skip',
                     style: TextStyle(
                       fontFamily: 'Poppins',
                       fontWeight: FontWeight.bold,
@@ -846,27 +764,9 @@ class _DrillFollowAlongViewState extends State<DrillFollowAlongView> {
     await _stopAllTimers();
     
     _editableDrill.isCompleted = true;
-    _editableDrill.isSkipped = false;
+    _editableDrill.setsDone = _editableDrill.totalSets; // Ensure setsDone equals totalSets when completed
     
     // Update the drill in the session
-    _updateDrillInSession();
-    
-    // Give the UI time to update
-    await Future.delayed(const Duration(milliseconds: 50));
-    
-    widget.onDrillCompleted?.call();
-    
-    if (mounted) {
-      Navigator.pop(context);
-    }
-  }
-
-  void _skipDrill() async {
-    await _stopAllTimers();
-    
-    _editableDrill.isSkipped = true;
-    _editableDrill.isCompleted = false;
-    _elapsedTime = _setDuration;
     _updateDrillInSession();
     
     // Give the UI time to update
@@ -890,12 +790,11 @@ class _DrillFollowAlongViewState extends State<DrillFollowAlongView> {
       duration: _editableDrill.totalDuration,
     );
     
-    // Update drill progress (completion state, sets done, skip state)
+    // Update drill progress (completion state, sets done)
     appState.updateDrillProgress(
       _editableDrill.drill.id,
       setsDone: _editableDrill.setsDone,
       isCompleted: _editableDrill.isCompleted,
-      isSkipped: _editableDrill.isSkipped, // Explicitly pass skip state
     );
   }
 

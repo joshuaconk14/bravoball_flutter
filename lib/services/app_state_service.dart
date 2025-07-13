@@ -1315,15 +1315,13 @@ class AppStateService extends ChangeNotifier {
   }
   
   // Update drill progress during follow-along
-  void updateDrillProgress(String drillId, {int? setsDone, bool? isCompleted, bool? isSkipped}) {
+  void updateDrillProgress(String drillId, {int? setsDone, bool? isCompleted}) {
     final editableDrillIndex = _editableSessionDrills.indexWhere((drill) => drill.drill.id == drillId);
     if (editableDrillIndex != -1) {
       final currentEditableDrill = _editableSessionDrills[editableDrillIndex];
       _editableSessionDrills[editableDrillIndex] = currentEditableDrill.copyWith(
         setsDone: setsDone,
         isCompleted: isCompleted,
-        // Use explicit isSkipped if provided, otherwise reset when completed
-        isSkipped: isSkipped ?? (isCompleted == true ? false : currentEditableDrill.isSkipped),
       );
       
       // ✅ FIXED: Don't auto-complete here to avoid issues
@@ -1418,7 +1416,7 @@ class AppStateService extends ChangeNotifier {
   // Get the next incomplete drill
   EditableDrillModel? getNextIncompleteDrill() {
     try {
-      return _editableSessionDrills.firstWhere((drill) => !drill.isDone);
+      return _editableSessionDrills.firstWhere((drill) => !drill.isCompleted);
     } catch (e) {
       return null;
     }
@@ -1426,7 +1424,7 @@ class AppStateService extends ChangeNotifier {
   
   // Check if session has any progress
   bool get hasSessionProgress {
-    return _editableSessionDrills.any((drill) => drill.setsDone > 0 || drill.isDone);
+    return _editableSessionDrills.any((drill) => drill.setsDone > 0 || drill.isCompleted);
   }
   
   // Get session completion percentage
@@ -1888,5 +1886,45 @@ class AppStateService extends ChangeNotifier {
     _previousStreak = _currentStreak;
     _currentStreak = currentStreak;
     _highestStreak = maxStreak > _highestStreak ? maxStreak : _highestStreak;
+  }
+
+  /// ✅ NEW: Reset drill progress for a new session (keep drills, reset progress)
+  void resetDrillProgressForNewSession() {
+    if (kDebugMode) {
+      print('🔄 Resetting drill progress for new session...');
+      print('  - Drills before reset: ${_editableSessionDrills.length}');
+    }
+    
+    // Reset progress for all drills in the session
+    for (int i = 0; i < _editableSessionDrills.length; i++) {
+      final currentDrill = _editableSessionDrills[i];
+      _editableSessionDrills[i] = currentDrill.copyWith(
+        setsDone: 0,
+        isCompleted: false,
+      );
+      
+      if (kDebugMode) {
+        print('    Reset drill ${i + 1}: ${currentDrill.drill.title}');
+        print('      - setsDone: ${currentDrill.setsDone} → 0');
+        print('      - isCompleted: ${currentDrill.isCompleted} → false');
+      }
+    }
+    
+    // Reset session completion state
+    _currentSessionCompleted = false;
+    _sessionCompletionFinished = false;
+    _isCompletingSession = false;
+    
+    if (kDebugMode) {
+      print('✅ Drill progress reset complete');
+      print('  - Session completion state reset');
+      print('  - Ready for new session with same drills');
+    }
+    
+    // Sync the reset state to backend
+    _scheduleSessionDrillsSync();
+    
+    // Notify UI to update
+    notifyListeners();
   }
 } 
