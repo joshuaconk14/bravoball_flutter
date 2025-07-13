@@ -774,9 +774,10 @@ class _DrillFollowAlongViewState extends State<DrillFollowAlongView> {
     // Enable wake lock for workout
     WakeLockService.enableWakeLock();
     
-    // Start background countdown
+    // Start background countdown with drill name for lock screen widget
     _backgroundTimer.startCountdown(
       countdownValue: 3,
+      drillName: _editableDrill.drill.title, // Pass drill name to lock screen widget
       onTick: (value) {
         if (mounted) {
           setState(() {
@@ -797,9 +798,10 @@ class _DrillFollowAlongViewState extends State<DrillFollowAlongView> {
   }
 
   void _startTimer() {
-    // Start background timer with callbacks
+    // Start background timer with callbacks and drill name for lock screen widget
     _backgroundTimer.startTimer(
       durationSeconds: _elapsedTime,
+      drillName: _editableDrill.drill.title, // Pass drill name to lock screen widget
       debugMode: AppConfig.debug,
       onTick: (remainingTime) {
         if (mounted) {
@@ -911,8 +913,8 @@ class _DrillFollowAlongViewState extends State<DrillFollowAlongView> {
   void _showInfoPopup() {
     InfoPopupWidget.show(
       context,
-      title: 'Background Timer Feature',
-      description: 'This drill timer will continue running even when your phone screen is off!\n\nTurn off silent mode and turn up your audio to hear countdown sounds and completion alerts.\n\nThe timer uses background audio to keep running when you lock your phone or switch apps.\n\nPress play to start the 3-second countdown, then use the timer to pace yourself during reps.',
+      title: 'Background Timer & Lock Screen Widget',
+      description: 'This drill timer will continue running even when your phone screen is off!\n\n🔒 **Lock Screen Widget**: See live countdown and progress on your lock screen - just like RunKeeper!\n\n🎵 **Audio Cues**: Turn off silent mode and turn up your audio to hear countdown sounds and completion alerts.\n\n⏱️ **Background Timer**: The timer uses background audio to keep running when you lock your phone or switch apps.\n\n▶️ **Controls**: Use pause/resume buttons in the lock screen notification.\n\nPress play to start the 3-second countdown, then use the timer to pace yourself during reps.',
       riveFileName: 'Bravo_Animation.riv',
     );
   }

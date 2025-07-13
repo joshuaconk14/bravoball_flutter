@@ -3,8 +3,8 @@ import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:timezone/timezone.dart' as tz;
 import 'package:timezone/data/latest.dart' as tz;
 
-/// Notification Service for Timer Alerts
-/// Sends notifications when timer completes in background
+/// Notification Service for Timer Alerts and Lock Screen Widget
+/// Provides persistent timer notifications with live countdown and controls
 class NotificationService {
   static final NotificationService _instance = NotificationService._internal();
   factory NotificationService() => _instance;
@@ -14,6 +14,10 @@ class NotificationService {
 
   final FlutterLocalNotificationsPlugin _notifications = FlutterLocalNotificationsPlugin();
   bool _isInitialized = false;
+  
+  // Timer notification state
+  static const int _timerNotificationId = 1000;
+  bool _isTimerNotificationActive = false;
 
   /// Initialize notification service
   Future<void> initialize() async {
@@ -42,7 +46,149 @@ class NotificationService {
     }
   }
 
-  /// Schedule timer completion notification
+  /// Start persistent timer notification (lock screen widget)
+  Future<void> startTimerNotification({
+    required String drillName,
+    required int totalDurationSeconds,
+    required int remainingSeconds,
+    bool isPaused = false,
+  }) async {
+    if (!_isInitialized) await initialize();
+
+    final progress = ((totalDurationSeconds - remainingSeconds) / totalDurationSeconds * 100).round();
+    final timeRemaining = _formatTime(remainingSeconds);
+    
+    // Create actions list separately to avoid const issues
+    final actions = [
+      AndroidNotificationAction(
+        'pause_resume',
+        isPaused ? 'Resume' : 'Pause',
+      ),
+      AndroidNotificationAction(
+        'stop_timer',
+        'Stop',
+      ),
+    ];
+    
+    final androidDetails = AndroidNotificationDetails(
+      'timer_widget_channel',
+      'Drill Timer Widget',
+      channelDescription: 'Live drill timer with controls',
+      importance: Importance.high,
+      priority: Priority.high,
+      ongoing: true, // Makes it persistent
+      autoCancel: false, // Can't be swiped away
+      showProgress: true,
+      maxProgress: 100,
+      progress: progress,
+      playSound: false, // No sound for updates
+      enableVibration: false, // No vibration for updates
+      actions: actions,
+    );
+
+    const iosDetails = DarwinNotificationDetails(
+      presentAlert: false, // Don't show as popup
+      presentBadge: false,
+      presentSound: false,
+      threadIdentifier: 'drill_timer_thread',
+    );
+
+    final platformDetails = NotificationDetails(
+      android: androidDetails,
+      iOS: iosDetails,
+    );
+
+    // This is the text that shows on the lock screen widget
+    final statusText = isPaused ? 'PAUSED' : 'ACTIVE';
+    final title = '⏱️ $drillName - $statusText';
+    final body = '$timeRemaining remaining • ${progress}% complete';
+
+    // This is the notification that shows on the lock screen
+    await _notifications.show(
+      _timerNotificationId,
+      title,
+      body,
+      platformDetails,
+    );
+
+    _isTimerNotificationActive = true;
+
+    if (kDebugMode) {
+      print('🔔 Timer notification updated: $timeRemaining ($progress%)');
+    }
+  }
+
+  /// Update timer notification with new time
+  Future<void> updateTimerNotification({
+    required String drillName,
+    required int totalDurationSeconds,
+    required int remainingSeconds,
+    bool isPaused = false,
+  }) async {
+    if (!_isTimerNotificationActive) return;
+    
+    await startTimerNotification(
+      drillName: drillName,
+      totalDurationSeconds: totalDurationSeconds,
+      remainingSeconds: remainingSeconds,
+      isPaused: isPaused,
+    );
+  }
+
+  /// Stop and remove timer notification
+  Future<void> stopTimerNotification() async {
+    if (!_isTimerNotificationActive) return;
+    
+    await _notifications.cancel(_timerNotificationId);
+    _isTimerNotificationActive = false;
+    
+    if (kDebugMode) {
+      print('🔕 Timer notification stopped');
+    }
+  }
+
+  /// Show timer completion notification
+  Future<void> showTimerCompletionNotification({
+    required String drillName,
+  }) async {
+    if (!_isInitialized) await initialize();
+
+    const androidDetails = AndroidNotificationDetails(
+      'timer_completion_channel',
+      'Timer Completion',
+      channelDescription: 'Drill timer completion alerts',
+      importance: Importance.high,
+      priority: Priority.high,
+      playSound: true,
+      enableVibration: true,
+      autoCancel: true,
+    );
+
+    const iosDetails = DarwinNotificationDetails(
+      presentAlert: true,
+      presentBadge: true,
+      presentSound: true,
+    );
+
+    const platformDetails = NotificationDetails(
+      android: androidDetails,
+      iOS: iosDetails,
+    );
+
+    // Set complete notification
+    await _notifications.show(
+      _timerNotificationId + 1,
+      '🎯 Set Complete!',
+      '$drillName timer finished. Great work!',
+      platformDetails,
+    );
+
+    if (kDebugMode) {
+      print('🔔 Timer completion notification shown');
+    }
+  }
+
+  /// Schedule timer completion notification (legacy method)
   Future<void> scheduleTimerNotification({
     required int durationSeconds,
     required String drillName,
@@ -91,6 +237,7 @@ class NotificationService {
   /// Cancel all notifications
   Future<void> cancelAllNotifications() async {
     await _notifications.cancelAll();
+    _isTimerNotificationActive = false;
     
     if (kDebugMode) {
       print('🔕 All notifications cancelled');
@@ -100,5 +247,15 @@ class NotificationService {
   /// Cancel specific notification
   Future<void> cancelNotification(int id) async {
     await _notifications.cancel(id);
+  }
+
+  /// Check if timer notification is currently active
+  bool get isTimerNotificationActive => _isTimerNotificationActive;
+
+  /// Format seconds to MM:SS
+  String _formatTime(int seconds) {
+    final minutes = (seconds / 60).floor();
+    final remainingSeconds = seconds % 60;
+    return '${minutes.toString().padLeft(2, '0')}:${remainingSeconds.toString().padLeft(2, '0')}';
   }
 } 
