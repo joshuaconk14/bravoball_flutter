@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/foundation.dart';
+import 'package:flutter/services.dart'; // ✅ ADDED: For SystemChrome orientation locking
 import 'package:provider/provider.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:rive/rive.dart';
@@ -19,6 +20,11 @@ bool _hasShownIntroAnimation = false;
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
+  
+  // ✅ ADDED: Lock orientation to portrait only (iPhone-only, portrait-only)
+  await SystemChrome.setPreferredOrientations([
+    DeviceOrientation.portraitUp,
+  ]);
   
   // Load environment variables from .env file
   await dotenv.load(fileName: ".env");
