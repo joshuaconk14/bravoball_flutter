@@ -2,12 +2,12 @@ import 'package:flutter/material.dart';
 import '../constants/app_theme.dart';
 import '../utils/haptic_utils.dart';
 import '../features/onboarding/onboarding_flow.dart';
+import '../views/main_tab_view.dart';
 
 class GuestAccountOverlay extends StatelessWidget {
   final String title;
   final String description;
   final Color themeColor;
-  final VoidCallback? onDismiss;
   final bool showDismissButton;
 
   const GuestAccountOverlay({
@@ -15,7 +15,6 @@ class GuestAccountOverlay extends StatelessWidget {
     this.title = 'Create an account',
     this.description = 'Unlock all features by creating an account.',
     this.themeColor = AppTheme.primaryYellow,
-    this.onDismiss,
     this.showDismissButton = true,
   }) : super(key: key);
 
@@ -92,11 +91,11 @@ class GuestAccountOverlay extends StatelessWidget {
                 TextButton(
                   onPressed: () {
                     HapticUtils.lightImpact(); // Light haptic for button press
-                    if (onDismiss != null) {
-                      onDismiss!();
-                    } else {
-                      Navigator.of(context).pop(); // Default dismiss behavior
-                    }
+                    // Navigate to main home page
+                    Navigator.of(context).pushAndRemoveUntil(
+                      MaterialPageRoute(builder: (context) => const MainTabView(initialIndex: 0)),
+                      (route) => false,
+                    );
                   },
                   child: const Text(
                     'Continue as Guest',
@@ -122,7 +121,6 @@ class GuestAccountOverlay extends StatelessWidget {
     String title = 'Create an account',
     String description = 'Unlock all features by creating an account.',
     Color themeColor = AppTheme.primaryYellow,
-    VoidCallback? onDismiss,
     bool showDismissButton = true,
   }) {
     showDialog(
@@ -132,7 +130,6 @@ class GuestAccountOverlay extends StatelessWidget {
         title: title,
         description: description,
         themeColor: themeColor,
-        onDismiss: onDismiss,
         showDismissButton: showDismissButton,
       ),
     );
