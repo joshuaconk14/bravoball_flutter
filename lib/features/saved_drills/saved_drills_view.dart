@@ -5,8 +5,10 @@ import '../../services/app_state_service.dart';
 import '../../models/drill_group_model.dart';
 import '../../widgets/reusable_drill_search_view.dart';
 import '../../widgets/info_popup_widget.dart';
+import '../../widgets/guest_account_overlay.dart'; // ✅ NEW: Import reusable guest overlay
 import '../../utils/haptic_utils.dart';
 import '../../utils/skill_utils.dart'; // ✅ ADDED: Import centralized skill utilities
+import '../../features/onboarding/onboarding_flow.dart'; // ✅ ADDED: Import OnboardingFlow
 import 'drill_group_detail_view.dart';
 
 class SavedDrillsView extends StatefulWidget {
@@ -29,106 +31,119 @@ class _SavedDrillsViewState extends State<SavedDrillsView> {
       builder: (context, appState, child) {
         return Scaffold(
           backgroundColor: AppTheme.primaryPurple,
-          body: SafeArea(
-            child: Column(
-              children: [
-                // Header
-                Container(
-                  padding: const EdgeInsets.all(20),
-                  child: Column(
-                    children: [
-                      const SizedBox(height: 20),
-                      // Centered title
-                      Text(
-                        'Saved Drills',
-                        style: AppTheme.headlineMedium.copyWith(
-                          color: Colors.white,
-                        ),
-                        textAlign: TextAlign.center,
-                      ),
-                      const SizedBox(height: 16),
-                      // Add button row
-                      Row(
-                        mainAxisAlignment: MainAxisAlignment.end,
+          body: Stack(
+            children: [
+              // Main content
+              SafeArea(
+                child: Column(
+                  children: [
+                    // Header
+                    Container(
+                      padding: const EdgeInsets.all(20),
+                      child: Column(
                         children: [
-                          Container(
-                            decoration: BoxDecoration(
-                              color: Colors.white.withOpacity(0.2),
-                              borderRadius: BorderRadius.circular(12),
+                          const SizedBox(height: 20),
+                          // Centered title
+                          Text(
+                            'Saved Drills',
+                            style: AppTheme.headlineMedium.copyWith(
+                              color: Colors.white,
                             ),
-                            child: IconButton(
-                              onPressed: () {
-                                HapticUtils.mediumImpact(); // Medium haptic for create action
-                                _showCreateGroupDialog(context, appState);
-                              },
-                              icon: const Icon(
-                                Icons.add,
-                                color: Colors.white,
-                                size: 28,
-                              ),
-                            ),
+                            textAlign: TextAlign.center,
                           ),
-                        ],
-                      ),
-                      const SizedBox(height: 10),
-                      Text(
-                        'Organize your favorite drills into collections',
-                        style: AppTheme.bodyMedium.copyWith(
-                          color: Colors.white.withOpacity(0.9),
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-                
-                // Content
-                Expanded(
-                  child: Container(
-                    width: double.infinity,
-                    decoration: const BoxDecoration(
-                      color: Colors.white,
-                      borderRadius: BorderRadius.only(
-                        topLeft: Radius.circular(30),
-                        topRight: Radius.circular(30),
-                      ),
-                    ),
-                    child: Column(
-                      children: [
-                        const SizedBox(height: 20),
-                        Padding(
-                          padding: const EdgeInsets.symmetric(horizontal: 20),
-                          child: Row(
+                          const SizedBox(height: 16),
+                          // Add button row
+                          Row(
+                            mainAxisAlignment: MainAxisAlignment.end,
                             children: [
-                              Text(
-                                'Your Drill Collections',
-                                style: AppTheme.headlineSmall.copyWith(
-                                  color: AppTheme.primaryDark,
+                              Container(
+                                decoration: BoxDecoration(
+                                  color: Colors.white.withOpacity(0.2),
+                                  borderRadius: BorderRadius.circular(12),
                                 ),
-                              ),
-                              const Spacer(),
-                              IconButton(
-                                onPressed: () {
-                                  HapticUtils.lightImpact(); // Light haptic for info
-                                  _showInfoDialog(context);
-                                },
-                                icon: const Icon(
-                                  Icons.info_outline,
-                                  color: AppTheme.primaryGray,
+                                child: IconButton(
+                                  onPressed: () {
+                                    HapticUtils.mediumImpact(); // Medium haptic for create action
+                                    _showCreateGroupDialog(context, appState);
+                                  },
+                                  icon: const Icon(
+                                    Icons.add,
+                                    color: Colors.white,
+                                    size: 28,
+                                  ),
                                 ),
                               ),
                             ],
                           ),
-                        ),
-                        const SizedBox(height: 20),
-                        Expanded(
-                          child: _buildGroupsGrid(appState),
-                        ),
-                      ],
+                          const SizedBox(height: 10),
+                          Text(
+                            'Organize your favorite drills into collections',
+                            style: AppTheme.bodyMedium.copyWith(
+                              color: Colors.white.withOpacity(0.9),
+                            ),
+                          ),
+                        ],
+                      ),
                     ),
-                  ),
+                    
+                    // Content
+                    Expanded(
+                      child: Container(
+                        width: double.infinity,
+                        decoration: const BoxDecoration(
+                          color: Colors.white,
+                          borderRadius: BorderRadius.only(
+                            topLeft: Radius.circular(30),
+                            topRight: Radius.circular(30),
+                          ),
+                        ),
+                        child: Column(
+                          children: [
+                            const SizedBox(height: 20),
+                            Padding(
+                              padding: const EdgeInsets.symmetric(horizontal: 20),
+                              child: Row(
+                                children: [
+                                  Text(
+                                    'Your Drill Collections',
+                                    style: AppTheme.headlineSmall.copyWith(
+                                      color: AppTheme.primaryDark,
+                                    ),
+                                  ),
+                                  const Spacer(),
+                                  IconButton(
+                                    onPressed: () {
+                                      HapticUtils.lightImpact(); // Light haptic for info
+                                      _showInfoDialog(context);
+                                    },
+                                    icon: const Icon(
+                                      Icons.info_outline,
+                                      color: AppTheme.primaryGray,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                            const SizedBox(height: 20),
+                            Expanded(
+                              child: _buildGroupsGrid(appState),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                  ],
                 ),
-              ],
-            ),
+              ),
+              
+              // ✅ NEW: Guest mode overlay using reusable widget
+              if (appState.isGuestMode) 
+                GuestAccountOverlay(
+                  title: 'Create an account',
+                  description: 'Save your favorite drills and create collections by creating an account.',
+                  themeColor: AppTheme.primaryPurple,
+                ),
+            ],
           ),
         );
       },
@@ -467,4 +482,6 @@ class _SavedDrillsViewState extends State<SavedDrillsView> {
       riveFileName: 'Bravo_Animation.riv',
     );
   }
+
+  // ✅ REMOVED: _buildGuestOverlay method - now using reusable widget
 } 

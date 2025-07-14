@@ -80,10 +80,17 @@ class LoginService {
         // Handle API errors
         String errorMessage = 'Failed to login. Please try again.';
         
-        if (response.statusCode == 401) {
-          errorMessage = 'Invalid credentials, please try again.';
-        } else if (response.error != null) {
+        // ✅ IMPROVED: Use specific backend error messages when available
+        if (response.error != null) {
           errorMessage = response.error!;
+        } else if (response.statusCode == 401) {
+          errorMessage = 'Invalid credentials, please try again.';
+        } else if (response.statusCode == 400) {
+          errorMessage = 'Invalid request. Please check your information.';
+        } else if (response.statusCode == 429) {
+          errorMessage = 'Too many login attempts. Please wait before trying again.';
+        } else if (response.statusCode == 500) {
+          errorMessage = 'Server error. Please try again later.';
         }
         
         loginModel.setErrorMessage(errorMessage);

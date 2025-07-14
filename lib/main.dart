@@ -138,7 +138,8 @@ class AuthenticationChecker extends StatelessWidget {
         }
 
         // Return appropriate content based on authentication state
-        if (userManager.isLoggedIn) {
+        // ✅ UPDATED: Check for both logged in users AND guest users
+        if (userManager.isLoggedIn || userManager.isGuestMode) {
           return const AuthenticatedApp();
         } else {
           return const UnauthenticatedApp();
@@ -168,6 +169,17 @@ class _AuthenticatedAppState extends State<AuthenticatedApp> {
   void _loadBackendDataIfNeeded() {
     final userManager = UserManagerService.instance;
     final appState = AppStateService.instance;
+    
+    // ✅ UPDATED: Skip backend data loading for guest users
+    if (userManager.isGuestMode) {
+      // Guest users don't need backend data, set initial load to false immediately
+      appState.setInitialLoadState(false);
+      
+      if (kDebugMode) {
+        print('👤 Guest user detected - skipping backend data load');
+      }
+      return;
+    }
     
     // Load backend data if user has account history and we haven't loaded yet
     if (userManager.userHasAccountHistory && !_hasLoadedBackendData) {

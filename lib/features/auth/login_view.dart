@@ -156,6 +156,10 @@ class _LoginViewState extends State<LoginView> {
               textInputAction: TextInputAction.next,
               autocorrect: false,
               textCapitalization: TextCapitalization.none,
+              onSubmitted: (_) {
+                // Move focus to password field
+                FocusScope.of(context).nextFocus();
+              },
               decoration: InputDecoration(
                 labelText: 'Email',
                 hintText: 'Enter your email',
@@ -180,7 +184,13 @@ class _LoginViewState extends State<LoginView> {
               onChanged: model.setPassword,
               obscureText: !model.isPasswordVisible,
               textInputAction: TextInputAction.done,
-              onSubmitted: (_) => _handleLogin(),
+              onSubmitted: (_) {
+                // ✅ IMPROVED: Dismiss keyboard and attempt login
+                FocusScope.of(context).unfocus();
+                if (model.isFormValid && !model.isLoading) {
+                  _handleLogin();
+                }
+              },
               decoration: InputDecoration(
                 labelText: 'Password',
                 hintText: 'Enter your password',

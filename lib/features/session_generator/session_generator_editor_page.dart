@@ -763,7 +763,10 @@ class _SessionGeneratorEditorPageState extends State<SessionGeneratorEditorPage>
                         ),
                         const SizedBox(height: 2),
                         Text(
-                          'Browse 78 more drills to customize your session',
+                          // ✅ NEW: Different text for guest vs authenticated users
+                          appState.isGuestMode 
+                              ? 'Browse our limited guest drills for your session'
+                              : 'Browse 100+ more drills to customize your session',
                           style: TextStyle(
                             fontFamily: 'Poppins',
                             fontSize: 13,

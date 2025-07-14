@@ -207,71 +207,137 @@ class _ReusableDrillSearchViewState extends State<ReusableDrillSearchView> {
             Text('No drills found', style: TextStyle(color: Colors.grey)),
             const SizedBox(height: 8),
             Text('Try adjusting your search or filters', style: TextStyle(color: Colors.grey.shade600)),
+            // ✅ NEW: Guest-specific message when no results
+            if (appState.isGuestMode) ...[
+              const SizedBox(height: 16),
+              Container(
+                padding: const EdgeInsets.all(12),
+                margin: const EdgeInsets.symmetric(horizontal: 20),
+                decoration: BoxDecoration(
+                  color: Colors.orange.shade50,
+                  borderRadius: BorderRadius.circular(8),
+                  border: Border.all(color: Colors.orange.shade200),
+                ),
+                child: const Text(
+                  'Guest users have access to a limited set of drills. Create an account for full access to 100+ drills!',
+                  style: TextStyle(
+                    fontFamily: AppTheme.fontPoppins,
+                    fontSize: 12,
+                    color: Colors.orange,
+                    fontWeight: FontWeight.w500,
+                  ),
+                  textAlign: TextAlign.center,
+                ),
+              ),
+            ],
           ],
         ),
       );
     }
-    return RefreshIndicator(
-      onRefresh: () async {
-        _performSearch();
-      },
-      child: ListView.builder(
-        controller: _scrollController,
-        itemCount: results.length + (appState.hasMoreSearchResults ? 1 : 0),
-        itemBuilder: (context, index) {
-          if (index == results.length && appState.hasMoreSearchResults) {
-            if (appState.isLoadingMore) {
-              return const Padding(
-                padding: EdgeInsets.all(16),
-                child: Center(child: CircularProgressIndicator()),
-              );
-            } else {
-              return Padding(
-                padding: const EdgeInsets.all(16),
-                child: Center(
-                  child: ElevatedButton(
-                    onPressed: () {
-                      HapticUtils.lightImpact(); // Light haptic for load more
-                      appState.loadMoreSearchResults();
-                    },
-                    child: const Text('Load More'),
-                  ),
-                ),
-              );
-            }
-          }
-          final drill = results[index];
-          final isCurrentlySelected = _selectedDrills.contains(drill);
-          final isDisabled = widget.isDisabled?.call(drill) ?? false;
-          final isPreSelected = widget.isSelected?.call(drill) ?? false;
-          return SelectableDrillCard(
-            drill: drill,
-            isSelected: isCurrentlySelected,
-            isDisabled: isDisabled,
-            isPreSelected: isPreSelected,
-            themeColor: widget.themeColor,
-            onTap: () {
-              HapticUtils.lightImpact(); // Light haptic for drill view
-              _navigateToDrillDetail(context, drill, appState);
+    
+    return Column(
+      children: [
+        // ✅ NEW: Guest mode banner
+        if (appState.isGuestMode) _buildGuestBanner(results.length),
+        
+        Expanded(
+          child: RefreshIndicator(
+            onRefresh: () async {
+              _performSearch();
             },
-            onSelectionChanged: (selected) {
-              setState(() {
-                if (widget.allowMultipleSelection) {
-                  if (selected) {
-                    _selectedDrills.add(drill);
+            child: ListView.builder(
+              controller: _scrollController,
+              itemCount: results.length + (appState.hasMoreSearchResults && !appState.isGuestMode ? 1 : 0), // ✅ No "load more" for guests
+              itemBuilder: (context, index) {
+                // ✅ UPDATED: Skip "load more" for guests
+                if (index == results.length && appState.hasMoreSearchResults && !appState.isGuestMode) {
+                  if (appState.isLoadingMore) {
+                    return const Padding(
+                      padding: EdgeInsets.all(16),
+                      child: Center(child: CircularProgressIndicator()),
+                    );
                   } else {
-                    _selectedDrills.remove(drill);
-                  }
-                } else {
-                  _selectedDrills.clear();
-                  if (selected) {
-                    _selectedDrills.add(drill);
+                    return Padding(
+                      padding: const EdgeInsets.all(16),
+                      child: Center(
+                        child: ElevatedButton(
+                          onPressed: () {
+                            HapticUtils.lightImpact(); // Light haptic for load more
+                            appState.loadMoreSearchResults();
+                          },
+                          child: const Text('Load More'),
+                        ),
+                      ),
+                    );
                   }
                 }
-              });
-            },
-          );
-        },
+                final drill = results[index];
+                final isCurrentlySelected = _selectedDrills.contains(drill);
+                final isDisabled = widget.isDisabled?.call(drill) ?? false;
+                final isPreSelected = widget.isSelected?.call(drill) ?? false;
+                return SelectableDrillCard(
+                  drill: drill,
+                  isSelected: isCurrentlySelected,
+                  isDisabled: isDisabled,
+                  isPreSelected: isPreSelected,
+                  themeColor: widget.themeColor, // ✅ ADDED: Missing themeColor parameter
+                  onSelectionChanged: (selected) {
+                    setState(() {
+                      if (selected) {
+                        _selectedDrills.add(drill);
+                      } else {
+                        _selectedDrills.remove(drill);
+                      }
+                    });
+                  },
+                  onTap: () {
+                    HapticUtils.lightImpact(); // Light haptic for drill selection
+                    _navigateToDrillDetail(context, drill, appState);
+                  },
+                );
+              },
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+
+  // ✅ NEW: Build guest banner with limitation info
+  Widget _buildGuestBanner(int drillCount) {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(12),
+      margin: const EdgeInsets.fromLTRB(16, 8, 16, 0),
+      decoration: BoxDecoration(
+        gradient: LinearGradient(
+          colors: [Colors.blue.shade50, Colors.purple.shade50],
+          begin: Alignment.centerLeft,
+          end: Alignment.centerRight,
+        ),
+        borderRadius: BorderRadius.circular(8),
+        border: Border.all(color: Colors.blue.shade200),
+      ),
+      child: Row(
+        children: [
+          Icon(
+            Icons.info_outline,
+            color: Colors.blue.shade600,
+            size: 20,
+          ),
+          const SizedBox(width: 8),
+          Expanded(
+            child: Text(
+              'Guest access: Showing $drillCount drills. Create an account for 100+ drills!',
+              style: TextStyle(
+                fontFamily: AppTheme.fontPoppins,
+                fontSize: 12,
+                color: Colors.blue.shade700,
+                fontWeight: FontWeight.w500,
+              ),
+            ),
+          ),
+        ],
       ),
     );
   }

@@ -7,12 +7,14 @@ import '../models/filter_models.dart';
 import '../config/app_config.dart';
 import '../services/drill_api_service.dart';
 import './test_data_service.dart';
+import './guest_drill_service.dart'; // ✅ NEW: Import guest drill service
 import 'dart:async';
 import '../services/session_data_sync_service.dart';
 import '../services/progress_data_sync_service.dart';
 import '../services/user_manager_service.dart';
 import '../services/drill_group_sync_service.dart';
 import '../services/preferences_sync_service.dart';
+import './api_service.dart'; // ✅ NEW: Import ApiService for public endpoints
 
 // Add CompletedSession model
 class CompletedSession {
@@ -51,9 +53,12 @@ class AppStateService extends ChangeNotifier {
   
   // Services
   final DrillApiService _drillApiService = DrillApiService.shared;
+  final GuestDrillService _guestDrillService = GuestDrillService.shared; // ✅ NEW: Guest drill service
+  final ApiService _apiService = ApiService.shared; // ✅ NEW: API service for public endpoints
   final ProgressDataSyncService _progressSyncService = ProgressDataSyncService.shared;
   final DrillGroupSyncService _drillGroupSyncService = DrillGroupSyncService.shared;
   final PreferencesSyncService _preferencesSyncService = PreferencesSyncService.shared;
+  final UserManagerService _userManager = UserManagerService.instance; // ✅ NEW: User manager reference
   
   // User preferences
   UserPreferences _preferences = UserPreferences();
@@ -83,8 +88,22 @@ class AppStateService extends ChangeNotifier {
   final Set<DrillModel> _likedDrills = {};
   Set<DrillModel> get likedDrills => Set.unmodifiable(_likedDrills);
   
-  // All available drills - always use backend data for consistency
+  // ✅ NEW: Guest mode drill storage
+  List<DrillModel> _guestDrills = [];
+  bool _guestDrillsLoaded = false;
+  
+  // ✅ NEW: Guest mode detection
+  bool get isGuestMode => _userManager.isGuestMode;
+  bool get isAuthenticated => _userManager.isAuthenticated;
+  
+  // All available drills - now supports guest mode
   List<DrillModel> get _availableDrills {
+    // ✅ NEW: Handle guest mode
+    if (isGuestMode) {
+      if (kDebugMode) print('👤 Using guest drills data (limited set)');
+      return _guestDrills;
+    }
+    
     if (AppConfig.useTestData) {
       if (kDebugMode) print('🔧 Using test drills data (AppConfig.useTestData = true)');
       return TestDataService.getTestDrills();
@@ -191,6 +210,13 @@ class AppStateService extends ChangeNotifier {
   static const Duration _drillGroupsSyncDebounce = Duration(milliseconds: 1000);
   static const Duration _preferencesSyncDebounce = Duration(milliseconds: 1000);
 
+  // ✅ NEW: Add debouncing for search requests
+  Timer? _searchDebounceTimer;
+  static const Duration _searchDebounceDelay = Duration(milliseconds: 300);
+
+  // ✅ NEW: Track current search request to prevent overlapping
+  bool _isSearching = false;
+
   void addCompletedSession(CompletedSession session) {
     _completedSessions.add(session);
     
@@ -281,6 +307,7 @@ class AppStateService extends ChangeNotifier {
       print('   Environment: ${AppConfig.environmentName}');
       print('   Base URL: ${AppConfig.baseUrl}');
       print('   Use Test Data: ${AppConfig.useTestData}');
+      print('   Is Guest Mode: ${isGuestMode}');
     }
 
     await _loadPersistedState();
@@ -289,14 +316,110 @@ class AppStateService extends ChangeNotifier {
     _isInitialLoad = true;
     _isLoggingOut = false;
     
+    // ✅ NEW: Handle guest mode initialization
+    if (isGuestMode) {
+      if (kDebugMode) {
+        print('👤 Initializing for guest mode...');
+      }
+      await _loadGuestDrills();
+      if (_guestDrills.isNotEmpty) {
+        await _loadTestSessionForGuest();
+      }
+    } else {
     // Load test session if in debug mode and no session exists
     if (AppConfig.useTestData && _editableSessionDrills.isEmpty) {
       await _loadTestSession();
+      }
     }
     
     // No longer pre-caching drills - they'll be loaded from backend when needed
     
     notifyListeners();
+  }
+
+  // ✅ NEW: Load guest drills from public API
+  Future<void> _loadGuestDrills() async {
+    if (!isGuestMode) return;
+    
+    if (kDebugMode) {
+      print('📥 Loading guest drills...');
+    }
+    
+    _setLoading(true);
+    
+    try {
+      final guestDrills = await _guestDrillService.fetchGuestDrills();
+      _guestDrills = guestDrills;
+      _guestDrillsLoaded = true;
+      
+      if (kDebugMode) {
+        print('✅ Loaded ${_guestDrills.length} guest drills');
+      }
+    } catch (e) {
+      if (kDebugMode) {
+        print('❌ Error loading guest drills: $e');
+      }
+      _setError('Failed to load guest drills: $e');
+    } finally {
+      _setLoading(false);
+    }
+  }
+
+  // ✅ NEW: Load a sample session for guest users
+  Future<void> _loadTestSessionForGuest() async {
+    if (!isGuestMode || _guestDrills.isEmpty) return;
+    
+    if (kDebugMode) {
+      print('📚 Loading sample session for guest with ${_guestDrills.length} available drills');
+    }
+    
+    try {
+      // Create a sample session with a few drills from different categories
+      final sampleDrills = <DrillModel>[];
+      
+      // Get one drill from each main category if available
+      final categories = ['Passing', 'Dribbling', 'Shooting', 'First Touch'];
+      for (final category in categories) {
+        final categoryDrill = _guestDrills.where((drill) => drill.skill == category).firstOrNull;
+        if (categoryDrill != null && sampleDrills.length < 3) {
+          sampleDrills.add(categoryDrill);
+        }
+      }
+      
+      // If we don't have 3 drills yet, add any remaining ones
+      if (sampleDrills.length < 3) {
+        for (final drill in _guestDrills) {
+          if (!sampleDrills.contains(drill) && sampleDrills.length < 3) {
+            sampleDrills.add(drill);
+          }
+        }
+      }
+      
+      // Convert to editable drills
+      final editableDrills = sampleDrills.map((drill) => EditableDrillModel(
+        drill: drill,
+        setsDone: 0,
+        totalSets: drill.sets > 0 ? drill.sets : 3,
+        totalReps: drill.reps > 0 ? drill.reps : 10,
+        totalDuration: drill.duration > 0 ? drill.duration : 10,
+        isCompleted: false,
+      )).toList();
+      
+      // Set session drills
+      _editableSessionDrills.clear();
+      _sessionDrills.clear();
+      _editableSessionDrills.addAll(editableDrills);
+      _sessionDrills.addAll(sampleDrills);
+      
+      if (kDebugMode) {
+        print('✅ Guest sample session loaded with ${sampleDrills.length} drills');
+      }
+      
+    } catch (e) {
+      if (kDebugMode) {
+        print('❌ Error loading guest sample session: $e');
+      }
+    }
   }
 
   /// Load all backend data (progress history and ordered session drills)
@@ -433,15 +556,11 @@ class AppStateService extends ChangeNotifier {
         }
         
         // ✅ MINIMAL FIX: Only notify listeners if not called during session completion
-        if (!_sessionCompletionFinished) {
-          notifyListeners();
-          if (kDebugMode) {
-            print('🔔 Called notifyListeners() for progress update');
-          }
-        } else {
-          if (kDebugMode) {
-            print('🔇 Skipping notifyListeners() - session completion finished');
-          }
+
+        // ✅ FIXED: Always notify listeners for progress updates - this fixes logout UI issues
+        notifyListeners();
+        if (kDebugMode) {
+          print('🔔 Called notifyListeners() for progress update');
         }
       } else {
         if (kDebugMode) {
@@ -486,7 +605,7 @@ class AppStateService extends ChangeNotifier {
   /// ✅ NEW: Force reset all session completion state and flags
   void _forceResetSessionCompletionState() {
     _sessionInProgress = false;
-    _currentSessionCompleted = false;
+    // _currentSessionCompleted = false; // ✅ FIXED: Commented out to prevent duplicate session completion when logging back in
     _sessionCompletionFinished = false;
     _isCompletingSession = false;
     _isLoadingPreferences = false;
@@ -514,6 +633,10 @@ class AppStateService extends ChangeNotifier {
     
     _preferencesSyncTimer?.cancel();
     _preferencesSyncTimer = null;
+    
+    // ✅ NEW: Cancel search debounce timer
+    _searchDebounceTimer?.cancel();
+    _searchDebounceTimer = null;
     
     if (kDebugMode) {
       print('🗑️ All sync timers cancelled');
@@ -708,9 +831,64 @@ class AppStateService extends ChangeNotifier {
     bool loadMore = false,
   }) async {
     
+    // ✅ FIXED: Prevent overlapping search requests
+    if (_isSearching && !loadMore) {
+      if (kDebugMode) {
+        print('🔄 Search already in progress, ignoring new request');
+      }
+      return;
+    }
+    
     // Don't allow multiple concurrent searches
     if (_isLoading && !loadMore) return;
     if (_isLoadingMore && loadMore) return;
+    
+    // ✅ NEW: Cancel previous debounce timer if new search comes in
+    if (!loadMore) {
+      _searchDebounceTimer?.cancel();
+    }
+    
+    // ✅ NEW: Use debouncing for new searches (but not for load more)
+    if (!loadMore) {
+      _searchDebounceTimer = Timer(_searchDebounceDelay, () {
+        _performSearch(
+          query: query,
+          skill: skill,
+          difficulty: difficulty,
+          trainingStyle: trainingStyle,
+          equipment: equipment,
+          maxDuration: maxDuration,
+          loadMore: loadMore,
+        );
+      });
+      return;
+    } else {
+      // Load more requests are immediate
+      await _performSearch(
+        query: query,
+        skill: skill,
+        difficulty: difficulty,
+        trainingStyle: trainingStyle,
+        equipment: equipment,
+        maxDuration: maxDuration,
+        loadMore: loadMore,
+      );
+    }
+  }
+
+  /// ✅ NEW: Perform the actual search with proper pagination
+  Future<void> _performSearch({
+    String? query,
+    String? skill,
+    String? difficulty,
+    String? trainingStyle,
+    List<String>? equipment,
+    int? maxDuration,
+    bool loadMore = false,
+  }) async {
+    
+    // ✅ FIXED: Set search in progress flag
+    _isSearching = true;
     
     // Reset pagination for new search
     if (!loadMore) {
@@ -721,7 +899,10 @@ class AppStateService extends ChangeNotifier {
       _lastSearchDifficulty = difficulty;
     } else {
       // Check if we can load more
-      if (!_hasMoreSearchResults) return;
+      if (!_hasMoreSearchResults) {
+        _isSearching = false;
+        return;
+      }
       _currentSearchPage++;
     }
     
@@ -729,7 +910,37 @@ class AppStateService extends ChangeNotifier {
     _clearError();
     
     try {
-      if (AppConfig.useTestData) {
+      // ✅ FIXED: Handle guest mode with proper pagination
+      if (isGuestMode) {
+        // ✅ FIXED: For guest mode, use proper pagination instead of always getting all drills
+        final pageSize = 10; // Smaller page size for guests
+        final guestDrills = await _guestDrillService.searchGuestDrills(
+          query: query ?? _lastSearchQuery,
+          category: skill ?? _lastSearchSkill,
+          difficulty: difficulty ?? _lastSearchDifficulty,
+          page: _currentSearchPage,
+          limit: pageSize,
+        );
+        
+        // ✅ FIXED: Handle pagination properly for guests
+        if (loadMore) {
+          _searchResults.addAll(guestDrills);
+        } else {
+          _searchResults = guestDrills;
+        }
+        
+        // ✅ FIXED: Calculate pagination for guests
+        // For simplicity, assume we have more results if we got a full page
+        _hasMoreSearchResults = guestDrills.length == pageSize;
+        _totalSearchResults = _searchResults.length + (_hasMoreSearchResults ? 1 : 0);
+        _totalSearchPages = (_totalSearchResults / pageSize).ceil();
+        
+        if (kDebugMode) {
+          print('👤 Guest search completed: ${guestDrills.length} drills on page $_currentSearchPage');
+          print('  - Total results so far: ${_searchResults.length}');
+          print('  - Has more: $_hasMoreSearchResults');
+        }
+      } else if (AppConfig.useTestData) {
         // Use test data service
         final filters = DrillSearchFilters(
           query: query ?? _lastSearchQuery,
@@ -789,6 +1000,7 @@ class AppStateService extends ChangeNotifier {
       if (kDebugMode) print('❌ Search error: $e');
     } finally {
       loadMore ? _setLoadingMore(false) : _setLoading(false);
+      _isSearching = false; // ✅ FIXED: Reset search in progress flag
     }
     
     notifyListeners();
@@ -800,7 +1012,15 @@ class AppStateService extends ChangeNotifier {
     _clearError();
     
     try {
-      if (AppConfig.useTestData) {
+      // ✅ NEW: Handle guest mode
+      if (isGuestMode) {
+        final guestDrills = await _guestDrillService.searchGuestDrills(
+          category: skill,
+          limit: 10, // Limited for guests
+        );
+        if (kDebugMode) print('👤 Loaded ${guestDrills.length} guest drills for skill: $skill (limited)');
+        return guestDrills;
+      } else if (AppConfig.useTestData) {
         final drills = await TestDataService.getDrillsBySkill(skill);
         if (kDebugMode) print('📚 Loaded ${drills.length} test drills for skill: $skill');
         return drills;
@@ -825,7 +1045,13 @@ class AppStateService extends ChangeNotifier {
     _clearError();
     
     try {
-      if (AppConfig.useTestData) {
+      // ✅ NEW: Handle guest mode
+      if (isGuestMode) {
+        // For guests, return a sample of their limited drills as "popular"
+        final popularGuestDrills = _guestDrills.take(8).toList();
+        if (kDebugMode) print('👤 Loaded ${popularGuestDrills.length} popular guest drills (limited)');
+        return popularGuestDrills;
+      } else if (AppConfig.useTestData) {
         final drills = await TestDataService.getPopularDrills();
         if (kDebugMode) print('📚 Loaded ${drills.length} popular test drills');
         return drills;
@@ -1717,6 +1943,14 @@ class AppStateService extends ChangeNotifier {
   ];
 
   void _scheduleSessionDrillsSync() {
+    // ✅ NEW: Skip sync for guest users
+    if (isGuestMode) {
+      if (kDebugMode) {
+        print('👤 AppStateService: Skipping session drills sync for guest user');
+      }
+      return;
+    }
+    
     _sessionDrillsSyncTimer?.cancel();
     _sessionDrillsSyncTimer = Timer(_sessionDrillsSyncDebounce, () async {
       await SessionDataSyncService.shared.syncOrderedSessionDrills(_editableSessionDrills);
@@ -1724,6 +1958,14 @@ class AppStateService extends ChangeNotifier {
   }
 
   void _scheduleDrillGroupsSync() {
+    // ✅ NEW: Skip sync for guest users
+    if (isGuestMode) {
+      if (kDebugMode) {
+        print('👤 AppStateService: Skipping drill groups sync for guest user');
+      }
+      return;
+    }
+    
     _drillGroupsSyncTimer?.cancel();
     _drillGroupsSyncTimer = Timer(_drillGroupsSyncDebounce, () async {
       await _drillGroupSyncService.syncAllDrillGroups(
@@ -1734,8 +1976,15 @@ class AppStateService extends ChangeNotifier {
   }
 
   void _schedulePreferencesSync() {
+    // ✅ UPDATED: Use debouncing for guest users too to prevent spamming the backend
     _preferencesSyncTimer?.cancel();
     _preferencesSyncTimer = Timer(_preferencesSyncDebounce, () async {
+      if (isGuestMode) {
+        if (kDebugMode) {
+          print('👤 AppStateService: Guest mode detected - using public session generation (debounced)');
+        }
+        await _generateGuestSession();
+      } else {
       await _preferencesSyncService.syncPreferencesWithBackend(
         time: _preferences.selectedTime,
         equipment: _preferences.selectedEquipment,
@@ -1749,7 +1998,217 @@ class AppStateService extends ChangeNotifier {
       // Note: updateOrderedSessionDrillsThroughPreferences will also set loading to false
       // if new drills are received, but we set it here as a fallback
       _setLoadingPreferences(false);
+      }
     });
+  }
+
+  // ✅ NEW: Generate session for guest users using public endpoint
+  Future<void> _generateGuestSession() async {
+    if (!isGuestMode) return;
+    
+    try {
+      if (kDebugMode) {
+        print('👤 Generating guest session with preferences:');
+        print('   - Time: ${_preferences.selectedTime}');
+        print('   - Equipment: ${_preferences.selectedEquipment}');
+        print('   - Training Style: ${_preferences.selectedTrainingStyle}');
+        print('   - Location: ${_preferences.selectedLocation}');
+        print('   - Difficulty: ${_preferences.selectedDifficulty}');
+        print('   - Skills: ${_preferences.selectedSkills}');
+      }
+      
+      // Prepare preferences for backend
+      final preferencesData = {
+        'duration': _mapTimeToMinutes(_preferences.selectedTime),
+        'available_equipment': _preferences.selectedEquipment.toList(),
+        'training_style': _preferences.selectedTrainingStyle ?? 'medium_intensity',
+        'training_location': _preferences.selectedLocation ?? 'full_field',
+        'difficulty': _preferences.selectedDifficulty ?? 'beginner',
+        'target_skills': _preferences.selectedSkills.toList(),
+      };
+      
+      final requestData = {
+        'preferences': preferencesData,
+      };
+      
+      if (kDebugMode) {
+        print('👤 Sending guest session request: $requestData');
+      }
+      
+      final response = await _apiService.post(
+        '/public/session/generate',
+        body: requestData,
+        requiresAuth: false, // Public endpoint
+      );
+      
+      if (response.isSuccess && response.data != null) {
+        final sessionData = response.data!['data'];
+        if (sessionData != null && sessionData['drills'] != null) {
+          final drillsJson = sessionData['drills'] as List<dynamic>;
+          
+          if (kDebugMode) {
+            print('👤 Received ${drillsJson.length} drills from guest session generation');
+          }
+          
+          // Convert to EditableDrillModel objects
+          final editableDrills = drillsJson.map((drillJson) {
+            // Parse the drill data
+            final drill = DrillModel(
+              id: drillJson['uuid'] ?? '',
+              title: drillJson['title'] ?? 'Unnamed Drill',
+              skill: _mapBackendSkillToFrontend(drillJson['primary_skill']?['category'] ?? 'general'),
+              subSkills: _extractSubSkills(drillJson),
+              sets: drillJson['sets'] ?? 3,
+              reps: drillJson['reps'] ?? 10,
+              duration: drillJson['duration'] ?? 10,
+              description: drillJson['description'] ?? '',
+              instructions: (drillJson['instructions'] as List<dynamic>?)?.cast<String>() ?? [],
+              tips: (drillJson['tips'] as List<dynamic>?)?.cast<String>() ?? [],
+              equipment: (drillJson['equipment'] as List<dynamic>?)?.cast<String>() ?? [],
+              trainingStyle: drillJson['intensity'] ?? 'medium',
+              difficulty: drillJson['difficulty'] ?? 'beginner',
+              videoUrl: drillJson['video_url'] ?? '',
+            );
+            
+            return EditableDrillModel(
+              drill: drill,
+              setsDone: 0,
+              totalSets: drill.sets > 0 ? drill.sets : 3,
+              totalReps: drill.reps > 0 ? drill.reps : 10,
+              totalDuration: drill.duration > 0 ? drill.duration : 10,
+              isCompleted: false,
+            );
+          }).toList();
+          
+          // Update session drills
+          _editableSessionDrills.clear();
+          _sessionDrills.clear();
+          _editableSessionDrills.addAll(editableDrills);
+          _sessionDrills.addAll(editableDrills.map((ed) => ed.drill));
+          
+          if (kDebugMode) {
+            print('✅ Guest session updated with ${editableDrills.length} drills');
+          }
+        }
+      } else {
+        if (kDebugMode) {
+          print('❌ Failed to generate guest session: ${response.error}');
+        }
+      }
+      
+    } catch (e) {
+      if (kDebugMode) {
+        print('❌ Error generating guest session: $e');
+      }
+    } finally {
+      // ✅ Always stop loading preferences
+      _setLoadingPreferences(false);
+      notifyListeners();
+    }
+  }
+
+  // ✅ NEW: Helper method to map time preference to minutes
+  int _mapTimeToMinutes(String? timePreference) {
+    switch (timePreference) {
+      case '15min':
+        return 15;
+      case '30min':
+        return 30;
+      case '45min':
+        return 45;
+      case '1h':
+        return 60;
+      case '1h30':
+        return 90;
+      case '2h+':
+        return 120;
+      default:
+        return 30; // Default to 30 minutes
+    }
+  }
+
+  // ✅ NEW: Helper method to map backend skill category to frontend
+  String _mapBackendSkillToFrontend(String backendSkill) {
+    const skillMap = {
+      'passing': 'Passing',
+      'shooting': 'Shooting',
+      'dribbling': 'Dribbling',
+      'first_touch': 'First Touch',
+      'defending': 'Defending',
+      'fitness': 'Fitness',
+      'general': 'General',
+    };
+    
+    return skillMap[backendSkill.toLowerCase()] ?? 'General';
+  }
+
+  // ✅ NEW: Helper method to extract sub-skills from drill JSON
+  List<String> _extractSubSkills(Map<String, dynamic> drillJson) {
+    final subSkills = <String>[];
+    
+    // Add primary sub-skill
+    final primarySubSkill = drillJson['primary_skill']?['sub_skill'];
+    if (primarySubSkill != null) {
+      subSkills.add(_mapBackendSubSkillToFrontend(primarySubSkill));
+    }
+    
+    // Add secondary sub-skills
+    final secondarySkills = drillJson['secondary_skills'] as List<dynamic>?;
+    if (secondarySkills != null) {
+      for (final skill in secondarySkills) {
+        final subSkill = skill['sub_skill'];
+        if (subSkill != null) {
+          subSkills.add(_mapBackendSubSkillToFrontend(subSkill));
+        }
+      }
+    }
+    
+    return subSkills;
+  }
+
+  // ✅ NEW: Helper method to map backend sub-skill to frontend
+  String _mapBackendSubSkillToFrontend(String backendSubSkill) {
+    const subSkillMap = {
+      // Dribbling
+      'close_control': 'Close control',
+      'speed_dribbling': 'Speed dribbling',
+      '1v1_moves': '1v1 moves',
+      'change_of_direction': 'Change of direction',
+      'ball_mastery': 'Ball mastery',
+      
+      // First Touch
+      'ground_control': 'Ground control',
+      'aerial_control': 'Aerial control',
+      'turn_with_ball': 'Turn with ball',
+      'touch_and_move': 'Touch and move',
+      'juggling': 'Juggling',
+      
+      // Passing
+      'short_passing': 'Short passing',
+      'long_passing': 'Long passing',
+      'one_touch_passing': 'One touch passing',
+      'technique': 'Technique',
+      'passing_with_movement': 'Passing with movement',
+      
+      // Shooting
+      'power_shots': 'Power shots',
+      'finesse_shots': 'Finesse shots',
+      'first_time_shots': 'First time shots',
+      '1v1_to_shoot': '1v1 to shoot',
+      'shooting_on_the_run': 'Shooting on the run',
+      'volleying': 'Volleying',
+      
+      // Defending
+      'tackling': 'Tackling',
+      'marking': 'Marking',
+      'intercepting': 'Intercepting',
+      'positioning': 'Positioning',
+      
+      // Fallback
+      'general': 'General',
+    };
+    
+    return subSkillMap[backendSubSkill.toLowerCase()] ?? backendSubSkill;
   }
 
   // ✅ DEBUG METHODS FOR STREAK TESTING

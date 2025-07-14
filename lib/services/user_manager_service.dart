@@ -24,6 +24,9 @@ class UserManagerService extends ChangeNotifier {
   Timer? _proactiveRefreshTimer;
   DateTime? _tokenCreatedAt;
 
+  // ✅ NEW: Guest mode state
+  bool _isGuestMode = false;
+  
   // Getters
   String get email => _email;
   String get accessToken => _accessToken;
@@ -32,6 +35,18 @@ class UserManagerService extends ChangeNotifier {
   bool get userHasAccountHistory => _userHasAccountHistory;
   bool get showLoginPage => _showLoginPage;
   bool get showIntroAnimation => _showIntroAnimation;
+  
+  // ✅ NEW: Guest mode getters
+  bool get isGuestMode => _isGuestMode;
+  bool get isAuthenticated => _isLoggedIn && !_isGuestMode; // Only true for real authenticated users
+  bool get hasValidToken => _accessToken.isNotEmpty && !_isGuestMode;
+  
+  // ✅ NEW: Combined user state getter
+  String get userDisplayName {
+    if (_isGuestMode) return 'Guest User';
+    if (_email.isNotEmpty) return _email;
+    return 'Unknown User';
+  }
 
   /// Initialize user manager and check for existing auth state
   Future<void> initialize() async {
@@ -71,6 +86,9 @@ class UserManagerService extends ChangeNotifier {
         _tokenCreatedAt = DateTime.fromMillisecondsSinceEpoch(tokenCreatedAtMs);
       }
       
+      // ✅ Guest mode is never loaded from persistence - always starts false
+      _isGuestMode = false;
+
       if (kDebugMode) {
         print('🔑 UserManager: Loaded from storage - Email: $_email, LoggedIn: $_isLoggedIn');
       }
@@ -135,7 +153,7 @@ class UserManagerService extends ChangeNotifier {
   }
 
   /// Clear user data and logout
-  Future<void> logout() async {
+  Future<void> logout({bool skipNotification = false}) async {
     if (kDebugMode) {
       print('🚪 UserManager: Logging out user $_email');
     }
@@ -152,12 +170,15 @@ class UserManagerService extends ChangeNotifier {
       _userHasAccountHistory = false;
       _showLoginPage = false;
       _tokenCreatedAt = null;
+      _isGuestMode = false; // ✅ Also clear guest mode on logout
       
       // Clear storage
       await _clearUserDataFromStorage();
       
-      // Notify listeners
-      notifyListeners();
+      // Notify listeners unless explicitly skipped
+      if (!skipNotification) {
+        notifyListeners();
+      }
       
       if (kDebugMode) {
         print('✅ UserManager: User logged out successfully');
@@ -168,7 +189,9 @@ class UserManagerService extends ChangeNotifier {
       }
       // Even if there's an error, ensure we clear the login state
       _isLoggedIn = false;
-      notifyListeners();
+      if (!skipNotification) {
+        notifyListeners();
+      }
     }
   }
 
@@ -183,6 +206,7 @@ class UserManagerService extends ChangeNotifier {
       await prefs.remove('isLoggedIn');
       await prefs.remove('userHasAccountHistory');
       await prefs.remove('tokenCreatedAt');
+      // ✅ No need to clear guest mode from persistence since it's never saved
       
       if (kDebugMode) {
         print('🗑️ UserManager: Cleared storage');
@@ -211,9 +235,6 @@ class UserManagerService extends ChangeNotifier {
     _showIntroAnimation = false;
     notifyListeners();
   }
-
-  /// Check if user has valid authentication token
-  bool get hasValidToken => _accessToken.isNotEmpty && _isLoggedIn;
 
   /// Get authorization header for API requests
   Map<String, String> get authHeaders {
@@ -316,6 +337,51 @@ class UserManagerService extends ChangeNotifier {
     }
   }
 
+  // ✅ NEW: Enter guest mode
+  Future<void> enterGuestMode() async {
+    if (kDebugMode) {
+      print('👤 UserManagerService: Entering guest mode');
+    }
+    
+    // Clear any existing auth data
+    await logout(skipNotification: true);
+    
+    // Set guest mode state
+    _isGuestMode = true;
+    _email = '';
+    _accessToken = '';
+    _refreshToken = '';
+    _isLoggedIn = false;
+    _userHasAccountHistory = false;
+    
+    // Don't persist guest mode to SharedPreferences
+    // Guest mode is always temporary and memory-only
+    
+    if (kDebugMode) {
+      print('✅ UserManagerService: Guest mode activated');
+    }
+    
+    notifyListeners();
+  }
+
+  // ✅ NEW: Exit guest mode (usually to go to account creation/login)
+  Future<void> exitGuestMode() async {
+    if (kDebugMode) {
+      print('👤 UserManagerService: Exiting guest mode');
+    }
+    
+    _isGuestMode = false;
+    
+    if (kDebugMode) {
+      print('✅ UserManagerService: Guest mode deactivated');
+    }
+    
+    notifyListeners();
+  }
+
+  // ✅ NEW: Check if user can access premium features
+  bool get canAccessPremiumFeatures => _isLoggedIn && !_isGuestMode;
+
   @override
   void dispose() {
     _cancelProactiveTokenRefresh();
@@ -334,6 +400,11 @@ User Manager Debug Info:
 - ShowLoginPage: $_showLoginPage
 - TokenCreatedAt: $_tokenCreatedAt
 - ProactiveRefreshActive: ${_proactiveRefreshTimer != null}
+- Is Guest Mode: $_isGuestMode
+- Is Authenticated: $isAuthenticated
+- Has Valid Token: $hasValidToken
+- Can Access Premium: $canAccessPremiumFeatures
+- User Display Name: $userDisplayName
 ''';
   }
 } 

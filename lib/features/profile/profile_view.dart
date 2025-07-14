@@ -13,6 +13,8 @@ import 'change_password_view.dart';
 import 'privacy_policy_view.dart';
 import 'terms_of_service_view.dart';
 import '../../utils/haptic_utils.dart';
+import '../auth/login_view.dart'; // Fixed import path for LoginView
+import '../../main.dart'; // Fixed import path for MyApp
 
 class ProfileView extends StatefulWidget {
   const ProfileView({Key? key}) : super(key: key);
@@ -43,22 +45,34 @@ class _ProfileViewState extends State<ProfileView> {
                   _buildSection(
                     title: 'Account',
                     items: [
-                      _buildMenuItem(
-                        icon: Icons.edit_outlined,
-                        title: 'Edit your details',
-                        onTap: () {
-                          HapticUtils.lightImpact(); // Light haptic for profile edit
-                          _handleEditDetails();
-                        },
-                      ),
-                      _buildMenuItem(
-                        icon: Icons.lock_outline,
-                        title: 'Change Password',
-                        onTap: () {
-                          HapticUtils.lightImpact(); // Light haptic for password change
-                          _handleChangePassword();
-                        },
-                      ),
+                      // ✅ NEW: Conditional items based on guest mode
+                      if (!context.read<UserManagerService>().isGuestMode) ...[
+                        _buildMenuItem(
+                          icon: Icons.edit_outlined,
+                          title: 'Edit your details',
+                          onTap: () {
+                            HapticUtils.lightImpact(); // Light haptic for profile edit
+                            _handleEditDetails();
+                          },
+                        ),
+                        _buildMenuItem(
+                          icon: Icons.lock_outline,
+                          title: 'Change Password',
+                          onTap: () {
+                            HapticUtils.lightImpact(); // Light haptic for password change
+                            _handleChangePassword();
+                          },
+                        ),
+                      ] else ...[
+                        _buildMenuItem(
+                          icon: Icons.account_circle_outlined,
+                          title: 'Create Account',
+                          onTap: () {
+                            HapticUtils.mediumImpact(); // Medium haptic for major action
+                            _handleCreateAccount();
+                          },
+                        ),
+                      ],
                       _buildMenuItem(
                         icon: Icons.share_outlined,
                         title: 'Share With a Friend',
@@ -519,6 +533,15 @@ class _ProfileViewState extends State<ProfileView> {
     _showDeleteAccountConfirmationDialog();
   }
 
+  // ✅ NEW: Handle create account for guest users
+  void _handleCreateAccount() {
+    // Navigate to onboarding flow
+    Navigator.of(context).pushAndRemoveUntil(
+      MaterialPageRoute(builder: (context) => const OnboardingFlow()),
+      (route) => false,
+    );
+  }
+
   void _showDeleteAccountConfirmationDialog() {
     showDialog(
       context: context,
@@ -534,7 +557,7 @@ class _ProfileViewState extends State<ProfileView> {
         actions: [
           TextButton(
             onPressed: () {
-              HapticUtils.lightImpact(); // Light haptic for cancel
+              HapticUtils.lightImpact();
               Navigator.pop(context);
             },
             child: const Text(
@@ -544,49 +567,17 @@ class _ProfileViewState extends State<ProfileView> {
           ),
           TextButton(
             onPressed: () async {
-              HapticUtils.heavyImpact(); // Heavy haptic for destructive confirmation
+              HapticUtils.heavyImpact();
               Navigator.pop(context);
               
-              // Show loading indicator
-              showDialog(
-                context: context,
-                barrierDismissible: false,
-                builder: (context) => const Center(
-                  child: CircularProgressIndicator(),
-                ),
-              );
+              // Perform account deletion and navigate immediately
+              await LoginService.shared.deleteAccount();
               
-              // Perform account deletion
-              final success = await LoginService.shared.deleteAccount();
-              
-              // Close loading indicator
               if (mounted) {
-                Navigator.pop(context);
-                
-                if (success) {
-                  // Show success message
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(
-                      content: Text('Account deleted successfully'),
-                      backgroundColor: AppTheme.success,
-                      duration: Duration(seconds: 2),
-                    ),
-                  );
-                  // ✅ QUICK FIX: Force navigation to onboarding immediately
-                  Navigator.of(context).pushAndRemoveUntil(
-                    MaterialPageRoute(builder: (context) => const OnboardingFlow()),
-                    (route) => false,
-                  );
-                } else {
-                  // Show error message
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(
-                      content: Text('Failed to delete account. Please try again.'),
-                      backgroundColor: AppTheme.error,
-                      duration: Duration(seconds: 3),
-                    ),
-                  );
-                }
+                Navigator.of(context).pushAndRemoveUntil(
+                  MaterialPageRoute(builder: (context) => const OnboardingFlow()),
+                  (route) => false,
+                );
               }
             },
             child: const Text(
@@ -754,7 +745,7 @@ class _ProfileViewState extends State<ProfileView> {
         actions: [
           TextButton(
             onPressed: () {
-              HapticUtils.lightImpact(); // Light haptic for cancel
+              HapticUtils.lightImpact();
               Navigator.pop(context);
             },
             child: const Text(
@@ -764,33 +755,13 @@ class _ProfileViewState extends State<ProfileView> {
           ),
           TextButton(
             onPressed: () async {
-              HapticUtils.mediumImpact(); // Medium haptic for password confirmation
+              HapticUtils.mediumImpact();
               Navigator.pop(context);
               
-              // Show loading indicator
-              showDialog(
-                context: context,
-                barrierDismissible: false,
-                builder: (context) => const Center(
-                  child: CircularProgressIndicator(),
-                ),
-              );
-              
-              // Perform logout
+              // Perform logout and navigate immediately
               await LoginService.shared.logoutUser();
               
-              // Close loading indicator
               if (mounted) {
-                Navigator.pop(context);
-                // Show success message (optional)
-                ScaffoldMessenger.of(context).showSnackBar(
-                  const SnackBar(
-                    content: Text('Logged out successfully'),
-                    backgroundColor: AppTheme.success,
-                    duration: Duration(seconds: 2),
-                  ),
-                );
-                // ✅ QUICK FIX: Force navigation to onboarding immediately
                 Navigator.of(context).pushAndRemoveUntil(
                   MaterialPageRoute(builder: (context) => const OnboardingFlow()),
                   (route) => false,

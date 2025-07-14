@@ -7,7 +7,9 @@ import '../../features/auth/login_view.dart';
 import '../../constants/app_theme.dart';
 import '../../services/onboarding_service.dart';
 import '../../models/onboarding_model.dart';
+import '../../services/user_manager_service.dart'; // ✅ NEW: Import user manager
 import '../../main.dart'; // Import for MyApp
+import 'package:flutter/foundation.dart'; // Import for kDebugMode
 
 /// ✅ NEW: Staggered Animation for Elements
 class StaggeredFadeInUp extends StatefulWidget {
@@ -295,6 +297,14 @@ class _OnboardingFlowState extends State<OnboardingFlow> {
   }
 
   void _next() {
+    // ✅ SAFETY: Never allow step to go beyond registration
+    if (_step >= stepRegistration) {
+      if (kDebugMode) {
+        print('🛑 OnboardingFlow: Attempted to go beyond registration step. Current: $_step, Max: $stepRegistration');
+      }
+      return;
+    }
+
     // ✅ NEW: Handle smooth transition from preview to first question
     if (_step == stepPreview) {
       print('🎬 Starting Bravo transition animation');
@@ -335,11 +345,16 @@ class _OnboardingFlowState extends State<OnboardingFlow> {
         _previousStep = _step;
         _step = 0;
         _resetAnimationStates();
+        // ✅ NEW: Reset skip button state when going back to initial
+        _isSkipButtonDisabled = false;
       }); // back to initial
     } else if (_step > 1) {
       setState(() {
         _previousStep = _step;
         _step--;
+        // ✅ NEW: Always reset skip button state when going back
+        _isSkipButtonDisabled = false;
+        
         // Reset animation states when returning to preview
         if (_step == stepPreview) {
           _resetAnimationStates();
@@ -382,7 +397,7 @@ class _OnboardingFlowState extends State<OnboardingFlow> {
     _secondTextComplete = false; // Reset tap-to-continue state
     _isBravoTransitioning = false;
     _showQuestionContent = false;
-    _isSkipButtonDisabled = false; // Reset skip button
+    _isSkipButtonDisabled = false; // ✅ NEW: Reset skip button state
   }
 
   // Build the onboarding flow with static background and content animations
@@ -424,8 +439,24 @@ class _OnboardingFlowState extends State<OnboardingFlow> {
       return _buildRegistrationScreen();
     }
 
-    // Fallback (should never hit)
-    print('🖥️ Showing fallback screen');
+    // ✅ SAFETY: If step goes beyond registration, clamp it back and show registration
+    if (_step > stepRegistration) {
+      print('🛑 OnboardingFlow: Step $_step beyond registration ($stepRegistration), clamping back');
+      // Reset step to registration
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted) {
+          setState(() {
+            _step = stepRegistration;
+            _isSkipButtonDisabled = true; // Ensure skip stays disabled
+          });
+        }
+      });
+      print('🖥️ Showing registration screen (fallback)');
+      return _buildRegistrationScreen();
+    }
+
+    // Final fallback (should never hit now)
+    print('🖥️ Showing fallback screen - this should not happen');
     return const SizedBox.shrink();
   }
 
@@ -530,10 +561,49 @@ class _OnboardingFlowState extends State<OnboardingFlow> {
                     ),
                   ),
                 ),
+                // ✅ NEW: Guest mode button
+                StaggeredFadeInUp(
+                  delay: 800,
+                  child: BouncyButton(
+                    onTap: () {
+                      HapticUtils.lightImpact(); // Light haptic for guest mode
+                      _enterGuestMode();
+                    },
+                    child: TextButton(
+                      onPressed: () {
+                        HapticUtils.lightImpact(); // Light haptic for guest mode
+                        _enterGuestMode();
+                      },
+                      style: TextButton.styleFrom(
+                        padding: const EdgeInsets.symmetric(vertical: 16),
+                      ),
+                      child: Row(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          Icon(
+                            Icons.visibility_outlined,
+                            size: 20,
+                            color: Colors.grey.shade600,
+                          ),
+                          const SizedBox(width: 8),
+                          Text(
+                            'Try as Guest',
+                            style: TextStyle(
+                              fontFamily: 'Poppins',
+                              fontSize: 16,
+                              fontWeight: FontWeight.w600,
+                              color: Colors.grey.shade600,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                ),
               ],
             ),
           ),
-          const SizedBox(height: 32),
+          const SizedBox(height: 15),
         ],
       ),
     );
@@ -1049,6 +1119,10 @@ class _OnboardingFlowState extends State<OnboardingFlow> {
                     keyboardType: TextInputType.emailAddress,
                     isPassword: false,
                     yellow: yellow,
+                    onSubmitted: () {
+                      // ✅ NEW: Move to password field
+                      FocusScope.of(context).nextFocus();
+                    },
                   ),
                   const SizedBox(height: 16),
                   _BravoTextField(
@@ -1063,6 +1137,10 @@ class _OnboardingFlowState extends State<OnboardingFlow> {
                     yellow: yellow,
                     passwordVisible: _regPasswordVisible,
                     onToggleVisibility: () => setState(() => _regPasswordVisible = !_regPasswordVisible),
+                    onSubmitted: () {
+                      // ✅ NEW: Move to confirm password field
+                      FocusScope.of(context).nextFocus();
+                    },
                   ),
                   const SizedBox(height: 16),
                   _BravoTextField(
@@ -1077,6 +1155,14 @@ class _OnboardingFlowState extends State<OnboardingFlow> {
                     yellow: yellow,
                     passwordVisible: _regConfirmPasswordVisible,
                     onToggleVisibility: () => setState(() => _regConfirmPasswordVisible = !_regConfirmPasswordVisible),
+                    onSubmitted: () {
+                      // ✅ NEW: Dismiss keyboard and attempt registration if form is valid
+                      FocusScope.of(context).unfocus();
+                      if (_regEmail.isNotEmpty && _regPassword.isNotEmpty && _regConfirmPassword.isNotEmpty && !_isSubmitting) {
+                        // Trigger registration
+                        _attemptRegistration();
+                      }
+                    },
                   ),
                   if (_regError.isNotEmpty)
                     Padding(
@@ -1091,6 +1177,13 @@ class _OnboardingFlowState extends State<OnboardingFlow> {
                         ),
                       ),
                     ),
+                  const SizedBox(height: 16),
+                  // ✅ NEW: Password validation widget with live feedback
+                  _PasswordValidationWidget(
+                    password: _regPassword,
+                    confirmPassword: _regConfirmPassword,
+                    email: _regEmail,
+                  ),
                 ],
               ),
             ),
@@ -1109,78 +1202,108 @@ class _OnboardingFlowState extends State<OnboardingFlow> {
                     )
                   : BravoButton(
                       text: 'Create Account',
-                      onPressed: (_regEmail.isEmpty || _regPassword.isEmpty || _regConfirmPassword.isEmpty)
-                          ? null
-                          : () async {
-                              HapticUtils.mediumImpact(); // Medium haptic for registration
-                              setState(() {
-                                _regError = '';
-                              });
-                              
-                              // Enhanced validation
-                              if (!_regEmail.contains('@') || !_regEmail.contains('.')) {
-                                setState(() => _regError = 'Please enter a valid email address.');
-                                return;
-                              } else if (_regPassword.length < 6) {
-                                setState(() => _regError = 'Password must be at least 6 characters.');
-                                return;
-                              } else if (_regPassword != _regConfirmPassword) {
-                                setState(() => _regError = 'Passwords do not match.');
-                                return;
-                              }
-                              
-                              setState(() => _isSubmitting = true);
-                              
-                              // ✅ FIXED: Correct answer mapping based on step indices
-                              final answers = _answers;
-                              final multiAnswers = _multiAnswers;
-                              
-                              // Map step numbers to question indices correctly
-                              final onboardingData = OnboardingData(
-                                email: _regEmail,
-                                password: _regPassword,
-                                primaryGoal: onboardingQuestions[0].options[answers[stepFirstQuestion] ?? 0],
-                                trainingExperience: onboardingQuestions[1].options[answers[stepFirstQuestion + 1] ?? 0],
-                                position: onboardingQuestions[2].options[answers[stepFirstQuestion + 2] ?? 0],
-                                ageRange: onboardingQuestions[3].options[answers[stepFirstQuestion + 3] ?? 0],
-                                strengths: (multiAnswers[stepFirstQuestion + 4] ?? <int>{})
-                                    .map((i) => onboardingQuestions[4].options[i]).toList(),
-                                areasToImprove: (multiAnswers[stepFirstQuestion + 5] ?? <int>{})
-                                    .map((i) => onboardingQuestions[5].options[i]).toList(),
-                              );
-                              
-                              final success = await OnboardingService.shared.submitOnboardingData(
-                                onboardingData,
-                                onError: (msg) {
-                                  setState(() {
-                                    _regError = msg;
-                                    _isSubmitting = false;
-                                  });
-                                },
-                              );
-                              
-                              if (success) {
-                                if (mounted) {
-                                  // Registration successful - let AuthenticationWrapper handle navigation
-                                  Navigator.of(context).pushAndRemoveUntil(
-                                    MaterialPageRoute(builder: (context) => const MyApp()),
-                                    (route) => false,
-                                  );
-                                }
-                              } else {
-                                setState(() => _isSubmitting = false);
-                              }
-                            },
-                      color: (_regEmail.isEmpty || _regPassword.isEmpty || _regConfirmPassword.isEmpty) ? Colors.grey.shade300 : yellow,
-                      backColor: (_regEmail.isEmpty || _regPassword.isEmpty || _regConfirmPassword.isEmpty) ? AppTheme.primaryGray : AppTheme.primaryDarkYellow,
+                      onPressed: (_isRegistrationFormValid()) ? () async {
+                              await _attemptRegistration();
+                            } : null,
+                      color: (_isRegistrationFormValid()) ? yellow : Colors.grey.shade300,
+                      backColor: (_isRegistrationFormValid()) ? AppTheme.primaryDarkYellow : AppTheme.primaryGray,
                       textColor: Colors.white,
-                      disabled: false,
+                      disabled: !_isRegistrationFormValid(),
                     ),
             ),
           ),
         ],
       ),
     );
+  }
+
+  /// ✅ NEW: Extract registration logic into a separate method
+  Future<void> _attemptRegistration() async {
+    if (_isSubmitting) return; // Prevent multiple submissions
+    
+    HapticUtils.mediumImpact(); // Medium haptic for registration
+    setState(() {
+      _regError = '';
+    });
+    
+    // Enhanced validation
+    if (!_regEmail.contains('@') || !_regEmail.contains('.')) {
+      setState(() => _regError = 'Please enter a valid email address.');
+      return;
+    } else if (_regPassword.length < 6) {
+      setState(() => _regError = 'Password must be at least 6 characters.');
+      return;
+    } else if (!_hasLetter(_regPassword)) {
+      setState(() => _regError = 'Password must contain at least one letter.');
+      return;
+    } else if (!_hasNumber(_regPassword)) {
+      setState(() => _regError = 'Password must contain at least one number.');
+      return;
+    } else if (_regPassword != _regConfirmPassword) {
+      setState(() => _regError = 'Passwords do not match.');
+      return;
+    }
+    
+    setState(() => _isSubmitting = true);
+    
+    // ✅ FIXED: Correct answer mapping based on step indices
+    final answers = _answers;
+    final multiAnswers = _multiAnswers;
+    
+    // Map step numbers to question indices correctly
+    final onboardingData = OnboardingData(
+      email: _regEmail,
+      password: _regPassword,
+      primaryGoal: onboardingQuestions[0].options[answers[stepFirstQuestion] ?? 0],
+      trainingExperience: onboardingQuestions[1].options[answers[stepFirstQuestion + 1] ?? 0],
+      position: onboardingQuestions[2].options[answers[stepFirstQuestion + 2] ?? 0],
+      ageRange: onboardingQuestions[3].options[answers[stepFirstQuestion + 3] ?? 0],
+      strengths: (multiAnswers[stepFirstQuestion + 4] ?? <int>{})
+          .map((i) => onboardingQuestions[4].options[i]).toList(),
+      areasToImprove: (multiAnswers[stepFirstQuestion + 5] ?? <int>{})
+          .map((i) => onboardingQuestions[5].options[i]).toList(),
+    );
+    
+    final success = await OnboardingService.shared.submitOnboardingData(
+      onboardingData,
+      onError: (msg) {
+        setState(() {
+          _regError = msg;
+          _isSubmitting = false;
+        });
+      },
+    );
+    
+    if (success) {
+      if (mounted) {
+        // Registration successful - let AuthenticationWrapper handle navigation
+        Navigator.of(context).pushAndRemoveUntil(
+          MaterialPageRoute(builder: (context) => const MyApp()),
+          (route) => false,
+        );
+      }
+    } else {
+      setState(() => _isSubmitting = false);
+    }
+  }
+
+  /// ✅ Enhanced: Check if registration form is valid
+  bool _isRegistrationFormValid() {
+    return _regEmail.contains('@') && 
+           _regEmail.contains('.') && 
+           _regEmail.length > 5 &&
+           _regPassword.length >= 6 &&
+           _hasLetter(_regPassword) &&
+           _hasNumber(_regPassword) &&
+           _regPassword == _regConfirmPassword;
+  }
+
+  bool _hasLetter(String password) {
+    return password.contains(RegExp(r'[a-zA-Z]'));
+  }
+
+  bool _hasNumber(String password) {
+    return password.contains(RegExp(r'[0-9]'));
   }
 
   /// ✅ Helper methods
@@ -1191,30 +1314,43 @@ class _OnboardingFlowState extends State<OnboardingFlow> {
   }
 
   void _skip() {
-    // Prevent spam clicking
-    if (_isSkipButtonDisabled) return;
+    // ✅ IMMEDIATE: Prevent any action if already on or past registration
+    if (_step >= stepRegistration) {
+      if (kDebugMode) {
+        print('🛑 OnboardingFlow: Skip blocked - already at/past registration step: $_step');
+      }
+      return;
+    }
+
+    // ✅ IMMEDIATE: Prevent spam clicking
+    if (_isSkipButtonDisabled) {
+      if (kDebugMode) {
+        print('🛑 OnboardingFlow: Skip blocked - button already disabled');
+      }
+      return;
+    }
     
+    // ✅ IMMEDIATE: Disable button first thing
     setState(() {
       _isSkipButtonDisabled = true;
     });
     
-    // Re-enable skip button after delay
-    Future.delayed(const Duration(milliseconds: 800), () {
-      if (mounted) {
+    if (kDebugMode) {
+      print('⏭️ OnboardingFlow: Skip pressed - disabling button and advancing');
+    }
+    
+    // Re-enable skip button after delay (only if not at registration)
+    Future.delayed(const Duration(milliseconds: 1000), () {
+      if (mounted && _step < stepRegistration && _isSkipButtonDisabled) {
+        // Only re-enable if we're still in a valid state and button is still disabled
         setState(() {
           _isSkipButtonDisabled = false;
         });
       }
     });
 
-    // If on registration, do nothing
-    if (_step == stepRegistration) {
-      // Do nothing, already on registration
-      return;
-    } else {
-      HapticUtils.lightImpact(); // Light haptic for skip
-      _next();
-    }
+    HapticUtils.lightImpact(); // Light haptic for skip
+    _next();
   }
 
   void _goToLogin() {
@@ -1238,6 +1374,43 @@ class _OnboardingFlowState extends State<OnboardingFlow> {
         ),
       ),
     );
+  }
+
+  void _enterGuestMode() async {
+    if (kDebugMode) {
+      print('🚀 OnboardingFlow: Entering guest mode...');
+    }
+    
+    try {
+      // Enter guest mode using UserManagerService
+      await UserManagerService.instance.enterGuestMode();
+      
+      if (kDebugMode) {
+        print('✅ OnboardingFlow: Guest mode activated, navigating to main app');
+      }
+      
+      // Navigate to main app
+      if (mounted) {
+        Navigator.of(context).pushAndRemoveUntil(
+          MaterialPageRoute(builder: (context) => const MyApp()),
+          (route) => false,
+        );
+      }
+    } catch (e) {
+      if (kDebugMode) {
+        print('❌ OnboardingFlow: Error entering guest mode: $e');
+      }
+      
+      // Show error to user
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Error entering guest mode. Please try again.'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+    }
   }
 
   // Message bubble above Bravo
@@ -1728,6 +1901,128 @@ class _SimplifiedSlidingOptionsState extends State<_SimplifiedSlidingOptions>
   }
 }
 
+// ✅ NEW: Password validation widget with live feedback
+class _PasswordValidationWidget extends StatelessWidget {
+  final String password;
+  final String confirmPassword;
+  final String email;
+
+  const _PasswordValidationWidget({
+    required this.password,
+    required this.confirmPassword,
+    required this.email,
+    Key? key,
+  }) : super(key: key);
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.all(16),
+      margin: const EdgeInsets.only(top: 8),
+      decoration: BoxDecoration(
+        color: Colors.grey.shade50,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: Colors.grey.shade200),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            'Requirements:',
+            style: const TextStyle(
+              fontFamily: 'Poppins',
+              fontWeight: FontWeight.w600,
+              fontSize: 14,
+              color: Color(0xFF666666),
+            ),
+          ),
+          const SizedBox(height: 8),
+          
+          // Email validation
+          _buildValidationItem(
+            'Valid email address',
+            _isEmailValid(email),
+          ),
+          
+          // Password length
+          _buildValidationItem(
+            'At least 6 characters',
+            password.length >= 6,
+          ),
+          
+          // Password has letter
+          _buildValidationItem(
+            'Contains at least one letter',
+            _hasLetter(password),
+          ),
+          
+          // Password has number
+          _buildValidationItem(
+            'Contains at least one number',
+            _hasNumber(password),
+          ),
+          
+          // Passwords match
+          _buildValidationItem(
+            'Passwords match',
+            password.isNotEmpty && confirmPassword.isNotEmpty && password == confirmPassword,
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildValidationItem(String text, bool isValid) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 2),
+      child: Row(
+        children: [
+          AnimatedContainer(
+            duration: const Duration(milliseconds: 300),
+            width: 16,
+            height: 16,
+            decoration: BoxDecoration(
+              shape: BoxShape.circle,
+              color: isValid ? Colors.green : Colors.grey.shade300,
+            ),
+            child: isValid
+                ? const Icon(
+                    Icons.check,
+                    color: Colors.white,
+                    size: 12,
+                  )
+                : null,
+          ),
+          const SizedBox(width: 8),
+          Expanded(
+            child: Text(
+              text,
+              style: TextStyle(
+                fontFamily: 'Poppins',
+                fontSize: 13,
+                color: isValid ? Colors.green : Colors.grey.shade600,
+                fontWeight: isValid ? FontWeight.w500 : FontWeight.w400,
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  bool _isEmailValid(String email) {
+    return email.contains('@') && email.contains('.') && email.length > 5;
+  }
+
+  bool _hasLetter(String password) {
+    return password.contains(RegExp(r'[a-zA-Z]'));
+  }
+
+  bool _hasNumber(String password) {
+    return password.contains(RegExp(r'[0-9]'));
+  }
+}
+
 // ✅ Custom text field widget for consistent style (moved outside class)
 class _BravoTextField extends StatelessWidget {
   final String label;
@@ -1739,6 +2034,7 @@ class _BravoTextField extends StatelessWidget {
   final VoidCallback? onToggleVisibility;
   final Color yellow;
   final TextEditingController? controller;
+  final VoidCallback? onSubmitted; // ✅ NEW: Add onSubmitted callback
 
   const _BravoTextField({
     required this.label,
@@ -1750,6 +2046,7 @@ class _BravoTextField extends StatelessWidget {
     this.onToggleVisibility,
     required this.yellow,
     this.controller,
+    this.onSubmitted, // ✅ NEW: Add onSubmitted parameter
     Key? key,
   }) : super(key: key);
 
@@ -1761,6 +2058,17 @@ class _BravoTextField extends StatelessWidget {
       keyboardType: keyboardType,
       obscureText: isPassword && !passwordVisible,
       style: const TextStyle(fontFamily: 'Poppins', fontSize: 18),
+      // ✅ NEW: Add proper text input actions
+      textInputAction: _getTextInputAction(),
+      onSubmitted: (_) {
+        // ✅ NEW: Handle keyboard dismissal
+        if (onSubmitted != null) {
+          onSubmitted!();
+        } else {
+          // Default behavior: dismiss keyboard
+          FocusScope.of(context).unfocus();
+        }
+      },
       decoration: InputDecoration(
         labelText: label,
         labelStyle: const TextStyle(fontFamily: 'Poppins', fontWeight: FontWeight.w400, color: Color(0xFFBDBDBD)),
@@ -1791,5 +2099,16 @@ class _BravoTextField extends StatelessWidget {
             : null,
       ),
     );
+  }
+
+  // ✅ NEW: Determine appropriate text input action based on field type
+  TextInputAction _getTextInputAction() {
+    if (label.toLowerCase().contains('email')) {
+      return TextInputAction.next;
+    } else if (label.toLowerCase().contains('password') && !label.toLowerCase().contains('confirm')) {
+      return TextInputAction.next;
+    } else {
+      return TextInputAction.done;
+    }
   }
 } 

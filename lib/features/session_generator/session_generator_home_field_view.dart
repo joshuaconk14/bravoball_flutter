@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:rive/rive.dart';
 import '../../widgets/bravo_button.dart';
+import '../../widgets/guest_account_overlay.dart'; // ✅ NEW: Import reusable guest overlay
 import '../../models/editable_drill_model.dart';
 import '../../services/app_state_service.dart';
 import '../../services/audio_service.dart';
@@ -199,17 +200,7 @@ class _SessionGeneratorHomeFieldViewState extends State<SessionGeneratorHomeFiel
             right: screenWidth * 0.25,
             child: GestureDetector(
               onTap: () {
-                // Disable bag tap if session is complete and trophy is clickable
-                if (appState.isSessionComplete && !appState.currentSessionCompleted) {
-                  HapticUtils.lightImpact();
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(
-                      content: Text('Tap on the trophy first to claim your prize'),
-                      duration: Duration(seconds: 2),
-                    ),
-                  );
-                  return;
-                }
+                // ✅ REMOVED: Trophy restriction - users can always access backpack
                 HapticUtils.mediumImpact(); // Medium haptic for drill editor access
                 Navigator.of(context).push(
                   MaterialPageRoute(
@@ -274,6 +265,7 @@ class _SessionGeneratorHomeFieldViewState extends State<SessionGeneratorHomeFiel
                 print('🏆 Trophy tapped!');
                 print('  - isSessionComplete:  [38;5;10m${appState.isSessionComplete} [0m');
                 print('  - currentSessionCompleted:  [38;5;10m${appState.currentSessionCompleted} [0m');
+                print('  - isGuestMode: ${appState.isGuestMode}');
                 print('  - Total drills: ${appState.editableSessionDrills.length}');
                 print('  - Fully completed drills: ${appState.editableSessionDrills.where((d) => d.isFullyCompleted).length}');
                 print('  - Completed drills: ${appState.editableSessionDrills.where((d) => d.isCompleted).length}');
@@ -282,18 +274,29 @@ class _SessionGeneratorHomeFieldViewState extends State<SessionGeneratorHomeFiel
                   print('    Drill $i: ${drill.drill.title} - setsDone: ${drill.setsDone}/${drill.totalSets}, isCompleted: ${drill.isCompleted}, isFullyCompleted: ${drill.isFullyCompleted}');
                 }
               }
+              
+              // ✅ NEW: Check if guest mode - show overlay instead of completion
+              if (appState.isGuestMode && appState.isSessionComplete) {
+                HapticUtils.mediumImpact();
+                GuestAccountOverlay.show(
+                  context: context,
+                  title: 'Create an account to earn rewards',
+                  description: 'Track your progress, earn achievements, and unlock all features by creating an account.',
+                  themeColor: AppTheme.primaryYellow,
+                  showDismissButton: true,
+                );
+                return;
+              }
+              
               if (appState.currentSessionCompleted) {
                 HapticUtils.lightImpact();
                 _showSessionComplete();
               } else if (appState.isSessionComplete) {
                 HapticUtils.mediumImpact();
+                // ✅ Play success sound for first-time session completion
+                AudioService.playSuccess();
                 await appState.completeSession();
                 _showSessionComplete();
-                await Future.delayed(const Duration(milliseconds: 100));
-                appState.resetDrillProgressForNewSession();
-                if (kDebugMode) {
-                  print('🔄 Drill progress reset for new session');
-                }
               } else {
                 HapticUtils.lightImpact();
                 ScaffoldMessenger.of(context).showSnackBar(

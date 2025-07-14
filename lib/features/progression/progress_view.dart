@@ -3,8 +3,10 @@ import 'package:provider/provider.dart';
 import '../../services/app_state_service.dart';
 import '../../constants/app_theme.dart';
 import '../../widgets/info_popup_widget.dart';
+import '../../widgets/guest_account_overlay.dart'; // ✅ NEW: Import reusable guest overlay
 import '../../utils/haptic_utils.dart';
 import '../../utils/skill_utils.dart'; // ✅ ADDED: Import centralized skill utilities
+import '../../features/onboarding/onboarding_flow.dart'; // ✅ ADDED: Import OnboardingFlow
 
 class ProgressView extends StatefulWidget {
   const ProgressView({Key? key}) : super(key: key);
@@ -35,45 +37,58 @@ class _ProgressViewState extends State<ProgressView> {
       builder: (context, appState, child) {
         return Scaffold(
           backgroundColor: AppTheme.primaryYellow,
-          body: SafeArea(
-            child: SingleChildScrollView(
-              child: Column(
-                children: [
-                  // Header section with day streak
-                  _buildHeaderSection(),
-                  
-                  // White section with calendar
-                  Container(
-                    width: double.infinity,
-                    constraints: BoxConstraints(
-                      minHeight: MediaQuery.of(context).size.height * 0.6,
-                    ),
-                    decoration: const BoxDecoration(
-                      color: Colors.white,
-                      borderRadius: BorderRadius.only(
-                        topLeft: Radius.circular(30),
-                        topRight: Radius.circular(30),
+          body: Stack(
+            children: [
+              // Main content
+              SafeArea(
+                child: SingleChildScrollView(
+                  child: Column(
+                    children: [
+                      // Header section with day streak
+                      _buildHeaderSection(),
+                      
+                      // White section with calendar
+                      Container(
+                        width: double.infinity,
+                        constraints: BoxConstraints(
+                          minHeight: MediaQuery.of(context).size.height * 0.6,
+                        ),
+                        decoration: const BoxDecoration(
+                          color: Colors.white,
+                          borderRadius: BorderRadius.only(
+                            topLeft: Radius.circular(30),
+                            topRight: Radius.circular(30),
+                          ),
+                        ),
+                        child: Column(
+                          children: [
+                            const SizedBox(height: 20),
+                            
+                            // Calendar section
+                            _buildCalendarSection(),
+                            
+                            const SizedBox(height: 20),
+                            
+                            // Progress stats
+                            _buildProgressStats(),
+                            
+                            const SizedBox(height: 40), // Bottom padding instead of Spacer
+                          ],
+                        ),
                       ),
-                    ),
-                    child: Column(
-                      children: [
-                        const SizedBox(height: 20),
-                        
-                        // Calendar section
-                        _buildCalendarSection(),
-                        
-                        const SizedBox(height: 20),
-                        
-                        // Progress stats
-                        _buildProgressStats(),
-                        
-                        const SizedBox(height: 40), // Bottom padding instead of Spacer
-                      ],
-                    ),
+                    ],
                   ),
-                ],
+                ),
               ),
-            ),
+              
+              // ✅ NEW: Guest mode overlay using reusable widget
+              if (appState.isGuestMode) 
+                GuestAccountOverlay(
+                  title: 'Create an account',
+                  description: 'Track your progress and unlock all features by creating an account.',
+                  themeColor: AppTheme.primaryYellow,
+                ),
+            ],
           ),
         );
       },

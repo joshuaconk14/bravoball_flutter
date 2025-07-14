@@ -415,7 +415,7 @@ class _EditDrillViewState extends State<EditDrillView> {
 
   Widget _buildSaveButton() {
     return Container(
-      padding: const EdgeInsets.all(16),
+      padding: const EdgeInsets.fromLTRB(16, 16, 16, 65),
       child: SizedBox(
         width: double.infinity,
         height: 56,
