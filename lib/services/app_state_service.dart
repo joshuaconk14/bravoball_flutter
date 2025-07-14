@@ -7,16 +7,42 @@ import '../models/filter_models.dart';
 import '../config/app_config.dart';
 import '../services/drill_api_service.dart';
 import './test_data_service.dart';
-import './guest_drill_service.dart'; // ✅ NEW: Import guest drill service
+import './guest_drill_service.dart';
 import 'dart:async';
 import '../services/session_data_sync_service.dart';
 import '../services/progress_data_sync_service.dart';
 import '../services/user_manager_service.dart';
 import '../services/drill_group_sync_service.dart';
 import '../services/preferences_sync_service.dart';
-import './api_service.dart'; // ✅ NEW: Import ApiService for public endpoints
+import './api_service.dart';
 
-// Add CompletedSession model
+// ===== ENUMS FOR STATE MANAGEMENT =====
+// Session lifecycle states - tracks progress through a training session
+enum SessionState { 
+  idle,           // No session started
+  inProgress,     // Session started, drills being done
+  canComplete,    // All drills finished, ready to complete
+  completing,     // Currently saving completion data
+  completed       // Session saved and done
+}
+
+// UI loading states for search operations
+enum LoadingState { 
+  idle,           // No loading
+  loading,        // Initial search/load
+  loadingMore,    // Loading additional pages
+  refreshing      // Pull-to-refresh
+}
+
+// Backend sync states
+enum SyncState { 
+  idle,           // No sync in progress
+  syncing,        // Currently syncing
+  failed          // Sync failed
+}
+
+// ===== COMPLETED SESSION MODEL =====
+// Represents a finished training session with all drill data
 class CompletedSession {
   final DateTime date;
   final List<EditableDrillModel> drills;
@@ -30,6 +56,7 @@ class CompletedSession {
     required this.totalDrills,
   });
 
+  // Serialization for backend storage
   Map<String, dynamic> toJson() => {
     'date': date.toIso8601String(),
     'drills': drills.map((d) => d.toJson()).toList(),
@@ -45,142 +72,179 @@ class CompletedSession {
   );
 }
 
+// ===== SYNC COORDINATOR CLASS =====
+// Prevents race conditions and manages debounced operations
+// Critical for preventing duplicate API calls and data conflicts
+class SyncCoordinator {
+  final Map<String, Timer> _timers = {};
+  final Map<String, Completer<void>> _activeOperations = {};
+  
+  // Schedule a debounced operation (e.g., sync after user stops typing)
+  void scheduleSync(String key, Duration delay, Future<void> Function() operation) {
+    _timers[key]?.cancel();
+    _timers[key] = Timer(delay, () async {
+      await _guardedOperation(key, operation);
+    });
+  }
+  
+  // Prevents multiple instances of the same operation running simultaneously
+  Future<void> _guardedOperation(String key, Future<void> Function() operation) async {
+    if (_activeOperations.containsKey(key)) {
+      if (kDebugMode) print('⚠️ Operation $key already in progress, skipping');
+      return;
+    }
+    
+    final completer = Completer<void>();
+    _activeOperations[key] = completer;
+    
+    try {
+      await operation();
+    } catch (e) {
+      if (kDebugMode) print('❌ Operation $key failed: $e');
+    } finally {
+      _activeOperations.remove(key);
+      completer.complete();
+    }
+  }
+  
+  // Same as above but returns a result
+  Future<T?> _guardedOperationWithResult<T>(String key, Future<T> Function() operation) async {
+    if (_activeOperations.containsKey(key)) {
+      if (kDebugMode) print('⚠️ Operation $key already in progress, skipping');
+      return null;
+    }
+    
+    final completer = Completer<void>();
+    _activeOperations[key] = completer;
+    
+    try {
+      final result = await operation();
+      return result;
+    } catch (e) {
+      if (kDebugMode) print('❌ Operation $key failed: $e');
+      return null;
+    } finally {
+      _activeOperations.remove(key);
+      completer.complete();
+    }
+  }
+  
+  // Execute operation immediately, canceling any pending timer
+  Future<void> executeImmediate(String key, Future<void> Function() operation) async {
+    _timers[key]?.cancel();
+    await _guardedOperation(key, operation);
+  }
+  
+  Future<T?> executeImmediateWithResult<T>(String key, Future<T> Function() operation) async {
+    _timers[key]?.cancel();
+    return await _guardedOperationWithResult(key, operation);
+  }
+  
+  // Cleanup all pending operations
+  void cancelAll() {
+    for (final timer in _timers.values) {
+      timer.cancel();
+    }
+    _timers.clear();
+    _activeOperations.clear();
+  }
+  
+  bool isOperationActive(String key) => _activeOperations.containsKey(key);
+}
+
+// ===== MAIN APP STATE SERVICE =====
+// Singleton service managing all app state, data synchronization, and business logic
 class AppStateService extends ChangeNotifier {
   static AppStateService? _instance;
   static AppStateService get instance => _instance ??= AppStateService._();
   
   AppStateService._();
   
-  // Services
+  // ===== SERVICES =====
+  // External service dependencies - centralized here for easy testing/mocking
   final DrillApiService _drillApiService = DrillApiService.shared;
-  final GuestDrillService _guestDrillService = GuestDrillService.shared; // ✅ NEW: Guest drill service
-  final ApiService _apiService = ApiService.shared; // ✅ NEW: API service for public endpoints
+  final GuestDrillService _guestDrillService = GuestDrillService.shared;
+  final ApiService _apiService = ApiService.shared;
   final ProgressDataSyncService _progressSyncService = ProgressDataSyncService.shared;
   final DrillGroupSyncService _drillGroupSyncService = DrillGroupSyncService.shared;
   final PreferencesSyncService _preferencesSyncService = PreferencesSyncService.shared;
-  final UserManagerService _userManager = UserManagerService.instance; // ✅ NEW: User manager reference
+  final UserManagerService _userManager = UserManagerService.instance;
   
-  // User preferences
+  // ===== SYNC COORDINATION =====
+  // Prevents race conditions and manages debounced operations
+  final SyncCoordinator _syncCoordinator = SyncCoordinator();
+  
+  // Debounce timers - balance between responsiveness and API efficiency
+  static const Duration _sessionDrillsSyncDebounce = Duration(milliseconds: 500);
+  static const Duration _progressSyncDebounce = Duration(milliseconds: 1000);
+  static const Duration _drillGroupsSyncDebounce = Duration(milliseconds: 1000);
+  static const Duration _preferencesSyncDebounce = Duration(milliseconds: 1000);
+  static const Duration _searchDebounceDelay = Duration(milliseconds: 300);
+  
+  // ===== USER PREFERENCES SECTION =====
+  // User's training preferences that drive session generation
   UserPreferences _preferences = UserPreferences();
   UserPreferences get preferences => _preferences;
+  SyncState _preferencesSyncState = SyncState.idle;
+  bool get isLoadingPreferences => _preferencesSyncState == SyncState.syncing;
   
-  // Session drills (now using EditableDrillModel for progress tracking)
+  // ===== SESSION MANAGEMENT SECTION =====
+  // Current training session data - split into editable (with progress) and read-only versions
   final List<EditableDrillModel> _editableSessionDrills = [];
   List<EditableDrillModel> get editableSessionDrills => List.unmodifiable(_editableSessionDrills);
   
-  // Session drills (legacy - for backward compatibility)
   final List<DrillModel> _sessionDrills = [];
   List<DrillModel> get sessionDrills => List.unmodifiable(_sessionDrills);
   
-  // Session progress state
-  bool _sessionInProgress = false;
-  bool get sessionInProgress => _sessionInProgress;
+  // Session state management
+  SessionState _sessionState = SessionState.idle;
+  SessionState get sessionState => _sessionState;
+  bool get sessionInProgress => _sessionState == SessionState.inProgress || _sessionState == SessionState.canComplete;
+  bool get currentSessionCompleted => _sessionState == SessionState.completed;
+  bool get canCompleteSession => _sessionState == SessionState.canComplete;
+  bool get isCompletingSession => _sessionState == SessionState.completing;
   
-  // ✅ NEW: Track if current session has been completed to prevent duplicates
-  bool _currentSessionCompleted = false;
-  bool get currentSessionCompleted => _currentSessionCompleted;
-  
-  // Saved drill groups
-  final List<DrillGroup> _savedDrillGroups = [];
-  List<DrillGroup> get savedDrillGroups => List.unmodifiable(_savedDrillGroups);
-  
-  // Liked drills (special group)
-  final Set<DrillModel> _likedDrills = {};
-  Set<DrillModel> get likedDrills => Set.unmodifiable(_likedDrills);
-  
-  // ✅ NEW: Guest mode drill storage
+  // ===== GUEST MODE SECTION =====
+  // Limited drill set for users without accounts
   List<DrillModel> _guestDrills = [];
   bool _guestDrillsLoaded = false;
-  
-  // ✅ NEW: Guest mode detection
   bool get isGuestMode => _userManager.isGuestMode;
   bool get isAuthenticated => _userManager.isAuthenticated;
   
-  // All available drills - now supports guest mode
-  List<DrillModel> get _availableDrills {
-    // ✅ NEW: Handle guest mode
-    if (isGuestMode) {
-      if (kDebugMode) print('👤 Using guest drills data (limited set)');
-      return _guestDrills;
-    }
-    
-    if (AppConfig.useTestData) {
-      if (kDebugMode) print('🔧 Using test drills data (AppConfig.useTestData = true)');
-      return TestDataService.getTestDrills();
-    } else {
-      if (kDebugMode) print('🌐 Using backend drills data (no caching)');
-      // Return empty list - drills should be loaded from backend when needed
-      return [];
-    }
-  }
-  List<DrillModel> get availableDrills => List.unmodifiable(_availableDrills);
+  // ===== DRILL COLLECTIONS SECTION =====
+  // User's saved drill collections and liked drills
+  final List<DrillGroup> _savedDrillGroups = [];
+  List<DrillGroup> get savedDrillGroups => List.unmodifiable(_savedDrillGroups);
   
-  // Pagination state for search
+  final Set<DrillModel> _likedDrills = {};
+  Set<DrillModel> get likedDrills => Set.unmodifiable(_likedDrills);
+  
+  // ===== SEARCH SECTION =====
+  // Drill search state and pagination
+  LoadingState _searchState = LoadingState.idle;
+  bool get isLoading => _searchState == LoadingState.loading || _searchState == LoadingState.refreshing;
+  bool get isLoadingMore => _searchState == LoadingState.loadingMore;
+  
+  List<DrillModel> _searchResults = [];
+  List<DrillModel> get searchResults => List.unmodifiable(_searchResults);
+  
+  // Pagination state
   int _currentSearchPage = 1;
   int _totalSearchPages = 1;
   int _totalSearchResults = 0;
   bool _hasMoreSearchResults = false;
+  
+  // Last search parameters for "load more" functionality
   String? _lastSearchQuery;
   String? _lastSearchSkill;
   String? _lastSearchDifficulty;
   
-  // Loading state
-  bool _isLoading = false;
-  bool get isLoading => _isLoading;
-  
-  bool _isLoadingMore = false;
-  bool get isLoadingMore => _isLoadingMore;
-
-  // ✅ NEW: Loading state for session completion
-  bool _isCompletingSession = false;
-  bool get isCompletingSession => _isCompletingSession;
-  
-  // ✅ NEW: Flag to prevent unnecessary notifyListeners after session completion
-  bool _sessionCompletionFinished = false;
-
-  // ✅ NEW: Loading state for preference updates
-  bool _isLoadingPreferences = false;
-  bool get isLoadingPreferences => _isLoadingPreferences;
-  
-  // Search results
-  List<DrillModel> _searchResults = [];
-  List<DrillModel> get searchResults => List.unmodifiable(_searchResults);
-  
-  // Error state
-  String? _lastError;
-  String? get lastError => _lastError;
-  
-  // Auto-generation settings
-  bool _autoGenerateSession = true;
-  bool get autoGenerateSession => _autoGenerateSession;
-  
-  // Completed sessions
+  // ===== PROGRESS TRACKING SECTION =====
+  // User's training history and streak data
   final List<CompletedSession> _completedSessions = [];
-  List<CompletedSession> get completedSessions {
-    return List.unmodifiable(_completedSessions);
-  }
-
-  /// Check if there are any sessions completed today
-  bool get hasSessionsCompletedToday {
-    final today = DateTime.now();
-    return _completedSessions.any((session) => 
-      session.date.year == today.year &&
-      session.date.month == today.month &&
-      session.date.day == today.day
-    );
-  }
-
-  /// Get the number of sessions completed today
-  int get sessionsCompletedToday {
-    final today = DateTime.now();
-    return _completedSessions.where((session) => 
-      session.date.year == today.year &&
-      session.date.month == today.month &&
-      session.date.day == today.day
-    ).length;
-  }
-
-  // Progress tracking (mirrors Swift MainAppModel)
+  List<CompletedSession> get completedSessions => List.unmodifiable(_completedSessions);
+  
+  // Streak tracking for gamification
   int _currentStreak = 0;
   int get currentStreak => _currentStreak;
   
@@ -192,115 +256,89 @@ class AppStateService extends ChangeNotifier {
   
   int _countOfFullyCompletedSessions = 0;
   int get countOfFullyCompletedSessions => _countOfFullyCompletedSessions;
-
-  // Initial load flags (mirrors Swift pattern)
+  
+  // ===== APPLICATION STATE SECTION =====
+  // Global app state flags
   bool _isInitialLoad = true;
   bool get isInitialLoad => _isInitialLoad;
   
   bool _isLoggingOut = false;
   bool get isLoggingOut => _isLoggingOut;
-
-  // Sync timers for reactive syncing
-  Timer? _sessionDrillsSyncTimer;
-  Timer? _completedSessionSyncTimer;
-  Timer? _drillGroupsSyncTimer;
-  Timer? _preferencesSyncTimer;
-  static const Duration _sessionDrillsSyncDebounce = Duration(milliseconds: 500);
-  static const Duration _progressSyncDebounce = Duration(milliseconds: 1000);
-  static const Duration _drillGroupsSyncDebounce = Duration(milliseconds: 1000);
-  static const Duration _preferencesSyncDebounce = Duration(milliseconds: 1000);
-
-  // ✅ NEW: Add debouncing for search requests
-  Timer? _searchDebounceTimer;
-  static const Duration _searchDebounceDelay = Duration(milliseconds: 300);
-
-  // ✅ NEW: Track current search request to prevent overlapping
-  bool _isSearching = false;
-
-  void addCompletedSession(CompletedSession session) {
-    _completedSessions.add(session);
-    
-    // All progress tracking (including completed sessions count) is now handled by backend
-    // No need to calculate locally anymore
-    
-    if (kDebugMode) {
-      print('✅ CompletedSession saved!');
-      print('  Date: ${session.date}');
-      print('  Drills: ${session.drills.length}');
-      print('  Total Completed: ${session.totalCompletedDrills}');
-      print('  Total Drills: ${session.totalDrills}');
-      print('  Previous Streak: $_previousStreak (from backend)');
-      print('  Current Streak: $_currentStreak (from backend)');
-      print('  Highest Streak: $_highestStreak (from backend)');
-      print('  Completed Sessions: $_countOfFullyCompletedSessions (from backend)');
+  
+  String? _lastError;
+  String? get lastError => _lastError;
+  
+  // Auto-generation feature toggle
+  bool _autoGenerateSession = true;
+  bool get autoGenerateSession => _autoGenerateSession;
+  
+  // ===== DERIVED PROPERTIES =====
+  // Computed properties based on current state and configuration
+  List<DrillModel> get _availableDrills {
+    if (isGuestMode) {
+      if (kDebugMode) print('👤 Using guest drills data (limited set)');
+      return _guestDrills;
     }
     
-    // ✅ FIXED: Immediate sync instead of timer-based
-    _syncCompletedSessionImmediate(session);
-    
-    notifyListeners();
-  }
-
-  // ✅ NEW: Immediate sync method (replaces timer-based approach)
-  Future<void> _syncCompletedSessionImmediate(CompletedSession session) async {
-    try {
-      if (kDebugMode) {
-        print('🔄 Starting immediate session sync to backend...');
-      }
-      
-      // Sync completed session to backend
-      final syncSuccess = await _progressSyncService.syncCompletedSession(
-        date: session.date,
-        drills: session.drills,
-        totalCompleted: session.totalCompletedDrills,
-        total: session.totalDrills,
-      );
-      
-      if (syncSuccess) {
-        if (kDebugMode) {
-          print('✅ Session sync successful, now refreshing progress history...');
-        }
-        
-        // Refresh progress history from backend after session sync
-        await refreshProgressHistoryFromBackend();
-        
-        // ✅ FINAL UI UPDATE: Mark completion as finished to prevent further updates
-        _sessionCompletionFinished = true;
-        notifyListeners();
-        
-        if (kDebugMode) {
-          print('✅ Progress history refreshed, session completion flow complete');
-          print('   - Updated Current Streak: $_currentStreak');
-          print('   - Updated Highest Streak: $_highestStreak');
-          print('   - Updated Sessions Count: $_countOfFullyCompletedSessions');
-          print('🔒 Session completion finished - preventing further UI updates');
-        }
-      } else {
-        if (kDebugMode) {
-          print('❌ Session sync failed');
-        }
-      }
-    } catch (e) {
-      if (kDebugMode) {
-        print('❌ Error in immediate session sync: $e');
-      }
+    if (AppConfig.useTestData) {
+      if (kDebugMode) print('🔧 Using test drills data (AppConfig.useTestData = true)');
+      return TestDataService.getTestDrills();
+    } else {
+      if (kDebugMode) print('🌐 Using backend drills data (no caching)');
+      return [];
     }
   }
+  List<DrillModel> get availableDrills => List.unmodifiable(_availableDrills);
+  
+  // Check if user has completed any sessions today
+  bool get hasSessionsCompletedToday {
+    final today = DateTime.now();
+    return _completedSessions.any((session) => 
+      session.date.year == today.year &&
+      session.date.month == today.month &&
+      session.date.day == today.day
+    );
+  }
 
-  // Schedule completed session sync
-  void _scheduleCompletedSessionSync(CompletedSession session) {
-    _completedSessionSyncTimer?.cancel();
-    _completedSessionSyncTimer = Timer(_progressSyncDebounce, () async {
-      await _progressSyncService.syncCompletedSession(
-        date: session.date,
-        drills: session.drills,
-        totalCompleted: session.totalCompletedDrills,
-        total: session.totalDrills,
-      );
-    });
+  // Count of sessions completed today
+  int get sessionsCompletedToday {
+    final today = DateTime.now();
+    return _completedSessions.where((session) => 
+      session.date.year == today.year &&
+      session.date.month == today.month &&
+      session.date.day == today.day
+    ).length;
+  }
+
+  // Check if user has made any progress on current session
+  bool get hasSessionProgress {
+    return _editableSessionDrills.any((drill) => drill.setsDone > 0 || drill.isCompleted);
   }
   
-  // Initialize the service
+  // Calculate completion percentage for progress bars
+  double get sessionCompletionPercentage {
+    if (_editableSessionDrills.isEmpty) return 0.0;
+    final completedDrills = _editableSessionDrills.where((drill) => drill.isFullyCompleted).length;
+    return completedDrills / _editableSessionDrills.length;
+  }
+  
+  // Check if all drills in session are fully completed
+  bool get isSessionComplete {
+    if (_editableSessionDrills.isEmpty) return false;
+    return _editableSessionDrills.every((drill) => drill.isFullyCompleted);
+  }
+  
+  // Quick access properties for UI
+  bool get hasSessionDrills => _sessionDrills.isNotEmpty;
+  int get sessionDrillCount => _sessionDrills.length;
+  int get currentSearchPage => _currentSearchPage;
+  int get totalSearchPages => _totalSearchPages;
+  int get totalSearchResults => _totalSearchResults;
+  bool get hasMoreSearchResults => _hasMoreSearchResults;
+  bool get hasSearchResults => _searchResults.isNotEmpty;
+  
+  // ===== INITIALIZATION SECTION =====
+  // App startup sequence - sets up initial state based on user type
   Future<void> initialize() async {
     if (kDebugMode) {
       print('🚀 Initializing AppStateService...');
@@ -312,73 +350,58 @@ class AppStateService extends ChangeNotifier {
 
     await _loadPersistedState();
     
-    // Set initial load flags
     _isInitialLoad = true;
     _isLoggingOut = false;
     
-    // ✅ NEW: Handle guest mode initialization
+    // Load appropriate data based on user type
     if (isGuestMode) {
-      if (kDebugMode) {
-        print('👤 Initializing for guest mode...');
-      }
+      if (kDebugMode) print('👤 Initializing for guest mode...');
       await _loadGuestDrills();
       if (_guestDrills.isNotEmpty) {
         await _loadTestSessionForGuest();
       }
     } else {
-    // Load test session if in debug mode and no session exists
-    if (AppConfig.useTestData && _editableSessionDrills.isEmpty) {
-      await _loadTestSession();
+      // Load test session for development/testing
+      if (AppConfig.useTestData && _editableSessionDrills.isEmpty) {
+        await _loadTestSession();
       }
     }
-    
-    // No longer pre-caching drills - they'll be loaded from backend when needed
     
     notifyListeners();
   }
 
-  // ✅ NEW: Load guest drills from public API
+  // Load limited drill set for guest users
   Future<void> _loadGuestDrills() async {
     if (!isGuestMode) return;
     
-    if (kDebugMode) {
-      print('📥 Loading guest drills...');
-    }
-    
-    _setLoading(true);
+    if (kDebugMode) print('📥 Loading guest drills...');
+    _setSearchState(LoadingState.loading);
     
     try {
       final guestDrills = await _guestDrillService.fetchGuestDrills();
       _guestDrills = guestDrills;
       _guestDrillsLoaded = true;
       
-      if (kDebugMode) {
-        print('✅ Loaded ${_guestDrills.length} guest drills');
-      }
+      if (kDebugMode) print('✅ Loaded ${_guestDrills.length} guest drills');
     } catch (e) {
-      if (kDebugMode) {
-        print('❌ Error loading guest drills: $e');
-      }
+      if (kDebugMode) print('❌ Error loading guest drills: $e');
       _setError('Failed to load guest drills: $e');
     } finally {
-      _setLoading(false);
+      _setSearchState(LoadingState.idle);
     }
   }
 
-  // ✅ NEW: Load a sample session for guest users
+  // Generate a sample session for guest users to try the app
   Future<void> _loadTestSessionForGuest() async {
     if (!isGuestMode || _guestDrills.isEmpty) return;
     
-    if (kDebugMode) {
-      print('📚 Loading sample session for guest with ${_guestDrills.length} available drills');
-    }
+    if (kDebugMode) print('📚 Loading sample session for guest with ${_guestDrills.length} available drills');
     
     try {
-      // Create a sample session with a few drills from different categories
       final sampleDrills = <DrillModel>[];
-      
-      // Get one drill from each main category if available
       final categories = ['Passing', 'Dribbling', 'Shooting', 'First Touch'];
+      
+      // Try to get one drill from each category for variety
       for (final category in categories) {
         final categoryDrill = _guestDrills.where((drill) => drill.skill == category).firstOrNull;
         if (categoryDrill != null && sampleDrills.length < 3) {
@@ -386,7 +409,7 @@ class AppStateService extends ChangeNotifier {
         }
       }
       
-      // If we don't have 3 drills yet, add any remaining ones
+      // Fill remaining slots with any available drills
       if (sampleDrills.length < 3) {
         for (final drill in _guestDrills) {
           if (!sampleDrills.contains(drill) && sampleDrills.length < 3) {
@@ -395,7 +418,7 @@ class AppStateService extends ChangeNotifier {
         }
       }
       
-      // Convert to editable drills
+      // Convert to editable format with default values
       final editableDrills = sampleDrills.map((drill) => EditableDrillModel(
         drill: drill,
         setsDone: 0,
@@ -405,324 +428,121 @@ class AppStateService extends ChangeNotifier {
         isCompleted: false,
       )).toList();
       
-      // Set session drills
       _editableSessionDrills.clear();
       _sessionDrills.clear();
       _editableSessionDrills.addAll(editableDrills);
       _sessionDrills.addAll(sampleDrills);
       
-      if (kDebugMode) {
-        print('✅ Guest sample session loaded with ${sampleDrills.length} drills');
-      }
+      if (kDebugMode) print('✅ Guest sample session loaded with ${sampleDrills.length} drills');
       
     } catch (e) {
-      if (kDebugMode) {
-        print('❌ Error loading guest sample session: $e');
-      }
+      if (kDebugMode) print('❌ Error loading guest sample session: $e');
     }
   }
 
-  /// Load all backend data (progress history and ordered session drills)
-  /// Mirrors Swift loadBackendData() function
+  // Load test session for development/testing
+  Future<void> _loadTestSession() async {
+    if (!AppConfig.useTestData) return;
+    
+    if (kDebugMode) print('📚 Loading test session with ${AppConfig.testDrillCount} drills');
+    
+    _setSearchState(LoadingState.loading);
+    
+    try {
+      await Future.delayed(const Duration(milliseconds: 500));
+      
+      final testSessionDrills = TestDataService.getTestSessionDrills();
+      _editableSessionDrills.clear();
+      _sessionDrills.clear();
+      
+      _editableSessionDrills.addAll(testSessionDrills);
+      _sessionDrills.addAll(testSessionDrills.map((ed) => ed.drill));
+      
+      if (kDebugMode) print('✅ Test session loaded successfully');
+      
+    } catch (e) {
+      _setError('Failed to load test session: $e');
+    } finally {
+      _setSearchState(LoadingState.idle);
+    }
+  }
+  
+  // Public method for debugging
+  Future<void> loadTestSession() async {
+    await _loadTestSession();
+    notifyListeners();
+  }
+
+  // Placeholder for future persistence logic
+  Future<void> _loadPersistedState() async {
+    if (kDebugMode) print('📥 Loading persisted state (no-op for backend sync)');
+  }
+  
+  // ===== BACKEND DATA LOADING SECTION =====
+  // Load all user data from backend after authentication
   Future<void> loadBackendData() async {
     if (kDebugMode) {
       print('\n🚀 ===== STARTING loadBackendData() =====');
       print('📅 Timestamp: ${DateTime.now()}');
     }
     
-    // Check if user has account history (mirrors Swift pattern)
     final userManager = UserManagerService.instance;
-    print('👤 [LOAD] Checking user account history...');
-    print('   - User email: ${userManager.email}');
-    print('   - Has account history: ${userManager.userHasAccountHistory}');
-    print('   - Is logged in: ${userManager.isLoggedIn}');
-    
     if (!userManager.userHasAccountHistory) {
-      if (kDebugMode) {
-        print('⚠️ No user account history, skipping backend data load');
-      }
+      if (kDebugMode) print('⚠️ No user account history, skipping backend data load');
       _isInitialLoad = false;
       notifyListeners();
       return;
     }
     
-    if (kDebugMode) {
-      print('✅ User has account history, loading backend data');
-    }
-    
-    // Set initial load flags
     _isInitialLoad = true;
     _isLoggingOut = false;
     notifyListeners();
     
     try {
-      if (kDebugMode) {
-        print('📥 Loading backend data...');
-      }
+      if (kDebugMode) print('📥 Loading backend data...');
       
-      print('🔄 [LOAD] Starting progress data loading...');
-      // Load progress data (completed sessions and progress history)
+      // Load all user data in sequence
       await _loadProgressDataFromBackend();
-      print('✅ [LOAD] Progress data loading completed');
-      
-      print('🔄 [LOAD] Starting ordered session drills loading...');
-      // Load ordered session drills
       await _loadOrderedSessionDrillsFromBackend();
-      print('✅ [LOAD] Ordered session drills loading completed');
-      
-      print('🔄 [LOAD] Starting drill groups loading...');
-      // Load drill groups
       await _loadDrillGroupsFromBackend();
-      print('✅ [LOAD] Drill groups loading completed');
-      
-      print('🔄 [LOAD] Starting preferences loading...');
-      // Load user preferences
       await _loadPreferencesFromBackend();
-      print('✅ [LOAD] Preferences loading completed');
       
-      if (kDebugMode) {
-        print('✅ Successfully loaded all backend data');
-        print('📊 Final data summary:');
-        print('   - Ordered drills: ${_editableSessionDrills.length}');
-        print('   - Completed sessions: ${_completedSessions.length}');
-        print('   - Saved drill groups: ${_savedDrillGroups.length}');
-        print('   - Liked drills: ${_likedDrills.length}');
-        print('   - Previous streak: $_previousStreak');
-        print('   - Current streak: $_currentStreak');
-        print('   - Highest streak: $_highestStreak');
-        print('   - Completed sessions count: $_countOfFullyCompletedSessions}');
-        print('   - User preferences loaded: ${_preferences.selectedSkills.isNotEmpty || _preferences.selectedEquipment.isNotEmpty}');
-      }
+      if (kDebugMode) print('✅ Successfully loaded all backend data');
     } catch (e) {
-      if (kDebugMode) {
-        print('❌ Error loading backend data: $e');
-        print('Error type: ${e.runtimeType}');
-        print('Error description: $e');
-      }
+      if (kDebugMode) print('❌ Error loading backend data: $e');
     } finally {
-      // Set initial load to false after data loading is complete
       _isInitialLoad = false;
       notifyListeners();
-      
-      if (kDebugMode) {
-        print('✅ Set isInitialLoad = false');
-        print('🎉 ===== loadBackendData() COMPLETED =====');
-      }
     }
   }
 
-  /// Manually refresh backend data (can be called from UI)
-  Future<void> refreshBackendData() async {
-    if (AppConfig.useTestData) {
-      if (kDebugMode) {
-        print('ℹ️ Skipping backend refresh - using test data');
-      }
-      return;
-    }
-    
-    _setLoading(true);
-    await loadBackendData();
-    _setLoading(false);
-    notifyListeners();
-  }
-
-  /// Refresh progress history from backend (includes streaks and completed sessions count)
-  Future<void> refreshProgressHistoryFromBackend() async {
-    if (AppConfig.useTestData) {
-      if (kDebugMode) {
-        print('ℹ️ Skipping progress history refresh - using test data');
-      }
-      return;
-    }
-    
-    try {
-      if (kDebugMode) {
-        print('🔄 Refreshing progress history from backend...');
-      }
-      
-      final progressHistory = await _progressSyncService.updateProgressHistory();
-      if (progressHistory != null) {
-        _currentStreak = progressHistory['currentStreak'] ?? 0;
-        _previousStreak = progressHistory['previousStreak'] ?? 0;
-        _highestStreak = progressHistory['highestStreak'] ?? 0;
-        _countOfFullyCompletedSessions = progressHistory['completedSessionsCount'] ?? 0;
-        
-        if (kDebugMode) {
-          print('✅ Progress history refreshed from backend:');
-          print('   - Current Streak: $_currentStreak');
-          print('   - Previous Streak: $_previousStreak');
-          print('   - Highest Streak: $_highestStreak');
-          print('   - Completed Sessions Count: $_countOfFullyCompletedSessions');
-        }
-        
-        // ✅ MINIMAL FIX: Only notify listeners if not called during session completion
-
-        // ✅ FIXED: Always notify listeners for progress updates - this fixes logout UI issues
-        notifyListeners();
-        if (kDebugMode) {
-          print('🔔 Called notifyListeners() for progress update');
-        }
-      } else {
-        if (kDebugMode) {
-          print('⚠️ No progress history data returned from backend');
-        }
-      }
-      
-    } catch (e) {
-      if (kDebugMode) {
-        print('❌ Error refreshing progress history: $e');
-      }
-    }
-  }
-
-  /// Clear user data (mirrors Swift clearUserData)
-  void clearUserData() {
-    if (kDebugMode) {
-      print('🧹 Clearing user data...');
-    }
-    
-    _editableSessionDrills.clear();
-    _sessionDrills.clear();
-    _completedSessions.clear();
-    _currentStreak = 0;
-    _previousStreak = 0;
-    _highestStreak = 0;
-    _countOfFullyCompletedSessions = 0;
-    _savedDrillGroups.clear();
-    _likedDrills.clear();
-    
-    // ✅ FORCE RESET: Clear all session completion state
-    _forceResetSessionCompletionState();
-    
-    // ✅ FIXED: Cancel ALL sync timers to prevent memory leaks
-    _cancelAllTimers();
-    
-    if (kDebugMode) {
-      print('✅ User data cleared');
-    }
-  }
-
-  /// ✅ NEW: Force reset all session completion state and flags
-  void _forceResetSessionCompletionState() {
-    _sessionInProgress = false;
-    // _currentSessionCompleted = false; // ✅ FIXED: Commented out to prevent duplicate session completion when logging back in
-    _sessionCompletionFinished = false;
-    _isCompletingSession = false;
-    _isLoadingPreferences = false;
-    _isLoading = false;
-    _isLoadingMore = false;
-    
-    if (kDebugMode) {
-      print('🔄 Force reset all session completion state');
-    }
-    
-    // ✅ ENSURE UI UPDATE: Force immediate UI update after state reset
-    notifyListeners();
-  }
-
-  /// ✅ NEW: Cancel all timers to prevent memory leaks
-  void _cancelAllTimers() {
-    _sessionDrillsSyncTimer?.cancel();
-    _sessionDrillsSyncTimer = null;
-    
-    _completedSessionSyncTimer?.cancel();
-    _completedSessionSyncTimer = null;
-    
-    _drillGroupsSyncTimer?.cancel();
-    _drillGroupsSyncTimer = null;
-    
-    _preferencesSyncTimer?.cancel();
-    _preferencesSyncTimer = null;
-    
-    // ✅ NEW: Cancel search debounce timer
-    _searchDebounceTimer?.cancel();
-    _searchDebounceTimer = null;
-    
-    if (kDebugMode) {
-      print('🗑️ All sync timers cancelled');
-    }
-  }
-
-  /// ✅ NEW: Dispose method to clean up resources
-  void dispose() {
-    _cancelAllTimers();
-    // Don't call super.dispose() as this is not a ChangeNotifier subclass in typical sense
-  }
-
-  /// Set initial load state (public method)
-  void setInitialLoadState(bool isInitialLoad) {
-    _isInitialLoad = isInitialLoad;
-    notifyListeners();
-  }
-
-  // Load progress data from backend
+  // Load user's progress history and streak data
   Future<void> _loadProgressDataFromBackend() async {
     try {
-      if (kDebugMode) {
-        print('📥 Loading progress data from backend...');
-      }
+      if (kDebugMode) print('📥 Loading progress data from backend...');
       
-      // Load completed sessions
-      print('🔄 [PROGRESS] Starting to fetch completed sessions from backend...');
       final completedSessions = await _progressSyncService.fetchCompletedSessions();
-      print('📊 [PROGRESS] Backend returned ${completedSessions.length} completed sessions');
-      
       _completedSessions.clear();
       _completedSessions.addAll(completedSessions);
-      print('✅ [PROGRESS] Updated local completedSessions list: ${_completedSessions.length} sessions');
       
-      // Load progress history (streaks calculated by backend)
-      print('🔄 [PROGRESS] Starting to fetch progress history from backend...');
       final progressHistory = await _progressSyncService.updateProgressHistory();
       if (progressHistory != null) {
-        // All streak data comes from backend calculation
         _currentStreak = progressHistory['currentStreak'] ?? 0;
         _previousStreak = progressHistory['previousStreak'] ?? 0;
         _highestStreak = progressHistory['highestStreak'] ?? 0;
         _countOfFullyCompletedSessions = progressHistory['completedSessionsCount'] ?? 0;
-        
-        print('📊 [PROGRESS] Progress history loaded from backend:');
-        print('   - Current Streak: $_currentStreak');
-        print('   - Previous Streak: $_previousStreak');
-        print('   - Highest Streak: $_highestStreak');
-        print('   - Completed Sessions Count: $_countOfFullyCompletedSessions');
-      } else {
-        print('⚠️ [PROGRESS] No progress history returned from backend');
-        // Reset streak data if backend doesn't return any
-        _currentStreak = 0;
-        _previousStreak = 0;
-        _highestStreak = 0;
-        _countOfFullyCompletedSessions = 0;
       }
       
-      if (kDebugMode) {
-        print('✅ Loaded progress data from backend:');
-        print('   Completed Sessions: ${_completedSessions.length}');
-        print('   Previous Streak: $_previousStreak');
-        print('   Current Streak: $_currentStreak');
-        print('   Highest Streak: $_highestStreak');
-        print('   Completed Sessions Count: $_countOfFullyCompletedSessions');
-      }
+      if (kDebugMode) print('✅ Loaded progress data from backend');
     } catch (e) {
-      if (kDebugMode) {
-        print('❌ Error loading progress data from backend: $e');
-        print('Error type: ${e.runtimeType}');
-        print('Error description: $e');
-      }
-      // Reset streak data on error
-      _currentStreak = 0;
-      _previousStreak = 0;
-      _highestStreak = 0;
-      _countOfFullyCompletedSessions = 0;
+      if (kDebugMode) print('❌ Error loading progress data: $e');
     }
   }
 
-  // Load ordered session drills from backend
+  // Load user's current session drills with progress
   Future<void> _loadOrderedSessionDrillsFromBackend() async {
     try {
-      if (kDebugMode) {
-        print('📥 Loading ordered session drills from backend...');
-      }
+      if (kDebugMode) print('📥 Loading ordered session drills from backend...');
       
       final orderedDrills = await SessionDataSyncService.shared.fetchOrderedSessionDrills();
       
@@ -733,94 +553,226 @@ class AppStateService extends ChangeNotifier {
         _editableSessionDrills.addAll(orderedDrills);
         _sessionDrills.addAll(orderedDrills.map((ed) => ed.drill));
         
-        if (kDebugMode) {
-          print('✅ Loaded ${orderedDrills.length} ordered session drills from backend');
-        }
-      } else {
-        if (kDebugMode) {
-          print('ℹ️ No ordered session drills found in backend');
+        // Update session state based on drill completion
+        if (_editableSessionDrills.every((drill) => drill.isFullyCompleted)) {
+          // Check if session was already completed today to prevent re-completion
+          if (hasSessionsCompletedToday) {
+            _setSessionState(SessionState.completed);
+            if (kDebugMode) print('✅ Session already completed today - setting state to completed');
+          } else {
+            _setSessionState(SessionState.canComplete);
+          }
+        } else if (_editableSessionDrills.any((drill) => drill.setsDone > 0)) {
+          _setSessionState(SessionState.inProgress);
         }
       }
+      
+      if (kDebugMode) print('✅ Loaded ${orderedDrills.length} ordered session drills');
     } catch (e) {
-      if (kDebugMode) {
-        print('❌ Error loading ordered session drills from backend: $e');
-      }
+      if (kDebugMode) print('❌ Error loading ordered session drills: $e');
     }
   }
 
-  // Load drill groups from backend
+  // Load user's drill collections and liked drills
   Future<void> _loadDrillGroupsFromBackend() async {
     try {
-      if (kDebugMode) {
-        print('📥 Loading drill groups from backend...');
-      }
+      if (kDebugMode) print('📥 Loading drill groups from backend...');
       
-      // Get all drill groups from backend
       final backendGroups = await _drillGroupSyncService.getAllDrillGroups();
       
       if (backendGroups.isNotEmpty) {
-        // Convert backend responses to local models
         final localGroups = _drillGroupSyncService.convertToLocalModels(backendGroups);
         
-        // Clear existing groups and add backend groups
         _savedDrillGroups.clear();
         _likedDrills.clear();
         
+        // Separate liked drills from regular collections
         for (final group in localGroups) {
           if (group.isLikedDrillsGroup) {
-            // Add drills to liked drills set
             _likedDrills.addAll(group.drills);
           } else {
-            // Add to saved drill groups
             _savedDrillGroups.add(group);
           }
         }
-        
-        if (kDebugMode) {
-          print('✅ Loaded ${localGroups.length} drill groups from backend');
-          print('   - Saved groups: ${_savedDrillGroups.length}');
-          print('   - Liked drills: ${_likedDrills.length}');
-        }
-      } else {
-        if (kDebugMode) {
-          print('ℹ️ No drill groups found in backend');
-        }
       }
+      
+      if (kDebugMode) print('✅ Loaded drill groups from backend');
     } catch (e) {
-      if (kDebugMode) {
-        print('❌ Error loading drill groups from backend: $e');
-      }
+      if (kDebugMode) print('❌ Error loading drill groups: $e');
     }
   }
 
-  // Load preferences from backend
+  // Load user's training preferences
   Future<void> _loadPreferencesFromBackend() async {
     try {
-      if (kDebugMode) {
-        print('📥 Loading preferences from backend...');
-      }
-      
+      if (kDebugMode) print('📥 Loading preferences from backend...');
       await _preferencesSyncService.loadPreferencesFromBackend();
+      if (kDebugMode) print('✅ Loaded preferences from backend');
+    } catch (e) {
+      if (kDebugMode) print('❌ Error loading preferences: $e');
+    }
+  }
+
+  // Refresh all data from backend (pull-to-refresh)
+  Future<void> refreshBackendData() async {
+    if (AppConfig.useTestData) return;
+    
+    _setSearchState(LoadingState.refreshing);
+    await loadBackendData();
+    _setSearchState(LoadingState.idle);
+    notifyListeners();
+  }
+
+  // Refresh just the progress data (for real-time updates)
+  Future<void> refreshProgressHistoryFromBackend() async {
+    if (AppConfig.useTestData) return;
+    
+    try {
+      if (kDebugMode) print('🔄 Refreshing progress history from backend...');
       
-      if (kDebugMode) {
-        print('✅ Loaded preferences from backend');
-        print('   - Time: ${_preferences.selectedTime}');
-        print('   - Equipment: ${_preferences.selectedEquipment}');
-        print('   - Training Style: ${_preferences.selectedTrainingStyle}');
-        print('   - Location: ${_preferences.selectedLocation}');
-        print('   - Difficulty: ${_preferences.selectedDifficulty}');
-        print('   - Skills: ${_preferences.selectedSkills}');
+      final progressHistory = await _progressSyncService.updateProgressHistory();
+      if (progressHistory != null) {
+        _currentStreak = progressHistory['currentStreak'] ?? 0;
+        _previousStreak = progressHistory['previousStreak'] ?? 0;
+        _highestStreak = progressHistory['highestStreak'] ?? 0;
+        _countOfFullyCompletedSessions = progressHistory['completedSessionsCount'] ?? 0;
+        
+        notifyListeners();
       }
     } catch (e) {
-      if (kDebugMode) {
-        print('❌ Error loading preferences from backend: $e');
-      }
+      if (kDebugMode) print('❌ Error refreshing progress history: $e');
     }
   }
   
-  // MARK: - Enhanced API-like Methods
+  // ===== STATE MANAGEMENT UTILITIES =====
+  // Internal state management helpers
+  void _setSearchState(LoadingState state) {
+    _searchState = state;
+    if (state == LoadingState.loading || state == LoadingState.refreshing) {
+      _clearError();
+    }
+  }
   
-  /// Search drills with pagination and loading states
+  void _setSessionState(SessionState state) {
+    if (kDebugMode) print('🔄 Session state: ${_sessionState} → $state');
+    _sessionState = state;
+    notifyListeners();
+  }
+  
+  void _setPreferencesSyncState(SyncState state) {
+    _preferencesSyncState = state;
+    notifyListeners();
+  }
+  
+  void _setError(String error) {
+    _lastError = error;
+    if (kDebugMode) print('❌ AppState Error: $error');
+  }
+  
+  void _clearError() {
+    _lastError = null;
+  }
+
+  // ===== SESSION COMPLETION SECTION =====
+  // Handle completion of training sessions
+  void addCompletedSession(CompletedSession session) {
+    _completedSessions.add(session);
+        
+    if (kDebugMode) {
+      print('✅ CompletedSession saved!');
+      print('  Date: ${session.date}');
+      print('  Drills: ${session.drills.length}');
+      print('  Total Completed: ${session.totalCompletedDrills}');
+      print('  Total Drills: ${session.totalDrills}');
+    }
+    
+    // Immediately sync to backend
+    _syncCompletedSessionImmediate(session);
+    notifyListeners();
+  }
+
+  // Immediately sync completed session to backend and update streaks
+  Future<void> _syncCompletedSessionImmediate(CompletedSession session) async {
+    await _syncCoordinator.executeImmediate('session_completion', () async {
+      try {
+        if (kDebugMode) print('🔄 Starting immediate session sync to backend...');
+        
+        final syncSuccess = await _progressSyncService.syncCompletedSession(
+          date: session.date,
+          drills: session.drills,
+          totalCompleted: session.totalCompletedDrills,
+          total: session.totalDrills,
+        );
+        
+        if (syncSuccess) {
+          if (kDebugMode) print('✅ Session sync successful, refreshing progress...');
+          await refreshProgressHistoryFromBackend();
+        }
+      } catch (e) {
+        if (kDebugMode) print('❌ Error in session sync: $e');
+      }
+    });
+  }
+
+  // Complete current session - main entry point for session completion
+  Future<void> completeSession() async {
+    if (_sessionState == SessionState.completing || _sessionState == SessionState.completed) {
+      if (kDebugMode) print('⚠️ Session already completing/completed');
+      return;
+    }
+    
+    if (!isSessionComplete) {
+      if (kDebugMode) print('⚠️ Cannot complete session - not all drills finished');
+      return;
+    }
+    
+    await _completeSessionOnce();
+  }
+  
+  // Internal session completion logic - ensures it only happens once
+  Future<void> _completeSessionOnce() async {
+    _setSessionState(SessionState.completing);
+    
+    try {
+      final completedSession = CompletedSession(
+        date: DateTime.now(),
+        drills: List.from(_editableSessionDrills),
+        totalCompletedDrills: _editableSessionDrills.where((d) => d.isFullyCompleted).length,
+        totalDrills: _editableSessionDrills.length,
+      );
+      
+      await _addCompletedSessionWithSync(completedSession);
+      _setSessionState(SessionState.completed);
+      
+      if (kDebugMode) print('✅ Session completed successfully');
+    } catch (e) {
+      if (kDebugMode) print('❌ Error completing session: $e');
+      _setSessionState(SessionState.canComplete); // Revert state on error
+    }
+  }
+
+  // Add completed session and sync to backend
+  Future<void> _addCompletedSessionWithSync(CompletedSession session) async {
+    _completedSessions.add(session);
+    await _syncCompletedSessionImmediate(session);
+  }
+
+  // Start a new session
+  void startSession() {
+    _setSessionState(SessionState.inProgress);
+  }
+
+  // Get next drill that hasn't been completed
+  EditableDrillModel? getNextIncompleteDrill() {
+    try {
+      return _editableSessionDrills.firstWhere((drill) => !drill.isCompleted);
+    } catch (e) {
+      return null;
+    }
+  }
+  
+  // ===== SEARCH FUNCTIONALITY SECTION =====
+  // Drill search with pagination and filtering
   Future<void> searchDrillsWithPagination({
     String? query,
     String? skill,
@@ -831,52 +783,43 @@ class AppStateService extends ChangeNotifier {
     bool loadMore = false,
   }) async {
     
-    // ✅ FIXED: Prevent overlapping search requests
-    if (_isSearching && !loadMore) {
-      if (kDebugMode) {
-        print('🔄 Search already in progress, ignoring new request');
-      }
+    final operationKey = loadMore ? 'search_load_more' : 'search_new';
+    
+    if (_syncCoordinator.isOperationActive(operationKey)) {
+      if (kDebugMode) print('🔄 Search operation already in progress');
       return;
     }
     
-    // Don't allow multiple concurrent searches
-    if (_isLoading && !loadMore) return;
-    if (_isLoadingMore && loadMore) return;
-    
-    // ✅ NEW: Cancel previous debounce timer if new search comes in
     if (!loadMore) {
-      _searchDebounceTimer?.cancel();
-    }
-    
-    // ✅ NEW: Use debouncing for new searches (but not for load more)
-    if (!loadMore) {
-      _searchDebounceTimer = Timer(_searchDebounceDelay, () {
-        _performSearch(
+      // Debounce new searches to avoid spamming API
+      _syncCoordinator.scheduleSync(operationKey, _searchDebounceDelay, () async {
+        await _performSearch(
           query: query,
           skill: skill,
           difficulty: difficulty,
           trainingStyle: trainingStyle,
           equipment: equipment,
           maxDuration: maxDuration,
-          loadMore: loadMore,
+          loadMore: false,
         );
       });
-      return;
     } else {
-      // Load more requests are immediate
-      await _performSearch(
-        query: query,
-        skill: skill,
-        difficulty: difficulty,
-        trainingStyle: trainingStyle,
-        equipment: equipment,
-        maxDuration: maxDuration,
-        loadMore: loadMore,
-      );
+      // Load more results immediately
+      await _syncCoordinator.executeImmediate(operationKey, () async {
+        await _performSearch(
+          query: query,
+          skill: skill,
+          difficulty: difficulty,
+          trainingStyle: trainingStyle,
+          equipment: equipment,
+          maxDuration: maxDuration,
+          loadMore: true,
+        );
+      });
     }
   }
 
-  /// ✅ NEW: Perform the actual search with proper pagination
+  // Internal search implementation - handles different data sources
   Future<void> _performSearch({
     String? query,
     String? skill,
@@ -887,33 +830,27 @@ class AppStateService extends ChangeNotifier {
     bool loadMore = false,
   }) async {
     
-    // ✅ FIXED: Set search in progress flag
-    _isSearching = true;
-    
-    // Reset pagination for new search
     if (!loadMore) {
+      // Reset pagination for new search
       _currentSearchPage = 1;
       _searchResults.clear();
       _lastSearchQuery = query;
       _lastSearchSkill = skill;
       _lastSearchDifficulty = difficulty;
+      _setSearchState(LoadingState.loading);
     } else {
-      // Check if we can load more
-      if (!_hasMoreSearchResults) {
-        _isSearching = false;
-        return;
-      }
+      if (!_hasMoreSearchResults) return;
       _currentSearchPage++;
+      _setSearchState(LoadingState.loadingMore);
     }
     
-    loadMore ? _setLoadingMore(true) : _setLoading(true);
     _clearError();
     
     try {
-      // ✅ FIXED: Handle guest mode with proper pagination
+      // Handle different data sources based on app configuration
       if (isGuestMode) {
-        // ✅ FIXED: For guest mode, use proper pagination instead of always getting all drills
-        final pageSize = 10; // Smaller page size for guests
+        // Guest users get limited search results
+        final pageSize = 10;
         final guestDrills = await _guestDrillService.searchGuestDrills(
           query: query ?? _lastSearchQuery,
           category: skill ?? _lastSearchSkill,
@@ -922,26 +859,18 @@ class AppStateService extends ChangeNotifier {
           limit: pageSize,
         );
         
-        // ✅ FIXED: Handle pagination properly for guests
         if (loadMore) {
           _searchResults.addAll(guestDrills);
         } else {
           _searchResults = guestDrills;
         }
         
-        // ✅ FIXED: Calculate pagination for guests
-        // For simplicity, assume we have more results if we got a full page
         _hasMoreSearchResults = guestDrills.length == pageSize;
         _totalSearchResults = _searchResults.length + (_hasMoreSearchResults ? 1 : 0);
         _totalSearchPages = (_totalSearchResults / pageSize).ceil();
         
-        if (kDebugMode) {
-          print('👤 Guest search completed: ${guestDrills.length} drills on page $_currentSearchPage');
-          print('  - Total results so far: ${_searchResults.length}');
-          print('  - Has more: $_hasMoreSearchResults');
-        }
       } else if (AppConfig.useTestData) {
-        // Use test data service
+        // Test data search for development
         final filters = DrillSearchFilters(
           query: query ?? _lastSearchQuery,
           skill: skill ?? _lastSearchSkill,
@@ -965,11 +894,8 @@ class AppStateService extends ChangeNotifier {
         _totalSearchResults = response.totalCount;
         _hasMoreSearchResults = response.hasNextPage;
         
-        if (kDebugMode) {
-          print('📚 Test search completed: ${response.drills.length} drills on page ${response.currentPage}/${response.totalPages}');
-        }
       } else {
-        // Use real backend API
+        // Production backend search
         final response = await _drillApiService.searchDrills(
           query: query ?? _lastSearchQuery ?? '',
           category: skill ?? _lastSearchSkill,
@@ -989,120 +915,23 @@ class AppStateService extends ChangeNotifier {
         _totalSearchPages = response.totalPages;
         _totalSearchResults = response.total;
         _hasMoreSearchResults = response.hasNextPage;
-        
-        if (kDebugMode) {
-          print('🌐 Backend search completed: ${newDrills.length} drills on page ${response.page}/${response.totalPages}');
-        }
       }
       
     } catch (e) {
       _setError('Search failed: $e');
-      if (kDebugMode) print('❌ Search error: $e');
     } finally {
-      loadMore ? _setLoadingMore(false) : _setLoading(false);
-      _isSearching = false; // ✅ FIXED: Reset search in progress flag
+      _setSearchState(LoadingState.idle);
     }
     
     notifyListeners();
   }
   
-  /// Get drills by skill with loading state
-  Future<List<DrillModel>> getDrillsBySkillAsync(String skill) async {
-    _setLoading(true);
-    _clearError();
-    
-    try {
-      // ✅ NEW: Handle guest mode
-      if (isGuestMode) {
-        final guestDrills = await _guestDrillService.searchGuestDrills(
-          category: skill,
-          limit: 10, // Limited for guests
-        );
-        if (kDebugMode) print('👤 Loaded ${guestDrills.length} guest drills for skill: $skill (limited)');
-        return guestDrills;
-      } else if (AppConfig.useTestData) {
-        final drills = await TestDataService.getDrillsBySkill(skill);
-        if (kDebugMode) print('📚 Loaded ${drills.length} test drills for skill: $skill');
-        return drills;
-      } else {
-        final response = await _drillApiService.getDrillsByCategory(skill);
-        final drills = _drillApiService.convertToLocalModels(response);
-        if (kDebugMode) print('🌐 Loaded ${drills.length} backend drills for skill: $skill');
-        return drills;
-      }
-    } catch (e) {
-      _setError('Failed to load $skill drills: $e');
-      return [];
-    } finally {
-      _setLoading(false);
-      notifyListeners();
-    }
-  }
-  
-  /// Get popular drills with loading state
-  Future<List<DrillModel>> getPopularDrillsAsync() async {
-    _setLoading(true);
-    _clearError();
-    
-    try {
-      // ✅ NEW: Handle guest mode
-      if (isGuestMode) {
-        // For guests, return a sample of their limited drills as "popular"
-        final popularGuestDrills = _guestDrills.take(8).toList();
-        if (kDebugMode) print('👤 Loaded ${popularGuestDrills.length} popular guest drills (limited)');
-        return popularGuestDrills;
-      } else if (AppConfig.useTestData) {
-        final drills = await TestDataService.getPopularDrills();
-        if (kDebugMode) print('📚 Loaded ${drills.length} popular test drills');
-        return drills;
-      } else {
-        // For backend, just get the first 10 drills as "popular"
-        final response = await _drillApiService.searchDrills(limit: 10);
-        final drills = _drillApiService.convertToLocalModels(response.items);
-        if (kDebugMode) print('🌐 Loaded ${drills.length} popular backend drills');
-        return drills;
-      }
-    } catch (e) {
-      _setError('Failed to load popular drills: $e');
-      return [];
-    } finally {
-      _setLoading(false);
-      notifyListeners();
-    }
-  }
-  
-  /// Get drill recommendations with loading state
-  Future<List<DrillModel>> getRecommendedDrillsAsync(int count) async {
-    _setLoading(true);
-    _clearError();
-    
-    try {
-      if (AppConfig.useTestData) {
-        final drills = await TestDataService.getRecommendedDrills(count);
-        if (kDebugMode) print('📚 Loaded $count recommended test drills');
-        return drills;
-      } else {
-        // For backend, get random drills as recommendations
-        final response = await _drillApiService.searchDrills(limit: count);
-        final drills = _drillApiService.convertToLocalModels(response.items);
-        if (kDebugMode) print('🌐 Loaded ${drills.length} recommended backend drills');
-        return drills;
-      }
-    } catch (e) {
-      _setError('Failed to load recommendations: $e');
-      return [];
-    } finally {
-      _setLoading(false);
-      notifyListeners();
-    }
-  }
-  
-  /// Load more search results
+  // Load more search results for pagination
   Future<void> loadMoreSearchResults() async {
     await searchDrillsWithPagination(loadMore: true);
   }
   
-  /// Refresh current search
+  // Refresh current search results
   Future<void> refreshSearch() async {
     await searchDrillsWithPagination(
       query: _lastSearchQuery,
@@ -1110,322 +939,130 @@ class AppStateService extends ChangeNotifier {
       difficulty: _lastSearchDifficulty,
     );
   }
-  
-  // MARK: - Loading State Management
-  
-  void _setLoading(bool loading) {
-    _isLoading = loading;
-    if (loading) _clearError();
+
+  // ===== DRILL API METHODS =====
+  // Get drills by specific skill category
+  Future<List<DrillModel>> getDrillsBySkillAsync(String skill) async {
+    final result = await _syncCoordinator.executeImmediateWithResult<List<DrillModel>>('get_drills_by_skill', () async {
+      _setSearchState(LoadingState.loading);
+      _clearError();
+      
+      try {
+        if (isGuestMode) {
+          final guestDrills = await _guestDrillService.searchGuestDrills(
+            category: skill,
+            limit: 10,
+          );
+          return guestDrills;
+        } else if (AppConfig.useTestData) {
+          return await TestDataService.getDrillsBySkill(skill);
+        } else {
+          final response = await _drillApiService.getDrillsByCategory(skill);
+          return _drillApiService.convertToLocalModels(response);
+        }
+      } catch (e) {
+        _setError('Failed to load $skill drills: $e');
+        return <DrillModel>[];
+      } finally {
+        _setSearchState(LoadingState.idle);
+        notifyListeners();
+      }
+    });
+    return result ?? <DrillModel>[];
   }
   
-  void _setLoadingMore(bool loading) {
-    _isLoadingMore = loading;
-    if (loading) _clearError();
+  // Get popular/trending drills
+  Future<List<DrillModel>> getPopularDrillsAsync() async {
+    final result = await _syncCoordinator.executeImmediateWithResult<List<DrillModel>>('get_popular_drills', () async {
+      _setSearchState(LoadingState.loading);
+      _clearError();
+      
+      try {
+        if (isGuestMode) {
+          return _guestDrills.take(8).toList();
+        } else if (AppConfig.useTestData) {
+          return await TestDataService.getPopularDrills();
+        } else {
+          final response = await _drillApiService.searchDrills(limit: 10);
+          return _drillApiService.convertToLocalModels(response.items);
+        }
+      } catch (e) {
+        _setError('Failed to load popular drills: $e');
+        return <DrillModel>[];
+      } finally {
+        _setSearchState(LoadingState.idle);
+        notifyListeners();
+      }
+    });
+    return result ?? <DrillModel>[];
   }
 
-  // ✅ NEW: Set session completion loading state
-  void _setCompletingSession(bool completing) {
-    _isCompletingSession = completing;
-    notifyListeners();
-  }
-
-  // ✅ NEW: Set preference loading state
-  void _setLoadingPreferences(bool loading) {
-    _isLoadingPreferences = loading;
-    notifyListeners();
-  }
-  
-  void _setError(String error) {
-    _lastError = error;
-    if (kDebugMode) print('❌ AppState Error: $error');
-  }
-  
-  void _clearError() {
-    _lastError = null;
-  }
-  
-  // MARK: - Pagination Getters
-  
-  int get currentSearchPage => _currentSearchPage;
-  int get totalSearchPages => _totalSearchPages;
-  int get totalSearchResults => _totalSearchResults;
-  bool get hasMoreSearchResults => _hasMoreSearchResults;
-  bool get hasSearchResults => _searchResults.isNotEmpty;
-  
-  // MARK: - Debug Methods
-  
-  /// Load test session data for debugging
-  Future<void> _loadTestSession() async {
-    if (!AppConfig.useTestData) return;
-    
-    if (kDebugMode) print('📚 Loading test session with ${AppConfig.testDrillCount} drills');
-    
-    _setLoading(true);
-    
-    try {
-      // Simulate loading delay
-      await Future.delayed(const Duration(milliseconds: 500));
-      
-      final testSessionDrills = TestDataService.getTestSessionDrills();
-      _editableSessionDrills.clear();
-      _sessionDrills.clear();
-      
-      _editableSessionDrills.addAll(testSessionDrills);
-      _sessionDrills.addAll(testSessionDrills.map((ed) => ed.drill));
-      
-      if (kDebugMode) print('✅ Test session loaded successfully');
-      
-    } catch (e) {
-      _setError('Failed to load test session: $e');
-    } finally {
-      _setLoading(false);
-    }
-  }
-  
-  /// Load test session (can be called from debug menu)
-  Future<void> loadTestSession() async {
-    await _loadTestSession();
-    notifyListeners();
-  }
-  
-  /// Clear all session data (useful for testing)
-  void clearAllSessionData() {
-    if (kDebugMode) print('🧹 Clearing all session data');
-    clearSession();
-    // Reset any progress tracking
-    _sessionInProgress = false;
-    _currentSessionCompleted = false; // ✅ Reset completion flag
-    notifyListeners();
-  }
-  
-  // MARK: - Saved Drill Groups Management
-  
-  void createDrillGroup(String name, String description) {
-    final newGroup = DrillGroup(
-      id: DateTime.now().millisecondsSinceEpoch.toString(),
-      name: name,
-      description: description,
-      drills: [],
-      createdAt: DateTime.now(),
-    );
-    
-    _savedDrillGroups.add(newGroup);
-    notifyListeners();
-    
-    // Sync to backend
-    _scheduleDrillGroupsSync();
-  }
-  
-  void deleteDrillGroup(String groupId) {
-    // Find the group to get its backend ID
-    final groupIndex = _savedDrillGroups.indexWhere((group) => group.id == groupId);
-    if (groupIndex != -1) {
-      final group = _savedDrillGroups[groupIndex];
-      // Try to delete from backend if it has a numeric ID
-      final backendId = int.tryParse(group.id);
-      if (backendId != null && backendId > 0) {
-        _drillGroupSyncService.deleteDrillGroup(backendId);
-      }
-    }
-    
-    _savedDrillGroups.removeWhere((group) => group.id == groupId);
-    notifyListeners();
-  }
-  
-  void editDrillGroup(String groupId, String newName, String newDescription) {
-    final groupIndex = _savedDrillGroups.indexWhere((group) => group.id == groupId);
-    if (groupIndex != -1) {
-      final group = _savedDrillGroups[groupIndex];
-      final updatedGroup = group.copyWith(
-        name: newName,
-        description: newDescription,
-      );
-      _savedDrillGroups[groupIndex] = updatedGroup;
-      notifyListeners();
-      
-      // Sync to backend
-      _scheduleDrillGroupsSync();
-    }
-  }
-  
-  void addDrillToGroup(String groupId, DrillModel drill) {
-    final groupIndex = _savedDrillGroups.indexWhere((g) => g.id == groupId);
-    if (groupIndex != -1) {
-      final group = _savedDrillGroups[groupIndex];
-      if (!group.drills.any((d) => d.id == drill.id)) {
-        final updatedGroup = group.copyWith(
-          drills: [...group.drills, drill],
-        );
-        _savedDrillGroups[groupIndex] = updatedGroup;
-        notifyListeners();
-        
-        // Sync to backend
-        _scheduleDrillGroupsSync();
-      }
-    }
-  }
-  
-  void addDrillsToGroup(String groupId, List<DrillModel> drills) {
-    final groupIndex = _savedDrillGroups.indexWhere((g) => g.id == groupId);
-    if (groupIndex != -1) {
-      final group = _savedDrillGroups[groupIndex];
-      final newDrills = drills.where((drill) => 
-        !group.drills.any((d) => d.id == drill.id)
-      ).toList();
-      
-      if (newDrills.isNotEmpty) {
-        final updatedGroup = group.copyWith(
-          drills: [...group.drills, ...newDrills],
-        );
-        _savedDrillGroups[groupIndex] = updatedGroup;
-        notifyListeners();
-        
-        // Sync to backend
-        _scheduleDrillGroupsSync();
-      }
-    }
-  }
-  
-  void removeDrillFromGroup(String groupId, DrillModel drill) {
-    final groupIndex = _savedDrillGroups.indexWhere((g) => g.id == groupId);
-    if (groupIndex != -1) {
-      final group = _savedDrillGroups[groupIndex];
-      final updatedGroup = group.copyWith(
-        drills: group.drills.where((d) => d.id != drill.id).toList(),
-      );
-      _savedDrillGroups[groupIndex] = updatedGroup;
-      notifyListeners();
-      
-      // Sync to backend
-      _scheduleDrillGroupsSync();
-    }
-  }
-  
-  DrillGroup? getDrillGroup(String groupId) {
-    try {
-      return _savedDrillGroups.firstWhere((g) => g.id == groupId);
-    } catch (e) {
-      return null;
-    }
-  }
-  
-  // MARK: - Liked Drills Management
-  
-  void toggleLikedDrill(DrillModel drill) {
-    if (_likedDrills.contains(drill)) {
-      _likedDrills.remove(drill);
-    } else {
-      _likedDrills.add(drill);
-    }
-    notifyListeners();
-    
-    // Sync to backend
-    _scheduleDrillGroupsSync();
-  }
-  
-  bool isDrillLiked(DrillModel drill) {
-    return _likedDrills.contains(drill);
-  }
-  
-  // ✅ NEW: Check if drill is saved in any collection
-  bool isDrillSavedInAnyCollection(DrillModel drill) {
-    // Check if drill is in any saved drill group (excluding liked drills group)
-    return _savedDrillGroups.any((group) => 
-      group.drills.any((d) => d.id == drill.id)
-    );
-  }
-  
-  DrillGroup get likedDrillsGroup {
-    return DrillGroup(
-      id: 'liked_drills',
-      name: 'Liked Drills',
-      description: 'Your favorite drills',
-      drills: _likedDrills.toList(),
-      createdAt: DateTime.now(),
-      isLikedDrillsGroup: true,
-    );
-  }
-  
-  // MARK: - Existing Filter Methods
-  
+  // ===== USER PREFERENCES SECTION =====
+  // Update user preferences and trigger session regeneration
   void updateTimeFilter(String? time) {
-    _setLoadingPreferences(true);
+    _setPreferencesSyncState(SyncState.syncing);
     _preferences.selectedTime = time;
     if (_autoGenerateSession) {
       _autoGenerateSessionDrills();
     }
     notifyListeners();
-    
-    // Sync to backend
     _schedulePreferencesSync();
   }
   
   void updateEquipmentFilter(Set<String> equipment) {
-    _setLoadingPreferences(true);
+    _setPreferencesSyncState(SyncState.syncing);
     _preferences.selectedEquipment = equipment;
     if (_autoGenerateSession) {
       _autoGenerateSessionDrills();
     }
     notifyListeners();
-    
-    // Sync to backend
     _schedulePreferencesSync();
   }
   
   void updateTrainingStyleFilter(String? style) {
-    _setLoadingPreferences(true);
+    _setPreferencesSyncState(SyncState.syncing);
     _preferences.selectedTrainingStyle = style;
     if (_autoGenerateSession) {
       _autoGenerateSessionDrills();
     }
     notifyListeners();
-    
-    // Sync to backend
     _schedulePreferencesSync();
   }
   
   void updateLocationFilter(String? location) {
-    _setLoadingPreferences(true);
+    _setPreferencesSyncState(SyncState.syncing);
     _preferences.selectedLocation = location;
     if (_autoGenerateSession) {
       _autoGenerateSessionDrills();
     }
     notifyListeners();
-    
-    // Sync to backend
     _schedulePreferencesSync();
   }
   
   void updateDifficultyFilter(String? difficulty) {
-    _setLoadingPreferences(true);
+    _setPreferencesSyncState(SyncState.syncing);
     _preferences.selectedDifficulty = difficulty;
     if (_autoGenerateSession) {
       _autoGenerateSessionDrills();
     }
     notifyListeners();
-    
-    // Sync to backend
     _schedulePreferencesSync();
   }
   
   void updateSkillsFilter(Set<String> skills) {
-    _setLoadingPreferences(true);
+    _setPreferencesSyncState(SyncState.syncing);
     _preferences.selectedSkills = skills;
-    // Don't auto-generate session drills when skills change
-    // This preserves the ordered session drills from backend
     notifyListeners();
-    
-    // Sync to backend
     _schedulePreferencesSync();
   }
 
-  /// Update user preferences (called by PreferencesSyncService)
+  // Update all preferences at once
   void updateUserPreferences(UserPreferences preferences) {
     _preferences = preferences;
     notifyListeners();
   }
 
-  /// Update ordered session drills (called by PreferencesSyncService)
+  // Update session drills from preferences sync service
   void updateOrderedSessionDrillsThroughPreferences(List<EditableDrillModel> drills) {
     _editableSessionDrills.clear();
     _sessionDrills.clear();
@@ -1433,24 +1070,202 @@ class AppStateService extends ChangeNotifier {
     _editableSessionDrills.addAll(drills);
     _sessionDrills.addAll(drills.map((ed) => ed.drill));
     
-    // ✅ Check if session should remain completed after drill updates
-    // Only reset completion flag if there are incomplete drills
+    // Update session state based on completion
     if (drills.isNotEmpty && drills.any((drill) => !drill.isCompleted)) {
-      _currentSessionCompleted = false;
+      if (drills.every((drill) => drill.isFullyCompleted)) {
+        _setSessionState(SessionState.canComplete);
+      } else if (drills.any((drill) => drill.setsDone > 0)) {
+        _setSessionState(SessionState.inProgress);
+      } else {
+        _setSessionState(SessionState.idle);
+      }
     }
     
-    // ✅ Stop loading preferences when drills are updated
-    _setLoadingPreferences(false);
-    
+    _setPreferencesSyncState(SyncState.idle);
     notifyListeners();
   }
-  
-  // Session drill management
+
+  // Schedule preferences sync with backend
+  void _schedulePreferencesSync() {
+    _syncCoordinator.scheduleSync('preferences_sync', _preferencesSyncDebounce, () async {
+      if (isGuestMode) {
+        if (kDebugMode) print('👤 Guest mode detected - using public session generation');
+        await _generateGuestSession();
+      } else {
+        await _preferencesSyncService.syncPreferencesWithBackend(
+          time: _preferences.selectedTime,
+          equipment: _preferences.selectedEquipment,
+          trainingStyle: _preferences.selectedTrainingStyle,
+          location: _preferences.selectedLocation,
+          difficulty: _preferences.selectedDifficulty,
+          skills: _preferences.selectedSkills,
+        );
+        _setPreferencesSyncState(SyncState.idle);
+      }
+    });
+  }
+
+  // Generate session for guest users using public API
+  Future<void> _generateGuestSession() async {
+    if (!isGuestMode) return;
+    
+    try {
+      if (kDebugMode) print('👤 Generating guest session with preferences');
+      
+      final preferencesData = {
+        'duration': _mapTimeToMinutes(_preferences.selectedTime),
+        'available_equipment': _preferences.selectedEquipment.toList(),
+        'training_style': _preferences.selectedTrainingStyle ?? 'medium_intensity',
+        'training_location': _preferences.selectedLocation ?? 'full_field',
+        'difficulty': _preferences.selectedDifficulty ?? 'beginner',
+        'target_skills': _preferences.selectedSkills.toList(),
+      };
+      
+      final requestData = {'preferences': preferencesData};
+      
+      final response = await _apiService.post(
+        '/public/session/generate',
+        body: requestData,
+        requiresAuth: false,
+      );
+      
+      if (response.isSuccess && response.data != null) {
+        final sessionData = response.data!['data'];
+        if (sessionData != null && sessionData['drills'] != null) {
+          final drillsJson = sessionData['drills'] as List<dynamic>;
+          
+          // Convert backend drill format to local models
+          final editableDrills = drillsJson.map((drillJson) {
+            final drill = DrillModel(
+              id: drillJson['uuid'] ?? '',
+              title: drillJson['title'] ?? 'Unnamed Drill',
+              skill: _mapBackendSkillToFrontend(drillJson['primary_skill']?['category'] ?? 'general'),
+              subSkills: _extractSubSkills(drillJson),
+              sets: drillJson['sets'] ?? 3,
+              reps: drillJson['reps'] ?? 10,
+              duration: drillJson['duration'] ?? 10,
+              description: drillJson['description'] ?? '',
+              instructions: (drillJson['instructions'] as List<dynamic>?)?.cast<String>() ?? [],
+              tips: (drillJson['tips'] as List<dynamic>?)?.cast<String>() ?? [],
+              equipment: (drillJson['equipment'] as List<dynamic>?)?.cast<String>() ?? [],
+              trainingStyle: drillJson['intensity'] ?? 'medium',
+              difficulty: drillJson['difficulty'] ?? 'beginner',
+              videoUrl: drillJson['video_url'] ?? '',
+            );
+            
+            return EditableDrillModel(
+              drill: drill,
+              setsDone: 0,
+              totalSets: drill.sets > 0 ? drill.sets : 3,
+              totalReps: drill.reps > 0 ? drill.reps : 10,
+              totalDuration: drill.duration > 0 ? drill.duration : 10,
+              isCompleted: false,
+            );
+          }).toList();
+          
+          _editableSessionDrills.clear();
+          _sessionDrills.clear();
+          _editableSessionDrills.addAll(editableDrills);
+          _sessionDrills.addAll(editableDrills.map((ed) => ed.drill));
+          
+          if (kDebugMode) print('✅ Guest session updated with ${editableDrills.length} drills');
+        }
+      }
+      
+    } catch (e) {
+      if (kDebugMode) print('❌ Error generating guest session: $e');
+    } finally {
+      _setPreferencesSyncState(SyncState.idle);
+      notifyListeners();
+    }
+  }
+
+  // Helper methods for mapping backend data to frontend models
+  int _mapTimeToMinutes(String? timePreference) {
+    switch (timePreference) {
+      case '15min': return 15;
+      case '30min': return 30;
+      case '45min': return 45;
+      case '1h': return 60;
+      case '1h30': return 90;
+      case '2h+': return 120;
+      default: return 30;
+    }
+  }
+
+  String _mapBackendSkillToFrontend(String backendSkill) {
+    const skillMap = {
+      'passing': 'Passing',
+      'shooting': 'Shooting',
+      'dribbling': 'Dribbling',
+      'first_touch': 'First Touch',
+      'defending': 'Defending',
+      'fitness': 'Fitness',
+      'general': 'General',
+    };
+    return skillMap[backendSkill.toLowerCase()] ?? 'General';
+  }
+
+  List<String> _extractSubSkills(Map<String, dynamic> drillJson) {
+    final subSkills = <String>[];
+    
+    final primarySubSkill = drillJson['primary_skill']?['sub_skill'];
+    if (primarySubSkill != null) {
+      subSkills.add(_mapBackendSubSkillToFrontend(primarySubSkill));
+    }
+    
+    final secondarySkills = drillJson['secondary_skills'] as List<dynamic>?;
+    if (secondarySkills != null) {
+      for (final skill in secondarySkills) {
+        final subSkill = skill['sub_skill'];
+        if (subSkill != null) {
+          subSkills.add(_mapBackendSubSkillToFrontend(subSkill));
+        }
+      }
+    }
+    
+    return subSkills;
+  }
+
+  String _mapBackendSubSkillToFrontend(String backendSubSkill) {
+    const subSkillMap = {
+      'close_control': 'Close control',
+      'speed_dribbling': 'Speed dribbling',
+      '1v1_moves': '1v1 moves',
+      'change_of_direction': 'Change of direction',
+      'ball_mastery': 'Ball mastery',
+      'ground_control': 'Ground control',
+      'aerial_control': 'Aerial control',
+      'turn_with_ball': 'Turn with ball',
+      'touch_and_move': 'Touch and move',
+      'juggling': 'Juggling',
+      'short_passing': 'Short passing',
+      'long_passing': 'Long passing',
+      'one_touch_passing': 'One touch passing',
+      'technique': 'Technique',
+      'passing_with_movement': 'Passing with movement',
+      'power_shots': 'Power shots',
+      'finesse_shots': 'Finesse shots',
+      'first_time_shots': 'First time shots',
+      '1v1_to_shoot': '1v1 to shoot',
+      'shooting_on_the_run': 'Shooting on the run',
+      'volleying': 'Volleying',
+      'tackling': 'Tackling',
+      'marking': 'Marking',
+      'intercepting': 'Intercepting',
+      'positioning': 'Positioning',
+      'general': 'General',
+    };
+    return subSkillMap[backendSubSkill.toLowerCase()] ?? backendSubSkill;
+  }
+
+  // ===== SESSION DRILL MANAGEMENT SECTION =====
+  // Manage drills in current session
   void addDrillToSession(DrillModel drill) {
     if (!_sessionDrills.any((d) => d.id == drill.id)) {
       _sessionDrills.add(drill);
       
-      // Also add to editable session drills
+      // Create editable version with default values
       final editableDrill = EditableDrillModel(
         drill: drill,
         setsDone: 0,
@@ -1461,8 +1276,10 @@ class AppStateService extends ChangeNotifier {
       );
       _editableSessionDrills.add(editableDrill);
       
-      // ✅ Reset completion flag when adding new drills
-      _currentSessionCompleted = false;
+      // Reset session state when adding new drills
+      if (_sessionState == SessionState.completed) {
+        _setSessionState(SessionState.idle);
+      }
       
       notifyListeners();
       _scheduleSessionDrillsSync();
@@ -1476,6 +1293,7 @@ class AppStateService extends ChangeNotifier {
     _scheduleSessionDrillsSync();
   }
   
+  // Reorder drills in session (drag and drop)
   void reorderSessionDrills(int oldIndex, int newIndex) {
     if (oldIndex < newIndex) {
       newIndex -= 1;
@@ -1490,18 +1308,17 @@ class AppStateService extends ChangeNotifier {
     _scheduleSessionDrillsSync();
   }
   
+  // Clear all drills from session
   void clearSession() {
     _sessionDrills.clear();
     _editableSessionDrills.clear();
-    _sessionInProgress = false;
-    _currentSessionCompleted = false; // ✅ Reset completion flag
+    _setSessionState(SessionState.idle);
     notifyListeners();
     _scheduleSessionDrillsSync();
   }
   
-  // Update drill properties in session
+  // Update drill parameters in session
   void updateDrillInSession(String drillId, {int? sets, int? reps, int? duration}) {
-    // Update legacy session drills
     final drillIndex = _sessionDrills.indexWhere((drill) => drill.id == drillId);
     if (drillIndex != -1) {
       final currentDrill = _sessionDrills[drillIndex];
@@ -1525,7 +1342,7 @@ class AppStateService extends ChangeNotifier {
       _sessionDrills[drillIndex] = updatedDrill;
     }
     
-    // Update editable session drills
+    // Update editable version
     final editableDrillIndex = _editableSessionDrills.indexWhere((drill) => drill.drill.id == drillId);
     if (editableDrillIndex != -1) {
       final currentEditableDrill = _editableSessionDrills[editableDrillIndex];
@@ -1540,7 +1357,7 @@ class AppStateService extends ChangeNotifier {
     _scheduleSessionDrillsSync();
   }
   
-  // Update drill progress during follow-along
+  // Update drill progress during session
   void updateDrillProgress(String drillId, {int? setsDone, bool? isCompleted}) {
     final editableDrillIndex = _editableSessionDrills.indexWhere((drill) => drill.drill.id == drillId);
     if (editableDrillIndex != -1) {
@@ -1550,128 +1367,189 @@ class AppStateService extends ChangeNotifier {
         isCompleted: isCompleted,
       );
       
-      // ✅ FIXED: Don't auto-complete here to avoid issues
-      // The completion should be handled explicitly by the UI
+      // Update session state based on overall progress
+      if (isSessionComplete && _sessionState != SessionState.completed) {
+        _setSessionState(SessionState.canComplete);
+      } else if (hasSessionProgress && _sessionState == SessionState.idle) {
+        _setSessionState(SessionState.inProgress);
+      }
       
       notifyListeners();
       _scheduleSessionDrillsSync();
     }
   }
   
-  // Session progress methods
-  void startSession() {
-    _sessionInProgress = true;
-    _currentSessionCompleted = false; // ✅ Reset completion flag when starting
-    _sessionCompletionFinished = false; // ✅ Reset to allow future updates
+  // Schedule sync of session drills to backend
+  void _scheduleSessionDrillsSync() {
+    if (isGuestMode) {
+      if (kDebugMode) print('👤 Skipping session drills sync for guest user');
+      return;
+    }
+    
+    _syncCoordinator.scheduleSync('session_drills_sync', _sessionDrillsSyncDebounce, () async {
+      await SessionDataSyncService.shared.syncOrderedSessionDrills(_editableSessionDrills);
+    });
+  }
+
+  // ===== DRILL GROUPS MANAGEMENT SECTION =====
+  // Manage user's drill collections
+  void createDrillGroup(String name, String description) {
+    final newGroup = DrillGroup(
+      id: DateTime.now().millisecondsSinceEpoch.toString(),
+      name: name,
+      description: description,
+      drills: [],
+      createdAt: DateTime.now(),
+    );
+    
+    _savedDrillGroups.add(newGroup);
+    notifyListeners();
+    _scheduleDrillGroupsSync();
+  }
+  
+  void deleteDrillGroup(String groupId) {
+    final groupIndex = _savedDrillGroups.indexWhere((group) => group.id == groupId);
+    if (groupIndex != -1) {
+      final group = _savedDrillGroups[groupIndex];
+      final backendId = int.tryParse(group.id);
+      if (backendId != null && backendId > 0) {
+        _drillGroupSyncService.deleteDrillGroup(backendId);
+      }
+    }
+    
+    _savedDrillGroups.removeWhere((group) => group.id == groupId);
     notifyListeners();
   }
   
-  // ✅ UPDATED: Prevent duplicate session completions
-  Future<void> completeSession() async {
-    if (_currentSessionCompleted) {
-      if (kDebugMode) {
-        print('⚠️ Session already completed, ignoring duplicate completion request');
-      }
-      return;
-    }
-    
-    if (_isCompletingSession) {
-      if (kDebugMode) {
-        print('⚠️ Session completion already in progress, ignoring duplicate request');
-      }
-      return;
-    }
-    
-    await _completeSessionOnce();
-  }
-  
-  // ✅ NEW: Private method that actually completes the session once
-  Future<void> _completeSessionOnce() async {
-    if (_currentSessionCompleted || _isCompletingSession) return; // Double-check protection
-    
-    try {
-      _setCompletingSession(true);
-      
-      _sessionInProgress = false;
-      _currentSessionCompleted = true; // ✅ Mark as completed
-      
-      // Don't force-complete drills, use their current state
-      // Session completion should only be allowed when all drills are already fully completed
-      
-      // Save completed session with current drill states
-      final completedSession = CompletedSession(
-        date: DateTime.now(),
-        drills: List.from(_editableSessionDrills),
-        totalCompletedDrills: _editableSessionDrills.where((d) => d.isFullyCompleted).length,
-        totalDrills: _editableSessionDrills.length,
+  void editDrillGroup(String groupId, String newName, String newDescription) {
+    final groupIndex = _savedDrillGroups.indexWhere((group) => group.id == groupId);
+    if (groupIndex != -1) {
+      final group = _savedDrillGroups[groupIndex];
+      final updatedGroup = group.copyWith(
+        name: newName,
+        description: newDescription,
       );
-      
-      // ✅ FIXED: Await the session sync to complete before continuing
-      await _addCompletedSessionWithSync(completedSession);
-      
-      if (kDebugMode) {
-        print('✅ Session completed and synced to backend.');
-        print('   - Fully completed drills: ${completedSession.totalCompletedDrills}');
-        print('   - Total drills: ${completedSession.totalDrills}');
-      }
-    } catch (e) {
-      if (kDebugMode) {
-        print('❌ Error completing session: $e');
-      }
-    } finally {
-      _setCompletingSession(false);
+      _savedDrillGroups[groupIndex] = updatedGroup;
+      notifyListeners();
+      _scheduleDrillGroupsSync();
     }
-  }
-
-  // ✅ NEW: Add completed session and wait for sync to complete
-  Future<void> _addCompletedSessionWithSync(CompletedSession session) async {
-    _completedSessions.add(session);
-    
-    if (kDebugMode) {
-      print('✅ CompletedSession saved locally!');
-      print('  Date: ${session.date}');
-      print('  Drills: ${session.drills.length}');
-      print('  Total Completed: ${session.totalCompletedDrills}');
-      print('  Total Drills: ${session.totalDrills}');
-    }
-    
-    // ✅ FIXED: Await immediate sync instead of timer-based
-    await _syncCompletedSessionImmediate(session);
   }
   
-  // Get the next incomplete drill
-  EditableDrillModel? getNextIncompleteDrill() {
+  // Add single drill to collection
+  void addDrillToGroup(String groupId, DrillModel drill) {
+    final groupIndex = _savedDrillGroups.indexWhere((g) => g.id == groupId);
+    if (groupIndex != -1) {
+      final group = _savedDrillGroups[groupIndex];
+      if (!group.drills.any((d) => d.id == drill.id)) {
+        final updatedGroup = group.copyWith(
+          drills: [...group.drills, drill],
+        );
+        _savedDrillGroups[groupIndex] = updatedGroup;
+        notifyListeners();
+        _scheduleDrillGroupsSync();
+      }
+    }
+  }
+  
+  // Add multiple drills to collection
+  void addDrillsToGroup(String groupId, List<DrillModel> drills) {
+    final groupIndex = _savedDrillGroups.indexWhere((g) => g.id == groupId);
+    if (groupIndex != -1) {
+      final group = _savedDrillGroups[groupIndex];
+      final newDrills = drills.where((drill) => 
+        !group.drills.any((d) => d.id == drill.id)
+      ).toList();
+      
+      if (newDrills.isNotEmpty) {
+        final updatedGroup = group.copyWith(
+          drills: [...group.drills, ...newDrills],
+        );
+        _savedDrillGroups[groupIndex] = updatedGroup;
+        notifyListeners();
+        _scheduleDrillGroupsSync();
+      }
+    }
+  }
+  
+  void removeDrillFromGroup(String groupId, DrillModel drill) {
+    final groupIndex = _savedDrillGroups.indexWhere((g) => g.id == groupId);
+    if (groupIndex != -1) {
+      final group = _savedDrillGroups[groupIndex];
+      final updatedGroup = group.copyWith(
+        drills: group.drills.where((d) => d.id != drill.id).toList(),
+      );
+      _savedDrillGroups[groupIndex] = updatedGroup;
+      notifyListeners();
+      _scheduleDrillGroupsSync();
+    }
+  }
+  
+  // Get drill group by ID
+  DrillGroup? getDrillGroup(String groupId) {
     try {
-      return _editableSessionDrills.firstWhere((drill) => !drill.isCompleted);
+      return _savedDrillGroups.firstWhere((g) => g.id == groupId);
     } catch (e) {
       return null;
     }
   }
   
-  // Check if session has any progress
-  bool get hasSessionProgress {
-    return _editableSessionDrills.any((drill) => drill.setsDone > 0 || drill.isCompleted);
+  // Toggle drill like status
+  void toggleLikedDrill(DrillModel drill) {
+    if (_likedDrills.contains(drill)) {
+      _likedDrills.remove(drill);
+    } else {
+      _likedDrills.add(drill);
+    }
+    notifyListeners();
+    _scheduleDrillGroupsSync();
   }
   
-  // Get session completion percentage
-  double get sessionCompletionPercentage {
-    if (_editableSessionDrills.isEmpty) return 0.0;
+  // Check if drill is liked
+  bool isDrillLiked(DrillModel drill) {
+    return _likedDrills.contains(drill);
+  }
+  
+  // Check if drill is saved in any collection
+  bool isDrillSavedInAnyCollection(DrillModel drill) {
+    return _savedDrillGroups.any((group) => 
+      group.drills.any((d) => d.id == drill.id)
+    );
+  }
+  
+  // Check if drill is in current session
+  bool isDrillInSession(DrillModel drill) {
+    return _sessionDrills.any((d) => d.id == drill.id);
+  }
+  
+  // Virtual liked drills group
+  DrillGroup get likedDrillsGroup {
+    return DrillGroup(
+      id: 'liked_drills',
+      name: 'Liked Drills',
+      description: 'Your favorite drills',
+      drills: _likedDrills.toList(),
+      createdAt: DateTime.now(),
+      isLikedDrillsGroup: true,
+    );
+  }
+
+  // Schedule sync of drill groups to backend
+  void _scheduleDrillGroupsSync() {
+    if (isGuestMode) {
+      if (kDebugMode) print('👤 Skipping drill groups sync for guest user');
+      return;
+    }
     
-    final completedDrills = _editableSessionDrills.where((drill) => drill.isFullyCompleted).length;
-    return completedDrills / _editableSessionDrills.length;
+    _syncCoordinator.scheduleSync('drill_groups_sync', _drillGroupsSyncDebounce, () async {
+      await _drillGroupSyncService.syncAllDrillGroups(
+        savedGroups: _savedDrillGroups,
+        likedGroup: likedDrillsGroup,
+      );
+    });
   }
-  
-  // Check if all drills are completed
-  bool get isSessionComplete {
-    if (_editableSessionDrills.isEmpty) return false;
-    return _editableSessionDrills.every((drill) => drill.isFullyCompleted);
-  }
-  
-  // ✅ NEW: Check if current session can be completed (not already completed)
-  bool get canCompleteSession {
-    return isSessionComplete && !_currentSessionCompleted;
-  }
-  
+
+  // ===== AUTO GENERATION SECTION =====
+  // Automatic session generation based on preferences
   void toggleAutoGenerate(bool value) {
     _autoGenerateSession = value;
     if (value) {
@@ -1680,7 +1558,7 @@ class AppStateService extends ChangeNotifier {
     notifyListeners();
   }
   
-  // Auto-generate session drills based on current filters
+  // Generate session drills based on current preferences
   void _autoGenerateSessionDrills() {
     final filtered = filteredDrills;
     _sessionDrills.clear();
@@ -1691,37 +1569,21 @@ class AppStateService extends ChangeNotifier {
     _sessionDrills.addAll(drillsToAdd);
   }
   
+  // Get max drills based on time preference
   int _getMaxDrillsForTime() {
     switch (_preferences.selectedTime) {
-      case '15min':
-        return 2;
-      case '30min':
-        return 3;
+      case '15min': return 2;
+      case '30min': return 3;
       case '45min':
-      case '1h':
-        return 4;
-      case '1h30':
-        return 5;
-      case '2h+':
-        return 6;
-      default:
-        return 3;
+      case '1h': return 4;
+      case '1h30': return 5;
+      case '2h+': return 6;
+      default: return 3;
     }
   }
-  
-  // Helper methods
-  bool get hasSessionDrills => _sessionDrills.isNotEmpty;
-  int get sessionDrillCount => _sessionDrills.length;
-  
-  bool isDrillInSession(DrillModel drill) {
-    return _sessionDrills.any((d) => d.id == drill.id);
-  }
-  
-  List<DrillModel> get drillsNotInSession {
-    return _availableDrills.where((drill) => !isDrillInSession(drill)).toList();
-  }
-  
-  // Filter drills based on user preferences
+
+  // ===== FILTER AND SEARCH HELPERS =====
+  // Filter drills based on current preferences
   List<DrillModel> get filteredDrills {
     List<DrillModel> filtered = List.from(_availableDrills);
     
@@ -1754,7 +1616,12 @@ class AppStateService extends ChangeNotifier {
     return filtered;
   }
   
-  // Search functionality
+  // Get drills not currently in session
+  List<DrillModel> get drillsNotInSession {
+    return _availableDrills.where((drill) => !isDrillInSession(drill)).toList();
+  }
+  
+  // Search drills by query string
   List<DrillModel> searchDrills(String query) {
     if (query.isEmpty) return drillsNotInSession;
     
@@ -1768,6 +1635,7 @@ class AppStateService extends ChangeNotifier {
     }).toList();
   }
   
+  // Filter drills by skill category
   List<DrillModel> filterDrillsBySkill(String skill) {
     return drillsNotInSession.where((drill) {
       return drill.skill.toLowerCase() == skill.toLowerCase() ||
@@ -1776,24 +1644,182 @@ class AppStateService extends ChangeNotifier {
     }).toList();
   }
   
-  // Persistence methods
-  Future<void> _persistState() async {
-    // No local persistence - everything is backend-synced
-    // This method is kept for potential future use but does nothing
+  // ===== RESET AND DEBUG METHODS =====
+  // Reset drill progress for new session
+  void resetDrillProgressForNewSession() {
+    if (kDebugMode) print('🔄 Resetting drill progress for new session...');
+    
+    for (int i = 0; i < _editableSessionDrills.length; i++) {
+      final currentDrill = _editableSessionDrills[i];
+      _editableSessionDrills[i] = currentDrill.copyWith(
+        setsDone: 0,
+        isCompleted: false,
+      );
+    }
+    
+    _setSessionState(SessionState.idle);
+    _scheduleSessionDrillsSync();
+    notifyListeners();
+    
+    if (kDebugMode) print('✅ Drill progress reset complete');
   }
-  
-  Future<void> _loadPersistedState() async {
-    // No local loading - everything is loaded from backend
-    // This method is kept for potential future use but does nothing
+
+  // Debug methods for testing streaks
+  void resetStreak() {
+    _currentStreak = 0;
+    _previousStreak = 0;
+    _highestStreak = 0;
+    _countOfFullyCompletedSessions = 0;
+    
+    if (kDebugMode) print('🧪 [DEBUG] Streaks reset: current=0, previous=0, highest=0, sessions=0');
+    notifyListeners();
   }
-  
-  // Clear all data (for logout, etc.)
+
+  void incrementStreak() {
+    _previousStreak = _currentStreak;
+    _currentStreak += 1;
+    _highestStreak = _currentStreak > _highestStreak ? _currentStreak : _highestStreak;
+    
+    if (kDebugMode) print('🧪 [DEBUG] Streak incremented: current=$_currentStreak, previous=$_previousStreak, highest=$_highestStreak');
+    notifyListeners();
+  }
+
+  // Add fake completed sessions for testing
+  void addCompletedSessions(int count) {
+    final now = DateTime.now();
+    
+    for (int i = 0; i < count; i++) {
+      final sessionDate = now.subtract(Duration(days: count - i));
+      
+      final testSession = CompletedSession(
+        date: sessionDate,
+        drills: [
+          EditableDrillModel(
+            drill: _mockDrills.first,
+            setsDone: 1,
+            totalSets: 1,
+            totalReps: 10,
+            totalDuration: 5,
+            isCompleted: true,
+          ),
+        ],
+        totalCompletedDrills: 1,
+        totalDrills: 1,
+      );
+      
+      _completedSessions.add(testSession);
+    }
+    
+    _countOfFullyCompletedSessions = _completedSessions.length;
+    _recalculateStreaksFromSessions();
+    
+    if (kDebugMode) {
+      print('🧪 [DEBUG] Added $count completed sessions');
+      print('   - Total sessions: $_countOfFullyCompletedSessions');
+      print('   - Current streak: $_currentStreak');
+      print('   - Highest streak: $_highestStreak');
+    }
+    
+    notifyListeners();
+  }
+
+  // Recalculate streaks from completed sessions
+  void _recalculateStreaksFromSessions() {
+    if (_completedSessions.isEmpty) {
+      _currentStreak = 0;
+      _previousStreak = 0;
+      _highestStreak = 0;
+      return;
+    }
+
+    final sortedSessions = _completedSessions.toList()
+      ..sort((a, b) => a.date.compareTo(b.date));
+
+    final today = DateTime.now();
+    final todayDate = DateTime(today.year, today.month, today.day);
+    
+    int currentStreak = 0;
+    int maxStreak = 0;
+    int tempStreak = 1;
+    
+    // Get unique session dates
+    final sessionDates = <DateTime>{};
+    for (final session in sortedSessions) {
+      final sessionDate = DateTime(session.date.year, session.date.month, session.date.day);
+      sessionDates.add(sessionDate);
+    }
+    
+    final sortedDates = sessionDates.toList()..sort();
+    
+    // Calculate max streak from historical data
+    for (int i = 0; i < sortedDates.length; i++) {
+      if (i > 0) {
+        final daysDifference = sortedDates[i].difference(sortedDates[i - 1]).inDays;
+        if (daysDifference == 1) {
+          tempStreak++;
+        } else {
+          tempStreak = 1;
+        }
+      }
+      maxStreak = tempStreak > maxStreak ? tempStreak : maxStreak;
+    }
+    
+    // Calculate current streak from today backwards
+    DateTime checkDate = todayDate;
+    while (sessionDates.contains(checkDate)) {
+      currentStreak++;
+      checkDate = checkDate.subtract(const Duration(days: 1));
+    }
+    
+    // If no session today, check yesterday for active streak
+    if (currentStreak == 0 && sessionDates.contains(todayDate.subtract(const Duration(days: 1)))) {
+      checkDate = todayDate.subtract(const Duration(days: 1));
+      while (sessionDates.contains(checkDate)) {
+        currentStreak++;
+        checkDate = checkDate.subtract(const Duration(days: 1));
+      }
+    }
+    
+    _previousStreak = _currentStreak;
+    _currentStreak = currentStreak;
+    _highestStreak = maxStreak > _highestStreak ? maxStreak : _highestStreak;
+  }
+
+  // ===== CLEANUP SECTION =====
+  // Clear user-specific data (for logout)
+  void clearUserData() {
+    if (kDebugMode) print('🧹 Clearing user data...');
+    
+    _editableSessionDrills.clear();
+    _sessionDrills.clear();
+    _completedSessions.clear();
+    _currentStreak = 0;
+    _previousStreak = 0;
+    _highestStreak = 0;
+    _countOfFullyCompletedSessions = 0;
+    _savedDrillGroups.clear();
+    _likedDrills.clear();
+    
+    // Don't reset session state if it was completed - preserve completion status
+    if (_sessionState != SessionState.completed) {
+      _setSessionState(SessionState.idle);
+    } else {
+      if (kDebugMode) print('🔒 Preserving completed session state during logout');
+    }
+    
+    _setPreferencesSyncState(SyncState.idle);
+    _setSearchState(LoadingState.idle);
+    
+    _syncCoordinator.cancelAll();
+    
+    if (kDebugMode) print('✅ User data cleared');
+  }
+
+  // Clear all app data (for fresh start)
   Future<void> clearAllData() async {
-    // Reset all local state (backend data will be cleared by backend sync)
     _preferences = UserPreferences();
     _autoGenerateSession = true;
     
-    // Clear local session state (will be reloaded from backend)
     _sessionDrills.clear();
     _editableSessionDrills.clear();
     _savedDrillGroups.clear();
@@ -1804,13 +1830,18 @@ class AppStateService extends ChangeNotifier {
     _highestStreak = 0;
     _countOfFullyCompletedSessions = 0;
     
-    // ✅ FIXED: Use centralized timer cleanup
-    _cancelAllTimers();
-    
+    _syncCoordinator.cancelAll();
     notifyListeners();
   }
-  
-  // Mock data - same as before
+
+  // Set initial load state
+  void setInitialLoadState(bool isInitialLoad) {
+    _isInitialLoad = isInitialLoad;
+    notifyListeners();
+  }
+
+  // ===== MOCK DATA =====
+  // Mock data for testing
   static final List<DrillModel> _mockDrills = [
     DrillModel(
       id: '550e8400-e29b-41d4-a716-446655440001',
@@ -1828,562 +1859,12 @@ class AppStateService extends ChangeNotifier {
       difficulty: 'intermediate',
       videoUrl: '',
     ),
-    DrillModel(
-      id: '550e8400-e29b-41d4-a716-446655440002',
-      title: 'Quick Passing Drill',
-      skill: 'Passing',
-      subSkills: ['Short passing', 'One touch passing'],
-      sets: 2,
-      reps: 10,
-      duration: 5,
-      description: 'Improve passing accuracy and speed.',
-      instructions: ['Pass and move', 'Keep passes low', 'Communicate'],
-      tips: ['Look up', 'Follow through', 'Weight the pass'],
-      equipment: ['soccer ball', 'cones'],
-      trainingStyle: 'medium intensity',
-      difficulty: 'beginner',
-      videoUrl: '',
-    ),
-    DrillModel(
-      id: '550e8400-e29b-41d4-a716-446655440003',
-      title: 'Power Shot Training',
-      skill: 'Shooting',
-      subSkills: ['Power shots', 'First time shots'],
-      sets: 3,
-      reps: 8,
-      duration: 10,
-      description: 'Develop shooting power and accuracy.',
-      instructions: ['Strike through the ball', 'Keep head down', 'Follow through'],
-      tips: ['Plant foot firmly', 'Strike with inside of foot', 'Aim for corners'],
-      equipment: ['soccer ball', 'goal'],
-      trainingStyle: 'high intensity',
-      difficulty: 'advanced',
-      videoUrl: '',
-    ),
-    DrillModel(
-      id: '550e8400-e29b-41d4-a716-446655440004',
-      title: 'First Touch Control',
-      skill: 'First Touch',
-      subSkills: ['Ground control', 'Touch and move'],
-      sets: 2,
-      reps: 15,
-      duration: 8,
-      description: 'Master your first touch under pressure.',
-      instructions: ['Receive ball cleanly', 'Touch away from pressure', 'Look up quickly'],
-      tips: ['Cushion the ball', 'Use both feet', 'Keep ball close'],
-      equipment: ['soccer ball'],
-      trainingStyle: 'medium intensity',
-      difficulty: 'intermediate',
-      videoUrl: '',
-    ),
-    DrillModel(
-      id: '550e8400-e29b-41d4-a716-446655440005',
-      title: 'Long Range Passing',
-      skill: 'Passing',
-      subSkills: ['Long passing', 'Technique'],
-      sets: 2,
-      reps: 12,
-      duration: 6,
-      description: 'Improve long distance passing accuracy.',
-      instructions: ['Strike through center', 'Follow through high', 'Aim for target'],
-      tips: ['Lean back slightly', 'Contact ball cleanly', 'Use full swing'],
-      equipment: ['soccer ball', 'cones'],
-      trainingStyle: 'medium intensity',
-      difficulty: 'advanced',
-      videoUrl: '',
-    ),
-    DrillModel(
-      id: '550e8400-e29b-41d4-a716-446655440006',
-      title: 'Ball Mastery Skills',
-      skill: 'Dribbling',
-      subSkills: ['Ball mastery', 'Speed dribbling'],
-      sets: 1,
-      reps: 20,
-      duration: 4,
-      description: 'Develop ball control and dribbling skills.',
-      instructions: ['Use both feet', 'Keep head up', 'Vary pace'],
-      tips: ['Small touches', 'Stay relaxed', 'Practice daily'],
-      equipment: ['soccer ball'],
-      trainingStyle: 'low intensity',
-      difficulty: 'beginner',
-      videoUrl: '',
-    ),
-    DrillModel(
-      id: '550e8400-e29b-41d4-a716-446655440007',
-      title: 'Advanced Shooting Combinations',
-      skill: 'Shooting',
-      subSkills: ['Finesse shots', 'Volleying'],
-      sets: 2,
-      reps: 6,
-      duration: 12,
-      description: 'Master advanced shooting techniques.',
-      instructions: ['Setup touch', 'Shoot with accuracy', 'Follow through'],
-      tips: ['Stay balanced', 'Keep eyes on ball', 'Practice both feet'],
-      equipment: ['soccer ball', 'goal'],
-      trainingStyle: 'high intensity',
-      difficulty: 'advanced',
-      videoUrl: '',
-    ),
-    DrillModel(
-      id: '550e8400-e29b-41d4-a716-446655440008',
-      title: 'Aerial Control Practice',
-      skill: 'First Touch',
-      subSkills: ['Aerial control', 'Juggling'],
-      sets: 1,
-      reps: 25,
-      duration: 6,
-      description: 'Improve control of balls in the air.',
-      instructions: ['Watch the ball', 'Use all surfaces', 'Keep it up'],
-      tips: ['Relax your body', 'Small touches', 'Be patient'],
-      equipment: ['soccer ball'],
-      trainingStyle: 'low intensity',
-      difficulty: 'beginner',
-      videoUrl: '',
-    ),
   ];
 
-  void _scheduleSessionDrillsSync() {
-    // ✅ NEW: Skip sync for guest users
-    if (isGuestMode) {
-      if (kDebugMode) {
-        print('👤 AppStateService: Skipping session drills sync for guest user');
-      }
-      return;
-    }
-    
-    _sessionDrillsSyncTimer?.cancel();
-    _sessionDrillsSyncTimer = Timer(_sessionDrillsSyncDebounce, () async {
-      await SessionDataSyncService.shared.syncOrderedSessionDrills(_editableSessionDrills);
-    });
-  }
-
-  void _scheduleDrillGroupsSync() {
-    // ✅ NEW: Skip sync for guest users
-    if (isGuestMode) {
-      if (kDebugMode) {
-        print('👤 AppStateService: Skipping drill groups sync for guest user');
-      }
-      return;
-    }
-    
-    _drillGroupsSyncTimer?.cancel();
-    _drillGroupsSyncTimer = Timer(_drillGroupsSyncDebounce, () async {
-      await _drillGroupSyncService.syncAllDrillGroups(
-        savedGroups: _savedDrillGroups,
-        likedGroup: likedDrillsGroup,
-      );
-    });
-  }
-
-  void _schedulePreferencesSync() {
-    // ✅ UPDATED: Use debouncing for guest users too to prevent spamming the backend
-    _preferencesSyncTimer?.cancel();
-    _preferencesSyncTimer = Timer(_preferencesSyncDebounce, () async {
-      if (isGuestMode) {
-        if (kDebugMode) {
-          print('👤 AppStateService: Guest mode detected - using public session generation (debounced)');
-        }
-        await _generateGuestSession();
-      } else {
-      await _preferencesSyncService.syncPreferencesWithBackend(
-        time: _preferences.selectedTime,
-        equipment: _preferences.selectedEquipment,
-        trainingStyle: _preferences.selectedTrainingStyle,
-        location: _preferences.selectedLocation,
-        difficulty: _preferences.selectedDifficulty,
-        skills: _preferences.selectedSkills,
-      );
-      
-      // ✅ Set loading to false after sync completes
-      // Note: updateOrderedSessionDrillsThroughPreferences will also set loading to false
-      // if new drills are received, but we set it here as a fallback
-      _setLoadingPreferences(false);
-      }
-    });
-  }
-
-  // ✅ NEW: Generate session for guest users using public endpoint
-  Future<void> _generateGuestSession() async {
-    if (!isGuestMode) return;
-    
-    try {
-      if (kDebugMode) {
-        print('👤 Generating guest session with preferences:');
-        print('   - Time: ${_preferences.selectedTime}');
-        print('   - Equipment: ${_preferences.selectedEquipment}');
-        print('   - Training Style: ${_preferences.selectedTrainingStyle}');
-        print('   - Location: ${_preferences.selectedLocation}');
-        print('   - Difficulty: ${_preferences.selectedDifficulty}');
-        print('   - Skills: ${_preferences.selectedSkills}');
-      }
-      
-      // Prepare preferences for backend
-      final preferencesData = {
-        'duration': _mapTimeToMinutes(_preferences.selectedTime),
-        'available_equipment': _preferences.selectedEquipment.toList(),
-        'training_style': _preferences.selectedTrainingStyle ?? 'medium_intensity',
-        'training_location': _preferences.selectedLocation ?? 'full_field',
-        'difficulty': _preferences.selectedDifficulty ?? 'beginner',
-        'target_skills': _preferences.selectedSkills.toList(),
-      };
-      
-      final requestData = {
-        'preferences': preferencesData,
-      };
-      
-      if (kDebugMode) {
-        print('👤 Sending guest session request: $requestData');
-      }
-      
-      final response = await _apiService.post(
-        '/public/session/generate',
-        body: requestData,
-        requiresAuth: false, // Public endpoint
-      );
-      
-      if (response.isSuccess && response.data != null) {
-        final sessionData = response.data!['data'];
-        if (sessionData != null && sessionData['drills'] != null) {
-          final drillsJson = sessionData['drills'] as List<dynamic>;
-          
-          if (kDebugMode) {
-            print('👤 Received ${drillsJson.length} drills from guest session generation');
-          }
-          
-          // Convert to EditableDrillModel objects
-          final editableDrills = drillsJson.map((drillJson) {
-            // Parse the drill data
-            final drill = DrillModel(
-              id: drillJson['uuid'] ?? '',
-              title: drillJson['title'] ?? 'Unnamed Drill',
-              skill: _mapBackendSkillToFrontend(drillJson['primary_skill']?['category'] ?? 'general'),
-              subSkills: _extractSubSkills(drillJson),
-              sets: drillJson['sets'] ?? 3,
-              reps: drillJson['reps'] ?? 10,
-              duration: drillJson['duration'] ?? 10,
-              description: drillJson['description'] ?? '',
-              instructions: (drillJson['instructions'] as List<dynamic>?)?.cast<String>() ?? [],
-              tips: (drillJson['tips'] as List<dynamic>?)?.cast<String>() ?? [],
-              equipment: (drillJson['equipment'] as List<dynamic>?)?.cast<String>() ?? [],
-              trainingStyle: drillJson['intensity'] ?? 'medium',
-              difficulty: drillJson['difficulty'] ?? 'beginner',
-              videoUrl: drillJson['video_url'] ?? '',
-            );
-            
-            return EditableDrillModel(
-              drill: drill,
-              setsDone: 0,
-              totalSets: drill.sets > 0 ? drill.sets : 3,
-              totalReps: drill.reps > 0 ? drill.reps : 10,
-              totalDuration: drill.duration > 0 ? drill.duration : 10,
-              isCompleted: false,
-            );
-          }).toList();
-          
-          // Update session drills
-          _editableSessionDrills.clear();
-          _sessionDrills.clear();
-          _editableSessionDrills.addAll(editableDrills);
-          _sessionDrills.addAll(editableDrills.map((ed) => ed.drill));
-          
-          if (kDebugMode) {
-            print('✅ Guest session updated with ${editableDrills.length} drills');
-          }
-        }
-      } else {
-        if (kDebugMode) {
-          print('❌ Failed to generate guest session: ${response.error}');
-        }
-      }
-      
-    } catch (e) {
-      if (kDebugMode) {
-        print('❌ Error generating guest session: $e');
-      }
-    } finally {
-      // ✅ Always stop loading preferences
-      _setLoadingPreferences(false);
-      notifyListeners();
-    }
-  }
-
-  // ✅ NEW: Helper method to map time preference to minutes
-  int _mapTimeToMinutes(String? timePreference) {
-    switch (timePreference) {
-      case '15min':
-        return 15;
-      case '30min':
-        return 30;
-      case '45min':
-        return 45;
-      case '1h':
-        return 60;
-      case '1h30':
-        return 90;
-      case '2h+':
-        return 120;
-      default:
-        return 30; // Default to 30 minutes
-    }
-  }
-
-  // ✅ NEW: Helper method to map backend skill category to frontend
-  String _mapBackendSkillToFrontend(String backendSkill) {
-    const skillMap = {
-      'passing': 'Passing',
-      'shooting': 'Shooting',
-      'dribbling': 'Dribbling',
-      'first_touch': 'First Touch',
-      'defending': 'Defending',
-      'fitness': 'Fitness',
-      'general': 'General',
-    };
-    
-    return skillMap[backendSkill.toLowerCase()] ?? 'General';
-  }
-
-  // ✅ NEW: Helper method to extract sub-skills from drill JSON
-  List<String> _extractSubSkills(Map<String, dynamic> drillJson) {
-    final subSkills = <String>[];
-    
-    // Add primary sub-skill
-    final primarySubSkill = drillJson['primary_skill']?['sub_skill'];
-    if (primarySubSkill != null) {
-      subSkills.add(_mapBackendSubSkillToFrontend(primarySubSkill));
-    }
-    
-    // Add secondary sub-skills
-    final secondarySkills = drillJson['secondary_skills'] as List<dynamic>?;
-    if (secondarySkills != null) {
-      for (final skill in secondarySkills) {
-        final subSkill = skill['sub_skill'];
-        if (subSkill != null) {
-          subSkills.add(_mapBackendSubSkillToFrontend(subSkill));
-        }
-      }
-    }
-    
-    return subSkills;
-  }
-
-  // ✅ NEW: Helper method to map backend sub-skill to frontend
-  String _mapBackendSubSkillToFrontend(String backendSubSkill) {
-    const subSkillMap = {
-      // Dribbling
-      'close_control': 'Close control',
-      'speed_dribbling': 'Speed dribbling',
-      '1v1_moves': '1v1 moves',
-      'change_of_direction': 'Change of direction',
-      'ball_mastery': 'Ball mastery',
-      
-      // First Touch
-      'ground_control': 'Ground control',
-      'aerial_control': 'Aerial control',
-      'turn_with_ball': 'Turn with ball',
-      'touch_and_move': 'Touch and move',
-      'juggling': 'Juggling',
-      
-      // Passing
-      'short_passing': 'Short passing',
-      'long_passing': 'Long passing',
-      'one_touch_passing': 'One touch passing',
-      'technique': 'Technique',
-      'passing_with_movement': 'Passing with movement',
-      
-      // Shooting
-      'power_shots': 'Power shots',
-      'finesse_shots': 'Finesse shots',
-      'first_time_shots': 'First time shots',
-      '1v1_to_shoot': '1v1 to shoot',
-      'shooting_on_the_run': 'Shooting on the run',
-      'volleying': 'Volleying',
-      
-      // Defending
-      'tackling': 'Tackling',
-      'marking': 'Marking',
-      'intercepting': 'Intercepting',
-      'positioning': 'Positioning',
-      
-      // Fallback
-      'general': 'General',
-    };
-    
-    return subSkillMap[backendSubSkill.toLowerCase()] ?? backendSubSkill;
-  }
-
-  // ✅ DEBUG METHODS FOR STREAK TESTING
-  /// Reset all streak values to 0 (for debugging/testing)
-  void resetStreak() {
-    _currentStreak = 0;
-    _previousStreak = 0;
-    _highestStreak = 0;
-    _countOfFullyCompletedSessions = 0;
-    
-    if (kDebugMode) {
-      print('🧪 [DEBUG] Streaks reset: current=0, previous=0, highest=0, sessions=0');
-    }
-    
-    notifyListeners();
-  }
-
-  /// Increment current streak by 1 (for debugging/testing)
-  void incrementStreak() {
-    _previousStreak = _currentStreak;
-    _currentStreak += 1;
-    _highestStreak = _currentStreak > _highestStreak ? _currentStreak : _highestStreak;
-    
-    if (kDebugMode) {
-      print('🧪 [DEBUG] Streak incremented: current=$_currentStreak, previous=$_previousStreak, highest=$_highestStreak');
-    }
-    
-    notifyListeners();
-  }
-
-  /// Add multiple completed sessions for testing (for debugging/testing)
-  void addCompletedSessions(int count) {
-    final now = DateTime.now();
-    
-    for (int i = 0; i < count; i++) {
-      // Create sessions on consecutive past days
-      final sessionDate = now.subtract(Duration(days: count - i));
-      
-      // Create a test completed session
-      final testSession = CompletedSession(
-        date: sessionDate,
-        drills: [
-          EditableDrillModel(
-            drill: _mockDrills.first, // Use first mock drill
-            setsDone: 1,
-            totalSets: 1,
-            totalReps: 10,
-            totalDuration: 5,
-            isCompleted: true,
-          ),
-        ],
-        totalCompletedDrills: 1,
-        totalDrills: 1,
-      );
-      
-      _completedSessions.add(testSession);
-    }
-    
-    // Update completed sessions count
-    _countOfFullyCompletedSessions = _completedSessions.length;
-    
-    // Recalculate streaks based on new sessions
-    _recalculateStreaksFromSessions();
-    
-    if (kDebugMode) {
-      print('🧪 [DEBUG] Added $count completed sessions');
-      print('   - Total sessions: $_countOfFullyCompletedSessions');
-      print('   - Current streak: $_currentStreak');
-      print('   - Highest streak: $_highestStreak');
-    }
-    
-    notifyListeners();
-  }
-
-  /// Recalculate streaks based on completed sessions (helper method)
-  void _recalculateStreaksFromSessions() {
-    if (_completedSessions.isEmpty) {
-      _currentStreak = 0;
-      _previousStreak = 0;
-      _highestStreak = 0;
-      return;
-    }
-
-    // Sort sessions by date
-    final sortedSessions = _completedSessions.toList()
-      ..sort((a, b) => a.date.compareTo(b.date));
-
-    // Calculate current streak (consecutive days ending at today or yesterday)
-    final today = DateTime.now();
-    final todayDate = DateTime(today.year, today.month, today.day);
-    
-    int currentStreak = 0;
-    int maxStreak = 0;
-    int tempStreak = 1;
-    
-    // Group sessions by date (in case multiple sessions per day)
-    final sessionDates = <DateTime>{};
-    for (final session in sortedSessions) {
-      final sessionDate = DateTime(session.date.year, session.date.month, session.date.day);
-      sessionDates.add(sessionDate);
-    }
-    
-    final sortedDates = sessionDates.toList()..sort();
-    
-    // Calculate max streak
-    for (int i = 0; i < sortedDates.length; i++) {
-      if (i > 0) {
-        final daysDifference = sortedDates[i].difference(sortedDates[i - 1]).inDays;
-        if (daysDifference == 1) {
-          tempStreak++;
-        } else {
-          tempStreak = 1;
-        }
-      }
-      maxStreak = tempStreak > maxStreak ? tempStreak : maxStreak;
-    }
-    
-    // Calculate current streak (from today backwards)
-    DateTime checkDate = todayDate;
-    while (sessionDates.contains(checkDate)) {
-      currentStreak++;
-      checkDate = checkDate.subtract(const Duration(days: 1));
-    }
-    
-    // If no session today, check if there was one yesterday
-    if (currentStreak == 0 && sessionDates.contains(todayDate.subtract(const Duration(days: 1)))) {
-      checkDate = todayDate.subtract(const Duration(days: 1));
-      while (sessionDates.contains(checkDate)) {
-        currentStreak++;
-        checkDate = checkDate.subtract(const Duration(days: 1));
-      }
-    }
-    
-    _previousStreak = _currentStreak;
-    _currentStreak = currentStreak;
-    _highestStreak = maxStreak > _highestStreak ? maxStreak : _highestStreak;
-  }
-
-  /// ✅ NEW: Reset drill progress for a new session (keep drills, reset progress)
-  void resetDrillProgressForNewSession() {
-    if (kDebugMode) {
-      print('🔄 Resetting drill progress for new session...');
-      print('  - Drills before reset: ${_editableSessionDrills.length}');
-    }
-    
-    // Reset progress for all drills in the session
-    for (int i = 0; i < _editableSessionDrills.length; i++) {
-      final currentDrill = _editableSessionDrills[i];
-      _editableSessionDrills[i] = currentDrill.copyWith(
-        setsDone: 0,
-        isCompleted: false,
-      );
-      
-      if (kDebugMode) {
-        print('    Reset drill ${i + 1}: ${currentDrill.drill.title}');
-        print('      - setsDone: ${currentDrill.setsDone} → 0');
-        print('      - isCompleted: ${currentDrill.isCompleted} → false');
-      }
-    }
-    
-    // Reset session completion state
-    _currentSessionCompleted = false;
-    _sessionCompletionFinished = false;
-    _isCompletingSession = false;
-    
-    if (kDebugMode) {
-      print('✅ Drill progress reset complete');
-      print('  - Session completion state reset');
-      print('  - Ready for new session with same drills');
-    }
-    
-    // Sync the reset state to backend
-    _scheduleSessionDrillsSync();
-    
-    // Notify UI to update
-    notifyListeners();
+  // Cleanup sync coordinator on dispose
+  @override
+  void dispose() {
+    _syncCoordinator.cancelAll();
+    super.dispose();
   }
 } 

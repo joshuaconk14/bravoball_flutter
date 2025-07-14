@@ -549,7 +549,7 @@ class _DebugSettingsViewState extends State<DebugSettingsView> {
 
   void _clearSessionData() {
     final appState = Provider.of<AppStateService>(context, listen: false);
-    appState.clearAllSessionData();
+    appState.clearAllData();
     
     TestDataService.debugLog('Clearing all session data');
     ScaffoldMessenger.of(context).showSnackBar(
