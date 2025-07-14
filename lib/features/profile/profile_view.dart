@@ -24,7 +24,7 @@ class ProfileView extends StatefulWidget {
 }
 
 class _ProfileViewState extends State<ProfileView> {
-  final String appVersion = '1.1.0'; // This would come from package info
+  final String appVersion = '2.0.1'; // This would come from package info
 
   @override
   Widget build(BuildContext context) {
