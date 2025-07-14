@@ -34,12 +34,22 @@ class AppTheme {
   static const Color error = Color(0xFFFF3B30);
   static const Color info = Color(0xFF007AFF);
   
-  // MARK: - Button Colors
+  // MARK: - Bravo Button Colors
   static const Color buttonPrimary = primaryYellow;
   static const Color buttonPrimaryDark = primaryDarkYellow;
   static const Color buttonSecondary = lightGray;
   static const Color buttonDisabledGray = Color(0xFFE5E5EA);
   static const Color buttonDisabledDarkGray = Color(0xFFBEBEC2);
+
+  // MARK: - Skill Category Colors
+  static const Color buttonLime = Color(0xFFAEED39);
+  static const Color buttonDarkLime = Color(0xFF77A326);
+  static const Color buttonCyan = Color(0xFF46FABE);
+  static const Color buttonDarkCyan = Color(0xFF2FAD83);
+  static const Color buttonOrange = Color(0xFFff8c00);
+  static const Color buttonDarkOrange = Color(0xFFBA7220);
+  static const Color buttonPurple = Color(0xFFC93BF5);
+  static const Color buttonDarkPurple = Color(0xFF8B22AB);
   
   // MARK: - Text Colors
   static const Color textPrimary = primaryDark;
@@ -57,10 +67,10 @@ class AppTheme {
   static const Color speechBubbleText = white;
   
   // MARK: - Skill Colors (for drill categories)
-  static const Color skillPassing = Color(0xFF007AFF);
-  static const Color skillShooting = Color(0xFFFF9500); // Changed from red to orange
-  static const Color skillDribbling = Color(0xFF34C759);
-  static const Color skillFirstTouch = Color(0xFF8E4EC6);
+  static const Color skillPassing = buttonCyan; // ✅ UPDATED: Use cyan for passing
+  static const Color skillShooting = buttonOrange; // ✅ UPDATED: Use orange for shooting
+  static const Color skillDribbling = buttonPurple; // ✅ UPDATED: Use purple for dribbling
+  static const Color skillFirstTouch = buttonLime; // ✅ UPDATED: Use lime for first touch
   static const Color skillDefending = Color(0xFFFF3B30); // Red moved to defending
   static const Color skillFitness = Color(0xFF32ADE6);
   
@@ -84,6 +94,29 @@ class AppTheme {
         return skillFitness;
       default:
         return primaryGray;
+    }
+  }
+  
+  /// Get dark version of skill color for back circles
+  static Color getSkillDarkColor(String skill) {
+    // ✅ UPDATED: Use centralized skill normalization
+    final normalizedSkill = SkillUtils.normalizeSkill(skill);
+    
+    switch (normalizedSkill) {
+      case 'passing':
+        return buttonDarkCyan;
+      case 'shooting':
+        return buttonDarkOrange;
+      case 'dribbling':
+        return buttonDarkPurple;
+      case 'first touch':
+        return buttonDarkLime;
+      case 'defending':
+        return skillDefending.withOpacity(0.8);
+      case 'fitness':
+        return skillFitness.withOpacity(0.8);
+      default:
+        return primaryGray.withOpacity(0.8);
     }
   }
   

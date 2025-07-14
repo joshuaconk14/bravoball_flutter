@@ -79,23 +79,6 @@ class _SessionGeneratorEditorPageState extends State<SessionGeneratorEditorPage>
           ),
         ),
         centerTitle: true,
-        actions: [
-          TextButton(
-            onPressed: () {
-              HapticUtils.lightImpact(); // Light haptic for navigation
-              Navigator.of(context).pop();
-            },
-            child: const Text(
-              'Done',
-              style: TextStyle(
-                fontFamily: 'Poppins',
-                fontWeight: FontWeight.bold,
-                color: Colors.white,
-                fontSize: 16,
-              ),
-            ),
-          ),
-        ],
       ),
       body: Column(
         children: [

@@ -17,6 +17,10 @@ import '../../utils/haptic_utils.dart';
 import '../../utils/skill_utils.dart'; // ✅ ADDED: Import centralized skill utilities
 import 'drill_detail_view.dart';
 import 'session_completion_view.dart';
+import '../../widgets/circular_drill_button.dart'; // ✅ NEW: Import circular drill button
+import 'package:rive/rive.dart';
+import '../../widgets/play_pause_button.dart'; // ✅ NEW: Import play pause button
+import '../../widgets/circular_control_button.dart'; // ✅ NEW: Import circular control button
 
 class DrillFollowAlongView extends StatefulWidget {
   final EditableDrillModel editableDrill;
@@ -466,92 +470,44 @@ class _DrillFollowAlongViewState extends State<DrillFollowAlongView> {
             mainAxisAlignment: MainAxisAlignment.spaceEvenly,
             children: [
               // Info button
-              _buildControlButton(
+              CircularControlButton(
                 icon: Icons.info_outline,
-                onTap: () {
+                onPressed: () {
                   HapticUtils.lightImpact(); // Light haptic for info
                   _showInfoPopup();
                 },
                 color: AppTheme.primaryLightBlue,
-                size: 44, // Reduced from 50
+                size: 44,
               ),
               
               // Play/Pause button (larger) - more compact
-              GestureDetector(
-                onTap: (_editableDrill.setsDone < _editableDrill.totalSets && (!_showCountdown || AppConfig.debug)) ? () {
-                  HapticUtils.mediumImpact(); // Medium haptic for play/pause
+              PlayPauseButton(
+                isPlaying: _isPlaying,
+                onPlayPressed: () {
                   _togglePlayPause();
-                } : null,
-                child: Container(
-                  width: 80, // Reduced from 90
-                  height: 80, // Reduced from 90
-                  decoration: BoxDecoration(
-                    color: (_editableDrill.setsDone < _editableDrill.totalSets && (!_showCountdown || AppConfig.debug))
-                        ? AppTheme.primaryYellow
-                        : Colors.grey.shade400,
-                    shape: BoxShape.circle,
-                    boxShadow: [
-                      BoxShadow(
-                        color: (_editableDrill.setsDone < _editableDrill.totalSets) 
-                            ? AppTheme.primaryYellow.withOpacity(0.3)
-                            : Colors.grey.withOpacity(0.3),
-                        blurRadius: 8, // Reduced from 10
-                        offset: const Offset(0, 3), // Reduced from 4
-                      ),
-                    ],
-                  ),
-                  child: Center(
-                    child: Stack(
-                      alignment: Alignment.center,
-                      children: [
-                        _showCountdown
-                            ? Text(
-                                _countdownValue.toString(),
-                                style: const TextStyle(
-                                  fontFamily: 'Poppins',
-                                  fontWeight: FontWeight.bold,
-                                  fontSize: 32, // Reduced from 36
-                                  color: Colors.white,
-                                ),
-                              )
-                            : Icon(
-                                _isPlaying ? Icons.pause : Icons.play_arrow,
-                                size: 32, // Reduced from 36
-                                color: Colors.white,
-                              ),
-                        // Debug mode indicator
-                        if (AppConfig.debug && _showCountdown)
-                          Positioned(
-                            top: 6, // Reduced from 8
-                            right: 6, // Reduced from 8
-                            child: Container(
-                              padding: const EdgeInsets.all(2),
-                              decoration: const BoxDecoration(
-                                color: Colors.white,
-                                shape: BoxShape.circle,
-                              ),
-                              child: const Icon(
-                                Icons.bug_report,
-                                size: 10, // Reduced from 12
-                                color: Colors.purple,
-                              ),
-                            ),
-                          ),
-                      ],
-                    ),
-                  ),
-                ),
+                },
+                onPausePressed: () {
+                  _togglePlayPause();
+                },
+                onCompletePressed: () {
+                  _completeDrill();
+                },
+                isComplete: _editableDrill.setsDone >= _editableDrill.totalSets,
+                countdownValue: _showCountdown ? _countdownValue : null,
+                debugMode: AppConfig.debug,
+                disabled: _editableDrill.setsDone >= _editableDrill.totalSets,
+                size: 80,
               ),
               
               // Settings/menu button - smaller
-              _buildControlButton(
+              CircularControlButton(
                 icon: Icons.more_vert,
-                onTap: () {
+                onPressed: () {
                   HapticUtils.lightImpact(); // Light haptic for more options
                   // Could add more options here
                 },
                 color: Colors.grey.shade500,
-                size: 44, // Reduced from 50
+                size: 44,
               ),
             ],
           ),
@@ -559,40 +515,6 @@ class _DrillFollowAlongViewState extends State<DrillFollowAlongView> {
           const SizedBox(height: 10), // Reduced from 12
           
         ],
-      ),
-    );
-  }
-
-  Widget _buildControlButton({
-    required IconData icon,
-    required VoidCallback onTap,
-    required Color color,
-    required double size,
-  }) {
-    return GestureDetector(
-      onTap: () {
-        HapticUtils.lightImpact(); // Light haptic for control button
-        onTap();
-      },
-      child: Container(
-        width: size,
-        height: size,
-        decoration: BoxDecoration(
-          color: color,
-          shape: BoxShape.circle,
-          boxShadow: [
-            BoxShadow(
-              color: color.withOpacity(0.3),
-              blurRadius: 6,
-              offset: const Offset(0, 3),
-            ),
-          ],
-        ),
-        child: Icon(
-          icon,
-          size: size * 0.4,
-          color: Colors.white,
-        ),
       ),
     );
   }

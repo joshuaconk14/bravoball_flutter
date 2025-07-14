@@ -365,24 +365,6 @@ class _ReusableDrillSearchViewState extends State<ReusableDrillSearchView> {
               ),
             ),
             centerTitle: true,
-            actions: [
-              TextButton(
-                onPressed: () {
-                  HapticUtils.mediumImpact(); // Medium haptic for major action
-                  widget.onDrillsSelected(_selectedDrills.toList());
-                  Navigator.pop(context);
-                },
-                child: const Text(
-                  'Done',
-                  style: TextStyle(
-                    fontFamily: AppTheme.fontPoppins,
-                    fontWeight: FontWeight.bold,
-                    color: Colors.white,
-                    fontSize: 16,
-                  ),
-                ),
-              ),
-            ],
           ),
           body: Column(
             children: [

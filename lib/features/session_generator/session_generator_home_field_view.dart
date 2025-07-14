@@ -3,6 +3,7 @@ import 'package:provider/provider.dart';
 import 'package:rive/rive.dart';
 import '../../widgets/bravo_button.dart';
 import '../../widgets/guest_account_overlay.dart'; // ✅ NEW: Import reusable guest overlay
+import '../../widgets/circular_drill_button.dart'; // ✅ NEW: Import circular drill button
 import '../../models/editable_drill_model.dart';
 import '../../services/app_state_service.dart';
 import '../../services/audio_service.dart';
@@ -240,11 +241,16 @@ class _SessionGeneratorHomeFieldViewState extends State<SessionGeneratorHomeFiel
           final isActive = !sessionComplete && nextIncompleteDrill?.drill.id == editableDrill.drill.id;
           return Column(
             children: [
-              _DrillCircle(
-                editableDrill: editableDrill,
+              CircularDrillButton(
+                skill: editableDrill.drill.skill,
                 isActive: isActive,
                 isCompleted: editableDrill.isCompleted,
-                onTap: () => _openFollowAlong(editableDrill, appState),
+                disabled: false,
+                size: isActive ? 100 : 80,
+                iconSize: isActive ? 48 : 40,
+                showProgress: editableDrill.progress > 0 || editableDrill.isCompleted,
+                progress: editableDrill.progress,
+                onPressed: () => _openFollowAlong(editableDrill, appState),
               ),
               if (index < editableSessionDrills.length - 1)
                 const SizedBox(height: 24),
@@ -453,185 +459,6 @@ class _SessionGeneratorHomeFieldViewState extends State<SessionGeneratorHomeFiel
         ),
       ],
     );
-  }
-}
-
-// Drill circle with skill icon and color
-class _DrillCircle extends StatelessWidget {
-  final EditableDrillModel editableDrill;
-  final bool isActive;
-  final bool isCompleted;
-  final VoidCallback onTap;
-
-  const _DrillCircle({
-    required this.editableDrill,
-    required this.isActive,
-    required this.isCompleted,
-    required this.onTap,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    Color backgroundColor;
-    Color iconColor;
-    Widget iconWidget;
-    double circleSize = isActive ? 100 : 80; // Enlarge active drill
-    double progressSize = isActive ? 110 : 90;
-    double iconSize = isActive ? 48 : 40;
-    final glowColor = AppTheme.primaryYellow.withOpacity(0.5);
-
-    if (isCompleted) {
-      backgroundColor = AppTheme.success;
-      iconColor = AppTheme.white;
-      iconWidget = Icon(
-        Icons.check,
-        color: iconColor,
-        size: iconSize,
-      );
-    } else if (isActive) {
-      backgroundColor = AppTheme.white;
-      iconColor = AppTheme.getSkillColor(editableDrill.drill.skill);
-      iconWidget = _buildDrillIcon(size: iconSize);
-    } else {
-      backgroundColor = AppTheme.buttonDisabledGray;
-      iconColor = AppTheme.primaryGray;
-      iconWidget = _buildDrillIcon(disabled: true, size: iconSize);
-    }
-
-    return GestureDetector(
-      onTap: onTap,
-      child: Column(
-        children: [
-          Stack(
-            alignment: Alignment.center,
-            children: [
-              // Animated glow for active drill
-              if (isActive)
-                TweenAnimationBuilder<double>(
-                  tween: Tween(begin: 0.7, end: 1.0),
-                  duration: const Duration(seconds: 1),
-                  curve: Curves.easeInOut,
-                  builder: (context, value, child) {
-                    final skillColor = AppTheme.getSkillColor(editableDrill.drill.skill).withOpacity(0.5);
-                    return Container(
-                      width: progressSize * value + 16,
-                      height: progressSize * value + 16,
-                      decoration: BoxDecoration(
-                        shape: BoxShape.circle,
-                        boxShadow: [
-                          BoxShadow(
-                            color: skillColor,
-                            blurRadius: 24 * value,
-                            spreadRadius: 6 * value,
-                          ),
-                        ],
-                      ),
-                    );
-                  },
-                  onEnd: () {},
-                ),
-              // Progress ring (only show if there's progress or completed)
-              if (editableDrill.progress > 0 || isCompleted)
-                SizedBox(
-                  width: progressSize, // Increased for active
-                  height: progressSize,
-                  child: CircularProgressIndicator(
-                    value: editableDrill.progress,
-                    strokeWidth: 6,
-                    backgroundColor: Colors.grey.shade300,
-                    valueColor: AlwaysStoppedAnimation<Color>(
-                      isCompleted ? AppTheme.success : AppTheme.buttonPrimary,
-                    ),
-                  ),
-                ),
-              // Main drill circle
-              Container(
-                width: circleSize,
-                height: circleSize,
-                decoration: BoxDecoration(
-                  color: backgroundColor,
-                  shape: BoxShape.circle,
-                  border: isActive ? Border.all(color: AppTheme.getSkillColor(editableDrill.drill.skill), width: 4) : null,
-                  boxShadow: [
-                    if (isActive || isCompleted)
-                      BoxShadow(
-                        color: Colors.black.withOpacity(0.22),
-                        blurRadius: 10,
-                        offset: const Offset(0, 5),
-                      ),
-                  ],
-                ),
-                child: Center(
-                  child: iconWidget,
-                ),
-              ),
-            ],
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildDrillIcon({bool disabled = false, double size = 40}) {
-    final skill = editableDrill.drill.skill;
-    final iconColor = disabled ? AppTheme.primaryGray : AppTheme.getSkillColor(skill);
-    final iconWidget = Image.asset(
-      _getSkillIconPath(skill),
-      width: size,
-      height: size,
-      fit: BoxFit.contain,
-      errorBuilder: (context, error, stackTrace) {
-        return Icon(
-          _getSkillIconFallback(skill),
-          color: iconColor,
-          size: size * 0.7,
-        );
-      },
-    );
-    return disabled 
-      ? Opacity(
-          opacity: 0.4,
-          child: iconWidget,
-        )
-      : iconWidget;
-  }
-
-  String _getSkillIconPath(String skill) {
-    switch (skill.toLowerCase()) {
-      case 'passing':
-        return 'assets/drill-icons/Player_Passing.png';
-      case 'shooting':
-        return 'assets/drill-icons/Player_Shooting.png';
-      case 'dribbling':
-        return 'assets/drill-icons/Player_Dribbling.png';
-      case 'first touch':
-        return 'assets/drill-icons/Player_First_Touch.png';
-      case 'defending':
-        return 'assets/drill-icons/Player_Dribbling.png'; // Use dribbling as fallback for defending
-      case 'fitness':
-        return 'assets/drill-icons/Player_Dribbling.png'; // Use dribbling as fallback for fitness
-      default:
-        return 'assets/drill-icons/Player_Dribbling.png'; // Fallback to dribbling icon
-    }
-  }
-
-  IconData _getSkillIconFallback(String skill) {
-    switch (skill.toLowerCase()) {
-      case 'passing':
-        return Icons.sports_soccer;
-      case 'shooting':
-        return Icons.sports_basketball;
-      case 'dribbling':
-        return Icons.directions_run;
-      case 'first touch':
-        return Icons.touch_app;
-      case 'defending':
-        return Icons.shield;
-      case 'fitness':
-        return Icons.fitness_center;
-      default:
-        return Icons.help_outline;
-    }
   }
 }
 
