@@ -531,106 +531,108 @@ class _DrillResultsViewState extends State<DrillResultsView> with SingleTickerPr
         color: Colors.white,
         borderRadius: BorderRadius.vertical(top: Radius.circular(32)),
       ),
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        crossAxisAlignment: CrossAxisAlignment.center,
-        children: [
-          Row(
-            children: [
-              IconButton(
-                icon: const Icon(Icons.close),
-                onPressed: () {
-                  HapticUtils.lightImpact(); // Light haptic for close
-                  Navigator.of(context).pop();
-                },
+      child: SingleChildScrollView(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.center,
+          children: [
+            Row(
+              children: [
+                IconButton(
+                  icon: const Icon(Icons.close),
+                  onPressed: () {
+                    HapticUtils.lightImpact(); // Light haptic for close
+                    Navigator.of(context).pop();
+                  },
+                ),
+                const Spacer(),
+              ],
+            ),
+            const SizedBox(height: 8),
+            Text(
+              _formatDate(session.date),
+              style: const TextStyle(
+                fontWeight: FontWeight.bold,
+                fontSize: 16,
+                color: Colors.black87,
               ),
-              const Spacer(),
-            ],
-          ),
-          const SizedBox(height: 8),
-          Text(
-            _formatDate(session.date),
-            style: const TextStyle(
-              fontWeight: FontWeight.bold,
-              fontSize: 16,
-              color: Colors.black87,
             ),
-          ),
-          const SizedBox(height: 24),
-          const Text(
-            'Score:',
-            style: TextStyle(
-              fontWeight: FontWeight.bold,
-              fontSize: 24,
-              color: Colors.black87,
-            ),
-          ),
-          const SizedBox(height: 8),
-          AnimatedBuilder(
-            animation: _animation,
-            builder: (context, child) {
-              return AnimatedProgressCircle(
-                percent: _animation.value,
-                label: '${session.totalCompletedDrills} / ${session.totalDrills}',
-                color: AppTheme.primaryYellow,
-              );
-            },
-          ),
-          const SizedBox(height: 32),
-          const Text(
-            'Drills:',
-            style: TextStyle(
-              fontWeight: FontWeight.bold,
-              fontSize: 22,
-              color: Colors.black87,
-            ),
-          ),
-          const SizedBox(height: 16),
-          ...session.drills.map((drill) => Padding(
-            padding: const EdgeInsets.only(bottom: 16.0),
-            child: Container(
-              width: double.infinity,
-              decoration: BoxDecoration(
-                color: AppTheme.primaryYellow,
-                borderRadius: BorderRadius.circular(18),
-                boxShadow: [
-                  BoxShadow(
-                    color: Colors.black.withOpacity(0.08),
-                    blurRadius: 8,
-                    offset: const Offset(0, 4),
-                  ),
-                ],
+            const SizedBox(height: 24),
+            const Text(
+              'Score:',
+              style: TextStyle(
+                fontWeight: FontWeight.bold,
+                fontSize: 24,
+                color: Colors.black87,
               ),
-              padding: const EdgeInsets.all(16),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    'Drill: ${drill.drill.title}',
-                    style: const TextStyle(
-                      fontWeight: FontWeight.bold,
-                      fontSize: 16,
-                      color: Colors.black,
+            ),
+            const SizedBox(height: 8),
+            AnimatedBuilder(
+              animation: _animation,
+              builder: (context, child) {
+                return AnimatedProgressCircle(
+                  percent: _animation.value,
+                  label: '${session.totalCompletedDrills} / ${session.totalDrills}',
+                  color: AppTheme.primaryYellow,
+                );
+              },
+            ),
+            const SizedBox(height: 32),
+            const Text(
+              'Drills:',
+              style: TextStyle(
+                fontWeight: FontWeight.bold,
+                fontSize: 22,
+                color: Colors.black87,
+              ),
+            ),
+            const SizedBox(height: 16),
+            ...session.drills.map((drill) => Padding(
+              padding: const EdgeInsets.only(bottom: 16.0),
+              child: Container(
+                width: double.infinity,
+                decoration: BoxDecoration(
+                  color: AppTheme.primaryYellow,
+                  borderRadius: BorderRadius.circular(18),
+                  boxShadow: [
+                    BoxShadow(
+                      color: Colors.black.withOpacity(0.08),
+                      blurRadius: 8,
+                      offset: const Offset(0, 4),
                     ),
-                  ),
-                  const SizedBox(height: 6),
-                  Text(
-                    'Skill: ${SkillUtils.formatSkillForDisplay(drill.drill.skill)}', // ✅ UPDATED: Use centralized skill formatting
-                    style: const TextStyle(fontSize: 14, color: Colors.black87),
-                  ),
-                  Text(
-                    'Duration: ${drill.totalDuration}min    Sets: ${drill.totalSets}    Reps: ${drill.totalReps}',
-                    style: const TextStyle(fontSize: 14, color: Colors.black87),
-                  ),
-                  Text(
-                    'Equipment: ${drill.drill.equipment.join(", ")}',
-                    style: const TextStyle(fontSize: 14, color: Colors.black87),
-                  ),
-                ],
+                  ],
+                ),
+                padding: const EdgeInsets.all(16),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'Drill: ${drill.drill.title}',
+                      style: const TextStyle(
+                        fontWeight: FontWeight.bold,
+                        fontSize: 16,
+                        color: Colors.black,
+                      ),
+                    ),
+                    const SizedBox(height: 6),
+                    Text(
+                      'Skill: ${SkillUtils.formatSkillForDisplay(drill.drill.skill)}', // ✅ UPDATED: Use centralized skill formatting
+                      style: const TextStyle(fontSize: 14, color: Colors.black87),
+                    ),
+                    Text(
+                      'Duration: ${drill.totalDuration}min    Sets: ${drill.totalSets}    Reps: ${drill.totalReps}',
+                      style: const TextStyle(fontSize: 14, color: Colors.black87),
+                    ),
+                    Text(
+                      'Equipment: ${drill.drill.equipment.join(", ")}',
+                      style: const TextStyle(fontSize: 14, color: Colors.black87),
+                    ),
+                  ],
+                ),
               ),
-            ),
-          )),
-        ],
+            )),
+          ],
+        ),
       ),
     );
   }

@@ -44,10 +44,10 @@ class AppTheme {
   // MARK: - Skill Category Colors
   static const Color buttonLime = Color(0xFFAEED39);
   static const Color buttonDarkLime = Color(0xFF77A326);
-  static const Color buttonCyan = Color(0xFF46FABE);
-  static const Color buttonDarkCyan = Color(0xFF2FAD83);
-  static const Color buttonOrange = Color(0xFFff8c00);
-  static const Color buttonDarkOrange = Color(0xFFBA7220);
+  static const Color buttonCyan = Color(0xFF30ffb0);
+  static const Color buttonDarkCyan = Color(0xFF2fc28a);
+  static const Color buttonOrange = Color(0xFFf08e16);
+  static const Color buttonDarkOrange = Color(0xFFb8711a);
   static const Color buttonPurple = Color(0xFFC93BF5);
   static const Color buttonDarkPurple = Color(0xFF8B22AB);
   

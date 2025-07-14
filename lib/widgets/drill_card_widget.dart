@@ -5,6 +5,7 @@ import '../utils/haptic_utils.dart';
 import '../utils/skill_utils.dart'; // ✅ ADDED: Import centralized skill utilities
 import 'package:provider/provider.dart'; // Added for Provider
 import '../services/app_state_service.dart'; // Added for AppStateService
+import 'save_to_collection_dialog.dart'; // ✅ ADDED: Import reusable dialog
 
 class DraggableDrillCard extends StatelessWidget {
   final DrillModel drill;
@@ -169,6 +170,9 @@ class DraggableDrillCard extends StatelessWidget {
                           } else {
                             appState.addDrillToSession(drill);
                           }
+                        } else if (value == 'add_to_group') {
+                          final appState = Provider.of<AppStateService>(context, listen: false);
+                          SaveToCollectionDialog.show(context, drill);
                         }
                       },
                       itemBuilder: (context) {
@@ -201,6 +205,20 @@ class DraggableDrillCard extends StatelessWidget {
                                 ),
                                 const SizedBox(width: 8),
                                 Text(isInSession ? 'Remove from Session' : 'Add to Session'),
+                              ],
+                            ),
+                          ),
+                          PopupMenuItem(
+                            value: 'add_to_group',
+                            child: Row(
+                              children: [
+                                Icon(
+                                  Icons.folder_outlined,
+                                  color: Colors.grey,
+                                  size: 20,
+                                ),
+                                const SizedBox(width: 8),
+                                const Text('Add to Collection'),
                               ],
                             ),
                           ),

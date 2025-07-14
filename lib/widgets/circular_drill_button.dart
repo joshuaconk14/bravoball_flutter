@@ -230,14 +230,6 @@ class _CircularDrillButtonState extends State<CircularDrillButton>
                 decoration: BoxDecoration(
                   color: backColor,
                   shape: BoxShape.circle,
-                  boxShadow: [
-                    if (widget.isActive || widget.isCompleted)
-                      BoxShadow(
-                        color: Colors.black.withOpacity(0.22),
-                        blurRadius: 10,
-                        offset: const Offset(0, 5),
-                      ),
-                  ],
                 ),
               ),
             ),
@@ -255,17 +247,6 @@ class _CircularDrillButtonState extends State<CircularDrillButton>
                     decoration: BoxDecoration(
                       color: backgroundColor,
                       shape: BoxShape.circle,
-                      border: widget.isActive 
-                          ? Border.all(color: AppTheme.getSkillColor(widget.skill), width: 4) 
-                          : null,
-                      boxShadow: [
-                        if (widget.isActive || widget.isCompleted)
-                          BoxShadow(
-                            color: Colors.black.withOpacity(0.22),
-                            blurRadius: 10,
-                            offset: const Offset(0, 5),
-                          ),
-                      ],
                     ),
                     child: Center(
                       child: _buildIcon(),
