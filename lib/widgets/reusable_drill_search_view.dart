@@ -78,7 +78,7 @@ class _ReusableDrillSearchViewState extends State<ReusableDrillSearchView> {
   Widget _buildSkillFilterDropdown() {
     // You may want to get this list from your SkillCategories if available
     const skills = [
-      'Passing', 'Shooting', 'Dribbling', 'First Touch'
+      'Passing', 'Shooting', 'Dribbling', 'First Touch', 'Defending', 'Goalkeeping', 'Fitness'
     ];
     return Expanded(
       child: DropdownButtonFormField<String>(
@@ -521,6 +521,8 @@ class SelectableDrillCard extends StatelessWidget {
         return 'assets/drill-icons/Player_First_Touch.png';
       case 'defending':
         return 'assets/drill-icons/Player_Dribbling.png'; // Use dribbling as fallback for defending
+      case 'goalkeeping':
+        return 'assets/drill-icons/Player_Dribbling.png'; // Use dribbling as fallback for goalkeeping
       case 'fitness':
         return 'assets/drill-icons/Player_Dribbling.png'; // Use dribbling as fallback for fitness
       default:
@@ -540,8 +542,10 @@ class SelectableDrillCard extends StatelessWidget {
         return Icons.touch_app;
       case 'defending':
         return Icons.shield;
+      case 'goalkeeping':
+        return Icons.sports_handball;
       case 'fitness':
-        return Icons.fitness_center;
+        return Icons.sports;
       default:
         return Icons.help_outline; // Fallback icon
     }

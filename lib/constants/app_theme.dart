@@ -50,6 +50,12 @@ class AppTheme {
   static const Color buttonDarkOrange = Color(0xFFcc6d14);
   static const Color buttonPurple = Color(0xFFd751fc);
   static const Color buttonDarkPurple = Color(0xFFa53ec2);
+  static const Color buttonBrown = Color(0xFFb07d3a);
+  static const Color buttonDarkBrown = Color(0xFF8a612b);
+  static const Color buttonBlue = Color(0xFF437be0);
+  static const Color buttonDarkBlue = Color(0xFF3a66b5);
+  static const Color buttonBiege = Color(0xFFe3d76b);
+  static const Color buttonDarkBeige = Color(0xFFb8ae58);
   
   // MARK: - Text Colors
   static const Color textPrimary = primaryDark;
@@ -67,12 +73,13 @@ class AppTheme {
   static const Color speechBubbleText = white;
   
   // MARK: - Skill Colors (for drill categories)
-  static const Color skillPassing = buttonCyan; // ✅ UPDATED: Use cyan for passing
-  static const Color skillShooting = buttonPurple; // Now shooting is purple
-  static const Color skillDribbling = buttonOrange; // Now dribbling is orange
-  static const Color skillFirstTouch = buttonLime; // ✅ UPDATED: Use lime for first touch
-  static const Color skillDefending = Color(0xFFFF3B30); // Red moved to defending
-  static const Color skillFitness = Color(0xFF32ADE6);
+  static const Color skillPassing = buttonCyan;
+  static const Color skillShooting = buttonPurple;
+  static const Color skillDribbling = buttonOrange;
+  static const Color skillFirstTouch = buttonLime;
+  static const Color skillDefending = buttonBrown;
+  static const Color skillGoalkeeping = buttonBiege;
+  static const Color skillFitness = buttonBlue;
   
   /// Get skill color by skill name
   static Color getSkillColor(String skill) {
@@ -90,6 +97,8 @@ class AppTheme {
         return skillFirstTouch;
       case 'defending':
         return skillDefending;
+      case 'goalkeeping':
+        return skillGoalkeeping;
       case 'fitness':
         return skillFitness;
       default:
@@ -113,6 +122,8 @@ class AppTheme {
         return buttonDarkLime;
       case 'defending':
         return skillDefending.withOpacity(0.8);
+      case 'goalkeeping':
+        return skillGoalkeeping.withOpacity(0.8);
       case 'fitness':
         return skillFitness.withOpacity(0.8);
       default:

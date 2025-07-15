@@ -186,12 +186,18 @@ class ProgressDataSyncService {
           'firstTouchDrillsCompleted': response.data!['first_touch_drills_completed'] ?? 0,
           'passingDrillsCompleted': response.data!['passing_drills_completed'] ?? 0,
           'shootingDrillsCompleted': response.data!['shooting_drills_completed'] ?? 0,
+          'defendingDrillsCompleted': response.data!['defending_drills_completed'] ?? 0,
+          'goalkeepingDrillsCompleted': response.data!['goalkeeping_drills_completed'] ?? 0,
+          'fitnessDrillsCompleted': response.data!['fitness_drills_completed'] ?? 0,
           // ✅ NEW: Additional progress metrics
           'mostImprovedSkill': response.data!['most_improved_skill'] ?? '',
           'uniqueDrillsCompleted': response.data!['unique_drills_completed'] ?? 0,
           'beginnerDrillsCompleted': response.data!['beginner_drills_completed'] ?? 0,
           'intermediateDrillsCompleted': response.data!['intermediate_drills_completed'] ?? 0,
           'advancedDrillsCompleted': response.data!['advanced_drills_completed'] ?? 0,
+          // ✅ NEW: Mental training metrics
+          'mentalTrainingSessions': response.data!['mental_training_sessions'] ?? 0,
+          'totalMentalTrainingMinutes': response.data!['total_mental_training_minutes'] ?? 0,
         };
 
         if (kDebugMode) {

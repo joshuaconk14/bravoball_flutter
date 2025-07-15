@@ -560,6 +560,11 @@ class _ProgressViewState extends State<ProgressView> {
         
         // Group 3: Personal Stats (Most Improved Skill, Unique Drills, Difficulty Breakdown)
         _buildPositionAndFavoriteGroup(appState),
+        
+        const SizedBox(height: 16),
+        
+        // ✅ NEW: Group 4: Mental Training Stats
+        _buildMentalTrainingGroup(appState),
       ],
     );
   }
@@ -569,15 +574,15 @@ class _ProgressViewState extends State<ProgressView> {
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
         gradient: LinearGradient(
-          colors: [Colors.blue.shade50, Colors.indigo.shade50],
+          colors: [Colors.grey.shade50, Colors.grey.shade100],
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
         ),
         borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: Colors.blue.shade200),
+        border: Border.all(color: Colors.grey.shade300),
         boxShadow: [
           BoxShadow(
-            color: Colors.blue.withOpacity(0.1),
+            color: Colors.grey.withOpacity(0.1),
             blurRadius: 8,
             offset: const Offset(0, 2),
           ),
@@ -590,17 +595,17 @@ class _ProgressViewState extends State<ProgressView> {
             children: [
               Icon(
                 Icons.sports_soccer,
-                color: Colors.blue.shade700,
+                color: Colors.grey.shade600,
                 size: 20,
               ),
               const SizedBox(width: 8),
               Text(
-                'Skills Mastered',
+                'Drills completed',
                 style: TextStyle(
                   fontFamily: AppTheme.fontPoppins,
                   fontSize: 16,
-                        fontWeight: FontWeight.bold,
-                  color: Colors.blue.shade800,
+                  fontWeight: FontWeight.bold,
+                  color: Colors.grey.shade700,
                 ),
               ),
             ],
@@ -613,7 +618,7 @@ class _ProgressViewState extends State<ProgressView> {
                   value: '${appState.dribblingDrillsCompleted}',
                   label: 'Dribbling',
                   icon: Icons.directions_run,
-                  color: Colors.orange,
+                  color: AppTheme.skillDribbling,
                 ),
               ),
               const SizedBox(width: 12),
@@ -622,7 +627,7 @@ class _ProgressViewState extends State<ProgressView> {
                   value: '${appState.passingDrillsCompleted}',
                   label: 'Passing',
                   icon: Icons.arrow_forward,
-                  color: Colors.blue,
+                  color: AppTheme.skillPassing,
                 ),
               ),
             ],
@@ -635,18 +640,56 @@ class _ProgressViewState extends State<ProgressView> {
                   value: '${appState.shootingDrillsCompleted}',
                   label: 'Shooting',
                   icon: Icons.sports_soccer,
-                  color: Colors.red,
+                  color: AppTheme.skillShooting,
                 ),
               ),
               const SizedBox(width: 12),
               Expanded(
                 child: _buildSkillStatCard(
+                  value: '${appState.defendingDrillsCompleted}',
+                  label: 'Defending',
+                  icon: Icons.shield,
+                  color: AppTheme.skillDefending,
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 12),
+          Row(
+            children: [
+              Expanded(
+                child: _buildSkillStatCard(
                   value: '${appState.firstTouchDrillsCompleted}',
                   label: 'First Touch',
                   icon: Icons.touch_app,
-                  color: Colors.teal,
+                  color: AppTheme.skillFirstTouch,
                 ),
               ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: _buildSkillStatCard(
+                  value: '${appState.goalkeepingDrillsCompleted}',
+                  label: 'Goalkeeping',
+                  icon: Icons.sports_handball,
+                  color: AppTheme.skillGoalkeeping,
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 12),
+          Row(
+            children: [
+              Expanded(
+                child: _buildSkillStatCard(
+                  value: '${appState.fitnessDrillsCompleted}',
+                  label: 'Fitness',
+                  icon: Icons.sports,
+                  color: AppTheme.skillFitness,
+                ),
+              ),
+              const SizedBox(width: 12),
+              // Empty space to maintain 2-column layout
+              const Expanded(child: SizedBox()),
             ],
           ),
         ],
@@ -659,15 +702,15 @@ class _ProgressViewState extends State<ProgressView> {
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
         gradient: LinearGradient(
-          colors: [Colors.green.shade50, Colors.green.shade100],
+          colors: [Colors.grey.shade50, Colors.grey.shade100],
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
         ),
         borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: Colors.green.shade200),
+        border: Border.all(color: Colors.grey.shade300),
         boxShadow: [
           BoxShadow(
-            color: Colors.green.withOpacity(0.1),
+            color: Colors.grey.withOpacity(0.1),
             blurRadius: 8,
             offset: const Offset(0, 2),
           ),
@@ -680,7 +723,7 @@ class _ProgressViewState extends State<ProgressView> {
             children: [
               Icon(
                 Icons.timer,
-                color: Colors.green.shade700,
+                color: Colors.grey.shade600,
                 size: 20,
               ),
               const SizedBox(width: 8),
@@ -690,7 +733,7 @@ class _ProgressViewState extends State<ProgressView> {
                   fontFamily: AppTheme.fontPoppins,
                   fontSize: 16,
                   fontWeight: FontWeight.bold,
-                  color: Colors.green.shade800,
+                  color: Colors.grey.shade700,
                 ),
               ),
             ],
@@ -701,7 +744,7 @@ class _ProgressViewState extends State<ProgressView> {
               Expanded(
                 child: _buildSessionStatCard(
                   value: appState.drillsPerSession.toInt().toString(),
-                  label: 'Drills per\nSession',
+                  label: 'Average Drills\nper Session',
                   icon: Icons.list_alt,
                   color: Colors.blue,
                 ),
@@ -710,7 +753,7 @@ class _ProgressViewState extends State<ProgressView> {
               Expanded(
                 child: _buildSessionStatCard(
                   value: appState.minutesPerSession.toInt().toString(),
-                  label: 'Minutes per\nSession',
+                  label: 'Average Minutes\nper Session',
                   icon: Icons.timer,
                   color: Colors.green,
                 ),
@@ -743,15 +786,15 @@ class _ProgressViewState extends State<ProgressView> {
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
         gradient: LinearGradient(
-          colors: [Colors.purple.shade50, Colors.pink.shade50],
+          colors: [Colors.grey.shade50, Colors.grey.shade100],
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
         ),
         borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: Colors.purple.shade200),
+        border: Border.all(color: Colors.grey.shade300),
         boxShadow: [
           BoxShadow(
-            color: Colors.purple.withOpacity(0.1),
+            color: Colors.grey.withOpacity(0.1),
             blurRadius: 8,
             offset: const Offset(0, 2),
           ),
@@ -764,7 +807,7 @@ class _ProgressViewState extends State<ProgressView> {
             children: [
               Icon(
                 Icons.person,
-                color: Colors.purple.shade700,
+                color: Colors.grey.shade600,
                 size: 20,
               ),
               const SizedBox(width: 8),
@@ -774,7 +817,7 @@ class _ProgressViewState extends State<ProgressView> {
                   fontFamily: AppTheme.fontPoppins,
                   fontSize: 16,
                   fontWeight: FontWeight.bold,
-                  color: Colors.purple.shade800,
+                  color: Colors.grey.shade700,
                 ),
               ),
             ],
@@ -835,6 +878,74 @@ class _ProgressViewState extends State<ProgressView> {
                   label: 'Advanced',
                   icon: Icons.whatshot,
                   color: Colors.red,
+                ),
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildMentalTrainingGroup(AppStateService appState) {
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        gradient: LinearGradient(
+          colors: [Colors.grey.shade50, Colors.grey.shade100],
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+        ),
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: Colors.grey.shade300),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.grey.withOpacity(0.1),
+            blurRadius: 8,
+            offset: const Offset(0, 2),
+          ),
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Icon(
+                Icons.psychology,
+                color: Colors.grey.shade600,
+                size: 20,
+              ),
+              const SizedBox(width: 8),
+              Text(
+                'Mental Training',
+                style: TextStyle(
+                  fontFamily: AppTheme.fontPoppins,
+                  fontSize: 16,
+                  fontWeight: FontWeight.bold,
+                  color: Colors.grey.shade700,
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 12),
+          Row(
+            children: [
+              Expanded(
+                child: _buildPersonalStatCard(
+                  value: '${appState.mentalTrainingSessions}',
+                  label: 'Mental Training\nSessions',
+                  icon: Icons.psychology,
+                  color: Colors.purple,
+                ),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: _buildPersonalStatCard(
+                  value: _formatTotalTime(appState.totalMentalTrainingMinutes),
+                  label: 'Total Mental\nTraining Time',
+                  icon: Icons.timer,
+                  color: Colors.indigo,
                 ),
               ),
             ],

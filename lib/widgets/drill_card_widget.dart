@@ -353,6 +353,8 @@ class DraggableDrillCard extends StatelessWidget {
         return 'assets/drill-icons/Player_First_Touch.png';
       case 'defending':
         return 'assets/drill-icons/Player_Dribbling.png'; // Use dribbling as fallback for defending
+      case 'goalkeeping':
+        return 'assets/drill-icons/Player_Dribbling.png'; // Use dribbling as fallback for goalkeeping
       case 'fitness':
         return 'assets/drill-icons/Player_Dribbling.png'; // Use dribbling as fallback for fitness
       default:
@@ -372,8 +374,10 @@ class DraggableDrillCard extends StatelessWidget {
         return Icons.touch_app;
       case 'defending':
         return Icons.shield;
+      case 'goalkeeping':
+        return Icons.sports_handball;
       case 'fitness':
-        return Icons.fitness_center;
+        return Icons.sports;
       default:
         return Icons.help_outline; // Fallback icon
     }
@@ -579,7 +583,7 @@ class SimpleDrillCard extends StatelessWidget {
       case 'defending':
         return Icons.shield;
       case 'fitness':
-        return Icons.fitness_center;
+        return Icons.sports;
       default:
         return Icons.help_outline; // Fallback icon
     }

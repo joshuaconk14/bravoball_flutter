@@ -26,7 +26,7 @@ User Input → AI Processing → Session Output
 ├── Available time (15min - 2h+)
 ├── Equipment (ball, cones, goal, none)
 ├── Location (full field, small space, backyard)
-├── Skill focus (passing, shooting, dribbling, first touch)
+├── Skill focus (passing, shooting, dribbling, first touch, defending, goalkeeping)
 ├── Difficulty level (beginner, intermediate, advanced)
 └── Training intensity (low, medium, high)
 ```
@@ -63,7 +63,14 @@ Generated Session (15-120 minutes):
 
 ### Content Library
 - **100+ Professional Drills**: Expert-created content
-- **Skill Categories**: Passing, shooting, dribbling, first touch, fitness
+- **Skill Categories**: Passing, shooting, dribbling, first touch, defending, goalkeeping, fitness
+  - **Passing**: Short passing, long passing, one touch passing, technique, passing with movement
+  - **Shooting**: Power shots, finesse shots, first time shots, 1v1 to shoot, shooting on the run, volleying
+  - **Dribbling**: Close control, speed dribbling, 1v1 moves, change of direction, ball mastery
+  - **First Touch**: Ground control, aerial control, turn with ball, touch and move, juggling
+  - **Defending**: Tackling, marking, intercepting, positioning, agility, aerial defending
+  - **Goalkeeping**: Hand eye coordination, diving, reflexes, shot stopping, positioning, catching
+  - **Fitness**: Speed, endurance, agility
 - **Difficulty Levels**: Progressive skill development
 - **Equipment Variants**: Adaptations for available equipment
 
@@ -85,6 +92,8 @@ User Progress Dashboard:
 - **Shooting**: Power, placement, technique
 - **Dribbling**: Close control, 1v1 moves, speed
 - **First Touch**: Ground control, aerial control, turning
+- **Defending**: Tackling, marking, positioning, agility
+- **Goalkeeping**: Hand-eye coordination, diving, reflexes, shot stopping
 
 ### Visual Progress Indicators
 - **Skill Level Progression**: Beginner → Intermediate → Advanced

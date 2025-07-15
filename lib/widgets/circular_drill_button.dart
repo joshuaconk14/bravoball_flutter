@@ -149,6 +149,8 @@ class _CircularDrillButtonState extends State<CircularDrillButton>
         return 'assets/drill-icons/Player_First_Touch.png';
       case 'defending':
         return 'assets/drill-icons/Player_Dribbling.png';
+      case 'goalkeeping':
+        return 'assets/drill-icons/Player_Dribbling.png';
       case 'fitness':
         return 'assets/drill-icons/Player_Dribbling.png';
       default:
@@ -168,8 +170,10 @@ class _CircularDrillButtonState extends State<CircularDrillButton>
         return Icons.touch_app;
       case 'defending':
         return Icons.shield;
+      case 'goalkeeping':
+        return Icons.sports_handball;
       case 'fitness':
-        return Icons.fitness_center;
+        return Icons.sports;
       default:
         return Icons.help_outline;
     }

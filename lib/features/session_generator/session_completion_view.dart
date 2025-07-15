@@ -260,135 +260,15 @@ class _SessionCompletionViewState extends State<SessionCompletionView>
     return Container(
       width: 180,
       height: 180,
-      child: Stack(
-        alignment: Alignment.center,
-        children: [
-          // Grass base with shadow
-          Positioned(
-            bottom: 0,
-            child: Container(
-              width: 140,
-              height: 25,
-              decoration: BoxDecoration(
-                color: AppTheme.primaryGreen,
-                borderRadius: BorderRadius.circular(20),
-                boxShadow: [
-                  BoxShadow(
-                    color: Colors.black.withOpacity(0.15),
-                    blurRadius: 8,
-                    offset: const Offset(0, 4),
-                  ),
-                ],
-              ),
-            ),
+      child: Center(
+        child: SizedBox(
+          width: 120,
+          height: 120,
+          child: RiveAnimation.asset(
+            'assets/rive/Bravo_Animation.riv',
+            fit: BoxFit.contain,
           ),
-          
-          // Bravo character using Rive animation
-          Positioned(
-            bottom: 15,
-            child: SizedBox(
-              width: 120,
-              height: 120,
-              child: RiveAnimation.asset(
-                'assets/rive/Bravo_Animation.riv',
-                fit: BoxFit.contain,
-              ),
-            ),
-          ),
-          
-          // Soccer ball with animation
-          Positioned(
-            bottom: 16, // Reduced from 20
-            right: 16, // Reduced from 20
-            child: AnimatedBuilder(
-              animation: _characterController,
-              builder: (context, child) {
-                return Transform.rotate(
-                  angle: _characterController.value * 2 * 3.14159,
-                  child: Container(
-                    width: 28, // Reduced from 35
-                    height: 28, // Reduced from 35
-                    decoration: BoxDecoration(
-                      color: Colors.white,
-                      shape: BoxShape.circle,
-                      border: Border.all(color: Colors.black, width: 2),
-                      boxShadow: [
-                        BoxShadow(
-                          color: Colors.black.withOpacity(0.1),
-                          blurRadius: 4,
-                          offset: const Offset(0, 2),
-                        ),
-                      ],
-                    ),
-                    child: Stack(
-                      children: [
-                        // Soccer ball pattern
-                        Center(
-                          child: Container(
-                            width: 10, // Reduced from 12
-                            height: 10, // Reduced from 12
-                            decoration: BoxDecoration(
-                              color: Colors.black,
-                              shape: BoxShape.circle,
-                            ),
-                          ),
-                        ),
-                        Positioned(
-                          top: 6, // Reduced from 8
-                          left: 6, // Reduced from 8
-                          child: Container(
-                            width: 4, // Reduced from 6
-                            height: 4, // Reduced from 6
-                            decoration: const BoxDecoration(
-                              color: Colors.black,
-                              shape: BoxShape.circle,
-                            ),
-                          ),
-                        ),
-                        Positioned(
-                          top: 6, // Reduced from 8
-                          right: 6, // Reduced from 8
-                          child: Container(
-                            width: 4, // Reduced from 6
-                            height: 4, // Reduced from 6
-                            decoration: const BoxDecoration(
-                              color: Colors.black,
-                              shape: BoxShape.circle,
-                            ),
-                          ),
-                        ),
-                        Positioned(
-                          bottom: 6, // Reduced from 8
-                          left: 6, // Reduced from 8
-                          child: Container(
-                            width: 4, // Reduced from 6
-                            height: 4, // Reduced from 6
-                            decoration: const BoxDecoration(
-                              color: Colors.black,
-                              shape: BoxShape.circle,
-                            ),
-                          ),
-                        ),
-                        Positioned(
-                          bottom: 6, // Reduced from 8
-                          right: 6, // Reduced from 8
-                          child: Container(
-                            width: 4, // Reduced from 6
-                            height: 4, // Reduced from 6
-                            decoration: const BoxDecoration(
-                              color: Colors.black,
-                              shape: BoxShape.circle,
-                            ),
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                );
-              },
-            ),
-          ),
-        ],
+        ),
       ),
     );
   }

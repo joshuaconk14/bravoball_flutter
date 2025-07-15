@@ -81,6 +81,39 @@ class SkillCategories {
       ],
       icon: "first_touch_icon",
     ),
+    SkillCategory(
+      name: "Defending",
+      subSkills: [
+        "Tackling",
+        "Marking",
+        "Intercepting",
+        "Positioning",
+        "Agility",
+        "Aerial defending"
+      ],
+      icon: "defending_icon",
+    ),
+    SkillCategory(
+      name: "Goalkeeping",
+      subSkills: [
+        "Hand eye coordination",
+        "Diving",
+        "Reflexes",
+        "Shot stopping",
+        "Positioning",
+        "Catching"
+      ],
+      icon: "goalkeeping_icon",
+    ),
+    SkillCategory(
+      name: "Fitness",
+      subSkills: [
+        "Speed",
+        "Endurance",
+        "Agility"
+      ],
+      icon: "fitness_icon",
+    ),
   ];
 }
 

@@ -944,7 +944,8 @@ class TestDataService {
         'Shooting': 0.45 + Random().nextDouble() * 0.4,
         'First Touch': 0.35 + Random().nextDouble() * 0.45,
         'Defending': 0.25 + Random().nextDouble() * 0.5,
-        'Fitness': 0.60 + Random().nextDouble() * 0.25,
+        'Goalkeeping': 0.20 + Random().nextDouble() * 0.55,
+        'Fitness': 0.30 + Random().nextDouble() * 0.5,
       },
       'totalSessions': 12 + Random().nextInt(20),
       'totalDrills': 45 + Random().nextInt(50),
@@ -1009,6 +1010,9 @@ class TestDataService {
       'Shooting',
       'Dribbling',
       'First Touch',
+      'Defending',
+      'Goalkeeping',
+      'Fitness',
     ];
   }
 

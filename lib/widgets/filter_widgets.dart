@@ -74,7 +74,7 @@ class FilterChipWidget extends StatelessWidget {
       case FilterType.equipment:
         return Icon(Icons.sports_soccer, size: 18, color: iconColor);
       case FilterType.trainingStyle:
-        return Icon(Icons.fitness_center, size: 18, color: iconColor);
+        return Icon(Icons.sports, size: 18, color: iconColor);
       case FilterType.location:
         return Icon(Icons.location_on, size: 18, color: iconColor);
       case FilterType.difficulty:
@@ -397,6 +397,10 @@ class SkillSelector extends StatelessWidget {
         return Icons.directions_run;
       case 'first touch':
         return Icons.touch_app;
+      case 'defending':
+        return Icons.shield;
+      case 'goalkeeping':
+        return Icons.sports_handball;
       default:
         return Icons.sports;
     }

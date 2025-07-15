@@ -363,12 +363,23 @@ class _DrillFollowAlongViewState extends State<DrillFollowAlongView> {
             ),
             const SizedBox(height: 6), // Reduced from 8
             Text(
-              'No video available',
+              'No video for this drill right now,',
               style: TextStyle(
                 fontFamily: 'Poppins',
                 fontSize: 12, // Reduced from 14
                 color: Colors.grey.shade600,
               ),
+              textAlign: TextAlign.center,
+            ),
+            Text(
+              'coming soon!',
+              style: TextStyle(
+                fontFamily: 'Poppins',
+                fontSize: 12, // Reduced from 14
+                fontWeight: FontWeight.bold,
+                color: Colors.grey.shade700,
+              ),
+              textAlign: TextAlign.center,
             ),
           ],
         ),

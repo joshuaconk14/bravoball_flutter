@@ -143,12 +143,23 @@ class _DrillVideoPlayerState extends State<DrillVideoPlayer> {
             ),
             const SizedBox(height: 8),
             Text(
-              'Video unavailable',
+              'No video for this drill right now,',
               style: TextStyle(
                 fontFamily: 'Poppins',
                 fontSize: 14,
                 color: Colors.grey.shade600,
               ),
+              textAlign: TextAlign.center,
+            ),
+            Text(
+              'coming soon!',
+              style: TextStyle(
+                fontFamily: 'Poppins',
+                fontSize: 14,
+                fontWeight: FontWeight.bold,
+                color: Colors.grey.shade700,
+              ),
+              textAlign: TextAlign.center,
             ),
           ],
         ),

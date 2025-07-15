@@ -61,7 +61,10 @@ final List<OnboardingQuestion> onboardingQuestions = [
       'Passing',
       'Dribbling',
       'Shooting',
-      'First touch'
+      'First touch',
+      'Defending',
+      'Goalkeeping',
+      'Fitness'
     ],
     isMultiSelect: true,
   ),
@@ -71,7 +74,10 @@ final List<OnboardingQuestion> onboardingQuestions = [
       'Passing',
       'Dribbling',
       'Shooting',
-      'First touch'
+      'First touch',
+      'Defending',
+      'Goalkeeping',
+      'Fitness'
     ],
     isMultiSelect: true,
   ),

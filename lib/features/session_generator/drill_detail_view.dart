@@ -176,17 +176,57 @@ class DrillDetailView extends StatelessWidget {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 // Video player section
-                if (drill.videoUrl.isNotEmpty)
-                  Column(
-                    children: [
+                Column(
+                  children: [
+                    if (drill.videoUrl.isNotEmpty)
                       DrillVideoPlayer(
                         videoUrl: drill.videoUrl,
                         aspectRatio: 16 / 9,
                         showControls: true,
+                      )
+                    else
+                      // Fallback placeholder when no video URL
+                      Container(
+                        width: double.infinity,
+                        height: 200,
+                        decoration: BoxDecoration(
+                          color: Colors.grey.shade200,
+                          borderRadius: BorderRadius.circular(16),
+                        ),
+                        child: Column(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            Icon(
+                              Icons.videocam_off,
+                              size: 48,
+                              color: Colors.grey.shade600,
+                            ),
+                            const SizedBox(height: 8),
+                            Text(
+                              'No video for this drill right now,',
+                              style: TextStyle(
+                                fontFamily: 'Poppins',
+                                fontSize: 14,
+                                color: Colors.grey.shade600,
+                              ),
+                              textAlign: TextAlign.center,
+                            ),
+                            Text(
+                              'coming soon!',
+                              style: TextStyle(
+                                fontFamily: 'Poppins',
+                                fontSize: 14,
+                                fontWeight: FontWeight.bold,
+                                color: Colors.grey.shade700,
+                              ),
+                              textAlign: TextAlign.center,
+                            ),
+                          ],
+                        ),
                       ),
-                      const SizedBox(height: 24),
-                    ],
-                  ),
+                    const SizedBox(height: 24),
+                  ],
+                ),
                 
                 // Drill header with icon and basic info
                 _buildDrillHeader(),
@@ -567,6 +607,12 @@ class DrillDetailView extends StatelessWidget {
         return Icons.directions_run;
       case 'first touch':
         return Icons.touch_app;
+      case 'defending':
+        return Icons.shield;
+      case 'goalkeeping':
+        return Icons.sports_handball;
+      case 'fitness':
+        return Icons.sports;
       default:
         return Icons.sports;
     }

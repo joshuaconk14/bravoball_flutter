@@ -282,6 +282,15 @@ class AppStateService extends ChangeNotifier {
   int _shootingDrillsCompleted = 0;
   int get shootingDrillsCompleted => _shootingDrillsCompleted;
   
+  int _defendingDrillsCompleted = 0;
+  int get defendingDrillsCompleted => _defendingDrillsCompleted;
+  
+  int _goalkeepingDrillsCompleted = 0;
+  int get goalkeepingDrillsCompleted => _goalkeepingDrillsCompleted;
+  
+  int _fitnessDrillsCompleted = 0;
+  int get fitnessDrillsCompleted => _fitnessDrillsCompleted;
+  
   // ✅ NEW: Additional progress metrics
   String _mostImprovedSkill = '';
   String get mostImprovedSkill => _mostImprovedSkill;
@@ -297,6 +306,13 @@ class AppStateService extends ChangeNotifier {
   
   int _advancedDrillsCompleted = 0;
   int get advancedDrillsCompleted => _advancedDrillsCompleted;
+  
+  // ✅ NEW: Mental training metrics
+  int _mentalTrainingSessions = 0;
+  int get mentalTrainingSessions => _mentalTrainingSessions;
+  
+  int _totalMentalTrainingMinutes = 0;
+  int get totalMentalTrainingMinutes => _totalMentalTrainingMinutes;
   
   // ===== APPLICATION STATE SECTION =====
   // Global app state flags
@@ -440,7 +456,7 @@ class AppStateService extends ChangeNotifier {
     
     try {
       final sampleDrills = <DrillModel>[];
-      final categories = ['Passing', 'Dribbling', 'Shooting', 'First Touch'];
+      final categories = ['Passing', 'Dribbling', 'Shooting', 'First Touch', 'Defending', 'Goalkeeping', 'Fitness'];
       
       // Try to get one drill from each category for variety
       for (final category in categories) {
@@ -582,6 +598,9 @@ class AppStateService extends ChangeNotifier {
         _firstTouchDrillsCompleted = progressHistory['firstTouchDrillsCompleted'] ?? 0;
         _passingDrillsCompleted = progressHistory['passingDrillsCompleted'] ?? 0;
         _shootingDrillsCompleted = progressHistory['shootingDrillsCompleted'] ?? 0;
+        _defendingDrillsCompleted = progressHistory['defendingDrillsCompleted'] ?? 0;
+        _goalkeepingDrillsCompleted = progressHistory['goalkeepingDrillsCompleted'] ?? 0;
+        _fitnessDrillsCompleted = progressHistory['fitnessDrillsCompleted'] ?? 0;
 
         // ✅ NEW: Additional progress metrics
         _mostImprovedSkill = progressHistory['mostImprovedSkill'] ?? '';
@@ -589,6 +608,10 @@ class AppStateService extends ChangeNotifier {
         _beginnerDrillsCompleted = progressHistory['beginnerDrillsCompleted'] ?? 0;
         _intermediateDrillsCompleted = progressHistory['intermediateDrillsCompleted'] ?? 0;
         _advancedDrillsCompleted = progressHistory['advancedDrillsCompleted'] ?? 0;
+
+        // ✅ NEW: Mental training metrics
+        _mentalTrainingSessions = progressHistory['mentalTrainingSessions'] ?? 0;
+        _totalMentalTrainingMinutes = progressHistory['totalMentalTrainingMinutes'] ?? 0;
       }
       
       if (kDebugMode) print('✅ Loaded progress data from backend');
@@ -704,6 +727,9 @@ class AppStateService extends ChangeNotifier {
         _firstTouchDrillsCompleted = progressHistory['firstTouchDrillsCompleted'] ?? 0;
         _passingDrillsCompleted = progressHistory['passingDrillsCompleted'] ?? 0;
         _shootingDrillsCompleted = progressHistory['shootingDrillsCompleted'] ?? 0;
+        _defendingDrillsCompleted = progressHistory['defendingDrillsCompleted'] ?? 0;
+        _goalkeepingDrillsCompleted = progressHistory['goalkeepingDrillsCompleted'] ?? 0;
+        _fitnessDrillsCompleted = progressHistory['fitnessDrillsCompleted'] ?? 0;
 
         // ✅ NEW: Refresh additional progress metrics
         _mostImprovedSkill = progressHistory['mostImprovedSkill'] ?? '';
@@ -711,6 +737,10 @@ class AppStateService extends ChangeNotifier {
         _beginnerDrillsCompleted = progressHistory['beginnerDrillsCompleted'] ?? 0;
         _intermediateDrillsCompleted = progressHistory['intermediateDrillsCompleted'] ?? 0;
         _advancedDrillsCompleted = progressHistory['advancedDrillsCompleted'] ?? 0;
+
+        // ✅ NEW: Refresh mental training metrics
+        _mentalTrainingSessions = progressHistory['mentalTrainingSessions'] ?? 0;
+        _totalMentalTrainingMinutes = progressHistory['totalMentalTrainingMinutes'] ?? 0;
         
         notifyListeners();
       }
@@ -1275,6 +1305,7 @@ class AppStateService extends ChangeNotifier {
       'dribbling': 'Dribbling',
       'first_touch': 'First Touch',
       'defending': 'Defending',
+      'goalkeeping': 'Goalkeeping',
       'fitness': 'Fitness',
       'general': 'General',
     };
@@ -1329,6 +1360,13 @@ class AppStateService extends ChangeNotifier {
       'marking': 'Marking',
       'intercepting': 'Intercepting',
       'positioning': 'Positioning',
+      'agility': 'Agility',
+      'aerial_defending': 'Aerial defending',
+      'hand_eye_coordination': 'Hand eye coordination',
+      'diving': 'Diving',
+      'reflexes': 'Reflexes',
+      'shot_stopping': 'Shot stopping',
+      'catching': 'Catching',
       'general': 'General',
     };
     return subSkillMap[backendSubSkill.toLowerCase()] ?? backendSubSkill;
@@ -1911,6 +1949,9 @@ class AppStateService extends ChangeNotifier {
     _firstTouchDrillsCompleted = 0;
     _passingDrillsCompleted = 0;
     _shootingDrillsCompleted = 0;
+    _defendingDrillsCompleted = 0;
+    _goalkeepingDrillsCompleted = 0;
+    _fitnessDrillsCompleted = 0;
 
     // ✅ NEW: Reset additional progress metrics
     _mostImprovedSkill = '';
@@ -1918,6 +1959,10 @@ class AppStateService extends ChangeNotifier {
     _beginnerDrillsCompleted = 0;
     _intermediateDrillsCompleted = 0;
     _advancedDrillsCompleted = 0;
+    
+    // ✅ NEW: Reset mental training metrics
+    _mentalTrainingSessions = 0;
+    _totalMentalTrainingMinutes = 0;
     
     // Don't reset session state if it was completed - preserve completion status
     if (_sessionState != SessionState.completed) {
@@ -1958,6 +2003,9 @@ class AppStateService extends ChangeNotifier {
     _firstTouchDrillsCompleted = 0;
     _passingDrillsCompleted = 0;
     _shootingDrillsCompleted = 0;
+    _defendingDrillsCompleted = 0;
+    _goalkeepingDrillsCompleted = 0;
+    _fitnessDrillsCompleted = 0;
 
     // ✅ NEW: Reset additional progress metrics
     _mostImprovedSkill = '';
@@ -1965,6 +2013,10 @@ class AppStateService extends ChangeNotifier {
     _beginnerDrillsCompleted = 0;
     _intermediateDrillsCompleted = 0;
     _advancedDrillsCompleted = 0;
+    
+    // ✅ NEW: Reset mental training metrics
+    _mentalTrainingSessions = 0;
+    _totalMentalTrainingMinutes = 0;
     
     _syncCoordinator.cancelAll();
     notifyListeners();

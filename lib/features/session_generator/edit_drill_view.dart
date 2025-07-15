@@ -195,12 +195,23 @@ class _EditDrillViewState extends State<EditDrillView> {
             ),
             const SizedBox(height: 8),
             Text(
-              'No video available',
+              'No video for this drill right now,',
               style: TextStyle(
                 fontFamily: 'Poppins',
                 fontSize: 14,
                 color: Colors.grey.shade600,
               ),
+              textAlign: TextAlign.center,
+            ),
+            Text(
+              'coming soon!',
+              style: TextStyle(
+                fontFamily: 'Poppins',
+                fontSize: 14,
+                fontWeight: FontWeight.bold,
+                color: Colors.grey.shade700,
+              ),
+              textAlign: TextAlign.center,
             ),
           ],
         ),
