@@ -786,7 +786,7 @@ class _ProgressViewState extends State<ProgressView> {
               Expanded(
                 child: Tooltip(
                   message: appState.mostImprovedSkill.isNotEmpty ? appState.mostImprovedSkill : 'No improvement data yet',
-                  child: _buildPersonalStatCard(
+                child: _buildPersonalStatCard(
                     value: appState.mostImprovedSkill.isNotEmpty ? appState.mostImprovedSkill : '—',
                     label: 'Most Improved\nSkill',
                     icon: Icons.trending_up,
@@ -798,7 +798,7 @@ class _ProgressViewState extends State<ProgressView> {
               ),
               const SizedBox(width: 12),
               Expanded(
-                child: _buildPersonalStatCard(
+                  child: _buildPersonalStatCard(
                   value: '${appState.uniqueDrillsCompleted}',
                   label: 'Unique Drills\nCompleted',
                   icon: Icons.star,
