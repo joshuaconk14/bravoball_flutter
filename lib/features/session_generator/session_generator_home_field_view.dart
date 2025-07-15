@@ -5,7 +5,6 @@ import '../../widgets/bravo_button.dart';
 import '../../widgets/guest_account_overlay.dart'; // ✅ NEW: Import reusable guest overlay
 import '../../widgets/circular_drill_button.dart'; // ✅ NEW: Import circular drill button
 import '../../widgets/warning_dialog.dart'; // ✅ NEW: Import reusable warning dialog
-import '../../widgets/typewriter_text.dart'; // ✅ NEW: Import reusable typewriter text
 import '../../models/editable_drill_model.dart';
 import '../../services/app_state_service.dart';
 import '../../services/audio_service.dart';
@@ -26,6 +25,41 @@ class SessionGeneratorHomeFieldView extends StatefulWidget {
 }
 
 class _SessionGeneratorHomeFieldViewState extends State<SessionGeneratorHomeFieldView> {
+  // ✅ NEW: Calculate dynamic spacing between drill buttons based on their sizes
+  double _getSpacingForButton(
+    EditableDrillModel currentDrill, 
+    EditableDrillModel? nextDrill, 
+    bool sessionComplete, 
+    EditableDrillModel? nextIncompleteDrill,
+  ) {
+    // Determine current button size
+    final bool isCurrentActive = !sessionComplete && nextIncompleteDrill?.drill.id == currentDrill.drill.id;
+    final double currentButtonSize = isCurrentActive ? 90 : (currentDrill.isCompleted ? 70 : 80); // ✅ UPDATED: Use new larger sizes
+    
+    // Determine next button size
+    double nextButtonSize = 80; // ✅ UPDATED: Updated default size
+    if (nextDrill != null) {
+      final bool isNextActive = !sessionComplete && nextIncompleteDrill?.drill.id == nextDrill.drill.id;
+      nextButtonSize = isNextActive ? 90 : (nextDrill.isCompleted ? 70 : 80); // ✅ UPDATED: Use new larger sizes
+    }
+    
+    // Base spacing - reduced for closer spacing
+    double baseSpacing = 18; // ✅ UPDATED: Reduced from 24 to 20
+    
+    // Adjust spacing based on button sizes to create visually even spacing
+    // Larger buttons need more space to look balanced
+    if (currentButtonSize == 90 || nextButtonSize == 90) { // ✅ UPDATED: Use new active size
+      baseSpacing = 24; // ✅ UPDATED: Reduced from 30 to 24 for closer spacing
+    } else if (currentButtonSize == 70 && nextButtonSize == 70) { // ✅ UPDATED: Use new completed size
+      baseSpacing = 18; // ✅ UPDATED: Reduced from 22 to 18 for closer spacing
+    } else if ((currentButtonSize == 70 && nextButtonSize == 80) || 
+               (currentButtonSize == 80 && nextButtonSize == 70)) { // ✅ UPDATED: Use new sizes
+      baseSpacing = 18; // ✅ UPDATED: Reduced from 24 to 20 for closer spacing
+    }
+    
+    return baseSpacing;
+  }
+
   // Build the home field view
   @override
   Widget build(BuildContext context) {
@@ -247,6 +281,25 @@ class _SessionGeneratorHomeFieldViewState extends State<SessionGeneratorHomeFiel
           final index = entry.key;
           final editableDrill = entry.value;
           final isActive = !sessionComplete && nextIncompleteDrill?.drill.id == editableDrill.drill.id;
+          
+          // ✅ UPDATED: Dynamic sizing based on drill state
+          final double buttonSize;
+          final double iconSize;
+          
+          if (isActive) {
+            // Active drill - make it bigger to stand out
+            buttonSize = 90; // ✅ UPDATED: Increased from 80 to 90
+            iconSize = 45; // ✅ UPDATED: Increased from 40 to 45
+          } else if (editableDrill.isCompleted) {
+            // Completed drill - make it smaller and less prominent
+            buttonSize = 70; // ✅ UPDATED: Increased from 60 to 70
+            iconSize = 35; // ✅ UPDATED: Increased from 30 to 35
+          } else {
+            // Incomplete drill - normal size
+            buttonSize = 80; // ✅ UPDATED: Increased from 70 to 80
+            iconSize = 40; // ✅ UPDATED: Increased from 35 to 40
+          }
+          
           return Column(
             children: [
               CircularDrillButton(
@@ -254,14 +307,21 @@ class _SessionGeneratorHomeFieldViewState extends State<SessionGeneratorHomeFiel
                 isActive: isActive,
                 isCompleted: editableDrill.isCompleted,
                 disabled: false,
-                size: 90, // ✅ FIXED: Use consistent size for all buttons
-                iconSize: 45, // ✅ FIXED: Use consistent icon size for all buttons
+                size: buttonSize,
+                iconSize: iconSize,
                 showProgress: editableDrill.progress > 0 || editableDrill.isCompleted,
                 progress: editableDrill.progress,
                 onPressed: () => _openFollowAlong(editableDrill, appState),
               ),
               if (index < editableSessionDrills.length - 1)
-                const SizedBox(height: 24),
+                SizedBox(
+                  height: _getSpacingForButton(
+                    editableDrill, 
+                    index < editableSessionDrills.length - 1 ? editableSessionDrills[index + 1] : null,
+                    sessionComplete,
+                    nextIncompleteDrill,
+                  ),
+                ),
             ],
           );
         }).toList(),
@@ -465,9 +525,8 @@ class _SessionGeneratorHomeFieldViewState extends State<SessionGeneratorHomeFiel
             color: AppTheme.speechBubbleBackground,
             borderRadius: BorderRadius.circular(12),
           ),
-          child: TypewriterText(
-            key: ValueKey('status_message_$message'), // ✅ NEW: Unique key to trigger animation on message change
-            text: message,
+          child: Text(
+            message,
             style: const TextStyle(
               fontFamily: 'Poppins',
               fontWeight: FontWeight.w600,
@@ -475,9 +534,6 @@ class _SessionGeneratorHomeFieldViewState extends State<SessionGeneratorHomeFiel
               color: Colors.white,
             ),
             textAlign: TextAlign.center,
-            duration: const Duration(milliseconds: 40), // ✅ NEW: Faster typing for status messages
-            startDelay: const Duration(milliseconds: 200), // ✅ NEW: Shorter delay for responsiveness
-            enableHaptics: false, // ✅ NEW: Disable haptics for status messages to avoid spam
           ),
         ),
         // Speech bubble tail pointing down to Bravo

@@ -40,7 +40,7 @@ class _CircularDrillButtonState extends State<CircularDrillButton>
   late Animation<double> _offsetAnimation;
   bool _isPressed = false;
 
-  static const double _buttonDropOffset = 8.0; // ✅ UPDATED: Increased from 4.0 to 6.0 to make back circle lower
+  static const double _buttonDropOffset = 6.0; // ✅ UPDATED: Reduced from 8.0 to 6.0 for better scaling with smaller buttons
 
   @override
   void initState() {
@@ -88,9 +88,9 @@ class _CircularDrillButtonState extends State<CircularDrillButton>
 
   Color _getBackgroundColor() {
     if (widget.isCompleted) {
-      return AppTheme.getSkillColor(widget.skill); // ✅ UPDATED: Keep original skill color when completed
+      return AppTheme.success; // ✅ UPDATED: Use green for completed drills instead of skill color
     } else if (widget.isActive) {
-      return AppTheme.getSkillColor(widget.skill);
+      return const Color(0xFFF5C842); // ✅ UPDATED: Use more vibrant golden yellow for active drills
     } else if (widget.disabled) {
       return AppTheme.buttonDisabledGray;
     } else {
@@ -100,9 +100,9 @@ class _CircularDrillButtonState extends State<CircularDrillButton>
 
   Color _getBackColor() {
     if (widget.isCompleted) {
-      return AppTheme.getSkillDarkColor(widget.skill); // ✅ UPDATED: Keep original dark skill color when completed
+      return AppTheme.primaryDarkGreen; // ✅ UPDATED: Use dark green from app theme for completed drills
     } else if (widget.isActive) {
-      return AppTheme.getSkillDarkColor(widget.skill);
+      return const Color(0xFFE0B13A); // ✅ UPDATED: Use darker golden yellow for active drills
     } else if (widget.disabled) {
       return AppTheme.buttonDisabledDarkGray;
     } else {
@@ -179,7 +179,7 @@ class _CircularDrillButtonState extends State<CircularDrillButton>
   Widget build(BuildContext context) {
     final backgroundColor = _getBackgroundColor();
     final backColor = _getBackColor();
-    final progressSize = widget.size + 22; // Increased from +18 to +26 for a bigger progress ring
+    final progressSize = widget.size + 16; // ✅ UPDATED: Reduced from +22 to +16 for better scaling with smaller buttons
 
     return SizedBox(
       width: widget.size + _buttonDropOffset,
@@ -194,26 +194,26 @@ class _CircularDrillButtonState extends State<CircularDrillButton>
             // Animated arrow for active drill
             if (widget.isActive)
               Positioned(
-                right: -(progressSize / 2) - 6, // Closer to the button
-                top: widget.size / 2 - 27, // Adjusted for bigger arrow
+                right: -(progressSize / 2) - 4, // ✅ UPDATED: Reduced from -6 to -4 for closer positioning
+                top: widget.size / 2 - 22, // ✅ UPDATED: Adjusted from -27 to -22 for smaller arrow
                 child: _BouncingArrow(),
               ),
             
             // Progress ring (only show if there's progress or completed)
             if (widget.showProgress && (widget.progress > 0 || widget.isCompleted))
               Positioned(
-                top: (_buttonDropOffset + (widget.size - progressSize) / 2) - 4, // Move up by 8 pixels
+                top: (_buttonDropOffset + (widget.size - progressSize) / 2) - 3, // ✅ UPDATED: Adjusted from -4 to -3 for smaller drop offset
                 left: (widget.size - progressSize) / 2,
                 child: SizedBox(
                   width: progressSize,
                   height: progressSize,
                   child: CircularProgressIndicator(
                     value: widget.progress,
-                    strokeWidth: 6,
+                    strokeWidth: 4, // ✅ UPDATED: Reduced from 6 to 4 for better proportion with smaller buttons
                     backgroundColor: Colors.grey.shade300,
                     valueColor: AlwaysStoppedAnimation<Color>(
-                      widget.isCompleted ? AppTheme.getSkillColor(widget.skill) : 
-                      widget.isActive ? AppTheme.getSkillColor(widget.skill) : 
+                      widget.isCompleted ? AppTheme.success : // ✅ UPDATED: Use green for completed drills
+                      widget.isActive ? const Color(0xFFF5C842) : // ✅ UPDATED: Use vibrant golden yellow for active drills
                       AppTheme.buttonDisabledGray, // ✅ UPDATED: Use disabled gray for untouched drills
                     ),
                   ),
@@ -278,7 +278,7 @@ class _BouncingArrowState extends State<_BouncingArrow> with SingleTickerProvide
       vsync: this,
       duration: const Duration(milliseconds: 1100), // Slower bounce
     )..repeat(reverse: true);
-    _animation = Tween<double>(begin: 0, end: 12).animate(
+    _animation = Tween<double>(begin: 0, end: 10).animate( // ✅ UPDATED: Reduced from 12 to 10 for smaller buttons
       CurvedAnimation(parent: _controller, curve: Curves.easeInOut),
     );
   }
@@ -299,7 +299,7 @@ class _BouncingArrowState extends State<_BouncingArrow> with SingleTickerProvide
           child: Icon(
             Icons.arrow_left,
             color: Colors.white,
-            size: 54, // Bigger arrow
+            size: 44, // ✅ UPDATED: Reduced from 54 to 44 for smaller buttons
           ),
         );
       },
