@@ -260,30 +260,34 @@ class _MentalTrainingSetupViewState extends State<MentalTrainingSetupView>
         const SizedBox(height: 16),
         
         Expanded(
-          child: GridView.builder(
-            gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-              crossAxisCount: 2,
-              childAspectRatio: 2.0, // Increased from 1.8 to 2.0 for better proportions
-              crossAxisSpacing: 16,
-              mainAxisSpacing: 16,
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 8.0), // ✅ ADDED: Extra horizontal padding
+            child: GridView.builder(
+              padding: const EdgeInsets.symmetric(vertical: 8.0), // ✅ ADDED: Vertical padding for shadows
+              gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+                crossAxisCount: 2,
+                childAspectRatio: 2.0,
+                crossAxisSpacing: 12, // ✅ REDUCED: From 16 to 12 to give more space
+                mainAxisSpacing: 16,
+              ),
+              itemCount: _availableDurations.length,
+              itemBuilder: (context, index) {
+                final duration = _availableDurations[index];
+                final isSelected = duration == _selectedDuration;
+                
+                return TweenAnimationBuilder<double>(
+                  tween: Tween(begin: 0.0, end: 1.0),
+                  duration: Duration(milliseconds: 400 + (index * 100)),
+                  curve: Curves.easeOutBack,
+                  builder: (context, value, child) {
+                    return Transform.scale(
+                      scale: value,
+                      child: _buildDurationCard(duration, isSelected),
+                    );
+                  },
+                );
+              },
             ),
-            itemCount: _availableDurations.length,
-            itemBuilder: (context, index) {
-              final duration = _availableDurations[index];
-              final isSelected = duration == _selectedDuration;
-              
-              return TweenAnimationBuilder<double>(
-                tween: Tween(begin: 0.0, end: 1.0),
-                duration: Duration(milliseconds: 400 + (index * 100)),
-                curve: Curves.easeOutBack,
-                builder: (context, value, child) {
-                  return Transform.scale(
-                    scale: value,
-                    child: _buildDurationCard(duration, isSelected),
-                  );
-                },
-              );
-            },
           ),
         ),
       ],
@@ -292,7 +296,7 @@ class _MentalTrainingSetupViewState extends State<MentalTrainingSetupView>
 
   Widget _buildDurationCard(int duration, bool isSelected) {
     return AnimatedScale(
-      scale: isSelected ? 1.05 : 1.0,
+      scale: isSelected ? 1.02 : 1.0, // ✅ REDUCED: From 1.05 to 1.02 to prevent overflow
       duration: const Duration(milliseconds: 200),
       child: GestureDetector(
         onTap: () {

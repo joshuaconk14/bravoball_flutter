@@ -8,6 +8,8 @@ import '../../models/editable_drill_model.dart'; // Added for EditableDrillModel
 import '../../services/mental_training_service.dart';
 import '../../services/app_state_service.dart';
 import '../../services/audio_service.dart';
+import '../../services/background_timer_service.dart'; // ✅ ADDED: Background timer service
+import '../../services/wake_lock_service.dart'; // ✅ ADDED: Wake lock service
 import '../../constants/app_theme.dart';
 import '../../utils/haptic_utils.dart';
 import '../../widgets/bravo_button.dart';
@@ -30,14 +32,25 @@ class MentalTrainingTimerView extends StatefulWidget {
 class _MentalTrainingTimerViewState extends State<MentalTrainingTimerView> 
     with TickerProviderStateMixin {
   
+  // ✅ UPDATED: Use BackgroundTimerService instead of manual Timer
+  final BackgroundTimerService _backgroundTimer = BackgroundTimerService.shared;
+  
   // Timer state
   late int _totalSeconds;
   late int _remainingSeconds;
-  Timer? _timer;
-  Timer? _quoteTimer;
+  Timer? _quoteTimer; // Keep quote timer separate for UI
   bool _isRunning = false;
   bool _isPaused = false;
   bool _isCompleted = false;
+  
+  // ✅ ADDED: Countdown state for 3-2-1 countdown
+  bool _showCountdown = false;
+  int _countdownValue = 3;
+  
+  // ✅ ADDED: Separate progress tracking for countdown vs main timer
+  bool _isCountdownPhase = false;
+  double _countdownProgress = 0.0;
+  double _mainTimerProgress = 0.0;
   
   // Quote display
   List<MentalTrainingQuote> _quotes = [];
@@ -64,12 +77,22 @@ class _MentalTrainingTimerViewState extends State<MentalTrainingTimerView>
     _initializeTimer();
     _initializeAnimations();
     _loadQuotes();
+    _initializeBackgroundTimer(); // ✅ ADDED: Initialize background timer
+  }
+  
+  // ✅ ADDED: Initialize background timer service
+  Future<void> _initializeBackgroundTimer() async {
+    await _backgroundTimer.initializeBackgroundSession();
+    
+    if (kDebugMode) {
+      print('🧠 Background timer initialized for mental training');
+    }
   }
 
   void _initializeTimer() {
     if (AppConfig.fastMentalTrainingTimers) {
       // Debug mode: super fast timers (5 seconds total regardless of selected duration)
-      _totalSeconds = 5;
+      _totalSeconds = 15;
     } else {
       // Normal mode: use actual duration
       _totalSeconds = widget.durationMinutes * 60;
@@ -78,9 +101,9 @@ class _MentalTrainingTimerViewState extends State<MentalTrainingTimerView>
   }
 
   void _initializeAnimations() {
-    // Progress animation
+    // ✅ UPDATED: Progress animation - will be dynamically configured for each phase
     _progressController = AnimationController(
-      duration: Duration(seconds: _totalSeconds),
+      duration: const Duration(seconds: 3), // Initial duration for countdown
       vsync: this,
     );
     
@@ -91,6 +114,19 @@ class _MentalTrainingTimerViewState extends State<MentalTrainingTimerView>
       parent: _progressController,
       curve: Curves.linear,
     ));
+    
+    // Listen to progress animation to update our separate progress values
+    _progressController.addListener(() {
+      if (mounted) {
+        setState(() {
+          if (_isCountdownPhase) {
+            _countdownProgress = _progressController.value;
+          } else {
+            _mainTimerProgress = _progressController.value;
+          }
+        });
+      }
+    });
     
     // Pulse animation for timer circle
     _pulseController = AnimationController(
@@ -179,27 +215,84 @@ class _MentalTrainingTimerViewState extends State<MentalTrainingTimerView>
   }
 
   void _startTimer() {
+    // ✅ UPDATED: Start countdown phase first
     setState(() {
       _isRunning = true;
       _isPaused = false;
+      _showCountdown = true;
+      _countdownValue = 3;
+      _isCountdownPhase = true; // Mark as countdown phase
+      _countdownProgress = 0.0; // Reset countdown progress
     });
     
+    // Enable wake lock for mental training session
+    WakeLockService.enableWakeLock();
+    
+    // Start countdown progress animation (3 seconds)
+    _progressController.duration = const Duration(seconds: 3);
+    _progressController.reset();
     _progressController.forward();
+    
     _pulseController.repeat(reverse: true);
     _rippleController.repeat();
     
-    _timer = Timer.periodic(const Duration(seconds: 1), (timer) {
-      setState(() {
-        _remainingSeconds--;
-      });
-      
-      if (_remainingSeconds <= 0) {
-        _completeSession();
-      }
-    });
+    // Start with 3-2-1 countdown using background timer
+    _backgroundTimer.startCountdown(
+      countdownValue: 3,
+      drillName: 'Mental Training Session',
+      onTick: (value) {
+        if (mounted) {
+          setState(() {
+            _countdownValue = value;
+          });
+        }
+      },
+      onComplete: () {
+        if (mounted) {
+          setState(() {
+            _showCountdown = false;
+            _isCountdownPhase = false; // Switch to main timer phase
+            _mainTimerProgress = 0.0; // Reset main timer progress
+            _countdownProgress = 1.0; // ✅ ADDED: Mark countdown as complete
+          });
+          _startMainTimer();
+        }
+      },
+    );
     
     // Start quote rotation
     _startQuoteRotation();
+  }
+  
+  // ✅ UPDATED: Start the main mental training timer with properly synced progress
+  void _startMainTimer() {
+    // ✅ FIXED: Use actual timer duration for progress animation to sync properly
+    final actualDuration = AppConfig.fastMentalTrainingTimers 
+        ? _totalSeconds // Use debug duration (15 seconds)
+        : _remainingSeconds; // Use actual remaining time
+    
+    // Reset and configure progress controller for actual timer duration
+    _progressController.duration = Duration(seconds: actualDuration);
+    _progressController.reset();
+    _progressController.forward();
+    
+    _backgroundTimer.startTimer(
+      durationSeconds: _remainingSeconds.toDouble(),
+      drillName: 'Mental Training Session',
+      debugMode: AppConfig.fastMentalTrainingTimers,
+      onTick: (remainingTime) {
+        if (mounted) {
+          setState(() {
+            _remainingSeconds = remainingTime.toInt();
+          });
+        }
+      },
+      onComplete: () {
+        if (mounted) {
+          _completeSession();
+        }
+      },
+    );
   }
 
   void _startQuoteRotation() {
@@ -234,9 +327,9 @@ class _MentalTrainingTimerViewState extends State<MentalTrainingTimerView>
     setState(() {
       _isPaused = true;
     });
-    _timer?.cancel();
+    _backgroundTimer.pauseTimer(); // Pause the background timer
     _quoteTimer?.cancel();
-    _progressController.stop();
+    _progressController.stop(); // ✅ UPDATED: Stop progress animation
     _pulseController.stop();
     _rippleController.stop();
   }
@@ -246,27 +339,21 @@ class _MentalTrainingTimerViewState extends State<MentalTrainingTimerView>
       _isPaused = false;
     });
     
-    _progressController.forward();
+    // ✅ UPDATED: Resume progress animation from current position
+    if (!_progressController.isCompleted) {
+      _progressController.forward();
+    }
     _pulseController.repeat(reverse: true);
     _rippleController.repeat();
     
-    _timer = Timer.periodic(const Duration(seconds: 1), (timer) {
-      setState(() {
-        _remainingSeconds--;
-      });
-      
-      if (_remainingSeconds <= 0) {
-        _completeSession();
-      }
-    });
-    
+    _backgroundTimer.resumeTimer(); // Resume the background timer
     _startQuoteRotation();
   }
 
   void _stopTimer() {
-    _timer?.cancel();
+    _backgroundTimer.stopTimer(); // Stop the background timer
     _quoteTimer?.cancel();
-    _progressController.stop();
+    _progressController.stop(); // ✅ UPDATED: Stop progress animation
     _pulseController.stop();
     _rippleController.stop();
     
@@ -274,21 +361,28 @@ class _MentalTrainingTimerViewState extends State<MentalTrainingTimerView>
       _isRunning = false;
       _isPaused = false;
       _remainingSeconds = _totalSeconds;
+      _isCountdownPhase = false; // ✅ UPDATED: Reset countdown phase
+      _countdownProgress = 0.0; // ✅ UPDATED: Reset progress values
+      _mainTimerProgress = 0.0;
+      _showCountdown = false; // ✅ UPDATED: Reset countdown display
+      _isCompleted = false; // ✅ ADDED: Reset completion state
     });
     
-    _progressController.reset();
+    _progressController.reset(); // ✅ UPDATED: Reset progress controller
   }
 
   void _completeSession() {
-    _timer?.cancel();
+    _backgroundTimer.stopTimer(); // Stop the background timer
     _quoteTimer?.cancel();
-    _progressController.stop();
+    _progressController.stop(); // ✅ UPDATED: Stop progress animation
     _pulseController.stop();
     _rippleController.stop();
     
     setState(() {
       _isCompleted = true;
       _remainingSeconds = 0;
+      _mainTimerProgress = 1.0; // ✅ UPDATED: Set to complete
+      _isCountdownPhase = false; // ✅ ADDED: Ensure we're not in countdown phase
     });
     
     // Celebration animation
@@ -301,7 +395,10 @@ class _MentalTrainingTimerViewState extends State<MentalTrainingTimerView>
   void _showCompletionAnimation() {
     // Add celebration effects
     HapticUtils.heavyImpact();
-    AudioService.playSuccess();
+    AudioService.playSuccess(); // Use existing success sound
+    
+    // Disable wake lock since session is complete
+    WakeLockService.disableWakeLock();
     
     // Show celebration particles or effects here
   }
@@ -367,13 +464,17 @@ class _MentalTrainingTimerViewState extends State<MentalTrainingTimerView>
 
   @override
   void dispose() {
-    _timer?.cancel();
+    _backgroundTimer.stopTimer(); // Stop the background timer (don't dispose shared service)
     _quoteTimer?.cancel();
     _progressController.dispose();
     _pulseController.dispose();
     _quoteController.dispose();
     _breathingController.dispose();
     _rippleController.dispose();
+    
+    // Disable wake lock when leaving mental training
+    WakeLockService.disableWakeLock();
+    
     super.dispose();
   }
 
@@ -545,11 +646,12 @@ class _MentalTrainingTimerViewState extends State<MentalTrainingTimerView>
                         width: 250,
                         height: 250,
                         child: CircularProgressIndicator(
-                          value: _progressAnimation.value,
+                          value: _isCountdownPhase ? _countdownProgress : _mainTimerProgress,
                           strokeWidth: 6,
                           backgroundColor: AppTheme.primaryGray.withOpacity(0.2),
                           valueColor: AlwaysStoppedAnimation<Color>(
-                            _isCompleted ? AppTheme.success : AppTheme.primaryYellow,
+                            _isCompleted ? AppTheme.success : 
+                            _isCountdownPhase ? AppTheme.primaryYellow : AppTheme.primaryYellow,
                           ),
                         ),
                       ),
@@ -571,6 +673,39 @@ class _MentalTrainingTimerViewState extends State<MentalTrainingTimerView>
                                 style: AppTheme.headlineSmall.copyWith(
                                   color: AppTheme.success,
                                   fontWeight: FontWeight.bold,
+                                ),
+                              ),
+                            ] else if (_showCountdown) ...[
+                              Text(
+                                _countdownValue.toString(),
+                                style: AppTheme.headlineLarge.copyWith(
+                                  fontSize: 48, // ✅ INCREASED: Larger countdown number
+                                  fontWeight: FontWeight.bold,
+                                  color: AppTheme.primaryYellow,
+                                ),
+                              ),
+                              const SizedBox(height: 4),
+                              Text(
+                                'Get Ready!',
+                                style: AppTheme.bodyMedium.copyWith(
+                                  color: AppTheme.primaryGray,
+                                  fontWeight: FontWeight.w600, // ✅ ADDED: Bolder text
+                                ),
+                              ),
+                              const SizedBox(height: 8), // ✅ ADDED: Space for indicator
+                              Container(
+                                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                                decoration: BoxDecoration(
+                                  color: AppTheme.primaryYellow.withOpacity(0.2),
+                                  borderRadius: BorderRadius.circular(12),
+                                ),
+                                child: Text(
+                                  'Starting...',
+                                  style: AppTheme.bodySmall.copyWith(
+                                    color: AppTheme.primaryYellow,
+                                    fontWeight: FontWeight.bold,
+                                    fontSize: 10,
+                                  ),
                                 ),
                               ),
                             ] else ...[
@@ -598,7 +733,7 @@ class _MentalTrainingTimerViewState extends State<MentalTrainingTimerView>
                                     borderRadius: BorderRadius.circular(12),
                                   ),
                                   child: Text(
-                                    'DEBUG MODE',
+                                    'DEBUG MODE - Fast Timer',
                                     style: AppTheme.bodySmall.copyWith(
                                       color: AppTheme.warning,
                                       fontWeight: FontWeight.bold,
@@ -732,9 +867,11 @@ class _MentalTrainingTimerViewState extends State<MentalTrainingTimerView>
             height: 56,
             child: BravoButton(
               text: _isPaused ? 'Resume' : 'Pause',
-              onPressed: _isPaused ? _resumeTimer : _pauseTimer,
-              color: _isPaused ? AppTheme.primaryYellow : AppTheme.primaryGray,
-              backColor: _isPaused ? AppTheme.primaryDarkYellow : AppTheme.buttonDisabledDarkGray,
+              onPressed: _showCountdown ? null : (_isPaused ? _resumeTimer : _pauseTimer), // ✅ DISABLED during countdown
+              color: _showCountdown ? AppTheme.buttonDisabledGray : 
+                     (_isPaused ? AppTheme.primaryYellow : AppTheme.primaryGray),
+              backColor: _showCountdown ? AppTheme.buttonDisabledDarkGray :
+                        (_isPaused ? AppTheme.primaryDarkYellow : AppTheme.buttonDisabledDarkGray),
               textColor: AppTheme.white,
             ),
           ),
@@ -745,9 +882,10 @@ class _MentalTrainingTimerViewState extends State<MentalTrainingTimerView>
             height: 56,
             child: BravoButton(
               text: 'Stop',
-              onPressed: _stopTimer,
-              color: AppTheme.error,
-              backColor: AppTheme.error.withOpacity(0.8),
+              onPressed: _showCountdown ? null : _stopTimer, // ✅ DISABLED during countdown
+              color: _showCountdown ? AppTheme.buttonDisabledGray : AppTheme.error,
+              backColor: _showCountdown ? AppTheme.buttonDisabledDarkGray : 
+                        AppTheme.error.withOpacity(0.8),
               textColor: AppTheme.white,
             ),
           ),
@@ -778,7 +916,11 @@ class _MentalTrainingTimerViewState extends State<MentalTrainingTimerView>
             child: Text('Cancel'),
           ),
           TextButton(
-            onPressed: () {
+            onPressed: () async {
+              // Stop background timer and clean up
+              await _backgroundTimer.stopTimer();
+              await WakeLockService.disableWakeLock();
+              
               Navigator.of(context).pop(); // Close dialog
               Navigator.of(context).pushAndRemoveUntil(
                 MaterialPageRoute(

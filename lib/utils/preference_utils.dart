@@ -81,26 +81,26 @@ class PreferenceUtils {
   /// Handles special formatting for time-based preferences
   /// 
   /// Examples:
-  /// - "15min" -> "15 minutes"
-  /// - "1h" -> "1 hour"
-  /// - "1h30" -> "1 hour 30 minutes"
-  /// - "2h+" -> "2+ hours"
+  /// - "15min" -> "15m"
+  /// - "1h" -> "1h"
+  /// - "1h30" -> "1h30"
+  /// - "2h+" -> "2+h"
   static String formatTimeForDisplay(String timePreference) {
     if (timePreference.isEmpty) return timePreference;
     
     switch (timePreference.toLowerCase()) {
       case '15min':
-        return '15 minutes';
+        return '15m';
       case '30min':
-        return '30 minutes';
+        return '30m';
       case '45min':
-        return '45 minutes';
+        return '45m';
       case '1h':
-        return '1 hour';
+        return '1h';
       case '1h30':
-        return '1 hour 30 minutes';
+        return '1h30m';
       case '2h+':
-        return '2+ hours';
+        return '2h+';
       default:
         return timePreference; // Return as-is if not recognized
     }
