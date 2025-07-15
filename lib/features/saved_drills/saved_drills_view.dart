@@ -10,6 +10,7 @@ import '../../utils/haptic_utils.dart';
 import '../../utils/skill_utils.dart'; // ✅ ADDED: Import centralized skill utilities
 import '../../features/onboarding/onboarding_flow.dart'; // ✅ ADDED: Import OnboardingFlow
 import 'drill_group_detail_view.dart';
+import '../../widgets/warning_dialog.dart'; // ✅ ADDED: Import WarningDialog
 
 class SavedDrillsView extends StatefulWidget {
   const SavedDrillsView({Key? key}) : super(key: key);
@@ -266,18 +267,11 @@ class _SavedDrillsViewState extends State<SavedDrillsView> {
                 ),
               ),
               const SizedBox(height: 8),
-              Text(
-                group.description,
-                style: AppTheme.bodySmall.copyWith(
-                  color: AppTheme.primaryGray,
-                ),
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
-              ),
               const Spacer(),
-              if (group.drills.isNotEmpty)
+              if (!group.isLikedDrillsGroup && group.drills.isNotEmpty)
                 Wrap(
-                  spacing: 4,
+                  spacing: 8,
+                  runSpacing: 6,
                   children: group.drills
                       .map((drill) => drill.skill)
                       .toSet()
@@ -289,7 +283,7 @@ class _SavedDrillsViewState extends State<SavedDrillsView> {
                               borderRadius: BorderRadius.circular(8),
                             ),
                             child: Text(
-                              SkillUtils.formatSkillForDisplay(skill), // ✅ UPDATED: Use centralized skill formatting
+                              SkillUtils.formatSkillForDisplay(skill),
                               style: const TextStyle(
                                 fontFamily: AppTheme.fontPoppins,
                                 fontSize: 10,
@@ -363,114 +357,104 @@ class _SavedDrillsViewState extends State<SavedDrillsView> {
   void _showCreateGroupDialog(BuildContext context, AppStateService appState) {
     final nameController = TextEditingController();
     final descriptionController = TextEditingController();
+    final existingNames = appState.savedDrillGroups.map((g) => g.name.toLowerCase()).toSet();
 
     showDialog(
       context: context,
-      builder: (context) => AlertDialog(
-        title: const Text(
-          'Create New Collection',
-          style: TextStyle(fontFamily: AppTheme.fontPoppins),
-        ),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            TextField(
-              controller: nameController,
-              style: const TextStyle(fontFamily: AppTheme.fontPoppins),
-              decoration: const InputDecoration(
-                labelText: 'Collection Name',
-                labelStyle: TextStyle(fontFamily: AppTheme.fontPoppins),
+      builder: (dialogContext) {
+        String? errorText;
+        return StatefulBuilder(
+          builder: (context, setState) {
+            return AlertDialog(
+              title: const Text(
+                'Create New Collection',
+                style: TextStyle(fontFamily: AppTheme.fontPoppins),
               ),
-            ),
-            const SizedBox(height: 16),
-            TextField(
-              controller: descriptionController,
-              style: const TextStyle(fontFamily: AppTheme.fontPoppins),
-              maxLines: 3,
-              decoration: const InputDecoration(
-                labelText: 'Description (optional)',
-                labelStyle: TextStyle(fontFamily: AppTheme.fontPoppins),
+              content: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  TextField(
+                    controller: nameController,
+                    style: const TextStyle(fontFamily: AppTheme.fontPoppins),
+                    decoration: InputDecoration(
+                      labelText: 'Collection Name',
+                      labelStyle: const TextStyle(fontFamily: AppTheme.fontPoppins),
+                      errorText: errorText,
+                    ),
+                  ),
+                  const SizedBox(height: 16),
+                  TextField(
+                    controller: descriptionController,
+                    style: const TextStyle(fontFamily: AppTheme.fontPoppins),
+                    maxLines: 3,
+                    decoration: const InputDecoration(
+                      labelText: 'Description (optional)',
+                      labelStyle: TextStyle(fontFamily: AppTheme.fontPoppins),
+                    ),
+                  ),
+                ],
               ),
-            ),
-          ],
-        ),
-        actions: [
-          TextButton(
-            onPressed: () {
-              HapticUtils.lightImpact(); // Light haptic for cancel
-              Navigator.pop(context);
-            },
-            child: const Text(
-              'Cancel',
-              style: TextStyle(fontFamily: AppTheme.fontPoppins),
-            ),
-          ),
-          ElevatedButton(
-            onPressed: () {
-              if (nameController.text.isNotEmpty) {
-                HapticUtils.mediumImpact(); // Medium haptic for create confirmation
-                appState.createDrillGroup(
-                  nameController.text,
-                  descriptionController.text.isEmpty
-                      ? 'Custom drill collection'
-                      : descriptionController.text,
-                );
-                Navigator.pop(context);
-              }
-            },
-            style: ElevatedButton.styleFrom(
-              backgroundColor: AppTheme.primaryPurple,
-              foregroundColor: Colors.white,
-            ),
-            child: const Text(
-              'Create',
-              style: TextStyle(fontFamily: AppTheme.fontPoppins),
-            ),
-          ),
-        ],
-      ),
+              actions: [
+                TextButton(
+                  onPressed: () {
+                    HapticUtils.lightImpact();
+                    Navigator.pop(dialogContext);
+                  },
+                  child: const Text(
+                    'Cancel',
+                    style: TextStyle(fontFamily: AppTheme.fontPoppins),
+                  ),
+                ),
+                ElevatedButton(
+                  onPressed: () {
+                    final name = nameController.text.trim();
+                    if (name.isEmpty) return;
+                    if (existingNames.contains(name.toLowerCase())) {
+                      setState(() => errorText = 'A collection with this name already exists.');
+                      return;
+                    }
+                    HapticUtils.mediumImpact();
+                    appState.createDrillGroup(
+                      name,
+                      descriptionController.text.isEmpty
+                          ? 'Custom drill collection'
+                          : descriptionController.text,
+                    );
+                    Navigator.pop(dialogContext);
+                  },
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: AppTheme.primaryPurple,
+                    foregroundColor: Colors.white,
+                  ),
+                  child: const Text(
+                    'Create',
+                    style: TextStyle(fontFamily: AppTheme.fontPoppins),
+                  ),
+                ),
+              ],
+            );
+          },
+        );
+      },
     );
   }
 
   void _showDeleteConfirmation(DrillGroup group, AppStateService appState) {
-    showDialog(
+    WarningDialog.show(
       context: context,
-      builder: (context) => AlertDialog(
-        title: const Text(
-          'Delete Collection',
-          style: TextStyle(fontFamily: AppTheme.fontPoppins),
-        ),
-        content: Text(
-          'Are you sure you want to delete "${group.name}"? This action cannot be undone.',
-          style: const TextStyle(fontFamily: AppTheme.fontPoppins),
-        ),
-        actions: [
-          TextButton(
-            onPressed: () {
-              HapticUtils.lightImpact(); // Light haptic for cancel
-              Navigator.pop(context);
-            },
-            child: const Text(
-              'Cancel',
-              style: TextStyle(fontFamily: AppTheme.fontPoppins),
-            ),
-          ),
-          TextButton(
-            onPressed: () {
-              HapticUtils.mediumImpact(); // Medium haptic for delete confirmation
-              appState.deleteDrillGroup(group.id);
-              Navigator.pop(context);
-            },
-            child: const Text(
-              'Delete',
-              style: TextStyle(
-                fontFamily: AppTheme.fontPoppins,
-                color: Colors.red,
-              ),
-            ),
-          ),
-        ],
-      ),
+      title: 'Delete Collection',
+      content: 'Are you sure you want to delete "${group.name}"? This action cannot be undone.',
+      cancelText: 'Cancel',
+      continueText: 'Delete',
+      warningColor: Colors.red,
+      warningIcon: Icons.delete_forever,
+      onCancel: () {
+        HapticUtils.lightImpact();
+      },
+      onContinue: () {
+        HapticUtils.mediumImpact();
+        appState.deleteDrillGroup(group.id);
+      },
     );
   }
 

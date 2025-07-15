@@ -13,6 +13,7 @@ import '../../config/app_config.dart';
 import '../../widgets/bravo_button.dart';
 import '../../widgets/drill_video_player.dart';
 import '../../widgets/info_popup_widget.dart';
+import '../../widgets/warning_dialog.dart'; // ✅ NEW: Import reusable warning dialog
 import '../../utils/haptic_utils.dart';
 import '../../utils/skill_utils.dart'; // ✅ ADDED: Import centralized skill utilities
 import 'drill_detail_view.dart';
@@ -104,46 +105,17 @@ class _DrillFollowAlongViewState extends State<DrillFollowAlongView> {
               icon: const Icon(Icons.close, color: Colors.black),
               onPressed: () {
                 HapticUtils.lightImpact(); // Light haptic for navigation
-                Navigator.pop(context);
+                // Only show warning if timer has been started (less than original duration)
+                if (_elapsedTime < _setDuration) {
+                  _showExitWarning();
+                } else {
+                  // Timer hasn't been started, exit directly
+                  Navigator.pop(context);
+                }
               },
             ),
-            
             const Spacer(),
-            
-            // Details button
-            Container(
-              margin: const EdgeInsets.only(right: 8),
-              child: ElevatedButton(
-                onPressed: () {
-                  HapticUtils.lightImpact(); // Light haptic for details
-                  _showDrillDetails(context);
-                },
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: Colors.grey.shade600,
-                  foregroundColor: Colors.white,
-                  elevation: 0,
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-                ),
-                child: const Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Icon(Icons.info_outline, size: 16),
-                    SizedBox(width: 6),
-                    Text(
-                      'Details',
-                      style: TextStyle(
-                        fontFamily: 'Poppins',
-                        fontWeight: FontWeight.w600,
-                        fontSize: 14,
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            ),
+            // (Details button removed)
           ],
         ),
       ),
@@ -479,7 +451,6 @@ class _DrillFollowAlongViewState extends State<DrillFollowAlongView> {
                 color: AppTheme.primaryLightBlue,
                 size: 44,
               ),
-              
               // Play/Pause button (larger) - more compact
               PlayPauseButton(
                 isPlaying: _isPlaying,
@@ -496,15 +467,14 @@ class _DrillFollowAlongViewState extends State<DrillFollowAlongView> {
                 countdownValue: _showCountdown ? _countdownValue : null,
                 debugMode: AppConfig.debug,
                 disabled: _editableDrill.setsDone >= _editableDrill.totalSets,
-                size: 80,
+                size: 80
               ),
-              
-              // Settings/menu button - smaller
+              // Article (details) button - replaces ellipsis
               CircularControlButton(
-                icon: Icons.more_vert,
+                icon: Icons.article,
                 onPressed: () {
-                  HapticUtils.lightImpact(); // Light haptic for more options
-                  // Could add more options here
+                  HapticUtils.lightImpact();
+                  _showDrillDetails(context);
                 },
                 color: Colors.grey.shade500,
                 size: 44,
@@ -738,6 +708,26 @@ class _DrillFollowAlongViewState extends State<DrillFollowAlongView> {
       title: 'Background Timer & Lock Screen Widget',
       description: 'This drill timer will continue running even when your phone screen is off!\n\n🔒 Lock Screen Widget: See live countdown and progress on your lock screen\n\n🎵 Audio Cues: Turn off silent mode and turn up your audio to hear countdown sounds and completion alerts.\n\n⏱️ Background Timer: The timer uses background audio to keep running when you lock your phone or switch apps.\n\n▶️ Controls: Use pause/resume buttons in the lock screen notification.\n\nPress play to start the 3-second countdown, then use the timer to pace yourself during reps.',
       riveFileName: 'Bravo_Animation.riv',
+    );
+  }
+
+  void _showExitWarning() {
+    WarningDialog.show(
+      context: context,
+      title: 'Exit Drill?',
+      content: 'Are you sure you want to exit this drill? This will reset your timer for the current set.',
+      cancelText: 'Stay',
+      continueText: 'Exit',
+      onCancel: () {
+        // User cancelled - do nothing, stay in drill
+      },
+      onContinue: () async {
+        // User confirmed - stop timers and exit
+        await _stopAllTimers();
+        if (mounted) {
+          Navigator.pop(context);
+        }
+      },
     );
   }
 

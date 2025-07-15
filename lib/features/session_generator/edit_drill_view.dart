@@ -72,42 +72,6 @@ class _EditDrillViewState extends State<EditDrillView> {
           ),
         ),
         centerTitle: true,
-        actions: [
-          Padding(
-            padding: const EdgeInsets.only(right: 8.0),
-            child: ElevatedButton(
-              onPressed: () {
-                HapticUtils.lightImpact(); // Light haptic for details
-                _showDrillDetails(context);
-              },
-              style: ElevatedButton.styleFrom(
-                backgroundColor: Colors.grey.shade600,
-                foregroundColor: Colors.white,
-                elevation: 0,
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(12),
-                ),
-                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                minimumSize: const Size(0, 32),
-              ),
-              child: const Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Icon(Icons.info_outline, size: 14),
-                  SizedBox(width: 4),
-                  Text(
-                    'Details',
-                    style: TextStyle(
-                      fontFamily: 'Poppins',
-                      fontWeight: FontWeight.w600,
-                      fontSize: 12,
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          ),
-        ],
       ),
       body: Column(
         children: [
@@ -123,14 +87,45 @@ class _EditDrillViewState extends State<EditDrillView> {
                   const SizedBox(height: 24),
                   
                   // Drill title
-                  Text(
-                    widget.editableDrill.drill.title,
-                    style: const TextStyle(
-                      fontFamily: 'Poppins',
-                      fontWeight: FontWeight.bold,
-                      fontSize: 20,
-                      color: Colors.black,
-                    ),
+                  Row(
+                    children: [
+                      Expanded(
+                        child: Text(
+                          widget.editableDrill.drill.title,
+                          style: const TextStyle(
+                            fontFamily: 'Poppins',
+                            fontWeight: FontWeight.bold,
+                            fontSize: 20,
+                            color: Colors.black,
+                          ),
+                        ),
+                      ),
+                      // Circular ellipsis button
+                      Container(
+                        margin: const EdgeInsets.only(left: 8),
+                        decoration: BoxDecoration(
+                          color: Colors.grey.shade500,
+                          shape: BoxShape.circle,
+                          boxShadow: [
+                            BoxShadow(
+                              color: Colors.black.withOpacity(0.08),
+                              blurRadius: 8,
+                              offset: const Offset(0, 2),
+                            ),
+                          ],
+                        ),
+                        child: IconButton(
+                          icon: const Icon(Icons.article, color: Colors.white, size: 28), // Changed to match screenshot
+                          onPressed: () {
+                            HapticUtils.lightImpact();
+                            _showDrillDetails(context);
+                          },
+                          iconSize: 32,
+                          padding: const EdgeInsets.all(8),
+                          splashRadius: 28,
+                        ),
+                      ),
+                    ],
                   ),
                   
                   const SizedBox(height: 8),

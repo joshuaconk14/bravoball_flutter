@@ -161,16 +161,65 @@ class DraggableDrillCard extends StatelessWidget {
                       icon: Icon(Icons.more_vert, color: Colors.grey.shade600, size: 20),
                       onSelected: (value) async {
                         if (value == 'like') {
+                          HapticUtils.lightImpact(); // Light haptic for like action
                           final appState = Provider.of<AppStateService>(context, listen: false);
+                          final wasLiked = appState.isDrillLiked(drill);
                           appState.toggleLikedDrill(drill);
+                          
+                          // Show feedback message
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            SnackBar(
+                              content: Text(wasLiked 
+                                ? 'Removed ${drill.title} from liked drills' 
+                                : 'Added ${drill.title} to liked drills'),
+                              duration: const Duration(seconds: 2),
+                              backgroundColor: Colors.green,
+                            ),
+                          );
                         } else if (value == 'session') {
+                          HapticUtils.mediumImpact(); // Medium haptic for session action
                           final appState = Provider.of<AppStateService>(context, listen: false);
-                          if (appState.isDrillInSession(drill)) {
+                          final wasInSession = appState.isDrillInSession(drill);
+                          
+                          if (wasInSession) {
                             appState.removeDrillFromSession(drill);
+                            // Show feedback message
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              SnackBar(
+                                content: Text('Removed ${drill.title} from session'),
+                                duration: const Duration(seconds: 2),
+                                backgroundColor: Colors.green,
+                              ),
+                            );
                           } else {
-                            appState.addDrillToSession(drill);
+                            final success = appState.addDrillToSession(drill);
+                            if (success) {
+                              // Show feedback message
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                SnackBar(
+                                  content: Text('Added ${drill.title} to session'),
+                                  duration: const Duration(seconds: 2),
+                                  backgroundColor: Colors.green,
+                                ),
+                              );
+                            } else {
+                              // Show limit warning message
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                SnackBar(
+                                  content: const Text('Session limit reached! You can only add up to 10 drills to a session.'),
+                                  duration: const Duration(seconds: 3),
+                                  backgroundColor: Colors.orange,
+                                  action: SnackBarAction(
+                                    label: 'OK',
+                                    textColor: Colors.white,
+                                    onPressed: () {},
+                                  ),
+                                ),
+                              );
+                            }
                           }
                         } else if (value == 'add_to_group') {
+                          HapticUtils.lightImpact(); // Light haptic for collection action
                           final appState = Provider.of<AppStateService>(context, listen: false);
                           SaveToCollectionDialog.show(context, drill);
                         }

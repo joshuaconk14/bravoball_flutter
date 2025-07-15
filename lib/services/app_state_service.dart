@@ -1261,7 +1261,12 @@ class AppStateService extends ChangeNotifier {
 
   // ===== SESSION DRILL MANAGEMENT SECTION =====
   // Manage drills in current session
-  void addDrillToSession(DrillModel drill) {
+  bool addDrillToSession(DrillModel drill) {
+    // Check if session already has 10 drills (limit)
+    if (_sessionDrills.length >= 10) {
+      return false; // Cannot add more drills
+    }
+    
     if (!_sessionDrills.any((d) => d.id == drill.id)) {
       _sessionDrills.add(drill);
       
@@ -1283,7 +1288,10 @@ class AppStateService extends ChangeNotifier {
       
       notifyListeners();
       _scheduleSessionDrillsSync();
+      return true; // Successfully added drill
     }
+    
+    return false; // Drill already exists in session
   }
   
   void removeDrillFromSession(DrillModel drill) {
@@ -1393,17 +1401,36 @@ class AppStateService extends ChangeNotifier {
 
   // ===== DRILL GROUPS MANAGEMENT SECTION =====
   // Manage user's drill collections
-  void createDrillGroup(String name, String description) {
+  Future<void> createDrillGroup(String name, String description) async {
+    // Create a temporary group with a local ID
+    final tempId = DateTime.now().millisecondsSinceEpoch.toString();
     final newGroup = DrillGroup(
-      id: DateTime.now().millisecondsSinceEpoch.toString(),
+      id: tempId,
       name: name,
       description: description,
       drills: [],
       createdAt: DateTime.now(),
     );
-    
     _savedDrillGroups.add(newGroup);
     notifyListeners();
+
+    // Immediately create the group on the backend
+    final backendGroup = await _drillGroupSyncService.createDrillGroup(
+      name: name,
+      description: description,
+      drillUuids: [],
+      isLikedGroup: false,
+    );
+    if (backendGroup != null) {
+      // Update the local group ID to match the backend's
+      final groupIndex = _savedDrillGroups.indexWhere((g) => g.id == tempId);
+      if (groupIndex != -1) {
+        _savedDrillGroups[groupIndex] = _savedDrillGroups[groupIndex].copyWith(
+          id: backendGroup.id.toString(),
+        );
+        notifyListeners();
+      }
+    }
     _scheduleDrillGroupsSync();
   }
   

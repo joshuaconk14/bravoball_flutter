@@ -103,11 +103,19 @@ class SessionGeneratorViewModel extends ChangeNotifier {
   }
   
   // Manual drill management methods
-  void addDrillToSession(DrillModel drill) {
+  bool addDrillToSession(DrillModel drill) {
+    // Check if session already has 10 drills (limit)
+    if (_sessionDrills.length >= 10) {
+      return false; // Cannot add more drills
+    }
+    
     if (!_sessionDrills.any((d) => d.id == drill.id)) {
       _sessionDrills.add(drill);
       notifyListeners();
+      return true; // Successfully added drill
     }
+    
+    return false; // Drill already exists in session
   }
   
   void removeDrillFromSession(DrillModel drill) {

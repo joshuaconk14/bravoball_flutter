@@ -125,9 +125,11 @@ class _SessionGeneratorEditorPageState extends State<SessionGeneratorEditorPage>
       ),
       floatingActionButton: appState.sessionDrills.isEmpty
           ? FloatingActionButton(
-              backgroundColor: AppTheme.primaryLightBlue,
+              backgroundColor: appState.editableSessionDrills.length >= 10 
+                  ? Colors.grey.shade400 
+                  : AppTheme.primaryLightBlue,
               foregroundColor: Colors.white,
-              onPressed: appState.isLoadingPreferences ? null : () {
+              onPressed: (appState.isLoadingPreferences || appState.editableSessionDrills.length >= 10) ? null : () {
                 HapticUtils.mediumImpact(); // Medium haptic for major action
                 Navigator.push(
                   context,
@@ -137,24 +139,50 @@ class _SessionGeneratorEditorPageState extends State<SessionGeneratorEditorPage>
                       actionButtonText: 'Add to Session',
                       themeColor: AppTheme.primaryLightBlue,
                       onDrillsSelected: (selectedDrills) {
+                        int addedCount = 0;
                         for (final drill in selectedDrills) {
-                          appState.addDrillToSession(drill);
+                          if (appState.addDrillToSession(drill)) {
+                            addedCount++;
+                          }
                         }
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          SnackBar(
-                            content: Text('${selectedDrills.length} drill${selectedDrills.length == 1 ? '' : 's'} added to session'),
-                            duration: const Duration(seconds: 2),
-                            backgroundColor: Colors.green,
-                          ),
-                        );
+                        
+                        if (addedCount > 0) {
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            SnackBar(
+                              content: Text('$addedCount drill${addedCount == 1 ? '' : 's'} added to session'),
+                              duration: const Duration(seconds: 2),
+                              backgroundColor: Colors.green,
+                            ),
+                          );
+                        }
+                        
+                        if (addedCount < selectedDrills.length) {
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            SnackBar(
+                              content: const Text('Session limit reached! You can only add up to 10 drills to a session.'),
+                              duration: const Duration(seconds: 3),
+                              backgroundColor: Colors.orange,
+                              action: SnackBarAction(
+                                label: 'OK',
+                                textColor: Colors.white,
+                                onPressed: () {},
+                              ),
+                            ),
+                          );
+                        }
                       },
                       isSelected: (drill) => appState.isDrillInSession(drill),
                     ),
                   ),
                 );
               },
-              child: const Icon(Icons.add, size: 32),
-              tooltip: 'Add Drills',
+              child: Icon(
+                appState.editableSessionDrills.length >= 10 ? Icons.check : Icons.add, 
+                size: 32
+              ),
+              tooltip: appState.editableSessionDrills.length >= 10 
+                  ? 'Session limit reached (10 drills)' 
+                  : 'Add Drills',
             )
           : null,
     );
@@ -330,28 +358,40 @@ class _SessionGeneratorEditorPageState extends State<SessionGeneratorEditorPage>
                     alignment: Alignment.centerRight,
                     child: Padding(
                       padding: const EdgeInsets.only(right: 8),
-                      child: Container(
-                        width: 28,
-                        height: 28,
-                        decoration: BoxDecoration(
-                          color: Colors.white,
-                          borderRadius: BorderRadius.circular(14),
-                          boxShadow: [
-                            BoxShadow(
-                              color: Colors.black.withOpacity(0.15),
-                              blurRadius: 6,
-                              offset: const Offset(0, 2),
+                      child: GestureDetector(
+                        onTap: () {
+                          HapticUtils.lightImpact(); // Light haptic for scroll action
+                          if (_filterScrollController.hasClients) {
+                            _filterScrollController.animateTo(
+                              _filterScrollController.position.maxScrollExtent,
+                              duration: const Duration(milliseconds: 300),
+                              curve: Curves.easeInOut,
+                            );
+                          }
+                        },
+                        child: Container(
+                          width: 28,
+                          height: 28,
+                          decoration: BoxDecoration(
+                            color: Colors.white,
+                            borderRadius: BorderRadius.circular(14),
+                            boxShadow: [
+                              BoxShadow(
+                                color: Colors.black.withOpacity(0.15),
+                                blurRadius: 6,
+                                offset: const Offset(0, 2),
+                              ),
+                            ],
+                            border: Border.all(
+                              color: Colors.grey.shade300,
+                              width: 1,
                             ),
-                          ],
-                          border: Border.all(
-                            color: Colors.grey.shade300,
-                            width: 1,
                           ),
-                        ),
-                        child: Icon(
-                          Icons.keyboard_arrow_right,
-                          color: Colors.grey.shade600,
-                          size: 18,
+                          child: Icon(
+                            Icons.keyboard_arrow_right,
+                            color: Colors.grey.shade600,
+                            size: 18,
+                          ),
                         ),
                       ),
                     ),
@@ -434,17 +474,37 @@ class _SessionGeneratorEditorPageState extends State<SessionGeneratorEditorPage>
                       actionButtonText: 'Add to Session',
                       themeColor: AppTheme.primaryLightBlue,
                       onDrillsSelected: (selectedDrills) {
+                        int addedCount = 0;
                         for (final drill in selectedDrills) {
-                          appState.addDrillToSession(drill);
+                          if (appState.addDrillToSession(drill)) {
+                            addedCount++;
+                          }
                         }
-                        // Removed Navigator.pop(context) - ReusableDrillSearchView handles navigation
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          SnackBar(
-                            content: Text('${selectedDrills.length} drill${selectedDrills.length == 1 ? '' : 's'} added to session'),
-                            duration: const Duration(seconds: 2),
-                            backgroundColor: Colors.green,
-                          ),
-                        );
+                        
+                        if (addedCount > 0) {
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            SnackBar(
+                              content: Text('$addedCount drill${addedCount == 1 ? '' : 's'} added to session'),
+                              duration: const Duration(seconds: 2),
+                              backgroundColor: Colors.green,
+                            ),
+                          );
+                        }
+                        
+                        if (addedCount < selectedDrills.length) {
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            SnackBar(
+                              content: const Text('Session limit reached! You can only add up to 10 drills to a session.'),
+                              duration: const Duration(seconds: 3),
+                              backgroundColor: Colors.orange,
+                              action: SnackBarAction(
+                                label: 'OK',
+                                textColor: Colors.white,
+                                onPressed: () {},
+                              ),
+                            ),
+                          );
+                        }
                       },
                       isSelected: (drill) => appState.isDrillInSession(drill),
                     ),
@@ -668,23 +728,26 @@ class _SessionGeneratorEditorPageState extends State<SessionGeneratorEditorPage>
 
   // Build the add more drills button
   Widget _buildAddMoreDrillsButton(AppStateService appState) {
+    final isLimitReached = appState.editableSessionDrills.length >= 10;
     
     return Container(
       width: double.infinity,
       decoration: BoxDecoration(
         gradient: LinearGradient(
-          colors: [Colors.blue.shade50, Colors.purple.shade50],
+          colors: isLimitReached 
+              ? [Colors.grey.shade50, Colors.grey.shade100]
+              : [Colors.blue.shade50, Colors.purple.shade50],
           begin: Alignment.centerLeft,
           end: Alignment.centerRight,
         ),
         borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: Colors.blue.shade200),
+        border: Border.all(color: isLimitReached ? Colors.grey.shade300 : Colors.blue.shade200),
       ),
       child: Material(
         color: Colors.transparent,
         child: InkWell(
           borderRadius: BorderRadius.circular(16),
-          onTap: appState.isLoadingPreferences ? null : () {
+          onTap: (appState.isLoadingPreferences || isLimitReached) ? null : () {
             HapticUtils.mediumImpact(); // Medium haptic for major action
             Navigator.push(
               context,
@@ -694,17 +757,37 @@ class _SessionGeneratorEditorPageState extends State<SessionGeneratorEditorPage>
                   actionButtonText: 'Add to Session',
                   themeColor: AppTheme.primaryLightBlue,
                   onDrillsSelected: (selectedDrills) {
+                    int addedCount = 0;
                     for (final drill in selectedDrills) {
-                      appState.addDrillToSession(drill);
+                      if (appState.addDrillToSession(drill)) {
+                        addedCount++;
+                      }
                     }
-                    // Removed Navigator.pop(context) - ReusableDrillSearchView handles navigation
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      SnackBar(
-                        content: Text('${selectedDrills.length} drill${selectedDrills.length == 1 ? '' : 's'} added to session'),
-                        duration: const Duration(seconds: 2),
-                        backgroundColor: Colors.green,
-                      ),
-                    );
+                    
+                    if (addedCount > 0) {
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        SnackBar(
+                          content: Text('$addedCount drill${addedCount == 1 ? '' : 's'} added to session'),
+                          duration: const Duration(seconds: 2),
+                          backgroundColor: Colors.green,
+                        ),
+                      );
+                    }
+                    
+                    if (addedCount < selectedDrills.length) {
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        SnackBar(
+                          content: const Text('Session limit reached! You can only add up to 10 drills to a session.'),
+                          duration: const Duration(seconds: 3),
+                          backgroundColor: Colors.orange,
+                          action: SnackBarAction(
+                            label: 'OK',
+                            textColor: Colors.white,
+                            onPressed: () {},
+                          ),
+                        ),
+                      );
+                    }
                   },
                   isSelected: (drill) => appState.isDrillInSession(drill),
                 ),
@@ -712,7 +795,7 @@ class _SessionGeneratorEditorPageState extends State<SessionGeneratorEditorPage>
             );
           },
           child: Opacity(
-            opacity: appState.isLoadingPreferences ? 0.5 : 1.0,
+            opacity: (appState.isLoadingPreferences || isLimitReached) ? 0.5 : 1.0,
             child: Padding(
               padding: const EdgeInsets.all(20),
               child: Row(
@@ -721,12 +804,12 @@ class _SessionGeneratorEditorPageState extends State<SessionGeneratorEditorPage>
                     width: 48,
                     height: 48,
                     decoration: BoxDecoration(
-                      color: Colors.blue.shade100,
+                      color: isLimitReached ? Colors.grey.shade200 : Colors.blue.shade100,
                       borderRadius: BorderRadius.circular(12),
                     ),
                     child: Icon(
-                      Icons.add_circle_outline,
-                      color: Colors.blue.shade700,
+                      isLimitReached ? Icons.check_circle : Icons.add_circle_outline,
+                      color: isLimitReached ? Colors.grey.shade600 : Colors.blue.shade700,
                       size: 28,
                     ),
                   ),
@@ -736,32 +819,33 @@ class _SessionGeneratorEditorPageState extends State<SessionGeneratorEditorPage>
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Text(
-                          'Add More Drills',
+                          isLimitReached ? 'Session Complete' : 'Add More Drills',
                           style: TextStyle(
                             fontFamily: 'Poppins',
                             fontWeight: FontWeight.bold,
                             fontSize: 16,
-                            color: Colors.blue.shade800,
+                            color: isLimitReached ? Colors.grey.shade700 : Colors.blue.shade800,
                           ),
                         ),
                         const SizedBox(height: 2),
                         Text(
-                          // ✅ NEW: Different text for guest vs authenticated users
-                          appState.isGuestMode 
-                              ? 'Browse our limited guest drills for your session'
-                              : 'Browse 100+ more drills to customize your session',
+                          isLimitReached
+                              ? 'You have reached the maximum of 10 drills'
+                              : (appState.isGuestMode 
+                                  ? 'Browse our limited guest drills for your session'
+                                  : 'Browse 100+ more drills to customize your session'),
                           style: TextStyle(
                             fontFamily: 'Poppins',
                             fontSize: 13,
-                            color: Colors.blue.shade600,
+                            color: isLimitReached ? Colors.grey.shade600 : Colors.blue.shade600,
                           ),
                         ),
                       ],
                     ),
                   ),
                   Icon(
-                    Icons.arrow_forward_ios,
-                    color: Colors.blue.shade600,
+                    isLimitReached ? Icons.check : Icons.arrow_forward_ios,
+                    color: isLimitReached ? Colors.grey.shade600 : Colors.blue.shade600,
                     size: 20,
                   ),
                 ],
@@ -917,7 +1001,7 @@ class _SessionGeneratorEditorPageState extends State<SessionGeneratorEditorPage>
     InfoPopupWidget.show(
       context,
       title: 'How to Edit Your Session',
-      description: 'Set your training preferences above to automatically generate drills based on your time, equipment, and skill focus.\n\nYou can then add more drills from our full catalog to customize your workout further.',
+      description: 'Set your training preferences above to automatically generate drills based on your time, equipment, and skill focus.\n\nYou can then add more drills from our full catalog to customize your workout further. \n\n The maximum amount of drills you can add to a session is 10 drills.',
       riveFileName: 'Bravo_Animation.riv',
     );
   }

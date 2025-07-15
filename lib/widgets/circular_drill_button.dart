@@ -40,7 +40,7 @@ class _CircularDrillButtonState extends State<CircularDrillButton>
   late Animation<double> _offsetAnimation;
   bool _isPressed = false;
 
-  static const double _buttonDropOffset = 6.0; // ✅ UPDATED: Increased from 4.0 to 6.0 to make back circle lower
+  static const double _buttonDropOffset = 8.0; // ✅ UPDATED: Increased from 4.0 to 6.0 to make back circle lower
 
   @override
   void initState() {
@@ -179,7 +179,7 @@ class _CircularDrillButtonState extends State<CircularDrillButton>
   Widget build(BuildContext context) {
     final backgroundColor = _getBackgroundColor();
     final backColor = _getBackColor();
-    final progressSize = widget.size + 18; // Increased from +10 to +18 for a larger progress ring
+    final progressSize = widget.size + 22; // Increased from +18 to +26 for a bigger progress ring
 
     return SizedBox(
       width: widget.size + _buttonDropOffset,
@@ -202,7 +202,7 @@ class _CircularDrillButtonState extends State<CircularDrillButton>
             // Progress ring (only show if there's progress or completed)
             if (widget.showProgress && (widget.progress > 0 || widget.isCompleted))
               Positioned(
-                top: (_buttonDropOffset + (widget.size - progressSize) / 2) - 3, // Move up by 3 pixels
+                top: (_buttonDropOffset + (widget.size - progressSize) / 2) - 4, // Move up by 8 pixels
                 left: (widget.size - progressSize) / 2,
                 child: SizedBox(
                   width: progressSize,

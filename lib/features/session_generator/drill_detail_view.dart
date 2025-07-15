@@ -7,6 +7,7 @@ import '../../constants/app_theme.dart';
 import '../../utils/haptic_utils.dart';
 import '../../utils/skill_utils.dart'; // ✅ ADDED: Import centralized skill utilities
 import '../../services/app_state_service.dart';
+import '../../widgets/save_to_collection_dialog.dart'; // ✅ ADDED: Import reusable save to collection dialog
 
 class DrillDetailView extends StatelessWidget {
   final DrillModel drill;
@@ -52,37 +53,118 @@ class DrillDetailView extends StatelessWidget {
             ),
             centerTitle: true,
             actions: [
-              // Heart button for liking/unliking
-              IconButton(
-                icon: Icon(
-                  isLiked ? Icons.favorite : Icons.favorite_border,
-                  color: isLiked ? Colors.red : Colors.grey.shade600,
-                ),
-                onPressed: () {
-                  HapticUtils.mediumImpact(); // Medium haptic for like action
-                  appState.toggleLikedDrill(drill);
-                  
-                  // Show snackbar feedback
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    SnackBar(
-                      content: Text(
-                        isLiked ? 'Removed from liked drills' : 'Added to liked drills',
+              // Replace individual buttons with ellipsis popup menu
+              PopupMenuButton<String>(
+                icon: Icon(Icons.more_vert, color: Colors.grey.shade600, size: 24),
+                onSelected: (value) async {
+                  if (value == 'like') {
+                    HapticUtils.lightImpact(); // Light haptic for like action
+                    final wasLiked = appState.isDrillLiked(drill);
+                    appState.toggleLikedDrill(drill);
+                    
+                    // Show feedback message
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      SnackBar(
+                        content: Text(wasLiked 
+                          ? 'Removed ${drill.title} from liked drills' 
+                          : 'Added ${drill.title} to liked drills'),
+                        duration: const Duration(seconds: 2),
+                        backgroundColor: Colors.green,
                       ),
-                      duration: const Duration(seconds: 2),
-                      backgroundColor: isLiked ? Colors.grey.shade600 : Colors.green,
-                    ),
-                  );
+                    );
+                  } else if (value == 'session') {
+                    HapticUtils.mediumImpact(); // Medium haptic for session action
+                    final wasInSession = appState.isDrillInSession(drill);
+                    
+                    if (wasInSession) {
+                      appState.removeDrillFromSession(drill);
+                      // Show feedback message
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        SnackBar(
+                          content: Text('Removed ${drill.title} from session'),
+                          duration: const Duration(seconds: 2),
+                          backgroundColor: Colors.green,
+                        ),
+                      );
+                    } else {
+                      final success = appState.addDrillToSession(drill);
+                      if (success) {
+                        // Show feedback message
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          SnackBar(
+                            content: Text('Added ${drill.title} to session'),
+                            duration: const Duration(seconds: 2),
+                            backgroundColor: Colors.green,
+                          ),
+                        );
+                      } else {
+                        // Show limit warning message
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          SnackBar(
+                            content: const Text('Session limit reached! You can only add up to 10 drills to a session.'),
+                            duration: const Duration(seconds: 3),
+                            backgroundColor: Colors.orange,
+                            action: SnackBarAction(
+                              label: 'OK',
+                              textColor: Colors.white,
+                              onPressed: () {},
+                            ),
+                          ),
+                        );
+                      }
+                    }
+                  } else if (value == 'add_to_group') {
+                    HapticUtils.lightImpact(); // Light haptic for collection action
+                    _showSaveToCollectionDialog(context, appState);
+                  }
                 },
-              ),
-              // Save button for adding to collections - now shows filled when saved
-              IconButton(
-                icon: Icon(
-                  isSavedInCollection ? Icons.bookmark : Icons.bookmark_border, // ✅ UPDATED: Filled when saved
-                  color: isSavedInCollection ? AppTheme.primaryPurple : Colors.grey.shade600, // ✅ UPDATED: Purple when saved
-                ),
-                onPressed: () {
-                  HapticUtils.mediumImpact(); // Medium haptic for save action
-                  _showSaveToCollectionDialog(context, appState);
+                itemBuilder: (context) {
+                  final isLiked = appState.isDrillLiked(drill);
+                  final isInSession = appState.isDrillInSession(drill);
+                  return [
+                    PopupMenuItem(
+                      value: 'like',
+                      child: Row(
+                        children: [
+                          Icon(
+                            isLiked ? Icons.favorite : Icons.favorite_border,
+                            color: isLiked ? Colors.red : Colors.grey,
+                            size: 20,
+                          ),
+                          const SizedBox(width: 8),
+                          Text(isLiked ? 'Unlike' : 'Like'),
+                        ],
+                      ),
+                    ),
+                    PopupMenuItem(
+                      value: 'session',
+                      child: Row(
+                        children: [
+                          Icon(
+                            isInSession ? Icons.fitness_center : Icons.add_circle_outline,
+                            color: isInSession ? Colors.blue : Colors.grey,
+                            size: 20,
+                          ),
+                          const SizedBox(width: 8),
+                          Text(isInSession ? 'Remove from Session' : 'Add to Session'),
+                        ],
+                      ),
+                    ),
+                    PopupMenuItem(
+                      value: 'add_to_group',
+                      child: Row(
+                        children: [
+                          Icon(
+                            Icons.folder_outlined,
+                            color: Colors.grey,
+                            size: 20,
+                          ),
+                          const SizedBox(width: 8),
+                          const Text('Add to Collection'),
+                        ],
+                      ),
+                    ),
+                  ];
                 },
               ),
               const SizedBox(width: 8),
@@ -327,224 +409,8 @@ class DrillDetailView extends StatelessWidget {
   }
 
   void _showSaveToCollectionDialog(BuildContext context, AppStateService appState) {
-    showDialog(
-      context: context,
-      builder: (context) {
-        return AlertDialog(
-          title: const Text(
-            'Save to Collection',
-            style: TextStyle(
-              fontFamily: 'Poppins',
-              fontWeight: FontWeight.bold,
-            ),
-          ),
-          content: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(
-                'Choose a collection to save "${drill.title}" to:',
-                style: const TextStyle(
-                  fontFamily: 'Poppins',
-                  fontSize: 14,
-                  color: Colors.black87,
-                ),
-              ),
-              const SizedBox(height: 16),
-              
-              // Show existing collections
-              if (appState.savedDrillGroups.isNotEmpty) ...[
-                const Text(
-                  'Existing Collections:',
-                  style: TextStyle(
-                    fontFamily: 'Poppins',
-                    fontWeight: FontWeight.w600,
-                    fontSize: 14,
-                  ),
-                ),
-                const SizedBox(height: 8),
-                
-                // List existing collections
-                ...appState.savedDrillGroups.map((group) {
-                  final isDrillInGroup = group.drills.any((d) => d.id == drill.id);
-                  return ListTile(
-                    contentPadding: EdgeInsets.zero,
-                    leading: Icon(
-                      Icons.folder,
-                      color: AppTheme.primaryPurple,
-                    ),
-                    title: Text(
-                      group.name,
-                      style: const TextStyle(
-                        fontFamily: 'Poppins',
-                        fontSize: 14,
-                      ),
-                    ),
-                    subtitle: Text(
-                      '${group.drills.length} drills',
-                      style: const TextStyle(
-                        fontFamily: 'Poppins',
-                        fontSize: 12,
-                      ),
-                    ),
-                    trailing: isDrillInGroup 
-                        ? const Icon(Icons.check, color: Colors.green)
-                        : null,
-                    onTap: isDrillInGroup ? null : () {
-                      HapticUtils.mediumImpact();
-                      appState.addDrillToGroup(group.id, drill);
-                      Navigator.pop(context);
-                      
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        SnackBar(
-                          content: Text('Added to ${group.name}'),
-                          duration: const Duration(seconds: 2),
-                          backgroundColor: Colors.green,
-                        ),
-                      );
-                    },
-                  );
-                }).toList(),
-                
-                const SizedBox(height: 16),
-              ],
-              
-              // Option to create new collection
-              const Text(
-                'Or create a new collection:',
-                style: TextStyle(
-                  fontFamily: 'Poppins',
-                  fontWeight: FontWeight.w600,
-                  fontSize: 14,
-                ),
-              ),
-            ],
-          ),
-          actions: [
-            TextButton(
-              onPressed: () {
-                HapticUtils.lightImpact();
-                Navigator.pop(context);
-              },
-              child: const Text(
-                'Cancel',
-                style: TextStyle(fontFamily: 'Poppins'),
-              ),
-            ),
-            ElevatedButton(
-              onPressed: () {
-                HapticUtils.mediumImpact();
-                Navigator.pop(context);
-                _showCreateCollectionDialog(context, appState);
-              },
-              style: ElevatedButton.styleFrom(
-                backgroundColor: AppTheme.primaryPurple,
-                foregroundColor: Colors.white,
-              ),
-              child: const Text(
-                'New Collection',
-                style: TextStyle(fontFamily: 'Poppins'),
-              ),
-            ),
-          ],
-        );
-      },
-    );
-  }
-
-  void _showCreateCollectionDialog(BuildContext context, AppStateService appState) {
-    final nameController = TextEditingController();
-    final descriptionController = TextEditingController();
-
-    showDialog(
-      context: context,
-      builder: (context) {
-        return AlertDialog(
-          title: const Text(
-            'Create New Collection',
-            style: TextStyle(
-              fontFamily: 'Poppins',
-              fontWeight: FontWeight.bold,
-            ),
-          ),
-          content: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              TextField(
-                controller: nameController,
-                style: const TextStyle(fontFamily: 'Poppins'),
-                decoration: const InputDecoration(
-                  labelText: 'Collection Name',
-                  labelStyle: TextStyle(fontFamily: 'Poppins'),
-                  border: OutlineInputBorder(),
-                ),
-                autofocus: true,
-              ),
-              const SizedBox(height: 16),
-              TextField(
-                controller: descriptionController,
-                style: const TextStyle(fontFamily: 'Poppins'),
-                maxLines: 3,
-                decoration: const InputDecoration(
-                  labelText: 'Description (optional)',
-                  labelStyle: TextStyle(fontFamily: 'Poppins'),
-                  border: OutlineInputBorder(),
-                ),
-              ),
-            ],
-          ),
-          actions: [
-            TextButton(
-              onPressed: () {
-                HapticUtils.lightImpact();
-                Navigator.pop(context);
-              },
-              child: const Text(
-                'Cancel',
-                style: TextStyle(fontFamily: 'Poppins'),
-              ),
-            ),
-            ElevatedButton(
-              onPressed: () {
-                if (nameController.text.trim().isNotEmpty) {
-                  HapticUtils.mediumImpact();
-                  
-                  // Create new collection
-                  appState.createDrillGroup(
-                    nameController.text.trim(),
-                    descriptionController.text.trim().isEmpty
-                        ? 'Custom drill collection'
-                        : descriptionController.text.trim(),
-                  );
-                  
-                  // Add drill to the newly created collection
-                  final newGroup = appState.savedDrillGroups.last;
-                  appState.addDrillToGroup(newGroup.id, drill);
-                  
-                  Navigator.pop(context);
-                  
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    SnackBar(
-                      content: Text('Created "${nameController.text.trim()}" and added drill'),
-                      duration: const Duration(seconds: 2),
-                      backgroundColor: Colors.green,
-                    ),
-                  );
-                }
-              },
-              style: ElevatedButton.styleFrom(
-                backgroundColor: AppTheme.primaryPurple,
-                foregroundColor: Colors.white,
-              ),
-              child: const Text(
-                'Create & Add',
-                style: TextStyle(fontFamily: 'Poppins'),
-              ),
-            ),
-          ],
-        );
-      },
-    );
+    // Use the reusable SaveToCollectionDialog
+    SaveToCollectionDialog.show(context, drill);
   }
 
   Widget _buildDrillHeader() {

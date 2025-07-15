@@ -362,6 +362,7 @@ class _DrillSearchViewState extends State<DrillSearchView> {
         await appState.refreshSearch();
       },
       child: ListView.builder(
+        key: const PageStorageKey('drill_search_list'), // Preserve scroll position
         controller: _scrollController,
         physics: const AlwaysScrollableScrollPhysics(),
         padding: const EdgeInsets.all(AppTheme.spacingMedium),
@@ -498,15 +499,31 @@ class _DrillSearchViewState extends State<DrillSearchView> {
 
   void _addDrillToSession(DrillModel drill) {
     final appState = Provider.of<AppStateService>(context, listen: false);
-    appState.addDrillToSession(drill);
+    final success = appState.addDrillToSession(drill);
     
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text('${drill.title} added to session'),
-        backgroundColor: AppTheme.success,
-        behavior: SnackBarBehavior.floating,
-      ),
-    );
+    if (success) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('${drill.title} added to session'),
+          backgroundColor: AppTheme.success,
+          behavior: SnackBarBehavior.floating,
+        ),
+      );
+    } else {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: const Text('Session limit reached! You can only add up to 10 drills to a session.'),
+          backgroundColor: Colors.orange,
+          behavior: SnackBarBehavior.floating,
+          duration: const Duration(seconds: 3),
+          action: SnackBarAction(
+            label: 'OK',
+            textColor: Colors.white,
+            onPressed: () {},
+          ),
+        ),
+      );
+    }
   }
 
   Widget _buildDrillCard(DrillModel drill, AppStateService appState) {
@@ -612,7 +629,10 @@ class _DrillSearchViewState extends State<DrillSearchView> {
               IconButton(
                 onPressed: appState.isDrillInSession(drill) 
                     ? null 
-                    : () => _addDrillToSession(drill),
+                    : () {
+                        HapticUtils.lightImpact();
+                        _addDrillToSession(drill);
+                      },
                 icon: Icon(
                   appState.isDrillInSession(drill) 
                       ? Icons.check_circle 

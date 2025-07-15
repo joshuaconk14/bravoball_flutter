@@ -6,6 +6,7 @@ class CircularControlButton extends StatefulWidget {
   final IconData icon;
   final VoidCallback? onPressed;
   final Color color;
+  final Color? backColor; // NEW: Optional back color
   final double size;
   final bool enableHaptics;
 
@@ -14,6 +15,7 @@ class CircularControlButton extends StatefulWidget {
     required this.icon,
     this.onPressed,
     required this.color,
+    this.backColor, // NEW
     this.size = 44,
     this.enableHaptics = true,
   }) : super(key: key);
@@ -92,11 +94,11 @@ class _CircularControlButtonState extends State<CircularControlButton>
                 width: widget.size,
                 height: widget.size,
                 decoration: BoxDecoration(
-                  color: widget.color.withOpacity(0.8),
+                  color: widget.backColor ?? widget.color.withOpacity(0.8),
                   shape: BoxShape.circle,
                   boxShadow: [
                     BoxShadow(
-                      color: widget.color.withOpacity(0.3),
+                      color: (widget.backColor ?? widget.color).withOpacity(0.3),
                       blurRadius: 6,
                       offset: const Offset(0, 3),
                     ),

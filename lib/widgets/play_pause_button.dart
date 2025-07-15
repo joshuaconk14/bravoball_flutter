@@ -14,6 +14,7 @@ class PlayPauseButton extends StatefulWidget {
   final bool disabled;
   final double size;
   final bool enableHaptics;
+  final Color? backColor; // NEW
 
   const PlayPauseButton({
     Key? key,
@@ -27,6 +28,7 @@ class PlayPauseButton extends StatefulWidget {
     this.disabled = false,
     this.size = 80,
     this.enableHaptics = true,
+    this.backColor, // NEW
   }) : super(key: key);
 
   @override
@@ -39,7 +41,7 @@ class _PlayPauseButtonState extends State<PlayPauseButton>
   late Animation<double> _offsetAnimation;
   bool _isPressed = false;
 
-  static const double _buttonDropOffset = 4.0;
+  static const double _buttonDropOffset = 6.0; // ✅ UPDATED: Increased from 4.0 to 6.0 to move back circle more down
 
   @override
   void initState() {
@@ -106,12 +108,15 @@ class _PlayPauseButtonState extends State<PlayPauseButton>
   }
 
   Color _getBackColor() {
+    if (widget.backColor != null) {
+      return widget.backColor!;
+    }
     if (widget.isComplete) {
-      return AppTheme.success.withOpacity(0.8);
+      return AppTheme.primaryDarkGreen; // ✅ Use primaryDarkGreen for complete state
     } else if (widget.disabled || (widget.countdownValue != null && !widget.debugMode)) {
       return Colors.grey.shade500;
     } else {
-      return AppTheme.primaryYellow.withOpacity(0.8);
+      return AppTheme.primaryDarkYellow;
     }
   }
 

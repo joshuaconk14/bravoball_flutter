@@ -4,6 +4,8 @@ import 'package:rive/rive.dart';
 import '../../widgets/bravo_button.dart';
 import '../../widgets/guest_account_overlay.dart'; // ✅ NEW: Import reusable guest overlay
 import '../../widgets/circular_drill_button.dart'; // ✅ NEW: Import circular drill button
+import '../../widgets/warning_dialog.dart'; // ✅ NEW: Import reusable warning dialog
+import '../../widgets/typewriter_text.dart'; // ✅ NEW: Import reusable typewriter text
 import '../../models/editable_drill_model.dart';
 import '../../services/app_state_service.dart';
 import '../../services/audio_service.dart';
@@ -201,13 +203,19 @@ class _SessionGeneratorHomeFieldViewState extends State<SessionGeneratorHomeFiel
             right: screenWidth * 0.25,
             child: GestureDetector(
               onTap: () {
-                // ✅ REMOVED: Trophy restriction - users can always access backpack
-                HapticUtils.mediumImpact(); // Medium haptic for drill editor access
-                Navigator.of(context).push(
-                  MaterialPageRoute(
-                    builder: (_) => const SessionGeneratorEditorPage(),
-                  ),
-                );
+                // ✅ NEW: Check for session progress before allowing access
+                if (appState.hasSessionProgress && !appState.isSessionComplete) {
+                  HapticUtils.mediumImpact();
+                  _showSessionProgressWarning(context, appState);
+                } else {
+                  // ✅ REMOVED: Trophy restriction - users can always access backpack
+                  HapticUtils.mediumImpact(); // Medium haptic for drill editor access
+                  Navigator.of(context).push(
+                    MaterialPageRoute(
+                      builder: (_) => const SessionGeneratorEditorPage(),
+                    ),
+                  );
+                }
               },
               child: SizedBox(
                 width: 90,
@@ -246,8 +254,8 @@ class _SessionGeneratorHomeFieldViewState extends State<SessionGeneratorHomeFiel
                 isActive: isActive,
                 isCompleted: editableDrill.isCompleted,
                 disabled: false,
-                size: isActive ? 100 : 80,
-                iconSize: isActive ? 48 : 40,
+                size: 90, // ✅ FIXED: Use consistent size for all buttons
+                iconSize: 45, // ✅ FIXED: Use consistent icon size for all buttons
                 showProgress: editableDrill.progress > 0 || editableDrill.isCompleted,
                 progress: editableDrill.progress,
                 onPressed: () => _openFollowAlong(editableDrill, appState),
@@ -393,6 +401,29 @@ class _SessionGeneratorHomeFieldViewState extends State<SessionGeneratorHomeFiel
     );
   }
 
+  // ✅ NEW: Show warning dialog when user tries to edit session with progress
+  void _showSessionProgressWarning(BuildContext context, AppStateService appState) {
+    final progressDrills = appState.editableSessionDrills.where((drill) => drill.setsDone > 0 || drill.isCompleted).length;
+    final totalDrills = appState.editableSessionDrills.length;
+    
+    WarningDialog.showSessionProgress(
+      context: context,
+      progressDrills: progressDrills,
+      totalDrills: totalDrills,
+    ).then((result) {
+      // Handle the dialog result
+      if (result == true) {
+        // User clicked continue - navigate to session editor
+        Navigator.of(context).push(
+          MaterialPageRoute(
+            builder: (_) => const SessionGeneratorEditorPage(),
+          ),
+        );
+      }
+      // If result is false or null, user cancelled - do nothing
+    });
+  }
+
   // Status message based on drill count
   Widget _buildStatusMessage(AppStateService appState) {
     final editableSessionDrills = appState.editableSessionDrills;
@@ -432,8 +463,9 @@ class _SessionGeneratorHomeFieldViewState extends State<SessionGeneratorHomeFiel
             color: AppTheme.speechBubbleBackground,
             borderRadius: BorderRadius.circular(12),
           ),
-          child: Text(
-            message,
+          child: TypewriterText(
+            key: ValueKey('status_message_$message'), // ✅ NEW: Unique key to trigger animation on message change
+            text: message,
             style: const TextStyle(
               fontFamily: 'Poppins',
               fontWeight: FontWeight.w600,
@@ -441,8 +473,9 @@ class _SessionGeneratorHomeFieldViewState extends State<SessionGeneratorHomeFiel
               color: Colors.white,
             ),
             textAlign: TextAlign.center,
-            maxLines: 4, // Allow up to 4 lines
-            // Removed overflow: TextOverflow.ellipsis to allow wrapping
+            duration: const Duration(milliseconds: 40), // ✅ NEW: Faster typing for status messages
+            startDelay: const Duration(milliseconds: 200), // ✅ NEW: Shorter delay for responsiveness
+            enableHaptics: false, // ✅ NEW: Disable haptics for status messages to avoid spam
           ),
         ),
         // Speech bubble tail pointing down to Bravo

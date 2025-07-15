@@ -43,13 +43,13 @@ class AppTheme {
 
   // MARK: - Skill Category Colors
   static const Color buttonLime = Color(0xFFAEED39);
-  static const Color buttonDarkLime = Color(0xFF77A326);
+  static const Color buttonDarkLime = Color(0xFF90c234);
   static const Color buttonCyan = Color(0xFF30ffb0);
-  static const Color buttonDarkCyan = Color(0xFF2fc28a);
-  static const Color buttonOrange = Color(0xFFf08e16);
-  static const Color buttonDarkOrange = Color(0xFFb8711a);
-  static const Color buttonPurple = Color(0xFFC93BF5);
-  static const Color buttonDarkPurple = Color(0xFF8B22AB);
+  static const Color buttonDarkCyan = Color(0xFF29cf8f);
+  static const Color buttonOrange = Color(0xFFfa8211);
+  static const Color buttonDarkOrange = Color(0xFFcc6d14);
+  static const Color buttonPurple = Color(0xFFd751fc);
+  static const Color buttonDarkPurple = Color(0xFFa53ec2);
   
   // MARK: - Text Colors
   static const Color textPrimary = primaryDark;
@@ -68,8 +68,8 @@ class AppTheme {
   
   // MARK: - Skill Colors (for drill categories)
   static const Color skillPassing = buttonCyan; // ✅ UPDATED: Use cyan for passing
-  static const Color skillShooting = buttonOrange; // ✅ UPDATED: Use orange for shooting
-  static const Color skillDribbling = buttonPurple; // ✅ UPDATED: Use purple for dribbling
+  static const Color skillShooting = buttonPurple; // Now shooting is purple
+  static const Color skillDribbling = buttonOrange; // Now dribbling is orange
   static const Color skillFirstTouch = buttonLime; // ✅ UPDATED: Use lime for first touch
   static const Color skillDefending = Color(0xFFFF3B30); // Red moved to defending
   static const Color skillFitness = Color(0xFF32ADE6);
@@ -106,9 +106,9 @@ class AppTheme {
       case 'passing':
         return buttonDarkCyan;
       case 'shooting':
-        return buttonDarkOrange;
-      case 'dribbling':
         return buttonDarkPurple;
+      case 'dribbling':
+        return buttonDarkOrange;
       case 'first touch':
         return buttonDarkLime;
       case 'defending':
