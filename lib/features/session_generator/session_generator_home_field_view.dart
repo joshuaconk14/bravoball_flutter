@@ -379,6 +379,7 @@ class _SessionGeneratorHomeFieldViewState extends State<SessionGeneratorHomeFiel
           isFirstSessionOfDay: isFirstSessionOfDay,
           sessionsCompletedToday: sessionsToday, // ✅ Use actual count, not incremented
           onViewProgress: () {
+            appState.resetDrillProgressForNewSession();
             // Navigate to progress tab (index 1)
             Navigator.of(context).pushAndRemoveUntil(
               MaterialPageRoute(
@@ -388,6 +389,7 @@ class _SessionGeneratorHomeFieldViewState extends State<SessionGeneratorHomeFiel
             );
           },
           onBackToHome: () {
+            appState.resetDrillProgressForNewSession();
             // Navigate back to home tab (index 0)
             Navigator.of(context).pushAndRemoveUntil(
               MaterialPageRoute(

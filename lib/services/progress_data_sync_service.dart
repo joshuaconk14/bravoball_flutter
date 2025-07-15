@@ -177,6 +177,21 @@ class ProgressDataSyncService {
           'previousStreak': response.data!['previous_streak'] ?? 0,
           'highestStreak': response.data!['highest_streak'] ?? 0,
           'completedSessionsCount': response.data!['completed_sessions_count'] ?? 0,
+          // ✅ NEW: Enhanced progress metrics
+          'favoriteDrill': response.data!['favorite_drill'] ?? '',
+          'drillsPerSession': response.data!['drills_per_session'] ?? 0.0,
+          'minutesPerSession': response.data!['minutes_per_session'] ?? 0.0,
+          'totalTimeAllSessions': response.data!['total_time_all_sessions'] ?? 0,
+          'dribblingDrillsCompleted': response.data!['dribbling_drills_completed'] ?? 0,
+          'firstTouchDrillsCompleted': response.data!['first_touch_drills_completed'] ?? 0,
+          'passingDrillsCompleted': response.data!['passing_drills_completed'] ?? 0,
+          'shootingDrillsCompleted': response.data!['shooting_drills_completed'] ?? 0,
+          // ✅ NEW: Additional progress metrics
+          'mostImprovedSkill': response.data!['most_improved_skill'] ?? '',
+          'uniqueDrillsCompleted': response.data!['unique_drills_completed'] ?? 0,
+          'beginnerDrillsCompleted': response.data!['beginner_drills_completed'] ?? 0,
+          'intermediateDrillsCompleted': response.data!['intermediate_drills_completed'] ?? 0,
+          'advancedDrillsCompleted': response.data!['advanced_drills_completed'] ?? 0,
         };
 
         if (kDebugMode) {

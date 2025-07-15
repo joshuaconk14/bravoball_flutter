@@ -257,6 +257,47 @@ class AppStateService extends ChangeNotifier {
   int _countOfFullyCompletedSessions = 0;
   int get countOfFullyCompletedSessions => _countOfFullyCompletedSessions;
   
+  // ✅ NEW: Backend-sourced progress metrics only
+  String _favoriteDrill = '';
+  String get favoriteDrill => _favoriteDrill;
+  
+  double _drillsPerSession = 0.0;
+  double get drillsPerSession => _drillsPerSession;
+  
+  double _minutesPerSession = 0.0;
+  double get minutesPerSession => _minutesPerSession;
+  
+  int _totalTimeAllSessions = 0;
+  int get totalTimeAllSessions => _totalTimeAllSessions;
+  
+  int _dribblingDrillsCompleted = 0;
+  int get dribblingDrillsCompleted => _dribblingDrillsCompleted;
+  
+  int _firstTouchDrillsCompleted = 0;
+  int get firstTouchDrillsCompleted => _firstTouchDrillsCompleted;
+  
+  int _passingDrillsCompleted = 0;
+  int get passingDrillsCompleted => _passingDrillsCompleted;
+  
+  int _shootingDrillsCompleted = 0;
+  int get shootingDrillsCompleted => _shootingDrillsCompleted;
+  
+  // ✅ NEW: Additional progress metrics
+  String _mostImprovedSkill = '';
+  String get mostImprovedSkill => _mostImprovedSkill;
+  
+  int _uniqueDrillsCompleted = 0;
+  int get uniqueDrillsCompleted => _uniqueDrillsCompleted;
+  
+  int _beginnerDrillsCompleted = 0;
+  int get beginnerDrillsCompleted => _beginnerDrillsCompleted;
+  
+  int _intermediateDrillsCompleted = 0;
+  int get intermediateDrillsCompleted => _intermediateDrillsCompleted;
+  
+  int _advancedDrillsCompleted = 0;
+  int get advancedDrillsCompleted => _advancedDrillsCompleted;
+  
   // ===== APPLICATION STATE SECTION =====
   // Global app state flags
   bool _isInitialLoad = true;
@@ -531,6 +572,23 @@ class AppStateService extends ChangeNotifier {
         _previousStreak = progressHistory['previousStreak'] ?? 0;
         _highestStreak = progressHistory['highestStreak'] ?? 0;
         _countOfFullyCompletedSessions = progressHistory['completedSessionsCount'] ?? 0;
+        
+        // ✅ NEW: Load backend-sourced progress metrics only
+        _favoriteDrill = progressHistory['favoriteDrill'] ?? '';
+        _drillsPerSession = (progressHistory['drillsPerSession'] ?? 0.0).toDouble();
+        _minutesPerSession = (progressHistory['minutesPerSession'] ?? 0.0).toDouble();
+        _totalTimeAllSessions = progressHistory['totalTimeAllSessions'] ?? 0;
+        _dribblingDrillsCompleted = progressHistory['dribblingDrillsCompleted'] ?? 0;
+        _firstTouchDrillsCompleted = progressHistory['firstTouchDrillsCompleted'] ?? 0;
+        _passingDrillsCompleted = progressHistory['passingDrillsCompleted'] ?? 0;
+        _shootingDrillsCompleted = progressHistory['shootingDrillsCompleted'] ?? 0;
+
+        // ✅ NEW: Additional progress metrics
+        _mostImprovedSkill = progressHistory['mostImprovedSkill'] ?? '';
+        _uniqueDrillsCompleted = progressHistory['uniqueDrillsCompleted'] ?? 0;
+        _beginnerDrillsCompleted = progressHistory['beginnerDrillsCompleted'] ?? 0;
+        _intermediateDrillsCompleted = progressHistory['intermediateDrillsCompleted'] ?? 0;
+        _advancedDrillsCompleted = progressHistory['advancedDrillsCompleted'] ?? 0;
       }
       
       if (kDebugMode) print('✅ Loaded progress data from backend');
@@ -636,6 +694,23 @@ class AppStateService extends ChangeNotifier {
         _previousStreak = progressHistory['previousStreak'] ?? 0;
         _highestStreak = progressHistory['highestStreak'] ?? 0;
         _countOfFullyCompletedSessions = progressHistory['completedSessionsCount'] ?? 0;
+        
+        // ✅ NEW: Refresh backend-sourced progress metrics only
+        _favoriteDrill = progressHistory['favoriteDrill'] ?? '';
+        _drillsPerSession = (progressHistory['drillsPerSession'] ?? 0.0).toDouble();
+        _minutesPerSession = (progressHistory['minutesPerSession'] ?? 0.0).toDouble();
+        _totalTimeAllSessions = progressHistory['totalTimeAllSessions'] ?? 0;
+        _dribblingDrillsCompleted = progressHistory['dribblingDrillsCompleted'] ?? 0;
+        _firstTouchDrillsCompleted = progressHistory['firstTouchDrillsCompleted'] ?? 0;
+        _passingDrillsCompleted = progressHistory['passingDrillsCompleted'] ?? 0;
+        _shootingDrillsCompleted = progressHistory['shootingDrillsCompleted'] ?? 0;
+
+        // ✅ NEW: Refresh additional progress metrics
+        _mostImprovedSkill = progressHistory['mostImprovedSkill'] ?? '';
+        _uniqueDrillsCompleted = progressHistory['uniqueDrillsCompleted'] ?? 0;
+        _beginnerDrillsCompleted = progressHistory['beginnerDrillsCompleted'] ?? 0;
+        _intermediateDrillsCompleted = progressHistory['intermediateDrillsCompleted'] ?? 0;
+        _advancedDrillsCompleted = progressHistory['advancedDrillsCompleted'] ?? 0;
         
         notifyListeners();
       }
@@ -1827,6 +1902,23 @@ class AppStateService extends ChangeNotifier {
     _savedDrillGroups.clear();
     _likedDrills.clear();
     
+    // ✅ NEW: Reset backend-sourced progress metrics only
+    _favoriteDrill = '';
+    _drillsPerSession = 0.0;
+    _minutesPerSession = 0.0;
+    _totalTimeAllSessions = 0;
+    _dribblingDrillsCompleted = 0;
+    _firstTouchDrillsCompleted = 0;
+    _passingDrillsCompleted = 0;
+    _shootingDrillsCompleted = 0;
+
+    // ✅ NEW: Reset additional progress metrics
+    _mostImprovedSkill = '';
+    _uniqueDrillsCompleted = 0;
+    _beginnerDrillsCompleted = 0;
+    _intermediateDrillsCompleted = 0;
+    _advancedDrillsCompleted = 0;
+    
     // Don't reset session state if it was completed - preserve completion status
     if (_sessionState != SessionState.completed) {
       _setSessionState(SessionState.idle);
@@ -1856,6 +1948,23 @@ class AppStateService extends ChangeNotifier {
     _previousStreak = 0;
     _highestStreak = 0;
     _countOfFullyCompletedSessions = 0;
+    
+    // ✅ NEW: Reset backend-sourced progress metrics only
+    _favoriteDrill = '';
+    _drillsPerSession = 0.0;
+    _minutesPerSession = 0.0;
+    _totalTimeAllSessions = 0;
+    _dribblingDrillsCompleted = 0;
+    _firstTouchDrillsCompleted = 0;
+    _passingDrillsCompleted = 0;
+    _shootingDrillsCompleted = 0;
+
+    // ✅ NEW: Reset additional progress metrics
+    _mostImprovedSkill = '';
+    _uniqueDrillsCompleted = 0;
+    _beginnerDrillsCompleted = 0;
+    _intermediateDrillsCompleted = 0;
+    _advancedDrillsCompleted = 0;
     
     _syncCoordinator.cancelAll();
     notifyListeners();
