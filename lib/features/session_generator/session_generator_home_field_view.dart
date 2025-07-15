@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:rive/rive.dart';
+import 'dart:ui' as ui show Gradient;
+import 'package:flutter/painting.dart' as painting;
 import '../../widgets/bravo_button.dart';
 import '../../widgets/guest_account_overlay.dart'; // ✅ NEW: Import reusable guest overlay
 import '../../widgets/circular_drill_button.dart'; // ✅ NEW: Import circular drill button
@@ -16,6 +18,7 @@ import 'drill_follow_along_view.dart';
 import 'session_completion_view.dart';
 import '../../views/main_tab_view.dart';
 import 'package:flutter/foundation.dart'; // Added for kDebugMode
+import '../mental_training/mental_training_setup_view.dart'; // Added for MentalTrainingSetupView
 
 class SessionGeneratorHomeFieldView extends StatefulWidget {
   const SessionGeneratorHomeFieldView({Key? key}) : super(key: key);
@@ -261,6 +264,52 @@ class _SessionGeneratorHomeFieldViewState extends State<SessionGeneratorHomeFiel
               ),
             ),
           ),
+          
+          // Mental Training Alternative - positioned directly above backpack as a glowing option
+          Positioned(
+            top: 122, // Positioned directly above the backpack
+            right: screenWidth * 0.28, // Same horizontal position as backpack
+            child: GestureDetector(
+              onTap: () {
+                HapticUtils.mediumImpact();
+                Navigator.of(context).push(
+                  MaterialPageRoute(
+                    builder: (_) => const MentalTrainingSetupView(),
+                  ),
+                );
+              },
+              child: Container(
+                width: 50,
+                height: 50,
+                decoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  gradient: painting.RadialGradient(
+                    colors: [
+                      AppTheme.primaryYellow,
+                      AppTheme.primaryYellow.withOpacity(0.8),
+                    ],
+                  ),
+                  boxShadow: [
+                    BoxShadow(
+                      color: AppTheme.primaryYellow.withOpacity(0.6),
+                      blurRadius: 20,
+                      spreadRadius: 5,
+                    ),
+                    BoxShadow(
+                      color: AppTheme.primaryYellow.withOpacity(0.3),
+                      blurRadius: 30,
+                      spreadRadius: 10,
+                    ),
+                  ],
+                ),
+                child: Icon(
+                  Icons.psychology_rounded,
+                  size: 28,
+                  color: AppTheme.white,
+                ),
+              ),
+            ),
+          ),
         ],
       ),
     );
@@ -272,6 +321,11 @@ class _SessionGeneratorHomeFieldViewState extends State<SessionGeneratorHomeFiel
     final hasSessionDrills = editableSessionDrills.isNotEmpty;
     final sessionComplete = appState.isSessionComplete;
     final nextIncompleteDrill = appState.getNextIncompleteDrill();
+    
+    // ✅ NEW: Show placeholder when no drills exist
+    if (!hasSessionDrills) {
+      return _buildEmptyStatePlaceholder();
+    }
     
     return Column(
       mainAxisAlignment: MainAxisAlignment.start,
@@ -384,6 +438,101 @@ class _SessionGeneratorHomeFieldViewState extends State<SessionGeneratorHomeFiel
     );
   }
 
+  // ✅ NEW: Build placeholder for when no drills exist
+  Widget _buildEmptyStatePlaceholder() {
+    return Column(
+      mainAxisAlignment: MainAxisAlignment.start,
+      children: [
+        const SizedBox(height: 20),
+        
+        // Placeholder drill circles with dotted connecting lines
+        ..._buildPlaceholderDrillsWithLines(),
+        
+        // Dotted line before trophy
+        _buildDottedLine(),
+        
+        const SizedBox(height: 12),
+        
+        // Placeholder trophy
+        _buildPlaceholderTrophy(),
+        
+        const SizedBox(height: 20),
+      ],
+    );
+  }
+
+  // ✅ NEW: Build placeholder drill circles with connecting dotted lines
+  List<Widget> _buildPlaceholderDrillsWithLines() {
+    final placeholderSkills = ['dribbling', 'passing', 'shooting'];
+    final List<Widget> placeholders = [];
+    
+    for (int i = 0; i < placeholderSkills.length; i++) {
+      // Add drill circle
+      placeholders.add(
+        Opacity(
+          opacity: 0.3, // Make it very transparent
+          child: CircularDrillButton(
+            skill: placeholderSkills[i],
+            isActive: false,
+            isCompleted: false,
+            disabled: true, // Make it non-interactive
+            size: 80,
+            iconSize: 40,
+            showProgress: false,
+            progress: 0.0,
+            onPressed: () {}, // Empty function since it's disabled
+          ),
+        ),
+      );
+      
+      // Add connecting dotted line (except after last drill)
+      if (i < placeholderSkills.length - 1) {
+        placeholders.add(_buildDottedLine());
+      }
+    }
+    
+    return placeholders;
+  }
+
+  // ✅ NEW: Build dotted connecting line
+  Widget _buildDottedLine() {
+    return Container(
+      height: 24,
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+        children: List.generate(3, (index) => Container(
+          width: 3,
+          height: 3,
+          decoration: BoxDecoration(
+            color: AppTheme.primaryGray.withOpacity(0.3),
+            shape: BoxShape.circle,
+          ),
+        )),
+      ),
+    );
+  }
+
+  // ✅ NEW: Build placeholder trophy (grayed out version of actual trophy)
+  Widget _buildPlaceholderTrophy() {
+    return Container(
+      width: 80,
+      height: 80,
+      decoration: BoxDecoration(
+        color: AppTheme.buttonDisabledGray.withOpacity(0.5),
+        shape: BoxShape.circle,
+        border: Border.all(
+          color: AppTheme.primaryGray.withOpacity(0.3),
+          width: 2,
+        ),
+      ),
+      child: Icon(
+        Icons.emoji_events,
+        size: 48,
+        color: AppTheme.primaryGray.withOpacity(0.4),
+      ),
+    );
+  }
+
   // Open follow-along view instead of edit drill view
   void _openFollowAlong(EditableDrillModel editableDrill, AppStateService appState) {
     final nextIncompleteDrill = appState.getNextIncompleteDrill();
@@ -493,7 +642,7 @@ class _SessionGeneratorHomeFieldViewState extends State<SessionGeneratorHomeFiel
     
     String message;
     if (!hasSessionDrills) {
-      message = "Tap the bag to create a session!";
+      message = "Try a drill session or mental training!";
     } else if (appState.currentSessionCompleted) {
       // Check if drills have been reset (all progress is 0)
       final allDrillsReset = editableSessionDrills.every((drill) => 
@@ -501,15 +650,15 @@ class _SessionGeneratorHomeFieldViewState extends State<SessionGeneratorHomeFiel
       );
       
       if (allDrillsReset) {
-        message = "Ready for another session! Tap Begin Training to start.";
+        message = "Ready for another session! Or take a mental training break.";
       } else {
-        message = "Session complete, good job today!";
+        message = "Session complete! Consider mental training for recovery.";
       }
     } else if (appState.isSessionComplete) {
       message = "Well done! Tap the trophy!";
     } else {
       final incompleteDrills = editableSessionDrills.where((drill) => !drill.isDone).length;
-      message = "You have $incompleteDrills drill${incompleteDrills == 1 ? '' : 's'} to complete!";
+      message = "You have $incompleteDrills drill${incompleteDrills == 1 ? '' : 's'}! Or try mental training.";
     }
 
     return Column(

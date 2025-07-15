@@ -76,6 +76,7 @@ class AppConfig {
   static bool get enableDebugMenu => kDebugMode && debug;
   static bool get logApiCalls => kDebugMode && debug;
   static bool get showPerformanceOverlay => kDebugMode && false;
+  static bool get fastMentalTrainingTimers => kDebugMode && debug; // Speed up mental training timers for testing
 
   // MARK: - Test Data Settings (when useTestData is true)
   static const int testDrillCount = 5;
