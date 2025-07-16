@@ -407,7 +407,7 @@ class _MentalTrainingTimerViewState extends State<MentalTrainingTimerView>
     try {
       // Save to backend
       final mentalTrainingService = MentalTrainingService.shared;
-      await mentalTrainingService.createSession(
+      await mentalTrainingService.createMentalTrainingSession(
         durationMinutes: widget.durationMinutes,
       );
       
@@ -447,7 +447,7 @@ class _MentalTrainingTimerViewState extends State<MentalTrainingTimerView>
       );
       
       // Add this as a completed session (counts toward streak)
-      appState.addCompletedSession(mentalTrainingCompletedSession);
+      await appState.addCompletedSession(mentalTrainingCompletedSession);
       
       // ✅ NEW: Refresh progress data from backend to update mental training metrics
       await appState.refreshProgressHistoryFromBackend();

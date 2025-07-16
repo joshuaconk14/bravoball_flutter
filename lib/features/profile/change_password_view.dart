@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import '../../constants/app_theme.dart';
 import '../../services/profile_service.dart';
+import '../../widgets/bravo_button.dart'; // ✅ ADDED: Import BravoButton
+import '../../utils/haptic_utils.dart'; // ✅ ADDED: Import HapticUtils
 
 class ChangePasswordView extends StatefulWidget {
   const ChangePasswordView({Key? key}) : super(key: key);
@@ -264,33 +266,16 @@ class _ChangePasswordViewState extends State<ChangePasswordView> {
                 const Spacer(),
                 
                 // Update Button
-                SizedBox(
-                  width: double.infinity,
-                  height: 50,
-                  child: ElevatedButton(
-                    onPressed: _isLoading ? null : _handleUpdatePassword,
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: AppTheme.primaryYellow,
-                      foregroundColor: Colors.white,
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(12),
-                      ),
-                      elevation: 2,
-                    ),
-                    child: _isLoading
-                        ? const SizedBox(
-                            width: 20,
-                            height: 20,
-                            child: CircularProgressIndicator(
-                              strokeWidth: 2,
-                              valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
-                            ),
-                          )
-                        : Text(
-                            'Update Password',
-                            style: AppTheme.buttonTextMedium,
-                          ),
-                  ),
+                BravoButton(
+                  onPressed: _isLoading ? null : () {
+                    HapticUtils.lightImpact();
+                    _handleUpdatePassword();
+                  },
+                  text: _isLoading ? 'Updating...' : 'Update Password',
+                  color: AppTheme.primaryYellow,
+                  backColor: AppTheme.primaryDarkYellow,
+                  textColor: Colors.white,
+                  disabled: _isLoading,
                 ),
                 
                 const SizedBox(height: 16),

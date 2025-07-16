@@ -4,6 +4,8 @@ import '../../constants/app_theme.dart';
 import '../../services/user_manager_service.dart';
 import '../../services/email_verification_service.dart';
 import '../../models/email_verification_model.dart';
+import '../../widgets/bravo_button.dart'; // ✅ ADDED: Import BravoButton
+import '../../utils/haptic_utils.dart'; // ✅ ADDED: Import HapticUtils
 
 class EditDetailsView extends StatefulWidget {
   const EditDetailsView({Key? key}) : super(key: key);
@@ -221,45 +223,26 @@ class _EditDetailsViewState extends State<EditDetailsView> {
         
         const SizedBox(height: 24),
         
-        // Send Verification Button
+        // Send Verification Code Button
         Consumer<EmailVerificationModel>(
           builder: (context, model, child) {
-            return SizedBox(
-              width: double.infinity,
-              height: 50,
-              child: ElevatedButton(
-                onPressed: model.newEmail.isEmpty || _isSending
-                    ? null
-                    : () async {
-                        setState(() => _isSending = true);
-                        await _emailVerificationService.sendEmailVerification(
-                          model.newEmail,
-                          model,
-                        );
-                        setState(() => _isSending = false);
-                      },
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: AppTheme.primaryYellow,
-                  foregroundColor: Colors.white,
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                  elevation: 2,
-                ),
-                child: _isSending
-                    ? const SizedBox(
-                        width: 20,
-                        height: 20,
-                        child: CircularProgressIndicator(
-                          strokeWidth: 2,
-                          valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
-                        ),
-                      )
-                    : Text(
-                        'Send Verification Code',
-                        style: AppTheme.buttonTextMedium,
-                      ),
-              ),
+            return BravoButton(
+              onPressed: model.newEmail.isEmpty || _isSending
+                  ? null
+                  : () async {
+                      HapticUtils.lightImpact(); // ✅ ADDED: Light haptic feedback
+                      setState(() => _isSending = true);
+                      await _emailVerificationService.sendEmailVerification(
+                        model.newEmail,
+                        model,
+                      );
+                      setState(() => _isSending = false);
+                    },
+              text: _isSending ? 'Sending...' : 'Send Verification Code',
+              color: AppTheme.primaryYellow,
+              backColor: AppTheme.primaryDarkYellow,
+              textColor: Colors.white,
+              disabled: model.newEmail.isEmpty || _isSending,
             );
           },
         ),
@@ -383,55 +366,36 @@ class _EditDetailsViewState extends State<EditDetailsView> {
         // Verify Code Button
         Consumer<EmailVerificationModel>(
           builder: (context, model, child) {
-            return SizedBox(
-              width: double.infinity,
-              height: 50,
-              child: ElevatedButton(
-                onPressed: model.emailVerificationCode.length != 6 || _isSending
-                    ? null
-                    : () async {
-                        setState(() => _isSending = true);
-                        await _emailVerificationService.verifyEmailAndUpdate(
-                          model.emailVerificationCode,
-                          model,
-                          onSuccess: () {
-                            // Show success message
-                            ScaffoldMessenger.of(context).showSnackBar(
-                              const SnackBar(
-                                content: Text('Email updated successfully!'),
-                                backgroundColor: AppTheme.success,
-                                duration: Duration(seconds: 2),
-                              ),
-                            );
-                            
-                            // Close the view
-                            Navigator.of(context).pop();
-                          },
-                        );
-                        setState(() => _isSending = false);
-                      },
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: AppTheme.primaryYellow,
-                  foregroundColor: Colors.white,
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                  elevation: 2,
-                ),
-                child: _isSending
-                    ? const SizedBox(
-                        width: 20,
-                        height: 20,
-                        child: CircularProgressIndicator(
-                          strokeWidth: 2,
-                          valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
-                        ),
-                      )
-                    : Text(
-                        'Verify & Update Email',
-                        style: AppTheme.buttonTextMedium,
-                      ),
-              ),
+            return BravoButton(
+              onPressed: model.emailVerificationCode.length != 6 || _isSending
+                  ? null
+                  : () async {
+                      HapticUtils.lightImpact(); // ✅ ADDED: Light haptic feedback
+                      setState(() => _isSending = true);
+                      await _emailVerificationService.verifyEmailAndUpdate(
+                        model.emailVerificationCode,
+                        model,
+                        onSuccess: () {
+                          // Show success message
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            const SnackBar(
+                              content: Text('Email updated successfully!'),
+                              backgroundColor: AppTheme.success,
+                              duration: Duration(seconds: 2),
+                            ),
+                          );
+                          
+                          // Close the view
+                          Navigator.of(context).pop();
+                        },
+                      );
+                      setState(() => _isSending = false);
+                    },
+              text: _isSending ? 'Verifying...' : 'Verify & Update Email',
+              color: AppTheme.primaryYellow,
+              backColor: AppTheme.primaryDarkYellow,
+              textColor: Colors.white,
+              disabled: model.emailVerificationCode.length != 6 || _isSending,
             );
           },
         ),
@@ -441,36 +405,24 @@ class _EditDetailsViewState extends State<EditDetailsView> {
         // Resend Code Button
         Consumer<EmailVerificationModel>(
           builder: (context, model, child) {
-            return SizedBox(
-              width: double.infinity,
-              height: 50,
-              child: OutlinedButton(
-                onPressed: _isSending
-                    ? null
-                    : () async {
-                        setState(() => _isSending = true);
-                        await _emailVerificationService.sendEmailVerification(
-                          model.newEmail,
-                          model,
-                        );
-                        setState(() => _isSending = false);
-                      },
-                style: OutlinedButton.styleFrom(
-                  foregroundColor: AppTheme.primaryYellow,
-                  side: BorderSide(color: AppTheme.primaryYellow),
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                ),
-                child: Text(
-                  'Resend Code',
-                  style: AppTheme.titleMedium.copyWith(
-                    color: AppTheme.primaryYellow,
-                    fontFamily: AppTheme.fontPoppins,
-                    fontWeight: FontWeight.w600,
-                  ),
-                ),
-              ),
+            return BravoButton(
+              onPressed: _isSending
+                  ? null
+                  : () async {
+                      HapticUtils.lightImpact(); // ✅ ADDED: Light haptic feedback
+                      setState(() => _isSending = true);
+                      await _emailVerificationService.sendEmailVerification(
+                        model.newEmail,
+                        model,
+                      );
+                      setState(() => _isSending = false);
+                    },
+              text: 'Resend Code',
+              color: Colors.white,
+              backColor: AppTheme.lightGray,
+              textColor: AppTheme.primaryYellow,
+              disabled: _isSending,
+              borderSide: BorderSide(color: AppTheme.lightGray, width: 2),
             );
           },
         ),

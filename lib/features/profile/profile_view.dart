@@ -6,6 +6,7 @@ import '../../constants/app_theme.dart';
 import '../../config/app_config.dart';
 import '../../services/user_manager_service.dart';
 import '../../services/login_service.dart';
+import '../../widgets/bravo_button.dart'; // ✅ ADDED: Import BravoButton
 import '../debug/debug_settings_view.dart';
 import '../onboarding/onboarding_flow.dart';
 import 'edit_details_view.dart';
@@ -13,8 +14,6 @@ import 'change_password_view.dart';
 import 'privacy_policy_view.dart';
 import 'terms_of_service_view.dart';
 import '../../utils/haptic_utils.dart';
-import '../auth/login_view.dart'; // Fixed import path for LoginView
-import '../../main.dart'; // Fixed import path for MyApp
 
 class ProfileView extends StatefulWidget {
   const ProfileView({Key? key}) : super(key: key);
@@ -420,53 +419,29 @@ class _ProfileViewState extends State<ProfileView> {
           child: Column(
             children: [
               // Logout Button
-              SizedBox(
-                width: double.infinity,
-                child: ElevatedButton(
-                  onPressed: () {
-                    HapticUtils.mediumImpact(); // Medium haptic for logout
-                    _handleLogout(userManager);
-                  },
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: AppTheme.primaryYellow,
-                    foregroundColor: Colors.white,
-                    padding: const EdgeInsets.symmetric(vertical: 14), // Reduced from 16
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(12),
-                    ),
-                    elevation: 2,
-                  ),
-                  child: Text(
-                    'Logout',
-                    style: AppTheme.buttonTextMedium,
-                  ),
-                ),
+              BravoButton(
+                onPressed: () {
+                  HapticUtils.mediumImpact(); // Medium haptic for logout
+                  _handleLogout(userManager);
+                },
+                text: 'Logout',
+                color: AppTheme.primaryYellow,
+                backColor: AppTheme.primaryDarkYellow,
+                textColor: Colors.white,
               ),
               
               const SizedBox(height: 12), // Reduced from 16
               
               // Delete Account Button
-              SizedBox(
-                width: double.infinity,
-                child: ElevatedButton(
-                  onPressed: () {
-                    HapticUtils.heavyImpact(); // Heavy haptic for destructive action
-                    _handleDeleteAccount();
-                  },
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: AppTheme.error,
-                    foregroundColor: Colors.white,
-                    padding: const EdgeInsets.symmetric(vertical: 14), // Reduced from 16
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(12),
-                    ),
-                    elevation: 2,
-                  ),
-                  child: Text(
-                    'Delete Account',
-                    style: AppTheme.buttonTextMedium,
-                  ),
-                ),
+              BravoButton(
+                onPressed: () {
+                  HapticUtils.heavyImpact(); // Heavy haptic for destructive action
+                  _handleDeleteAccount();
+                },
+                text: 'Delete Account',
+                color: AppTheme.error,
+                backColor: AppTheme.errorDark,
+                textColor: Colors.white,
               ),
             ],
           ),
@@ -629,15 +604,6 @@ class _ProfileViewState extends State<ProfileView> {
   }
 
   // Helper Methods
-  void _showComingSoonSnackBar(String feature) {
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text('$feature coming soon!'),
-        duration: const Duration(seconds: 2),
-      ),
-    );
-  }
-
   void _launchUrl(String url) async {
     final Uri uri = Uri.parse(url);
     if (await canLaunchUrl(uri)) {

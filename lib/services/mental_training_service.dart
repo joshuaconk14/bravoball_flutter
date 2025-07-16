@@ -85,7 +85,7 @@ class MentalTrainingService extends ChangeNotifier {
   }
 
   /// Create a new mental training session
-  Future<MentalTrainingSession?> createSession({
+  Future<MentalTrainingSession?> createMentalTrainingSession({
     required int durationMinutes,
     String sessionType = 'mental_training',
   }) async {

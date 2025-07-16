@@ -32,6 +32,7 @@ class AppTheme {
   static const Color success = Color(0xFF34C759);
   static const Color warning = Color(0xFFFF9500);
   static const Color error = Color(0xFFFF3B30);
+  static const Color errorDark = Color(0xFFd62d24);
   static const Color info = Color(0xFF007AFF);
   
   // MARK: - Bravo Button Colors

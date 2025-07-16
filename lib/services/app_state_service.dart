@@ -780,7 +780,7 @@ class AppStateService extends ChangeNotifier {
 
   // ===== SESSION COMPLETION SECTION =====
   // Handle completion of training sessions
-  void addCompletedSession(CompletedSession session) {
+  Future<void> addCompletedSession(CompletedSession session) async {
     _completedSessions.add(session);
         
     if (kDebugMode) {
@@ -792,7 +792,7 @@ class AppStateService extends ChangeNotifier {
     }
     
     // Immediately sync to backend
-    _syncCompletedSessionImmediate(session);
+    await _syncCompletedSessionImmediate(session);
     notifyListeners();
   }
 

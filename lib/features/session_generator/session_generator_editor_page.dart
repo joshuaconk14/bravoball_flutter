@@ -1001,7 +1001,7 @@ class _SessionGeneratorEditorPageState extends State<SessionGeneratorEditorPage>
     InfoPopupWidget.show(
       context,
       title: 'How to Edit Your Session',
-      description: 'Set your training preferences above to automatically generate drills based on your time, equipment, and skill focus.\n\nYou can then add more drills from our full catalog to customize your workout further. \n\n The maximum amount of drills you can add to a session is 10 drills.',
+      description: 'Set your training preferences above to automatically generate drills based on your time, equipment, and skill focus.\n\nYou can then add more drills from our full catalog to customize your workout further. \n\n Keep in mind that changing training preferences always generates a new session, so keep that in mind when adding in drills manually. \n\n The maximum amount of drills you can add to a session is 10 drills.',
       riveFileName: 'Bravo_Animation.riv',
     );
   }
