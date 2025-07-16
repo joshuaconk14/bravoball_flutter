@@ -21,6 +21,7 @@ class ProgressDataSyncService {
     required List<EditableDrillModel> drills,
     required int totalCompleted,
     required int total,
+    required String type,
   }) async {
     try {
       final drillsData = drills.map((drill) => {
@@ -52,6 +53,7 @@ class ProgressDataSyncService {
         'drills': drillsData,
         'total_completed_drills': totalCompleted,
         'total_drills': total,
+        'session_type': type
       };
 
       if (kDebugMode) {

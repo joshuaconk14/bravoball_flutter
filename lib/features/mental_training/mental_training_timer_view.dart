@@ -444,6 +444,7 @@ class _MentalTrainingTimerViewState extends State<MentalTrainingTimerView>
         ],
         totalCompletedDrills: 1,
         totalDrills: 1,
+        sessionType: 'mental_training'
       );
       
       // Add this as a completed session (counts toward streak)

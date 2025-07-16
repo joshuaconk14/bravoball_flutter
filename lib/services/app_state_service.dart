@@ -48,12 +48,14 @@ class CompletedSession {
   final List<EditableDrillModel> drills;
   final int totalCompletedDrills;
   final int totalDrills;
+  final String sessionType;
 
   CompletedSession({
     required this.date,
     required this.drills,
     required this.totalCompletedDrills,
     required this.totalDrills,
+    this.sessionType = 'training',
   });
 
   // Serialization for backend storage
@@ -62,6 +64,7 @@ class CompletedSession {
     'drills': drills.map((d) => d.toJson()).toList(),
     'totalCompletedDrills': totalCompletedDrills,
     'totalDrills': totalDrills,
+    'session_type': sessionType,
   };
 
   factory CompletedSession.fromJson(Map<String, dynamic> json) => CompletedSession(
@@ -69,6 +72,7 @@ class CompletedSession {
     drills: (json['drills'] as List).map((d) => EditableDrillModel.fromJson(d)).toList(),
     totalCompletedDrills: json['total_completed_drills'],
     totalDrills: json['total_drills'],
+    sessionType: json['session_type'] ?? 'training',
   );
 }
 
@@ -807,6 +811,7 @@ class AppStateService extends ChangeNotifier {
           drills: session.drills,
           totalCompleted: session.totalCompletedDrills,
           total: session.totalDrills,
+          type: session.sessionType
         );
         
         if (syncSuccess) {
@@ -844,6 +849,7 @@ class AppStateService extends ChangeNotifier {
         drills: List.from(_editableSessionDrills),
         totalCompletedDrills: _editableSessionDrills.where((d) => d.isFullyCompleted).length,
         totalDrills: _editableSessionDrills.length,
+        sessionType: 'training',
       );
       
       await _addCompletedSessionWithSync(completedSession);
@@ -1845,6 +1851,7 @@ class AppStateService extends ChangeNotifier {
         ],
         totalCompletedDrills: 1,
         totalDrills: 1,
+        sessionType: 'training',
       );
       
       _completedSessions.add(testSession);
