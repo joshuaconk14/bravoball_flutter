@@ -389,7 +389,7 @@ class _MentalTrainingTimerViewState extends State<MentalTrainingTimerView>
     _showCompletionAnimation();
     
     // Save session to backend
-    _saveSession();
+    _saveMentalTrainingSession();
   }
 
   void _showCompletionAnimation() {
@@ -403,13 +403,8 @@ class _MentalTrainingTimerViewState extends State<MentalTrainingTimerView>
     // Show celebration particles or effects here
   }
 
-  void _saveSession() async {
+  void _saveMentalTrainingSession() async {
     try {
-      // Save to backend
-      final mentalTrainingService = MentalTrainingService.shared;
-      await mentalTrainingService.createMentalTrainingSession(
-        durationMinutes: widget.durationMinutes,
-      );
       
       // Update app state to count this as a completed session for the day
       final appState = Provider.of<AppStateService>(context, listen: false);
