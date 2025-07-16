@@ -449,11 +449,16 @@ class _MentalTrainingTimerViewState extends State<MentalTrainingTimerView>
       // Add this as a completed session (counts toward streak)
       appState.addCompletedSession(mentalTrainingCompletedSession);
       
+      // ✅ NEW: Refresh progress data from backend to update mental training metrics
+      await appState.refreshProgressHistoryFromBackend();
+      
       if (kDebugMode) {
         print('✅ Mental training session completed and counted toward daily progress');
         print('   Duration: ${widget.durationMinutes} minutes');
         print('   Sessions completed today: ${appState.sessionsCompletedToday}');
         print('   Current streak: ${appState.currentStreak}');
+        print('   Mental training sessions: ${appState.mentalTrainingSessions}');
+        print('   Total mental training minutes: ${appState.totalMentalTrainingMinutes}');
       }
     } catch (e) {
       if (kDebugMode) {
