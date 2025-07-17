@@ -20,9 +20,9 @@ class MentalTrainingQuote {
   factory MentalTrainingQuote.fromJson(Map<String, dynamic> json) {
     return MentalTrainingQuote(
       id: json['id']?.toString() ?? '',
-      text: json['text'] ?? json['quote'] ?? '',
+      text: json['text'] ?? json['quote'] ?? json['content'] ?? '',
       author: json['author'],
-      category: json['category'] ?? json['quote_type'],
+      category: json['category'] ?? json['quote_type'] ?? json['type'],
       source: json['source'],
       createdAt: json['created_at'] != null 
           ? DateTime.tryParse(json['created_at'].toString())

@@ -323,12 +323,28 @@ class _ProgressViewState extends State<ProgressView> {
     final now = DateTime.now();
     final startOfWeek = now.subtract(Duration(days: now.weekday % 7));
     final appState = Provider.of<AppStateService>(context, listen: false);
+    
+    // 🧠 Debug mental training sessions in calendar
+    print('🧠 [CALENDAR] Building week view with ${appState.completedSessions.length} total sessions');
+    final mentalTrainingSessions = appState.completedSessions.where((s) => s.sessionType == 'mental_training').length;
+    print('🧠 [CALENDAR] Mental training sessions available: $mentalTrainingSessions');
+    
     return Row(
       mainAxisAlignment: MainAxisAlignment.spaceAround,
       children: List.generate(7, (index) {
         final date = startOfWeek.add(Duration(days: index));
         final isToday = _isSameDay(date, now);
         final hasSession = appState.completedSessions.any((s) => _isSameDay(s.date, date));
+        
+        // 🧠 Debug sessions for this specific day
+        final todaySessions = appState.completedSessions.where((s) => _isSameDay(s.date, date)).toList();
+        if (todaySessions.isNotEmpty) {
+          print('🧠 [CALENDAR] Day ${date.day}: ${todaySessions.length} sessions');
+          for (final session in todaySessions) {
+            print('   - Type: ${session.sessionType}, Date: ${session.date}, Drills: ${session.drills.length}');
+          }
+        }
+        
         return _buildDayCell(date.day, isToday, hasSession, date: date);
       }),
     );
@@ -376,10 +392,24 @@ class _ProgressViewState extends State<ProgressView> {
           final sessions = appState.completedSessions.where(
             (s) => s.date.year == date.year && s.date.month == date.month && s.date.day == date.day,
           );
+          
+          // 🧠 Debug what sessions are found for this day
+          print('🧠 [CALENDAR] Tapped on day ${date!.day}/${date!.month}/${date!.year}');
+          print('🧠 [CALENDAR] Found ${sessions.length} sessions for this day');
+          
+          for (final session in sessions) {
+            print('🧠 [CALENDAR] Session: type=${session.sessionType}, date=${session.date}, drills=${session.drills.length}');
+            if (session.sessionType == 'mental_training') {
+              print('🧠 [CALENDAR] Mental training session found! Will show drill results.');
+            }
+          }
+          
           if (sessions.isNotEmpty) {
             HapticUtils.lightImpact(); // Light haptic for session view
             final session = sessions.first;
             _showSessionResults(session);
+          } else {
+            print('🧠 [CALENDAR] No sessions found for this day - no drill results to show');
           }
         }
       },
@@ -1253,6 +1283,22 @@ class _DrillResultsViewState extends State<DrillResultsView> with SingleTickerPr
   Widget build(BuildContext context) {
     final session = widget.session;
     final percent = session.totalDrills == 0 ? 0.0 : session.totalCompletedDrills / session.totalDrills;
+    
+    // 🧠 Debug the session being displayed
+    print('🧠 [DRILL_RESULTS] Displaying session:');
+    print('   Type: ${session.sessionType}');
+    print('   Date: ${session.date}');
+    print('   Drills: ${session.drills.length}');
+    print('   Completed: ${session.totalCompletedDrills}/${session.totalDrills}');
+    
+    if (session.sessionType == 'mental_training') {
+      print('🧠 [DRILL_RESULTS] This is a mental training session!');
+      for (int i = 0; i < session.drills.length; i++) {
+        final drill = session.drills[i];
+        print('   Drill $i: ${drill.drill.title} (${drill.drill.skill})');
+      }
+    }
+    
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 32),
       decoration: const BoxDecoration(

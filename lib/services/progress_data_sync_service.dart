@@ -126,20 +126,53 @@ class ProgressDataSyncService {
         if (sessionsJson is List) {
           print('✅ [API] Sessions is a List, processing ${sessionsJson.length} items');
           
-          final sessions = sessionsJson.map((sessionJson) {
-            print('🔄 [API] Parsing session: $sessionJson');
+          final sessions = <CompletedSession>[];
+          
+          for (int i = 0; i < sessionsJson.length; i++) {
+            final sessionJson = sessionsJson[i];
+            print('🔄 [API] Parsing session $i: $sessionJson');
+            
             try {
+              // 🧠 Check if this is a mental training session
+              final sessionType = sessionJson['session_type'] ?? 'training';
+              final drillsData = sessionJson['drills'];
+              final hasNullDrills = drillsData == null;
+              
+              print('🧠 [MENTAL_TRAINING] Session $i type: $sessionType, drills null: $hasNullDrills');
+              
+              if (sessionType == 'mental_training') {
+                print('🧠 [MENTAL_TRAINING] Found mental training session!');
+                print('   Date: ${sessionJson['date']}');
+                print('   Total drills: ${sessionJson['total_drills']}');
+                print('   Completed drills: ${sessionJson['total_completed_drills']}');
+                print('   Drills data: $drillsData');
+              }
+              
               final session = CompletedSession.fromJson(sessionJson);
-              print('✅ [API] Successfully parsed session for date: ${session.date}');
-              return session;
+              sessions.add(session);
+              
+              print('✅ [API] Successfully parsed session $i for date: ${session.date}, type: ${session.sessionType}');
+              
+              if (session.sessionType == 'mental_training') {
+                print('🧠 [MENTAL_TRAINING] Successfully parsed mental training session!');
+                print('   Drills count: ${session.drills.length}');
+                print('   Session date: ${session.date}');
+              }
+              
             } catch (e) {
-              print('❌ [API] Error parsing session: $e');
+              print('❌ [API] Error parsing session $i: $e');
               print('   Session data: $sessionJson');
-              rethrow;
+              print('   Stack trace: ${e.toString()}');
+              // Continue with other sessions instead of failing completely
             }
-          }).toList();
+          }
 
           print('✅ [API] Successfully parsed ${sessions.length} completed sessions');
+          
+          // 🧠 Count mental training sessions
+          final mentalTrainingSessions = sessions.where((s) => s.sessionType == 'mental_training').length;
+          print('🧠 [MENTAL_TRAINING] Found $mentalTrainingSessions mental training sessions out of ${sessions.length} total');
+          
           return sessions;
         } else {
           print('❌ [API] Sessions is not a List, it is: ${sessionsJson.runtimeType}');

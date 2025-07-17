@@ -69,7 +69,9 @@ class CompletedSession {
 
   factory CompletedSession.fromJson(Map<String, dynamic> json) => CompletedSession(
     date: DateTime.parse(json['date']),
-    drills: (json['drills'] as List).map((d) => EditableDrillModel.fromJson(d)).toList(),
+    drills: json['drills'] != null 
+        ? (json['drills'] as List).map((d) => EditableDrillModel.fromJson(d)).toList()
+        : [], // Handle null drills for mental training sessions
     totalCompletedDrills: json['total_completed_drills'],
     totalDrills: json['total_drills'],
     sessionType: json['session_type'] ?? 'training',
@@ -583,8 +585,27 @@ class AppStateService extends ChangeNotifier {
       if (kDebugMode) print('📥 Loading progress data from backend...');
       
       final completedSessions = await _progressSyncService.fetchCompletedSessions();
+      
+      // 🧠 Debug mental training sessions before clearing
+      print('🧠 [MENTAL_TRAINING] Before clearing: ${_completedSessions.length} sessions in memory');
+      final currentMentalSessions = _completedSessions.where((s) => s.sessionType == 'mental_training').length;
+      print('🧠 [MENTAL_TRAINING] Current mental training sessions in memory: $currentMentalSessions');
+      
       _completedSessions.clear();
       _completedSessions.addAll(completedSessions);
+      
+      // 🧠 Debug mental training sessions after loading
+      print('🧠 [MENTAL_TRAINING] After loading: ${_completedSessions.length} sessions in memory');
+      final newMentalSessions = _completedSessions.where((s) => s.sessionType == 'mental_training').length;
+      print('🧠 [MENTAL_TRAINING] New mental training sessions in memory: $newMentalSessions');
+      
+      // 🧠 List all mental training sessions for debugging
+      for (int i = 0; i < _completedSessions.length; i++) {
+        final session = _completedSessions[i];
+        if (session.sessionType == 'mental_training') {
+          print('🧠 [MENTAL_TRAINING] Session $i: date=${session.date}, drills=${session.drills.length}, completed=${session.totalCompletedDrills}/${session.totalDrills}');
+        }
+      }
       
       final progressHistory = await _progressSyncService.updateProgressHistory();
       if (progressHistory != null) {

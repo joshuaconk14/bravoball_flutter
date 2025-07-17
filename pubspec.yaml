@@ -42,6 +42,7 @@ dependencies:
   wakelock_plus: ^1.2.1  # Keep screen on during workouts
   flutter_local_notifications: ^17.2.2  # Local notifications for timer alerts
   timezone: ^0.9.4  # Required for scheduled notifications
+  uuid: ^4.3.3  # For generating unique identifiers
 
 dev_dependencies:
   flutter_test:

@@ -16,6 +16,7 @@ import '../../widgets/bravo_button.dart';
 import '../../views/main_tab_view.dart';
 import '../../config/app_config.dart'; // Added for debug mode
 import 'package:flutter/foundation.dart'; // Added for kDebugMode
+import 'package:uuid/uuid.dart'; // Added for UUID generation
 
 class MentalTrainingTimerView extends StatefulWidget {
   final int durationMinutes;
@@ -415,7 +416,7 @@ class _MentalTrainingTimerViewState extends State<MentalTrainingTimerView>
         drills: [
           EditableDrillModel(
             drill: DrillModel(
-              id: 'mental_training_${DateTime.now().millisecondsSinceEpoch}',
+              id: const Uuid().v4(), // Use a proper UUID for the drill ID
               title: 'Mental Training Session',
               skill: 'Mental Training',
               subSkills: ['Confidence', 'Focus', 'Resilience'],
