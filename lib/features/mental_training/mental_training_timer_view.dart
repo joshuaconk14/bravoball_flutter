@@ -2,10 +2,10 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'dart:async';
 import 'dart:math';
-import '../../models/mental_training_models.dart';
 import '../../models/drill_model.dart'; // Added for DrillModel
 import '../../models/editable_drill_model.dart'; // Added for EditableDrillModel
 import '../../services/mental_training_service.dart';
+import '../../models/mental_training_models.dart';
 import '../../services/app_state_service.dart';
 import '../../services/audio_service.dart';
 import '../../services/background_timer_service.dart'; // ✅ ADDED: Background timer service
@@ -795,7 +795,7 @@ class _MentalTrainingTimerViewState extends State<MentalTrainingTimerView>
                   mainAxisSize: MainAxisSize.min,
                   children: [
                     Text(
-                      '"${_currentQuote!.content}"',
+                      '"${_currentQuote!.text}"',
                       style: AppTheme.titleMedium.copyWith(
                         color: AppTheme.primaryDark,
                         height: 1.4,

@@ -1,7 +1,7 @@
 import 'package:flutter/foundation.dart';
-import '../models/mental_training_models.dart';
 import '../services/api_service.dart';
 import '../models/api_response_models.dart';
+import '../models/mental_training_models.dart';
 
 class MentalTrainingService extends ChangeNotifier {
   static final MentalTrainingService _instance = MentalTrainingService._internal();
