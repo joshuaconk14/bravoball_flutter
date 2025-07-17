@@ -65,6 +65,7 @@ class _MainTabViewState extends State<MainTabView> {
           ),
         ),
         child: Stack(
+          clipBehavior: Clip.none, // ✅ ADDED: Allow overflow so button isn't clipped
           children: [
             BottomNavigationBar(
               type: BottomNavigationBarType.fixed,
@@ -111,30 +112,30 @@ class _MainTabViewState extends State<MainTabView> {
             ),
             // Center create drill button
             Positioned(
-              top: -20,
+              top: -30, // ✅ INCREASED: Move button higher above the bar
               left: 0,
               right: 0,
               child: Center(
                 child: GestureDetector(
                   onTap: _showCreateDrillSheet,
                   child: Container(
-                    width: 60,
-                    height: 60,
+                    width: 64, // ✅ REDUCED: Made slightly smaller
+                    height: 64, // ✅ REDUCED: Made slightly smaller
                     decoration: BoxDecoration(
+                      // ✅ UPDATED: Fun solid color with effects
                       color: AppTheme.primaryYellow,
                       shape: BoxShape.circle,
-                      boxShadow: [
-                        BoxShadow(
-                          color: AppTheme.primaryYellow.withOpacity(0.3),
-                          blurRadius: 10,
-                          offset: const Offset(0, 4),
-                        ),
-                      ],
+                      // ✅ ADDED: Subtle border for depth
+                      border: Border.all(
+                        color: Colors.white.withOpacity(0.4),
+                        width: 3,
+                      ),
                     ),
+                    // ✅ SIMPLIFIED: Just the plus icon, no background effects
                     child: const Icon(
                       Icons.add,
                       color: AppTheme.white,
-                      size: 30,
+                      size: 34, // ✅ INCREASED: Made slightly bigger
                     ),
                   ),
                 ),

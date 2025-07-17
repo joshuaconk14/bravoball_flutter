@@ -7,6 +7,8 @@ import '../../services/app_state_service.dart';
 import '../../constants/app_theme.dart';
 import '../../utils/haptic_utils.dart';
 import '../../widgets/bravo_button.dart';
+import '../../widgets/info_popup_widget.dart'; // ✅ ADDED: Import for reusable info popup
+import '../../features/onboarding/onboarding_flow.dart'; // ✅ ADDED: Import for navigation to onboarding
 
 class CreateDrillSheet extends StatefulWidget {
   const CreateDrillSheet({Key? key}) : super(key: key);
@@ -22,7 +24,7 @@ class _CreateDrillSheetState extends State<CreateDrillSheet> {
   final _instructionsController = TextEditingController();
   final _tipsController = TextEditingController();
   final _equipmentController = TextEditingController();
-  final _videoUrlController = TextEditingController();
+  // ✅ REMOVED: _videoUrlController no longer needed
 
   String _selectedSkill = 'Passing';
   String _selectedDifficulty = 'Beginner';
@@ -77,7 +79,6 @@ class _CreateDrillSheetState extends State<CreateDrillSheet> {
     _instructionsController.dispose();
     _tipsController.dispose();
     _equipmentController.dispose();
-    _videoUrlController.dispose();
     super.dispose();
   }
 
@@ -147,6 +148,13 @@ class _CreateDrillSheetState extends State<CreateDrillSheet> {
   }
 
   Future<void> _createDrill() async {
+    // ✅ ADDED: Check for guest mode and show account creation prompt
+    final appState = Provider.of<AppStateService>(context, listen: false);
+    if (appState.isGuestMode) {
+      _showGuestAccountPrompt();
+      return;
+    }
+
     // Custom validation for instructions
     bool hasInstructions = _instructions.isNotEmpty;
     
@@ -175,7 +183,7 @@ class _CreateDrillSheetState extends State<CreateDrillSheet> {
         equipment: _equipment,
         trainingStyle: _selectedTrainingStyle,
         difficulty: _selectedDifficulty,
-        videoUrl: _videoUrlController.text.trim(),
+        videoUrl: '', // ✅ UPDATED: No longer collecting video URL from users
       );
 
       if (drill != null) {
@@ -183,6 +191,11 @@ class _CreateDrillSheetState extends State<CreateDrillSheet> {
           _createdDrill = drill;
         });
         HapticUtils.heavyImpact();
+        
+        // ✅ ADDED: Refresh custom drills in app state so new drill appears immediately
+        final appState = Provider.of<AppStateService>(context, listen: false);
+        await appState.refreshCustomDrillsFromBackend();
+        
         _showSaveToGroupDialog();
       } else {
         ScaffoldMessenger.of(context).showSnackBar(
@@ -278,6 +291,29 @@ class _CreateDrillSheetState extends State<CreateDrillSheet> {
     }
   }
 
+  // ✅ UPDATED: Use reusable InfoPopupWidget instead of custom dialog
+  void _showInfoDialog() {
+    InfoPopupWidget.show(
+      context,
+      title: 'About Custom Drills',
+      description: '''🎯 What are Custom Drills?
+
+Custom drills are personalized training exercises that you create specifically for your needs. They're private to your account and perfect for:
+
+• Practicing specific techniques you want to improve
+• Preparing for game situations  
+• Creating drills your coach taught you
+• Designing exercises for specific equipment you have
+
+💾 How do they work?
+
+• Add them to your training sessions
+• Save them to any of your drill collections
+• Only you can see and use your custom drills
+• Available across all your devices when you're logged in''',
+    );
+  }
+
   void _showCreateGroupDialog() {
     final nameController = TextEditingController();
     final descriptionController = TextEditingController();
@@ -351,6 +387,140 @@ class _CreateDrillSheetState extends State<CreateDrillSheet> {
     }
   }
 
+  // ✅ ADDED: Show guest account prompt for drill creation
+  void _showGuestAccountPrompt() {
+    HapticUtils.mediumImpact();
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (context) => Dialog(
+        backgroundColor: Colors.transparent,
+        insetPadding: const EdgeInsets.all(20),
+        child: Container(
+          padding: const EdgeInsets.all(24),
+          decoration: BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.circular(20),
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black.withOpacity(0.15),
+                blurRadius: 20,
+                offset: const Offset(0, 10),
+              ),
+            ],
+          ),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              // Icon
+              Container(
+                width: 80,
+                height: 80,
+                decoration: BoxDecoration(
+                  color: AppTheme.primaryYellow.withOpacity(0.1),
+                  shape: BoxShape.circle,
+                ),
+                child: Icon(
+                  Icons.account_circle_outlined,
+                  size: 50,
+                  color: AppTheme.primaryYellow,
+                ),
+              ),
+              const SizedBox(height: 20),
+              
+              // Title
+              const Text(
+                'Create Account Required',
+                style: TextStyle(
+                  fontFamily: AppTheme.fontPoppins,
+                  fontSize: 22,
+                  fontWeight: FontWeight.bold,
+                  color: AppTheme.primaryDark,
+                ),
+                textAlign: TextAlign.center,
+              ),
+              const SizedBox(height: 12),
+              
+              // Description
+              const Text(
+                'Custom drills are saved to your personal account. Create an account to save and access your drills across all devices.',
+                style: TextStyle(
+                  fontFamily: AppTheme.fontPoppins,
+                  fontSize: 16,
+                  color: AppTheme.primaryGray,
+                  height: 1.4,
+                ),
+                textAlign: TextAlign.center,
+              ),
+              const SizedBox(height: 24),
+              
+              // Buttons
+              Row(
+                children: [
+                  Expanded(
+                    child: TextButton(
+                      onPressed: () {
+                        HapticUtils.lightImpact();
+                        Navigator.pop(context);
+                      },
+                      style: TextButton.styleFrom(
+                        padding: const EdgeInsets.symmetric(vertical: 12),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                      ),
+                      child: const Text(
+                        'Cancel',
+                        style: TextStyle(
+                          fontFamily: AppTheme.fontPoppins,
+                          fontSize: 16,
+                          fontWeight: FontWeight.w600,
+                          color: AppTheme.primaryGray,
+                        ),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    flex: 2,
+                    child: ElevatedButton(
+                      onPressed: () {
+                        HapticUtils.mediumImpact();
+                        // ✅ FIXED: Use popUntil to close all dialogs/sheets, then navigate
+                        Navigator.popUntil(context, (route) => route.isFirst);
+                        Navigator.pushReplacement(
+                          context,
+                          MaterialPageRoute(builder: (context) => const OnboardingFlow()),
+                        );
+                      },
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: AppTheme.primaryYellow,
+                        foregroundColor: Colors.white,
+                        padding: const EdgeInsets.symmetric(vertical: 12),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                        elevation: 2,
+                      ),
+                      child: const Text(
+                        'Create Account',
+                        style: TextStyle(
+                          fontFamily: AppTheme.fontPoppins,
+                          fontSize: 16,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     return Container(
@@ -385,7 +555,11 @@ class _CreateDrillSheetState extends State<CreateDrillSheet> {
                     textAlign: TextAlign.center,
                   ),
                 ),
-                const SizedBox(width: 48), // Balance the close button
+                // ✅ ADDED: Info button with popup explanation
+                IconButton(
+                  onPressed: _showInfoDialog,
+                  icon: const Icon(Icons.info_outline, color: AppTheme.white),
+                ),
               ],
             ),
           ),
@@ -696,16 +870,82 @@ class _CreateDrillSheetState extends State<CreateDrillSheet> {
                     ],
                     const SizedBox(height: 24),
                     
-                    // Video URL
-                    _buildSectionTitle('Video URL (Optional)'),
+                    // Video Upload - Coming Soon
+                    _buildSectionTitle('Video Upload'),
                     const SizedBox(height: 16),
                     
-                    TextField(
-                      controller: _videoUrlController,
-                      decoration: const InputDecoration(
-                        labelText: 'Video URL',
-                        hintText: 'Enter video URL (optional)',
-                        border: OutlineInputBorder(),
+                    Container(
+                      width: double.infinity,
+                      padding: const EdgeInsets.all(20),
+                      decoration: BoxDecoration(
+                        gradient: LinearGradient(
+                          colors: [
+                            AppTheme.primaryYellow.withOpacity(0.1),
+                            AppTheme.primaryYellow.withOpacity(0.05),
+                          ],
+                          begin: Alignment.topLeft,
+                          end: Alignment.bottomRight,
+                        ),
+                        borderRadius: BorderRadius.circular(12),
+                        border: Border.all(
+                          color: AppTheme.primaryYellow.withOpacity(0.3),
+                          width: 1,
+                        ),
+                      ),
+                      child: Column(
+                        children: [
+                          Icon(
+                            Icons.videocam_outlined,
+                            size: 40,
+                            color: AppTheme.primaryYellow,
+                          ),
+                          const SizedBox(height: 12),
+                          const Text(
+                            'Video Upload Coming Soon!',
+                            style: TextStyle(
+                              fontSize: 18,
+                              fontWeight: FontWeight.bold,
+                              color: AppTheme.primaryDark,
+                            ),
+                          ),
+                          const SizedBox(height: 8),
+                          const Text(
+                            'Soon you\'ll be able to record and upload videos of your custom drills to help and share your creativity with the BravoBall community!',
+                            style: TextStyle(
+                              fontSize: 14,
+                              color: AppTheme.primaryGray,
+                              height: 1.4,
+                            ),
+                            textAlign: TextAlign.center,
+                          ),
+                          const SizedBox(height: 16),
+                          Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                            decoration: BoxDecoration(
+                              color: AppTheme.primaryYellow.withOpacity(0.2),
+                              borderRadius: BorderRadius.circular(20),
+                            ),
+                            child: Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                Icon(
+                                  Icons.rocket_launch,
+                                  size: 16,
+                                  color: AppTheme.primaryYellow,
+                                ),
+                                const SizedBox(width: 6),
+                                const Text(
+                                  'Stay tuned for updates!',
+                                  style: TextStyle(
+                                    fontSize: 12,
+                                    fontWeight: FontWeight.w600,
+                                    color: AppTheme.primaryDark,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ],
                       ),
                     ),
                     const SizedBox(height: 32),

@@ -15,6 +15,7 @@ import '../services/user_manager_service.dart';
 import '../services/drill_group_sync_service.dart';
 import '../services/preferences_sync_service.dart';
 import './api_service.dart';
+import './custom_drill_service.dart';
 
 // ===== ENUMS FOR STATE MANAGEMENT =====
 // Session lifecycle states - tracks progress through a training session
@@ -175,6 +176,8 @@ class AppStateService extends ChangeNotifier {
   final DrillGroupSyncService _drillGroupSyncService = DrillGroupSyncService.shared;
   final PreferencesSyncService _preferencesSyncService = PreferencesSyncService.shared;
   final UserManagerService _userManager = UserManagerService.instance;
+  // ✅ ADDED: Custom drill service for fetching user's custom drills
+  final CustomDrillService _customDrillService = CustomDrillService.shared;
   
   // ===== SYNC COORDINATION =====
   // Prevents race conditions and manages debounced operations
@@ -224,6 +227,10 @@ class AppStateService extends ChangeNotifier {
   
   final Set<DrillModel> _likedDrills = {};
   Set<DrillModel> get likedDrills => Set.unmodifiable(_likedDrills);
+  
+  // ✅ ADDED: User's custom drills storage
+  final List<DrillModel> _customDrills = [];
+  List<DrillModel> get customDrills => List.unmodifiable(_customDrills);
   
   // ===== SEARCH SECTION =====
   // Drill search state and pagination
@@ -347,8 +354,9 @@ class AppStateService extends ChangeNotifier {
       if (kDebugMode) print('🔧 Using test drills data (AppConfig.useTestData = true)');
       return TestDataService.getTestDrills();
     } else {
-      if (kDebugMode) print('🌐 Using backend drills data (no caching)');
-      return [];
+      if (kDebugMode) print('🌐 Using backend drills data including custom drills');
+      // ✅ UPDATED: Include custom drills in available drills for production
+      return _customDrills;
     }
   }
   List<DrillModel> get availableDrills => List.unmodifiable(_availableDrills);
@@ -569,6 +577,8 @@ class AppStateService extends ChangeNotifier {
       await _loadOrderedSessionDrillsFromBackend();
       await _loadDrillGroupsFromBackend();
       await _loadPreferencesFromBackend();
+      // ✅ ADDED: Load user's custom drills
+      await _loadCustomDrillsFromBackend();
       
       if (kDebugMode) print('✅ Successfully loaded all backend data');
     } catch (e) {
@@ -719,6 +729,127 @@ class AppStateService extends ChangeNotifier {
     }
   }
 
+  // ✅ ADDED: Load user's custom drills from backend
+  Future<void> _loadCustomDrillsFromBackend() async {
+    try {
+      if (kDebugMode) print('📥 Loading custom drills from backend...');
+      
+      // Fetch custom drills using the API service directly since CustomDrillService 
+      // doesn't have a fetch method yet
+      final response = await _apiService.get(
+        '/api/custom-drills/',
+        requiresAuth: true,
+      );
+      
+      if (response.isSuccess && response.data != null) {
+        // ✅ FIXED: Handle both List and Map response formats from API
+        List<dynamic> drillsJson;
+        
+        if (response.data is List) {
+          // Direct array response
+          drillsJson = response.data as List<dynamic>;
+        } else if (response.data is Map) {
+          // Cast to Map first to avoid null safety issues
+          final Map<String, dynamic> dataMap = response.data as Map<String, dynamic>;
+          if (dataMap['data'] != null) {
+            // Wrapped in data object
+            drillsJson = dataMap['data'] as List<dynamic>;
+          } else {
+            if (kDebugMode) print('⚠️ Map response but no "data" key found');
+            return;
+          }
+        } else {
+          if (kDebugMode) print('⚠️ Unexpected response format for custom drills');
+          return;
+        }
+        
+        _customDrills.clear();
+        
+        for (final drillJson in drillsJson) {
+          try {
+            // Convert backend custom drill to local DrillModel
+            final drill = DrillModel(
+              id: drillJson['uuid'] ?? '',
+              title: drillJson['title'] ?? 'Custom Drill',
+              skill: _mapBackendSkillToFrontend(drillJson['primary_skill']?['category'] ?? 'general'),
+              subSkills: _extractCustomDrillSubSkills(drillJson),
+              sets: drillJson['sets'] ?? 3,
+              reps: drillJson['reps'] ?? 10,
+              duration: drillJson['duration'] ?? 10,
+              description: drillJson['description'] ?? '',
+              instructions: (drillJson['instructions'] as List<dynamic>?)?.cast<String>() ?? [],
+              tips: (drillJson['tips'] as List<dynamic>?)?.cast<String>() ?? [],
+              equipment: (drillJson['equipment'] as List<dynamic>?)?.cast<String>() ?? [],
+              trainingStyle: _mapIntensityToTrainingStyle(drillJson['intensity'] ?? 'medium'),
+              difficulty: _mapBackendDifficultyToFrontend(drillJson['difficulty'] ?? 'beginner'),
+              videoUrl: drillJson['video_url'] ?? '',
+            );
+            
+            _customDrills.add(drill);
+          } catch (e) {
+            if (kDebugMode) print('⚠️ Error parsing custom drill: $e');
+          }
+        }
+        
+        if (kDebugMode) print('✅ Loaded ${_customDrills.length} custom drills from backend');
+      } else {
+        if (kDebugMode) print('⚠️ No custom drills found or error fetching: ${response.statusCode}');
+      }
+    } catch (e) {
+      if (kDebugMode) print('❌ Error loading custom drills: $e');
+    }
+  }
+
+  // ✅ ADDED: Helper method to extract sub-skills from custom drill data
+  List<String> _extractCustomDrillSubSkills(Map<String, dynamic> drillJson) {
+    final subSkills = <String>[];
+    
+    final primarySubSkill = drillJson['primary_skill']?['sub_skill'];
+    if (primarySubSkill != null) {
+      subSkills.add(_mapBackendSubSkillToFrontend(primarySubSkill));
+    }
+    
+    final secondarySkills = drillJson['secondary_skills'] as List<dynamic>?;
+    if (secondarySkills != null) {
+      for (final skill in secondarySkills) {
+        final subSkill = skill['sub_skill'];
+        if (subSkill != null) {
+          subSkills.add(_mapBackendSubSkillToFrontend(subSkill));
+        }
+      }
+    }
+    
+    return subSkills;
+  }
+
+  // ✅ ADDED: Helper method to map intensity to training style for custom drills
+  String _mapIntensityToTrainingStyle(String intensity) {
+    switch (intensity.toLowerCase()) {
+      case 'low':
+        return 'low intensity';
+      case 'medium':
+        return 'medium intensity';
+      case 'high':
+        return 'high intensity';
+      default:
+        return 'medium intensity';
+    }
+  }
+
+  // ✅ ADDED: Helper method to map backend difficulty to frontend
+  String _mapBackendDifficultyToFrontend(String difficulty) {
+    switch (difficulty.toLowerCase()) {
+      case 'beginner':
+        return 'Beginner';
+      case 'intermediate':
+        return 'Intermediate';
+      case 'advanced':
+        return 'Advanced';
+      default:
+        return 'Beginner';
+    }
+  }
+
   // Refresh all data from backend (pull-to-refresh)
   Future<void> refreshBackendData() async {
     if (AppConfig.useTestData) return;
@@ -771,6 +902,20 @@ class AppStateService extends ChangeNotifier {
       }
     } catch (e) {
       if (kDebugMode) print('❌ Error refreshing progress history: $e');
+    }
+  }
+
+  // ✅ ADDED: Refresh custom drills from backend (can be called after creating new drill)
+  Future<void> refreshCustomDrillsFromBackend() async {
+    if (AppConfig.useTestData) return;
+    
+    try {
+      if (kDebugMode) print('🔄 Refreshing custom drills from backend...');
+      await _loadCustomDrillsFromBackend();
+      notifyListeners();
+      if (kDebugMode) print('✅ Custom drills refreshed successfully');
+    } catch (e) {
+      if (kDebugMode) print('❌ Error refreshing custom drills: $e');
     }
   }
   
@@ -1967,6 +2112,8 @@ class AppStateService extends ChangeNotifier {
     _countOfFullyCompletedSessions = 0;
     _savedDrillGroups.clear();
     _likedDrills.clear();
+    // ✅ ADDED: Clear custom drills on logout
+    _customDrills.clear();
     
     // ✅ NEW: Reset backend-sourced progress metrics only
     _favoriteDrill = '';
@@ -2016,6 +2163,8 @@ class AppStateService extends ChangeNotifier {
     _editableSessionDrills.clear();
     _savedDrillGroups.clear();
     _likedDrills.clear();
+    // ✅ ADDED: Clear custom drills on full reset
+    _customDrills.clear();
     _completedSessions.clear();
     _currentStreak = 0;
     _previousStreak = 0;
