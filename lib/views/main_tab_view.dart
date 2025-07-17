@@ -5,6 +5,7 @@ import '../features/session_generator/session_generator_home_field_view.dart';
 import '../features/progression/progress_view.dart';
 import '../features/saved_drills/saved_drills_view.dart';
 import '../features/profile/profile_view.dart';
+import '../features/create_drill/create_drill_sheet.dart';
 import '../constants/app_theme.dart';
 import '../utils/haptic_utils.dart';
 
@@ -40,6 +41,16 @@ class _MainTabViewState extends State<MainTabView> {
     HapticUtils.heavyImpact(); // Heavy haptic for major navigation
   }
 
+  void _showCreateDrillSheet() {
+    HapticUtils.mediumImpact();
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (context) => const CreateDrillSheet(),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -53,33 +64,83 @@ class _MainTabViewState extends State<MainTabView> {
             ),
           ),
         ),
-        child: BottomNavigationBar(
-          type: BottomNavigationBarType.fixed,
-          backgroundColor: Colors.white,
-          selectedItemColor: AppTheme.primaryYellow,
-          unselectedItemColor: Colors.grey.shade600,
-          showSelectedLabels: false,
-          showUnselectedLabels: false,
-          items: [
-            BottomNavigationBarItem(
-              icon: _buildRiveTab('Tab_House.riv', 0),
-              label: 'Home',
+        child: Stack(
+          children: [
+            BottomNavigationBar(
+              type: BottomNavigationBarType.fixed,
+              backgroundColor: Colors.white,
+              selectedItemColor: AppTheme.primaryYellow,
+              unselectedItemColor: Colors.grey.shade600,
+              showSelectedLabels: false,
+              showUnselectedLabels: false,
+              items: [
+                BottomNavigationBarItem(
+                  icon: _buildRiveTab('Tab_House.riv', 0),
+                  label: 'Home',
+                ),
+                BottomNavigationBarItem(
+                  icon: _buildRiveTab('Tab_Calendar.riv', 1),
+                  label: 'Progression',
+                ),
+                BottomNavigationBarItem(
+                  icon: const SizedBox.shrink(), // Placeholder for center button
+                  label: '',
+                ),
+                BottomNavigationBarItem(
+                  icon: _buildRiveTab('Tab_Saved.riv', 2),
+                  label: 'Saved',
+                ),
+                BottomNavigationBarItem(
+                  icon: _buildRiveTab('Tab_Dude.riv', 3),
+                  label: 'Profile',
+                ),
+              ],
+              currentIndex: _selectedIndex >= 2 ? _selectedIndex + 1 : _selectedIndex,
+              onTap: (index) {
+                if (index == 2) {
+                  // Center button tapped
+                  _showCreateDrillSheet();
+                } else if (index > 2) {
+                  // Adjust index for right side items
+                  _onItemTapped(index - 1);
+                } else {
+                  // Left side items
+                  _onItemTapped(index);
+                }
+              },
             ),
-            BottomNavigationBarItem(
-              icon: _buildRiveTab('Tab_Calendar.riv', 1),
-              label: 'Progression',
-            ),
-            BottomNavigationBarItem(
-              icon: _buildRiveTab('Tab_Saved.riv', 2),
-              label: 'Saved',
-            ),
-            BottomNavigationBarItem(
-              icon: _buildRiveTab('Tab_Dude.riv', 3),
-              label: 'Profile',
+            // Center create drill button
+            Positioned(
+              top: -20,
+              left: 0,
+              right: 0,
+              child: Center(
+                child: GestureDetector(
+                  onTap: _showCreateDrillSheet,
+                  child: Container(
+                    width: 60,
+                    height: 60,
+                    decoration: BoxDecoration(
+                      color: AppTheme.primaryYellow,
+                      shape: BoxShape.circle,
+                      boxShadow: [
+                        BoxShadow(
+                          color: AppTheme.primaryYellow.withOpacity(0.3),
+                          blurRadius: 10,
+                          offset: const Offset(0, 4),
+                        ),
+                      ],
+                    ),
+                    child: const Icon(
+                      Icons.add,
+                      color: AppTheme.white,
+                      size: 30,
+                    ),
+                  ),
+                ),
+              ),
             ),
           ],
-          currentIndex: _selectedIndex,
-          onTap: _onItemTapped,
         ),
       ),
     );
