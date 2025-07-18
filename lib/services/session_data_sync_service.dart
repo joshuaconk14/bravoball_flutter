@@ -16,6 +16,14 @@ class SessionDataSyncService {
   /// Sync the ordered session drills to the backend
   Future<bool> syncOrderedSessionDrills(List<EditableDrillModel> sessionDrills) async {
     try {
+      if (kDebugMode) {
+        print('🔍 [SYNC] Starting sync of ${sessionDrills.length} drills');
+        for (int i = 0; i < sessionDrills.length; i++) {
+          final drill = sessionDrills[i];
+          print('🔍 [SYNC] Drill $i: ${drill.drill.title} - isCustom: ${drill.drill.isCustom}');
+        }
+      }
+      
       final drillsData = sessionDrills.map((orderedDrill) => {
         'drill': {
           'uuid': orderedDrill.drill.id, // Use 'uuid' for backend compatibility
@@ -33,6 +41,11 @@ class SessionDataSyncService {
       
       if (kDebugMode) {
         print('📤 Syncing ordered session drills: ${jsonEncode(requestData)}');
+        // Debug each drill's is_custom value
+        for (int i = 0; i < sessionDrills.length; i++) {
+          final drill = sessionDrills[i];
+          print('🔍 Syncing drill $i: ${drill.drill.title} - isCustom: ${drill.drill.isCustom}');
+        }
       }
       
       final response = await _apiService.put(

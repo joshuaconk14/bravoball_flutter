@@ -97,6 +97,7 @@ class DrillResponse {
   final Map<String, dynamic>? primarySkill;
   final List<Map<String, dynamic>>? secondarySkills;
   final String videoUrl;
+  final bool isCustom; // ✅ ADDED: is_custom field for consistency
 
   DrillResponse({
     required this.id,
@@ -116,6 +117,7 @@ class DrillResponse {
     this.primarySkill,
     this.secondarySkills,
     required this.videoUrl,
+    this.isCustom = false, // ✅ ADDED: Default to false
   });
 
   factory DrillResponse.fromJson(Map<String, dynamic> json) {
@@ -139,6 +141,7 @@ class DrillResponse {
           ? List<Map<String, dynamic>>.from(json['secondary_skills'])
           : null,
       videoUrl: json['video_url'] ?? '',
+      isCustom: json['is_custom'] ?? false, // ✅ ADDED: Parse is_custom field
     );
   }
 }

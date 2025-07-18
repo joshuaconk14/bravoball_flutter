@@ -166,7 +166,7 @@ class DrillApiService {
       trainingStyle: trainingStyle,
       difficulty: _mapDifficulty(drillResponse.difficulty),
       videoUrl: drillResponse.videoUrl ?? '',
-      isCustom: false, // ✅ ADDED: Set isCustom to false for API drills (default drills)
+      isCustom: drillResponse.isCustom, // ✅ UPDATED: Use the isCustom field from DrillResponse
     );
   }
 
