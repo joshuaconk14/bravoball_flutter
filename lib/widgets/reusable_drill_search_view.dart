@@ -524,13 +524,13 @@ class SelectableDrillCard extends StatelessWidget {
       case 'firsttouch':
         return 'assets/drill-icons/Player_First_Touch.png';
       case 'defending':
-        return 'assets/drill-icons/Player_Dribbling.png'; // Use dribbling as fallback for defending
+        return 'assets/drill-icons/Player_Defending.png';
       case 'goalkeeping':
-        return 'assets/drill-icons/Player_Dribbling.png'; // Use dribbling as fallback for goalkeeping
+        return 'assets/drill-icons/Player_Goalkeeping.png';
       case 'fitness':
-        return 'assets/drill-icons/Player_Dribbling.png'; // Use dribbling as fallback for fitness
+        return 'assets/drill-icons/Player_Fitness.png';
       default:
-        return 'assets/drill-icons/Player_Dribbling.png'; // Fallback to dribbling icon
+        return 'assets/drill-icons/Player_Dribbling.png';
     }
   }
 

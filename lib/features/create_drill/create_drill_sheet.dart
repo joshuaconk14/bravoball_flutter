@@ -717,27 +717,81 @@ Custom drills are personalized training exercises that you create specifically f
                     
                     Row(
                       children: [
+                        // Sets
                         Expanded(
-                          child: _buildNumberInput(
-                            label: 'Sets',
-                            value: _sets,
-                            onChanged: (value) => setState(() => _sets = value),
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              const Text('Sets', style: TextStyle(fontWeight: FontWeight.w600)),
+                              const SizedBox(height: 8),
+                              TextFormField(
+                                initialValue: _sets.toString(),
+                                keyboardType: TextInputType.number,
+                                decoration: const InputDecoration(
+                                  border: OutlineInputBorder(),
+                                  isDense: true,
+                                  contentPadding: EdgeInsets.symmetric(vertical: 10, horizontal: 12),
+                                ),
+                                onChanged: (val) {
+                                  final parsed = int.tryParse(val);
+                                  if (parsed != null && parsed > 0) {
+                                    setState(() => _sets = parsed);
+                                  }
+                                },
+                              ),
+                            ],
                           ),
                         ),
                         const SizedBox(width: 16),
+                        // Reps
                         Expanded(
-                          child: _buildNumberInput(
-                            label: 'Reps',
-                            value: _reps,
-                            onChanged: (value) => setState(() => _reps = value),
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              const Text('Reps', style: TextStyle(fontWeight: FontWeight.w600)),
+                              const SizedBox(height: 8),
+                              TextFormField(
+                                initialValue: _reps.toString(),
+                                keyboardType: TextInputType.number,
+                                decoration: const InputDecoration(
+                                  border: OutlineInputBorder(),
+                                  isDense: true,
+                                  contentPadding: EdgeInsets.symmetric(vertical: 10, horizontal: 12),
+                                ),
+                                onChanged: (val) {
+                                  final parsed = int.tryParse(val);
+                                  if (parsed != null && parsed > 0) {
+                                    setState(() => _reps = parsed);
+                                  }
+                                },
+                              ),
+                            ],
                           ),
                         ),
                         const SizedBox(width: 16),
+                        // Duration
                         Expanded(
-                          child: _buildNumberInput(
-                            label: 'Duration (min)',
-                            value: _duration,
-                            onChanged: (value) => setState(() => _duration = value),
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              const Text('Duration (min)', style: TextStyle(fontWeight: FontWeight.w600)),
+                              const SizedBox(height: 8),
+                              TextFormField(
+                                initialValue: _duration.toString(),
+                                keyboardType: TextInputType.number,
+                                decoration: const InputDecoration(
+                                  border: OutlineInputBorder(),
+                                  isDense: true,
+                                  contentPadding: EdgeInsets.symmetric(vertical: 10, horizontal: 12),
+                                ),
+                                onChanged: (val) {
+                                  final parsed = int.tryParse(val);
+                                  if (parsed != null && parsed > 0) {
+                                    setState(() => _duration = parsed);
+                                  }
+                                },
+                              ),
+                            ],
                           ),
                         ),
                       ],
@@ -1000,18 +1054,27 @@ Custom drills are personalized training exercises that you create specifically f
               onPressed: () => onChanged(value - 1),
               icon: const Icon(Icons.remove_circle_outline),
               color: AppTheme.primaryYellow,
+              iconSize: 32, // Make button larger
+              padding: const EdgeInsets.symmetric(horizontal: 8), // Add horizontal padding
             ),
+            const SizedBox(width: 16), // Increase spacing between button and number
             Expanded(
-              child: Text(
-                value.toString(),
-                textAlign: TextAlign.center,
-                style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+              child: Container(
+                alignment: Alignment.center,
+                child: Text(
+                  value.toString(),
+                  textAlign: TextAlign.center,
+                  style: const TextStyle(fontSize: 28, fontWeight: FontWeight.bold), // Larger font
+                ),
               ),
             ),
+            const SizedBox(width: 16), // Increase spacing between number and button
             IconButton(
               onPressed: () => onChanged(value + 1),
               icon: const Icon(Icons.add_circle_outline),
               color: AppTheme.primaryYellow,
+              iconSize: 32, // Make button larger
+              padding: const EdgeInsets.symmetric(horizontal: 8), // Add horizontal padding
             ),
           ],
         ),

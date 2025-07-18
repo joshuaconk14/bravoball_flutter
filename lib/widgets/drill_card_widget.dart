@@ -370,14 +370,14 @@ class DraggableDrillCard extends StatelessWidget {
         if (kDebugMode) print('🔍 [ICON_DEBUG] Matched: first touch');
         return 'assets/drill-icons/Player_First_Touch.png';
       case 'defending':
-        if (kDebugMode) print('🔍 [ICON_DEBUG] Matched: defending (using dribbling fallback)');
-        return 'assets/drill-icons/Player_Dribbling.png'; // Use dribbling as fallback for defending
+        if (kDebugMode) print('🔍 [ICON_DEBUG] Matched: defending');
+        return 'assets/drill-icons/Player_Defending.png';
       case 'goalkeeping':
-        if (kDebugMode) print('🔍 [ICON_DEBUG] Matched: goalkeeping (using dribbling fallback)');
-        return 'assets/drill-icons/Player_Dribbling.png'; // Use dribbling as fallback for goalkeeping
+        if (kDebugMode) print('🔍 [ICON_DEBUG] Matched: goalkeeping');
+        return 'assets/drill-icons/Player_Goalkeeping.png';
       case 'fitness':
-        if (kDebugMode) print('🔍 [ICON_DEBUG] Matched: fitness (using dribbling fallback)');
-        return 'assets/drill-icons/Player_Dribbling.png'; // Use dribbling as fallback for fitness
+        if (kDebugMode) print('🔍 [ICON_DEBUG] Matched: fitness');
+        return 'assets/drill-icons/Player_Fitness.png';
       default:
         if (kDebugMode) print('🔍 [ICON_DEBUG] No match found, using dribbling fallback');
         return 'assets/drill-icons/Player_Dribbling.png'; // Fallback to dribbling icon
