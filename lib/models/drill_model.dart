@@ -13,14 +13,15 @@ class DrillModel {
   final String trainingStyle;
   final String difficulty;
   final String videoUrl;
+  final bool isCustom; // ✅ ADDED: Boolean flag to identify custom drills
 
   DrillModel({
     required this.id,
     required this.title,
     required this.skill,
     required this.subSkills,
-    this.sets = 0,
-    this.reps = 0,
+    required this.sets,
+    required this.reps,
     required this.duration,
     required this.description,
     required this.instructions,
@@ -29,6 +30,7 @@ class DrillModel {
     required this.trainingStyle,
     required this.difficulty,
     required this.videoUrl,
+    required this.isCustom,
   });
 
   // JSON serialization
@@ -48,6 +50,7 @@ class DrillModel {
       'trainingStyle': trainingStyle,
       'difficulty': difficulty,
       'videoUrl': videoUrl,
+      'is_custom': isCustom, // ✅ ADDED: Include is_custom field in JSON
     };
   }
 
@@ -70,6 +73,7 @@ class DrillModel {
       trainingStyle: json['trainingStyle'] ?? '',
       difficulty: json['difficulty'] ?? '',
       videoUrl: json['videoUrl'] ?? '',
+      isCustom: json['is_custom'] ?? false, // ✅ ADDED: Parse is_custom field from JSON
     );
   }
 

@@ -154,6 +154,7 @@ class GuestDrillService {
       trainingStyle: drillJson['intensity'] ?? drillJson['training_style'] ?? 'medium',
       difficulty: drillJson['difficulty'] ?? 'beginner',
       videoUrl: drillJson['video_url'] ?? '',
+      isCustom: false, // ✅ ADDED: Set isCustom to false for guest drills
     );
   }
 

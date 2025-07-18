@@ -354,9 +354,10 @@ class AppStateService extends ChangeNotifier {
       if (kDebugMode) print('🔧 Using test drills data (AppConfig.useTestData = true)');
       return TestDataService.getTestDrills();
     } else {
-      if (kDebugMode) print('🌐 Using backend drills data including custom drills');
-      // ✅ UPDATED: Include custom drills in available drills for production
-      return _customDrills;
+      if (kDebugMode) print('🌐 Using backend drills data - search handled by backend API');
+      // ✅ FIXED: Return empty list for production since search is handled by backend
+      // The backend search endpoint should include both default drills and custom drills
+      return <DrillModel>[];
     }
   }
   List<DrillModel> get availableDrills => List.unmodifiable(_availableDrills);
@@ -783,6 +784,7 @@ class AppStateService extends ChangeNotifier {
               trainingStyle: _mapIntensityToTrainingStyle(drillJson['intensity'] ?? 'medium'),
               difficulty: _mapBackendDifficultyToFrontend(drillJson['difficulty'] ?? 'beginner'),
               videoUrl: drillJson['video_url'] ?? '',
+              isCustom: true, // ✅ UPDATED: Set isCustom to true for custom drills
             );
             
             _customDrills.add(drill);
@@ -804,20 +806,13 @@ class AppStateService extends ChangeNotifier {
   List<String> _extractCustomDrillSubSkills(Map<String, dynamic> drillJson) {
     final subSkills = <String>[];
     
+    // ✅ UPDATED: For custom drills, only extract the primary sub-skill
     final primarySubSkill = drillJson['primary_skill']?['sub_skill'];
     if (primarySubSkill != null) {
       subSkills.add(_mapBackendSubSkillToFrontend(primarySubSkill));
     }
     
-    final secondarySkills = drillJson['secondary_skills'] as List<dynamic>?;
-    if (secondarySkills != null) {
-      for (final skill in secondarySkills) {
-        final subSkill = skill['sub_skill'];
-        if (subSkill != null) {
-          subSkills.add(_mapBackendSubSkillToFrontend(subSkill));
-        }
-      }
-    }
+    // ✅ REMOVED: secondary_skills processing - custom drills only store primary category and subskill
     
     return subSkills;
   }
@@ -1428,6 +1423,7 @@ class AppStateService extends ChangeNotifier {
               trainingStyle: drillJson['intensity'] ?? 'medium',
               difficulty: drillJson['difficulty'] ?? 'beginner',
               videoUrl: drillJson['video_url'] ?? '',
+              isCustom: false, // ✅ ADDED: Set isCustom to false for guest drills
             );
             
             return EditableDrillModel(
@@ -1630,6 +1626,7 @@ class AppStateService extends ChangeNotifier {
         trainingStyle: currentDrill.trainingStyle,
         difficulty: currentDrill.difficulty,
         videoUrl: currentDrill.videoUrl,
+        isCustom: currentDrill.isCustom, // ✅ FIXED: Preserve the original isCustom value
       );
       
       _sessionDrills[drillIndex] = updatedDrill;
@@ -2223,6 +2220,7 @@ class AppStateService extends ChangeNotifier {
       trainingStyle: 'medium intensity',
       difficulty: 'intermediate',
       videoUrl: '',
+      isCustom: false, // ✅ ADDED: Set isCustom to false for mock drills
     ),
   ];
 

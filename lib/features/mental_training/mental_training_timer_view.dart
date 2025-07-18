@@ -430,6 +430,7 @@ class _MentalTrainingTimerViewState extends State<MentalTrainingTimerView>
               trainingStyle: 'mental',
               difficulty: 'beginner',
               videoUrl: '',
+              isCustom: false, // ✅ ADDED: Set isCustom to false for mental training drills
             ),
             setsDone: 1,
             totalSets: 1,

@@ -16,16 +16,17 @@ class SessionDataSyncService {
   /// Sync the ordered session drills to the backend
   Future<bool> syncOrderedSessionDrills(List<EditableDrillModel> sessionDrills) async {
     try {
-      final drillsData = sessionDrills.map((drill) => {
+      final drillsData = sessionDrills.map((orderedDrill) => {
         'drill': {
-          'uuid': drill.drill.id, // Use 'uuid' for backend compatibility
-          'title': drill.drill.title
+          'uuid': orderedDrill.drill.id, // Use 'uuid' for backend compatibility
+          'title': orderedDrill.drill.title,
+          'is_custom': orderedDrill.drill.isCustom
         },
-        'sets_done': drill.setsDone,
-        'sets': drill.totalSets,
-        'reps': drill.totalReps,
-        'duration': drill.totalDuration,
-        'is_completed': drill.isCompleted,
+        'sets_done': orderedDrill.setsDone,
+        'sets': orderedDrill.totalSets,
+        'reps': orderedDrill.totalReps,
+        'duration': orderedDrill.totalDuration,
+        'is_completed': orderedDrill.isCompleted,
       }).toList();
       
       final requestData = {'ordered_drills': drillsData};

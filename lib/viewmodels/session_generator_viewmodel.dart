@@ -236,6 +236,7 @@ class SessionGeneratorViewModel extends ChangeNotifier {
       trainingStyle: 'medium intensity',
       difficulty: 'intermediate',
       videoUrl: '',
+      isCustom: false, // ✅ ADDED: Set isCustom to false for mock drills
     ),
     DrillModel(
       id: '550e8400-e29b-41d4-a716-446655440002',
@@ -252,6 +253,7 @@ class SessionGeneratorViewModel extends ChangeNotifier {
       trainingStyle: 'medium intensity',
       difficulty: 'beginner',
       videoUrl: '',
+      isCustom: false, // ✅ ADDED: Set isCustom to false for mock drills
     ),
     DrillModel(
       id: '550e8400-e29b-41d4-a716-446655440003',
@@ -268,6 +270,7 @@ class SessionGeneratorViewModel extends ChangeNotifier {
       trainingStyle: 'high intensity',
       difficulty: 'advanced',
       videoUrl: '',
+      isCustom: false, // ✅ ADDED: Set isCustom to false for mock drills
     ),
     DrillModel(
       id: '550e8400-e29b-41d4-a716-446655440004',
@@ -284,6 +287,7 @@ class SessionGeneratorViewModel extends ChangeNotifier {
       trainingStyle: 'low intensity',
       difficulty: 'intermediate',
       videoUrl: '',
+      isCustom: false, // ✅ ADDED: Set isCustom to false for mock drills
     ),
     DrillModel(
       id: '550e8400-e29b-41d4-a716-446655440005',
@@ -300,6 +304,7 @@ class SessionGeneratorViewModel extends ChangeNotifier {
       trainingStyle: 'medium intensity',
       difficulty: 'advanced',
       videoUrl: '',
+      isCustom: false, // ✅ ADDED: Set isCustom to false for mock drills
     ),
     DrillModel(
       id: '550e8400-e29b-41d4-a716-446655440006',
@@ -316,6 +321,7 @@ class SessionGeneratorViewModel extends ChangeNotifier {
       trainingStyle: 'low intensity',
       difficulty: 'beginner',
       videoUrl: '',
+      isCustom: false, // ✅ ADDED: Set isCustom to false for mock drills
     ),
     DrillModel(
       id: '550e8400-e29b-41d4-a716-446655440007',
@@ -332,6 +338,7 @@ class SessionGeneratorViewModel extends ChangeNotifier {
       trainingStyle: 'high intensity',
       difficulty: 'advanced',
       videoUrl: '',
+      isCustom: false, // ✅ ADDED: Set isCustom to false for mock drills
     ),
     DrillModel(
       id: '550e8400-e29b-41d4-a716-446655440008',
@@ -348,6 +355,7 @@ class SessionGeneratorViewModel extends ChangeNotifier {
       trainingStyle: 'low intensity',
       difficulty: 'beginner',
       videoUrl: '',
+      isCustom: false, // ✅ ADDED: Set isCustom to false for mock drills
     ),
   ];
 } 

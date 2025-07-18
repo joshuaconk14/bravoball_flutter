@@ -130,6 +130,7 @@ class OnboardingService {
           trainingStyle: drill['intensity'] as String? ?? 'medium',
           difficulty: drill['difficulty'] as String? ?? 'beginner',
           videoUrl: drill['video_url'] as String? ?? '',
+          isCustom: false, // ✅ ADDED: Set isCustom to false for onboarding drills
         );
         
         drillModels.add(drillModel);

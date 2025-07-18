@@ -56,10 +56,7 @@ class CustomDrillService {
           'category': backendCategory,
           'sub_skill': subSkills.isNotEmpty ? subSkills.first : 'general',
         },
-        'secondary_skills': subSkills.skip(1).map((subSkill) => {
-          'category': backendCategory,
-          'sub_skill': subSkill,
-        }).toList(),
+        // ✅ REMOVED: secondary_skills - custom drills only store primary category and subskill
         'instructions': instructions,
         'tips': tips,
         'common_mistakes': [],
@@ -102,14 +99,11 @@ class CustomDrillService {
     // Get the primary skill category, defaulting to "General" if not available
     final skillCategory = drillResponse.primarySkill?.category ?? 'General';
     
-    // Collect all sub-skills from both primary and secondary skills
-    final allSubSkills = <String>[];
+    // ✅ UPDATED: For custom drills, only use the primary sub-skill
+    final subSkills = <String>[];
     if (drillResponse.primarySkill?.subSkill != null) {
-      allSubSkills.add(drillResponse.primarySkill!.subSkill);
+      subSkills.add(drillResponse.primarySkill!.subSkill);
     }
-    allSubSkills.addAll(
-      drillResponse.secondarySkills.map((skill) => skill.subSkill),
-    );
 
     // Map intensity to training style
     final trainingStyle = _mapIntensityToTrainingStyle(drillResponse.intensity);
@@ -118,7 +112,7 @@ class CustomDrillService {
       id: drillResponse.id.toString(),
       title: drillResponse.title,
       skill: _mapSkillCategory(skillCategory),
-      subSkills: allSubSkills,
+      subSkills: subSkills,
       sets: drillResponse.sets ?? 0,
       reps: drillResponse.reps ?? 0,
       duration: drillResponse.duration ?? 10,
@@ -129,6 +123,7 @@ class CustomDrillService {
       trainingStyle: trainingStyle,
       difficulty: _mapDifficulty(drillResponse.difficulty),
       videoUrl: drillResponse.videoUrl ?? '',
+      isCustom: true, // ✅ ADDED: Set isCustom to true for custom drills
     );
   }
 

@@ -78,6 +78,8 @@ class TestDataService {
         equipment: ['Cones', 'Ball'],
         trainingStyle: 'low intensity',
         duration: 12,
+        reps: 5,
+        sets: 3,
         videoUrl: 'https://example.com/cone-weaving',
         instructions: [
           'Set up 6-8 cones in a straight line, 2 yards apart',
@@ -90,6 +92,7 @@ class TestDataService {
           'Use small touches to maintain control',
           'Accelerate out of the last cone'
         ],
+        isCustom: false, // ✅ ADDED: Set isCustom to false for test drills
       ),
       
       DrillModel(
@@ -102,6 +105,8 @@ class TestDataService {
         equipment: ['Ball', 'Wall'],
         trainingStyle: 'low intensity',
         duration: 20,
+        reps: 10,
+        sets: 4,
         videoUrl: 'https://example.com/rainbow-flick',
         instructions: [
           'Start with the ball between your feet',
@@ -114,6 +119,7 @@ class TestDataService {
           'Keep your balance throughout the move',
           'Use this move sparingly in games'
         ],
+        isCustom: false, // ✅ ADDED: Set isCustom to false for test drills
       ),
 
       DrillModel(
@@ -126,6 +132,8 @@ class TestDataService {
         equipment: ['Cones', 'Ball', 'Stopwatch'],
         trainingStyle: 'low intensity',
         duration: 15,
+        reps: 6,
+        sets: 3,
         videoUrl: 'https://example.com/speed-dribbling',
         instructions: [
           'Set up 20-yard sprint with cones every 5 yards',
@@ -138,6 +146,7 @@ class TestDataService {
           'Keep your head up to see ahead',
           'Practice with both feet'
         ],
+        isCustom: false, // ✅ ADDED: Set isCustom to false for test drills
       ),
 
       // PASSING DRILLS
@@ -151,6 +160,8 @@ class TestDataService {
         equipment: ['Cones', 'Ball', 'Targets'],
         trainingStyle: 'low intensity',
         duration: 18,
+        reps: 10,
+        sets: 3,
         videoUrl: 'https://example.com/precision-passing',
         instructions: [
           'Set up 5 gates of different sizes using cones',
@@ -163,6 +174,7 @@ class TestDataService {
           'Follow through toward your target',
           'Keep your standing foot planted'
         ],
+        isCustom: false, // ✅ ADDED: Set isCustom to false for test drills
       ),
 
       DrillModel(
@@ -175,6 +187,8 @@ class TestDataService {
         equipment: ['Ball', 'Targets', 'Markers'],
         trainingStyle: 'low intensity',
         duration: 25,
+        reps: 5,
+        sets: 4,
         videoUrl: 'https://example.com/long-passing',
         instructions: [
           'Set up targets at 30, 40, and 50 yards',
@@ -187,6 +201,7 @@ class TestDataService {
           'Strike through the center of the ball',
           'Follow through with your kicking leg'
         ],
+        isCustom: false, // ✅ ADDED: Set isCustom to false for test drills
       ),
 
       DrillModel(
@@ -199,6 +214,8 @@ class TestDataService {
         equipment: ['Ball', 'Wall'],
         trainingStyle: 'low intensity',
         duration: 16,
+        reps: 50,
+        sets: 2,
         videoUrl: 'https://example.com/one-touch-passing',
         instructions: [
           'Stand 5 yards from a wall',
@@ -211,6 +228,7 @@ class TestDataService {
           'Use the inside of your foot for control',
           'Keep the ball moving quickly'
         ],
+        isCustom: false, // ✅ ADDED: Set isCustom to false for test drills
       ),
 
       // SHOOTING DRILLS
@@ -224,6 +242,8 @@ class TestDataService {
         equipment: ['Ball', 'Goal', 'Markers'],
         trainingStyle: 'high intensity',
         duration: 22,
+        reps: 10,
+        sets: 3,
         videoUrl: 'https://example.com/power-shooting',
         instructions: [
           'Set up 5 shooting positions around the penalty area',
@@ -236,6 +256,7 @@ class TestDataService {
           'Keep your head steady and eyes on the ball',
           'Follow through in the direction of your target'
         ],
+        isCustom: false, // ✅ ADDED: Set isCustom to false for test drills
       ),
 
       DrillModel(
@@ -248,6 +269,8 @@ class TestDataService {
         equipment: ['Ball', 'Goal', 'Cones'],
         trainingStyle: 'medium intensity',
         duration: 20,
+        reps: 5,
+        sets: 4,
         videoUrl: 'https://example.com/finesse-shooting',
         instructions: [
           'Set up cones in the corners of the goal',
@@ -260,6 +283,7 @@ class TestDataService {
           'Lean into the shot for better accuracy',
           'Practice with both feet'
         ],
+        isCustom: false, // ✅ ADDED: Set isCustom to false for test drills
       ),
 
       DrillModel(
@@ -272,6 +296,8 @@ class TestDataService {
         equipment: ['Ball', 'Goal', 'Wall'],
         trainingStyle: 'high intensity',
         duration: 24,
+        reps: 5,
+        sets: 4,
         videoUrl: 'https://example.com/volley-shooting',
         instructions: [
           'Throw the ball up and volley it toward the goal',
@@ -284,6 +310,7 @@ class TestDataService {
           'Use your arms for balance',
           'Strike through the middle of the ball'
         ],
+        isCustom: false, // ✅ ADDED: Set isCustom to false for test drills
       ),
 
       // FIRST TOUCH DRILLS
@@ -297,6 +324,8 @@ class TestDataService {
         equipment: ['Ball', 'Wall'],
         trainingStyle: 'low intensity',
         duration: 14,
+        reps: 5,
+        sets: 3,
         videoUrl: 'https://example.com/wall-control',
         instructions: [
           'Stand 8 yards from a wall',
@@ -309,6 +338,7 @@ class TestDataService {
           'Get your body in line with the ball',
           'Practice with both feet equally'
         ],
+        isCustom: false, // ✅ ADDED: Set isCustom to false for test drills
       ),
 
       DrillModel(
@@ -321,6 +351,8 @@ class TestDataService {
         equipment: ['Ball'],
         trainingStyle: 'low intensity',
         duration: 18,
+        reps: 5,
+        sets: 4,
         videoUrl: 'https://example.com/aerial-control',
         instructions: [
           'Throw the ball high in the air',
@@ -333,6 +365,7 @@ class TestDataService {
           'Relax your body to cushion the ball',
           'Get your body behind the ball'
         ],
+        isCustom: false, // ✅ ADDED: Set isCustom to false for test drills
       ),
 
       DrillModel(
@@ -345,6 +378,8 @@ class TestDataService {
         equipment: ['Ball', 'Cones', 'Wall'],
         trainingStyle: 'high intensity',
         duration: 16,
+        reps: 30,
+        sets: 2,
         videoUrl: 'https://example.com/pressure-touch',
         instructions: [
           'Set up in a small 5x5 yard box',
@@ -357,6 +392,7 @@ class TestDataService {
           'Use the space efficiently',
           'Keep your head up to see options'
         ],
+        isCustom: false, // ✅ ADDED: Set isCustom to false for test drills
       ),
 
       // DEFENDING DRILLS
@@ -370,6 +406,8 @@ class TestDataService {
         equipment: ['Cones', 'Ball'],
         trainingStyle: 'low intensity',
         duration: 15,
+        reps: 5,
+        sets: 3,
         videoUrl: 'https://example.com/defensive-positioning',
         instructions: [
           'Set up a 10x10 yard box with cones',
@@ -382,6 +420,7 @@ class TestDataService {
           'Keep your center of gravity low',
           'Don\'t dive in too early'
         ],
+        isCustom: false, // ✅ ADDED: Set isCustom to false for test drills
       ),
 
       DrillModel(
@@ -394,6 +433,8 @@ class TestDataService {
         equipment: ['Ball', 'Cones'],
         trainingStyle: 'low intensity',
         duration: 20,
+        reps: 5,
+        sets: 4,
         videoUrl: 'https://example.com/tackling-technique',
         instructions: [
           'Practice slide tackles on a stationary ball',
@@ -406,6 +447,7 @@ class TestDataService {
           'Use the inside of your foot',
           'Get your body behind the ball'
         ],
+        isCustom: false, // ✅ ADDED: Set isCustom to false for test drills
       ),
 
       DrillModel(
@@ -418,6 +460,8 @@ class TestDataService {
         equipment: ['Cones', 'Ball'],
         trainingStyle: 'low intensity',
         duration: 18,
+        reps: 5,
+        sets: 4,
         videoUrl: 'https://example.com/jockeying',
         instructions: [
           'Set up a channel using cones',
@@ -430,6 +474,7 @@ class TestDataService {
           'Show the attacker where you want them to go',
           'Stay balanced and ready to react'
         ],
+        isCustom: false, // ✅ ADDED: Set isCustom to false for test drills
       ),
 
       // FITNESS DRILLS
@@ -443,6 +488,8 @@ class TestDataService {
         equipment: ['Cones', 'Stopwatch'],
         trainingStyle: 'high intensity',
         duration: 25,
+        reps: 8,
+        sets: 4,
         videoUrl: 'https://example.com/sprint-intervals',
         instructions: [
           'Set up 40-yard sprint markers',
@@ -455,6 +502,7 @@ class TestDataService {
           'Use your arms for power',
           'Don\'t slow down at the end'
         ],
+        isCustom: false, // ✅ ADDED: Set isCustom to false for test drills
       ),
 
       DrillModel(
@@ -467,6 +515,8 @@ class TestDataService {
         equipment: ['Agility Ladder', 'Cones'],
         trainingStyle: 'medium intensity',
         duration: 12,
+        reps: 3,
+        sets: 3,
         videoUrl: 'https://example.com/agility-ladder',
         instructions: [
           'Set up agility ladder on flat ground',
@@ -479,6 +529,7 @@ class TestDataService {
           'Keep your head up',
           'Focus on speed and precision'
         ],
+        isCustom: false, // ✅ ADDED: Set isCustom to false for test drills
       ),
 
       DrillModel(
@@ -491,6 +542,8 @@ class TestDataService {
         equipment: ['Cones', 'Markers'],
         trainingStyle: 'high intensity',
         duration: 20,
+        reps: 5,
+        sets: 4,
         videoUrl: 'https://example.com/plyometric-training',
         instructions: [
           'Set up stations for different plyometric exercises',
@@ -503,6 +556,7 @@ class TestDataService {
           'Use your arms for momentum',
           'Focus on quality over quantity'
         ],
+        isCustom: false, // ✅ ADDED: Set isCustom to false for test drills
       ),
 
       // SPECIALIZED DRILLS
@@ -516,6 +570,8 @@ class TestDataService {
         equipment: ['Ball', 'Goal', 'Wall'],
         trainingStyle: 'low intensity',
         duration: 18,
+        reps: 5,
+        sets: 4,
         videoUrl: 'https://example.com/goalkeeper-reactions',
         instructions: [
           'Stand in goal and have balls thrown at you',
@@ -528,6 +584,7 @@ class TestDataService {
           'Use proper diving technique',
           'Keep your eyes on the ball'
         ],
+        isCustom: false, // ✅ ADDED: Set isCustom to false for test drills
       ),
 
       DrillModel(
@@ -540,6 +597,8 @@ class TestDataService {
         equipment: ['Ball', 'Goal', 'Wall'],
         trainingStyle: 'low intensity',
         duration: 30,
+        reps: 5,
+        sets: 4,
         videoUrl: 'https://example.com/set-pieces',
         instructions: [
           'Practice free kicks from different angles',
@@ -552,6 +611,7 @@ class TestDataService {
           'Pick your spot before you shoot',
           'Practice regularly to maintain accuracy'
         ],
+        isCustom: false, // ✅ ADDED: Set isCustom to false for test drills
       ),
 
       // ADDITIONAL ADVANCED DRILLS
@@ -565,6 +625,8 @@ class TestDataService {
         equipment: ['Ball', 'Cones'],
         trainingStyle: 'low intensity',
         duration: 22,
+        reps: 5,
+        sets: 3,
         videoUrl: 'https://example.com/messi-control',
         instructions: [
           'Set up a tight 3x3 yard box',
@@ -577,6 +639,7 @@ class TestDataService {
           'Use your body to shield the ball',
           'Change direction frequently'
         ],
+        isCustom: false, // ✅ ADDED: Set isCustom to false for test drills
       ),
 
       DrillModel(
@@ -589,6 +652,8 @@ class TestDataService {
         equipment: ['Ball', 'Cones', 'Wall'],
         trainingStyle: 'low intensity',
         duration: 20,
+        reps: 50,
+        sets: 2,
         videoUrl: 'https://example.com/tiki-taka',
         instructions: [
           'Set up 3 targets in a triangle formation',
@@ -601,6 +666,7 @@ class TestDataService {
           'Use the inside of your foot for accuracy',
           'Move immediately after passing'
         ],
+        isCustom: false, // ✅ ADDED: Set isCustom to false for test drills
       ),
 
       DrillModel(
@@ -613,6 +679,8 @@ class TestDataService {
         equipment: ['Ball', 'Goal', 'Partner'],
         trainingStyle: 'low intensity',
         duration: 16,
+        reps: 10,
+        sets: 3,
         videoUrl: 'https://example.com/power-headers',
         instructions: [
           'Have a partner throw balls for you to head',
@@ -625,6 +693,7 @@ class TestDataService {
           'Use your whole body for power',
           'Attack the ball, don\'t wait for it'
         ],
+        isCustom: false, // ✅ ADDED: Set isCustom to false for test drills
       ),
 
       DrillModel(
@@ -637,6 +706,8 @@ class TestDataService {
         equipment: ['Ball', 'Cones'],
         trainingStyle: 'low intensity',
         duration: 25,
+        reps: 5,
+        sets: 4,
         videoUrl: 'https://example.com/neymar-skills',
         instructions: [
           'Practice step-overs, rainbow flicks, and elasticos',
@@ -649,6 +720,7 @@ class TestDataService {
           'Use skills sparingly in games',
           'Perfect the basics first'
         ],
+        isCustom: false, // ✅ ADDED: Set isCustom to false for test drills
       ),
 
       DrillModel(
@@ -661,6 +733,8 @@ class TestDataService {
         equipment: ['Ball', 'Targets', 'Goal'],
         trainingStyle: 'low intensity',
         duration: 18,
+        reps: 5,
+        sets: 4,
         videoUrl: 'https://example.com/goalkeeper-distribution',
         instructions: [
           'Set up targets at different distances',
@@ -673,6 +747,7 @@ class TestDataService {
           'Follow through toward your target',
           'Practice with both feet'
         ],
+        isCustom: false, // ✅ ADDED: Set isCustom to false for test drills
       ),
 
       // TEAM PLAY DRILLS
@@ -686,6 +761,8 @@ class TestDataService {
         equipment: ['Ball', 'Cones', 'Partners'],
         trainingStyle: 'low intensity',
         duration: 20,
+        reps: 5,
+        sets: 3,
         videoUrl: 'https://example.com/2v1-attack',
         instructions: [
           'Set up with 2 attackers and 1 defender',
@@ -698,6 +775,7 @@ class TestDataService {
           'Look for the overlap',
           'Don\'t force the pass'
         ],
+        isCustom: false, // ✅ ADDED: Set isCustom to false for test drills
       ),
 
       DrillModel(
@@ -710,6 +788,8 @@ class TestDataService {
         equipment: ['Ball', 'Cones', 'Partners'],
         trainingStyle: 'low intensity',
         duration: 30,
+        reps: 5,
+        sets: 3,
         videoUrl: 'https://example.com/small-sided-games',
         instructions: [
           'Set up small goals or targets',
@@ -722,6 +802,7 @@ class TestDataService {
           'Use all the skills you\'ve practiced',
           'Communicate constantly'
         ],
+        isCustom: false, // ✅ ADDED: Set isCustom to false for test drills
       ),
 
       DrillModel(
@@ -734,6 +815,8 @@ class TestDataService {
         equipment: ['Ball', 'Goal', 'Cones'],
         trainingStyle: 'low intensity',
         duration: 22,
+        reps: 5,
+        sets: 3,
         videoUrl: 'https://example.com/crossing-finishing',
         instructions: [
           'Set up wide positions for crossing',
@@ -746,6 +829,7 @@ class TestDataService {
           'Aim for the penalty spot',
           'Attack the ball when finishing'
         ],
+        isCustom: false, // ✅ ADDED: Set isCustom to false for test drills
       ),
 
       DrillModel(
@@ -758,6 +842,8 @@ class TestDataService {
         equipment: ['Ball', 'Cones', 'Partners'],
         trainingStyle: 'low intensity',
         duration: 18,
+        reps: 5,
+        sets: 3,
         videoUrl: 'https://example.com/defensive-pressing',
         instructions: [
           'Work in groups of 3-4 players',
@@ -770,6 +856,7 @@ class TestDataService {
           'Press with intensity',
           'Don\'t leave gaps'
         ],
+        isCustom: false, // ✅ ADDED: Set isCustom to false for test drills
       ),
 
       DrillModel(
@@ -782,6 +869,8 @@ class TestDataService {
         equipment: ['Ball', 'Cones'],
         trainingStyle: 'low intensity',
         duration: 15,
+        reps: 5,
+        sets: 3,
         videoUrl: 'https://example.com/mental-training',
         instructions: [
           'Practice skills while under pressure',
@@ -794,6 +883,7 @@ class TestDataService {
           'Focus on the process, not the outcome',
           'Breathe deeply to stay calm'
         ],
+        isCustom: false, // ✅ ADDED: Set isCustom to false for test drills
       ),
     ];
   }

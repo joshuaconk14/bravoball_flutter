@@ -206,6 +206,7 @@ class PreferencesSyncService {
           trainingStyle: drill['intensity'] as String? ?? '',
           difficulty: drill['difficulty'] as String? ?? '',
           videoUrl: drill['video_url'] as String? ?? '',
+          isCustom: false, // ✅ ADDED: Set isCustom to false for preference drills
         );
 
         drillModels.add(drillModel);
