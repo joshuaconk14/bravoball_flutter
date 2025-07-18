@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:video_player/video_player.dart';
+import 'dart:io'; // Add this import for File support
 
 class DrillVideoPlayer extends StatefulWidget {
   final String videoUrl;
@@ -40,8 +41,21 @@ class _DrillVideoPlayerState extends State<DrillVideoPlayer> {
 
       // Initialize controller based on URL type
       if (widget.videoUrl.startsWith('http')) {
+        // Network URL - existing functionality
         _controller = VideoPlayerController.networkUrl(Uri.parse(widget.videoUrl));
+      } else if (widget.videoUrl.startsWith('/') || widget.videoUrl.contains('\\')) {
+        // Local file path - new functionality for custom drills
+        final file = File(widget.videoUrl);
+        if (await file.exists()) {
+          _controller = VideoPlayerController.file(file);
+        } else {
+          setState(() {
+            _hasError = true;
+          });
+          return;
+        }
       } else {
+        // Asset file - existing functionality
         _controller = VideoPlayerController.asset(widget.videoUrl);
       }
 

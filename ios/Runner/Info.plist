@@ -28,6 +28,12 @@
 	<true/>
 	<key>NSAppleMusicUsageDescription</key>
 	<string>This app uses audio for drill timer functionality in the background.</string>
+	<key>NSPhotoLibraryUsageDescription</key>
+	<string>This app needs access to your photo library to upload videos for custom drills.</string>
+	<key>NSCameraUsageDescription</key>
+	<string>This app needs access to your camera to record videos for custom drills.</string>
+	<key>NSMicrophoneUsageDescription</key>
+	<string>This app needs access to your microphone to record videos with audio for custom drills.</string>
 	<key>UIApplicationSupportsIndirectInputEvents</key>
 	<true/>
 	<key>UIBackgroundModes</key>

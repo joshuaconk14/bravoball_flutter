@@ -4,6 +4,8 @@ PODS:
   - Flutter (1.0.0)
   - flutter_local_notifications (0.0.1):
     - Flutter
+  - image_picker_ios (0.0.1):
+    - Flutter
   - package_info_plus (0.4.5):
     - Flutter
   - path_provider_foundation (0.0.1):
@@ -26,6 +28,7 @@ DEPENDENCIES:
   - audioplayers_darwin (from `.symlinks/plugins/audioplayers_darwin/ios`)
   - Flutter (from `Flutter`)
   - flutter_local_notifications (from `.symlinks/plugins/flutter_local_notifications/ios`)
+  - image_picker_ios (from `.symlinks/plugins/image_picker_ios/ios`)
   - package_info_plus (from `.symlinks/plugins/package_info_plus/ios`)
   - path_provider_foundation (from `.symlinks/plugins/path_provider_foundation/darwin`)
   - rive_common (from `.symlinks/plugins/rive_common/ios`)
@@ -41,6 +44,8 @@ EXTERNAL SOURCES:
     :path: Flutter
   flutter_local_notifications:
     :path: ".symlinks/plugins/flutter_local_notifications/ios"
+  image_picker_ios:
+    :path: ".symlinks/plugins/image_picker_ios/ios"
   package_info_plus:
     :path: ".symlinks/plugins/package_info_plus/ios"
   path_provider_foundation:
@@ -60,6 +65,7 @@ SPEC CHECKSUMS:
   audioplayers_darwin: ccf9c770ee768abb07e26d90af093f7bab1c12ab
   Flutter: e0871f40cf51350855a761d2e70bf5af5b9b5de7
   flutter_local_notifications: ad39620c743ea4c15127860f4b5641649a988100
+  image_picker_ios: 7fe1ff8e34c1790d6fff70a32484959f563a928a
   package_info_plus: af8e2ca6888548050f16fa2f1938db7b5a5df499
   path_provider_foundation: 080d55be775b7414fd5a5ef3ac137b97b097e564
   rive_common: daeaa675f575d0a2ce65a2c90d4838d75327047b

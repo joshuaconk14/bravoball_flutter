@@ -5,6 +5,7 @@ import 'package:provider/provider.dart';
 import 'package:video_player/video_player.dart';
 import 'dart:async';
 import 'dart:ui';
+import 'dart:io'; // ✅ ADDED: Import for File support
 import '../../models/editable_drill_model.dart';
 import '../../services/app_state_service.dart';
 import '../../services/audio_service.dart';
@@ -91,10 +92,33 @@ class _DrillFollowAlongViewState extends State<DrillFollowAlongView> {
         _isVideoLoading = true; // Start loading
       });
       
-      final videoUrl = Uri.parse(_editableDrill.drill.videoUrl);
-      
-      // Initialize single controller
-      _videoController = VideoPlayerController.networkUrl(videoUrl);
+      // ✅ UPDATED: Detect video URL type and use appropriate controller
+      if (_editableDrill.drill.videoUrl.startsWith('http')) {
+        // Network URL - existing functionality
+        final videoUrl = Uri.parse(_editableDrill.drill.videoUrl);
+        _videoController = VideoPlayerController.networkUrl(videoUrl);
+      } else if (_editableDrill.drill.videoUrl.startsWith('/') || _editableDrill.drill.videoUrl.contains('\\')) {
+        // Local file path - new functionality for custom drills
+        final file = File(_editableDrill.drill.videoUrl);
+        if (await file.exists()) {
+          _videoController = VideoPlayerController.file(file);
+          if (kDebugMode) {
+            print('🎬 Loading local video file: ${_editableDrill.drill.videoUrl}');
+          }
+        } else {
+          if (kDebugMode) {
+            print('🎬 Local video file does not exist: ${_editableDrill.drill.videoUrl}');
+          }
+          setState(() {
+            _hasVideo = false;
+            _isVideoLoading = false;
+          });
+          return;
+        }
+      } else {
+        // Asset file - existing functionality
+        _videoController = VideoPlayerController.asset(_editableDrill.drill.videoUrl);
+      }
       
       await _videoController!.initialize();
       
@@ -112,9 +136,13 @@ class _DrillFollowAlongViewState extends State<DrillFollowAlongView> {
         _hasVideo = true;
         _isVideoLoading = false; // Stop loading
       });
+      
+      if (kDebugMode) {
+        print('✅ Video initialized successfully for drill: ${_editableDrill.drill.title}');
+      }
     } catch (e) {
       if (kDebugMode) {
-        print('Video initialization error: $e');
+        print('❌ Video initialization error: $e');
       }
       setState(() {
         _hasVideo = false;

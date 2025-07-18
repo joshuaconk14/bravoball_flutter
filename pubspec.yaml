@@ -43,6 +43,7 @@ dependencies:
   flutter_local_notifications: ^17.2.2  # Local notifications for timer alerts
   timezone: ^0.9.4  # Required for scheduled notifications
   uuid: ^4.3.3  # For generating unique identifiers
+  image_picker: ^1.1.2  # For picking videos from camera roll
 
 dev_dependencies:
   flutter_test:
