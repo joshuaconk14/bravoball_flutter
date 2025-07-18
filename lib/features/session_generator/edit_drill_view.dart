@@ -111,9 +111,22 @@ class _EditDrillViewState extends State<EditDrillView>
 
   @override
   Widget build(BuildContext context) {
+    // ✅ UPDATED: Get updated video path for custom drills from app state
+    final appState = Provider.of<AppStateService>(context, listen: false);
+    String videoUrlToUse = widget.editableDrill.drill.videoUrl;
+    
+    // Check if this is a custom drill and if there's an updated version in app state
+    if (widget.editableDrill.drill.isCustom) {
+      final updatedDrill = appState.customDrills.firstWhere(
+        (drill) => drill.id == widget.editableDrill.drill.id,
+        orElse: () => widget.editableDrill.drill,
+      );
+      videoUrlToUse = updatedDrill.videoUrl;
+    }
+    
     // ✅ UPDATED: Use new DrillVideoBackground widget
     return DrillVideoBackground(
-      videoUrl: widget.editableDrill.drill.videoUrl,
+      videoUrl: videoUrlToUse,
       child: _buildOverlayContent(),
     );
   }

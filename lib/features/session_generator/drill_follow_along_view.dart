@@ -164,9 +164,22 @@ class _DrillFollowAlongViewState extends State<DrillFollowAlongView>
 
   @override
   Widget build(BuildContext context) {
+    // ✅ UPDATED: Get updated video path for custom drills from app state
+    final appState = Provider.of<AppStateService>(context, listen: false);
+    String videoUrlToUse = _editableDrill.drill.videoUrl;
+    
+    // Check if this is a custom drill and if there's an updated version in app state
+    if (_editableDrill.drill.isCustom) {
+      final updatedDrill = appState.customDrills.firstWhere(
+        (drill) => drill.id == _editableDrill.drill.id,
+        orElse: () => _editableDrill.drill,
+      );
+      videoUrlToUse = updatedDrill.videoUrl;
+    }
+    
     // ✅ UPDATED: Use new reusable DrillVideoBackground widget
     return DrillVideoBackground(
-      videoUrl: _editableDrill.drill.videoUrl,
+      videoUrl: videoUrlToUse,
       onTap: () {
         // Toggle UI visibility when tapping on video
         setState(() {

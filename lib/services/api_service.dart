@@ -261,6 +261,22 @@ class ApiService {
     );
   }
 
+  /// PATCH request
+  Future<ApiResponse<Map<String, dynamic>>> patch(
+    String endpoint, {
+    Map<String, dynamic>? body,
+    Map<String, String>? headers,
+    bool requiresAuth = false,
+  }) {
+    return request(
+      endpoint: endpoint,
+      method: 'PATCH',
+      body: body,
+      headers: headers,
+      requiresAuth: requiresAuth,
+    );
+  }
+
   /// DELETE request
   Future<ApiResponse<Map<String, dynamic>>> delete(
     String endpoint, {
@@ -345,6 +361,12 @@ class ApiService {
         );
       case 'PUT':
         return _client.put(
+          uri,
+          headers: headers,
+          body: body != null ? json.encode(body) : null,
+        );
+      case 'PATCH':
+        return _client.patch(
           uri,
           headers: headers,
           body: body != null ? json.encode(body) : null,

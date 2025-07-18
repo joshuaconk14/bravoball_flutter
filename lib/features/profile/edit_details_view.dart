@@ -53,48 +53,59 @@ class _EditDetailsViewState extends State<EditDetailsView> {
     return ChangeNotifierProvider.value(
       value: _emailVerificationModel,
       child: Scaffold(
-        backgroundColor: AppTheme.backgroundPrimary,
+        backgroundColor: AppTheme.lightGray, // ✅ UPDATED: Changed to grayish background
         appBar: AppBar(
-          backgroundColor: Colors.transparent,
+          backgroundColor: AppTheme.backgroundPrimary, // ✅ UPDATED: White AppBar background
           elevation: 0,
           leading: IconButton(
-            icon: const Icon(Icons.close, color: AppTheme.primaryDark),
+            icon: const Icon(Icons.arrow_back, color: AppTheme.primaryDark), // ✅ UPDATED: Back arrow instead of close
             onPressed: () {
+              HapticUtils.lightImpact();
               _emailVerificationModel.resetEmailVerificationState();
               Navigator.of(context).pop();
             },
           ),
           title: const Text(
             'Edit Details',
-            style: TextStyle(
-              color: AppTheme.primaryDark,
-              fontFamily: AppTheme.fontPoppins,
-              fontWeight: FontWeight.w600,
-              fontSize: 18,
-            ),
+            style: AppTheme.titleLarge, // ✅ UPDATED: Use consistent title style
           ),
-          centerTitle: true,
         ),
         body: SafeArea(
           child: SingleChildScrollView(
-            padding: const EdgeInsets.all(24),
             child: Column(
               children: [
-                const SizedBox(height: 16), // Reduced from 20
+                const SizedBox(height: 20),
                 
-                // Step content
-                Consumer<EmailVerificationModel>(
-                  builder: (context, model, child) {
-                    switch (model.emailVerificationStep) {
-                      case 1:
-                        return _buildEmailStep();
-                      case 2:
-                        return _buildCodeStep();
-                      default:
-                        return _buildEmailStep();
-                    }
-                  },
+                // Step content wrapped in white container
+                Container(
+                  margin: const EdgeInsets.symmetric(horizontal: 20),
+                  padding: const EdgeInsets.all(24),
+                  decoration: BoxDecoration(
+                    color: Colors.white,
+                    borderRadius: BorderRadius.circular(12),
+                    boxShadow: [
+                      BoxShadow(
+                        color: Colors.black.withOpacity(0.05),
+                        blurRadius: 10,
+                        offset: const Offset(0, 2),
+                      ),
+                    ],
+                  ),
+                  child: Consumer<EmailVerificationModel>(
+                    builder: (context, model, child) {
+                      switch (model.emailVerificationStep) {
+                        case 1:
+                          return _buildEmailStep();
+                        case 2:
+                          return _buildCodeStep();
+                        default:
+                          return _buildEmailStep();
+                      }
+                    },
+                  ),
                 ),
+                
+                const SizedBox(height: 20),
               ],
             ),
           ),

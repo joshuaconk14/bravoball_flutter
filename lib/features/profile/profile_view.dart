@@ -5,14 +5,13 @@ import 'package:provider/provider.dart';
 import '../../constants/app_theme.dart';
 import '../../config/app_config.dart';
 import '../../services/user_manager_service.dart';
-import '../../services/login_service.dart';
-import '../../widgets/bravo_button.dart'; // ✅ ADDED: Import BravoButton
 import '../debug/debug_settings_view.dart';
 import '../onboarding/onboarding_flow.dart';
 import 'edit_details_view.dart';
 import 'change_password_view.dart';
 import 'privacy_policy_view.dart';
 import 'terms_of_service_view.dart';
+import 'account_settings_view.dart'; // ✅ ADDED: Import AccountSettingsView
 import '../../utils/haptic_utils.dart';
 
 class ProfileView extends StatefulWidget {
@@ -72,12 +71,13 @@ class _ProfileViewState extends State<ProfileView> {
                           },
                         ),
                       ],
+                      // ✅ ADDED: Account Settings menu item for logout/delete options
                       _buildMenuItem(
-                        icon: Icons.share_outlined,
-                        title: 'Share With a Friend',
+                        icon: Icons.settings_outlined,
+                        title: 'Manage Account',
                         onTap: () {
-                          HapticUtils.lightImpact(); // Light haptic for sharing
-                          _handleShareApp();
+                          HapticUtils.lightImpact(); // Light haptic for account settings
+                          _handleAccountSettings();
                         },
                       ),
                     ],
@@ -98,6 +98,31 @@ class _ProfileViewState extends State<ProfileView> {
                         },
                       ),
                       _buildMenuItem(
+                        icon: Icons.share_outlined,
+                        title: 'Share With a Friend',
+                        onTap: () {
+                          HapticUtils.lightImpact(); // Light haptic for sharing
+                          _handleShareApp();
+                        },
+                      ),
+                      _buildMenuItem(
+                        icon: Icons.link_outlined,
+                        title: 'Follow our Socials',
+                        onTap: () {
+                          HapticUtils.lightImpact(); // Light haptic for social links
+                          _handleFollowSocials();
+                        },
+                      ),
+                    ],
+                  ),
+                  
+                  const SizedBox(height: 16), // Reduced from 24
+                  
+                  // Other Section
+                  _buildSection(
+                    title: 'Other',
+                    items: [
+                      _buildMenuItem(
                         icon: Icons.privacy_tip_outlined,
                         title: 'Privacy Policy',
                         onTap: () {
@@ -111,14 +136,6 @@ class _ProfileViewState extends State<ProfileView> {
                         onTap: () {
                           HapticUtils.lightImpact(); // Light haptic for terms of service
                           _handleTermsOfService();
-                        },
-                      ),
-                      _buildMenuItem(
-                        icon: Icons.link_outlined,
-                        title: 'Follow our Socials',
-                        onTap: () {
-                          HapticUtils.lightImpact(); // Light haptic for social links
-                          _handleFollowSocials();
                         },
                       ),
                     ],
@@ -161,11 +178,6 @@ class _ProfileViewState extends State<ProfileView> {
                       color: AppTheme.primaryGray,
                     ),
                   ),
-                  
-                  const SizedBox(height: 20), // Reduced from 32
-                  
-                  // Action Buttons
-                  _buildActionButtons(),
                   
                   const SizedBox(height: 20), // Reduced from 32
                 ],
@@ -411,45 +423,6 @@ class _ProfileViewState extends State<ProfileView> {
     );
   }
 
-  Widget _buildActionButtons() {
-    return Consumer<UserManagerService>(
-      builder: (context, userManager, child) {
-        return Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 16), // Reduced from 20
-          child: Column(
-            children: [
-              // Logout Button
-              BravoButton(
-                onPressed: () {
-                  HapticUtils.mediumImpact(); // Medium haptic for logout
-                  _handleLogout(userManager);
-                },
-                text: 'Logout',
-                color: AppTheme.primaryYellow,
-                backColor: AppTheme.primaryDarkYellow,
-                textColor: Colors.white,
-              ),
-              
-              const SizedBox(height: 12), // Reduced from 16
-              
-              // Delete Account Button
-              BravoButton(
-                onPressed: () {
-                  HapticUtils.heavyImpact(); // Heavy haptic for destructive action
-                  _handleDeleteAccount();
-                },
-                text: 'Delete Account',
-                color: AppTheme.error,
-                backColor: AppTheme.errorDark,
-                textColor: Colors.white,
-              ),
-            ],
-          ),
-        );
-      },
-    );
-  }
-
   // Action Handlers
   void _handleEditDetails() {
     Navigator.of(context).push(
@@ -504,10 +477,6 @@ class _ProfileViewState extends State<ProfileView> {
     _showSocialLinksBottomSheet();
   }
 
-  void _handleDeleteAccount() {
-    _showDeleteAccountConfirmationDialog();
-  }
-
   // ✅ NEW: Handle create account for guest users
   void _handleCreateAccount() {
     // Navigate to onboarding flow
@@ -517,53 +486,10 @@ class _ProfileViewState extends State<ProfileView> {
     );
   }
 
-  void _showDeleteAccountConfirmationDialog() {
-    showDialog(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: const Text(
-          'Delete Account',
-          style: TextStyle(fontFamily: AppTheme.fontPoppins),
-        ),
-        content: const Text(
-          'Are you sure you want to delete your account? This action cannot be undone.',
-          style: TextStyle(fontFamily: AppTheme.fontPoppins),
-        ),
-        actions: [
-          TextButton(
-            onPressed: () {
-              HapticUtils.lightImpact();
-              Navigator.pop(context);
-            },
-            child: const Text(
-              'Cancel',
-              style: TextStyle(fontFamily: AppTheme.fontPoppins),
-            ),
-          ),
-          TextButton(
-            onPressed: () async {
-              HapticUtils.heavyImpact();
-              Navigator.pop(context);
-              
-              // Perform account deletion and navigate immediately
-              await LoginService.shared.deleteAccount();
-              
-              if (mounted) {
-                Navigator.of(context).pushAndRemoveUntil(
-                  MaterialPageRoute(builder: (context) => const OnboardingFlow()),
-                  (route) => false,
-                );
-              }
-            },
-            child: const Text(
-              'Delete',
-              style: TextStyle(
-                fontFamily: AppTheme.fontPoppins,
-                color: AppTheme.error,
-              ),
-            ),
-          ),
-        ],
+  void _handleAccountSettings() {
+    Navigator.of(context).push(
+      MaterialPageRoute(
+        builder: (context) => const AccountSettingsView(),
       ),
     );
   }
@@ -688,61 +614,6 @@ class _ProfileViewState extends State<ProfileView> {
             ],
           ),
         ),
-      ),
-    );
-  }
-
-  void _handleLogout(UserManagerService userManager) {
-    _showLogoutConfirmationDialog(userManager);
-  }
-
-  void _showLogoutConfirmationDialog(UserManagerService userManager) {
-    showDialog(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: const Text(
-          'Logout',
-          style: TextStyle(fontFamily: AppTheme.fontPoppins),
-        ),
-        content: const Text(
-          'Are you sure you want to logout?',
-          style: TextStyle(fontFamily: AppTheme.fontPoppins),
-        ),
-        actions: [
-          TextButton(
-            onPressed: () {
-              HapticUtils.lightImpact();
-              Navigator.pop(context);
-            },
-            child: const Text(
-              'Cancel',
-              style: TextStyle(fontFamily: AppTheme.fontPoppins),
-            ),
-          ),
-          TextButton(
-            onPressed: () async {
-              HapticUtils.mediumImpact();
-              Navigator.pop(context);
-              
-              // Perform logout and navigate immediately
-              await LoginService.shared.logoutUser();
-              
-              if (mounted) {
-                Navigator.of(context).pushAndRemoveUntil(
-                  MaterialPageRoute(builder: (context) => const OnboardingFlow()),
-                  (route) => false,
-                );
-              }
-            },
-            child: const Text(
-              'Logout',
-              style: TextStyle(
-                fontFamily: AppTheme.fontPoppins,
-                color: AppTheme.primaryYellow,
-              ),
-            ),
-          ),
-        ],
       ),
     );
   }

@@ -194,6 +194,43 @@ class CustomDrillService {
     }
   }
 
+  /// Update the video URL of a custom drill
+  Future<bool> updateCustomDrillVideo(String drillId, String newVideoPath) async {
+    try {
+      if (kDebugMode) {
+        print('🎬 Updating custom drill video: $drillId');
+        print('🎬 New video path: $newVideoPath');
+      }
+
+      final requestBody = {
+        'video_url': newVideoPath,
+      };
+
+      final response = await _apiService.patch(
+        '/api/custom-drills/$drillId/',
+        body: requestBody,
+        requiresAuth: true,
+      );
+
+      if (response.isSuccess) {
+        if (kDebugMode) {
+          print('✅ Successfully updated custom drill video: $drillId');
+        }
+        return true;
+      } else {
+        if (kDebugMode) {
+          print('❌ Failed to update custom drill video: ${response.statusCode} ${response.error}');
+        }
+        return false;
+      }
+    } catch (e) {
+      if (kDebugMode) {
+        print('❌ Error updating custom drill video: $e');
+      }
+      return false;
+    }
+  }
+
   /// Delete a custom drill
   Future<bool> deleteCustomDrill(String drillId) async {
     try {
