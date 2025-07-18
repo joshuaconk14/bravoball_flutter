@@ -2,7 +2,9 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter/foundation.dart';
 import 'package:provider/provider.dart';
+import 'package:video_player/video_player.dart';
 import 'dart:async';
+import 'dart:ui';
 import '../../models/editable_drill_model.dart';
 import '../../services/app_state_service.dart';
 import '../../services/audio_service.dart';
@@ -11,17 +13,16 @@ import '../../services/wake_lock_service.dart';
 import '../../constants/app_theme.dart';
 import '../../config/app_config.dart';
 import '../../widgets/bravo_button.dart';
-import '../../widgets/drill_video_player.dart';
 import '../../widgets/info_popup_widget.dart';
-import '../../widgets/warning_dialog.dart'; // ✅ NEW: Import reusable warning dialog
+import '../../widgets/warning_dialog.dart';
 import '../../utils/haptic_utils.dart';
-import '../../utils/skill_utils.dart'; // ✅ ADDED: Import centralized skill utilities
+import '../../utils/skill_utils.dart';
 import 'drill_detail_view.dart';
 import 'session_completion_view.dart';
-import '../../widgets/circular_drill_button.dart'; // ✅ NEW: Import circular drill button
-import 'package:rive/rive.dart';
-import '../../widgets/play_pause_button.dart'; // ✅ NEW: Import play pause button
-import '../../widgets/circular_control_button.dart'; // ✅ NEW: Import circular control button
+import '../../widgets/circular_drill_button.dart';
+import 'package:rive/rive.dart' as rive;
+import '../../widgets/play_pause_button.dart';
+import '../../widgets/circular_control_button.dart';
 
 class DrillFollowAlongView extends StatefulWidget {
   final EditableDrillModel editableDrill;
@@ -54,9 +55,16 @@ class _DrillFollowAlongViewState extends State<DrillFollowAlongView> {
   
   // UI state
   bool _showInfoSheet = false;
+  bool _hideUI = false; // For tap to hide UI functionality
   
   // Audio state
   bool _finalCountdownPlayed = false;
+  
+  // Video player controllers
+  VideoPlayerController? _videoController; // Single controller instead of two
+  bool _isVideoInitialized = false;
+  bool _hasVideo = false;
+  bool _isVideoLoading = false; // Add loading state
 
   @override
   void initState() {
@@ -66,8 +74,53 @@ class _DrillFollowAlongViewState extends State<DrillFollowAlongView> {
     _setDuration = _editableDrill.calculateSetDuration();
     _elapsedTime = _setDuration;
     
+    // Initialize video if available
+    if (_editableDrill.drill.videoUrl.isNotEmpty) {
+      _initializeVideo();
+    }
+    
     // Initialize background timer service
     _initializeBackgroundTimer();
+  }
+
+  Future<void> _initializeVideo() async {
+    try {
+      if (_editableDrill.drill.videoUrl.isEmpty) return;
+      
+      setState(() {
+        _isVideoLoading = true; // Start loading
+      });
+      
+      final videoUrl = Uri.parse(_editableDrill.drill.videoUrl);
+      
+      // Initialize single controller
+      _videoController = VideoPlayerController.networkUrl(videoUrl);
+      
+      await _videoController!.initialize();
+      
+      // Configure the controller
+      await Future.wait([
+        _videoController!.setLooping(true),
+        _videoController!.setVolume(0.0),
+      ]);
+      
+      // Start playing the video
+      await _videoController!.play();
+      
+      setState(() {
+        _isVideoInitialized = true;
+        _hasVideo = true;
+        _isVideoLoading = false; // Stop loading
+      });
+    } catch (e) {
+      if (kDebugMode) {
+        print('Video initialization error: $e');
+      }
+      setState(() {
+        _hasVideo = false;
+        _isVideoLoading = false; // Stop loading on error
+      });
+    }
   }
 
   Future<void> _initializeBackgroundTimer() async {
@@ -80,6 +133,9 @@ class _DrillFollowAlongViewState extends State<DrillFollowAlongView> {
 
   @override
   void dispose() {
+    // Clean up video controller
+    _videoController?.dispose();
+    
     // Clean up background timer and wake lock
     _stopAllTimers();
     super.dispose();
@@ -94,75 +150,301 @@ class _DrillFollowAlongViewState extends State<DrillFollowAlongView> {
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: Colors.white,
-      appBar: AppBar(
-        backgroundColor: Colors.white,
-        elevation: 0,
-        automaticallyImplyLeading: false,
-        title: Row(
+      body: GestureDetector(
+        onTap: () {
+          // Toggle UI visibility when tapping on video
+          if (_hasVideo) {
+            setState(() {
+              _hideUI = !_hideUI;
+            });
+          }
+        },
+        child: Stack(
           children: [
-            // Back button
-            IconButton(
-              icon: const Icon(Icons.close, color: Colors.black),
-              onPressed: () {
-                HapticUtils.lightImpact(); // Light haptic for navigation
-                // Only show warning if timer has been started (less than original duration)
-                if (_elapsedTime < _setDuration) {
-                  _showExitWarning();
-                } else {
-                  // Timer hasn't been started, exit directly
-                  Navigator.pop(context);
-                }
-              },
-            ),
-            const Spacer(),
-            // (Details button removed)
+            // Background layer
+            _buildBackground(),
+            
+            // UI Overlay (can be hidden)
+            if (!_hideUI) _buildUIOverlay(),
           ],
         ),
       ),
-      body: Column(
-        children: [
-          // Progress section at top - cleaner design
-          _buildProgressSection(),
-          
-          // Main content - flexible layout
-          Expanded(
-            child: SingleChildScrollView(
-              padding: const EdgeInsets.symmetric(horizontal: 20),
-              child: Column(
-                children: [
-                  const SizedBox(height: 12), // Reduced from 16
-                  _buildDrillHeader(),
-                  const SizedBox(height: 16), // Reduced from 20
-                  _buildVideoPlayer(),
-                  const SizedBox(height: 16), // Reduced from 20
-                  _buildPlayControls(),
-                  const SizedBox(height: 12), // Reduced from 16
-                  _buildActionButtons(),
-                  const SizedBox(height: 20), // Reduced from 40
-                ],
+    );
+  }
+
+  Widget _buildBackground() {
+    if (_isVideoLoading) {
+      return _buildVideoLoadingState();
+    } else if (_hasVideo && _isVideoInitialized && _videoController != null) {
+      return _buildVideoBackground();
+    } else {
+      return _buildNoVideoBackground();
+    }
+  }
+
+  Widget _buildVideoLoadingState() {
+    return Container(
+      color: Colors.white,
+      child: Center(
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            // Loading spinner
+            Container(
+              width: 60,
+              height: 60,
+              child: CircularProgressIndicator(
+                strokeWidth: 4,
+                valueColor: AlwaysStoppedAnimation<Color>(AppTheme.primaryYellow),
+              ),
+            ),
+            
+            const SizedBox(height: 24),
+            
+            // Loading text
+            const Text(
+              'Loading drill video...',
+              style: TextStyle(
+                fontFamily: 'Poppins',
+                fontSize: 16,
+                fontWeight: FontWeight.w600,
+                color: AppTheme.primaryDark,
+              ),
+            ),
+            
+            const SizedBox(height: 8),
+            
+            // Secondary text
+            Text(
+              'Please wait while we prepare your training',
+              style: TextStyle(
+                fontFamily: 'Poppins',
+                fontSize: 14,
+                fontWeight: FontWeight.w400,
+                color: Colors.grey.shade600,
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildVideoBackground() {
+    // Determine if video is portrait or landscape
+    final videoAspectRatio = _videoController!.value.aspectRatio;
+    final isPortraitVideo = videoAspectRatio < 1.0;
+    
+    return Stack(
+      children: [
+        // Blurred background video (full screen) - same video, blurred
+        Positioned.fill(
+          child: ClipRect(
+            child: ImageFiltered(
+              imageFilter: ImageFilter.blur(sigmaX: 20, sigmaY: 20),
+              child: FittedBox(
+                fit: BoxFit.cover, // This prevents warping while covering the full screen
+                child: SizedBox(
+                  width: _videoController!.value.size.width,
+                  height: _videoController!.value.size.height,
+                  child: VideoPlayer(_videoController!), // Same video controller
+                ),
               ),
             ),
           ),
+        ),
+        
+        // Sharp foreground video in center - same video, clear
+        Center(
+          child: Container(
+            width: MediaQuery.of(context).size.width, // Full width
+            height: isPortraitVideo 
+                ? MediaQuery.of(context).size.height * 0.6
+                : MediaQuery.of(context).size.width / videoAspectRatio,
+            child: ClipRRect(
+              borderRadius: BorderRadius.circular(0), // No border radius for edge-to-edge
+              child: VideoPlayer(_videoController!), // Same video controller
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildNoVideoBackground() {
+    return Container(
+      color: Colors.white,
+      child: Center(
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            // Message bubble above Bravo
+            Container(
+              margin: const EdgeInsets.only(bottom: 20),
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+              decoration: BoxDecoration(
+                color: AppTheme.lightGray,
+                borderRadius: BorderRadius.circular(20),
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.black.withOpacity(0.1),
+                    blurRadius: 8,
+                    offset: const Offset(0, 2),
+                  ),
+                ],
+              ),
+              child: const Text(
+                'No drill video yet, coming soon!',
+                style: TextStyle(
+                  fontFamily: 'Poppins',
+                  fontSize: 14,
+                  fontWeight: FontWeight.w600,
+                  color: AppTheme.primaryDark,
+                ),
+              ),
+            ),
+            
+            // Bravo character
+            Container(
+              width: 120,
+              height: 120,
+              child: const rive.RiveAnimation.asset(
+                'assets/rive/Bravo_Animation.riv',
+                fit: BoxFit.contain,
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildUIOverlay() {
+    return SafeArea(
+      child: Column(
+        children: [
+          // Top section with all drill info, progress, and close button
+          _buildTopSection(),
+          
+          const Spacer(),
+          
+          // Bottom section with timer and controls only
+          _buildBottomSection(),
         ],
       ),
     );
   }
 
-  Widget _buildProgressSection() {
+  Widget _buildTopSection() {
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
+      margin: const EdgeInsets.all(16),
+      padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: AppTheme.lightGray,
-        border: Border(
-          bottom: BorderSide(
-            color: Colors.grey.shade300,
-            width: 1,
+        color: Colors.white.withOpacity(0.7), // Reduced opacity from 0.85 to 0.7
+        borderRadius: BorderRadius.circular(16),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.1),
+            blurRadius: 8,
+            offset: const Offset(0, 2),
           ),
-        ),
+        ],
       ),
       child: Column(
         children: [
-          // Sets progress
+          // Row with close button and drill title
+          Row(
+            children: [
+              // Close button
+              GestureDetector(
+                onTap: () {
+                  HapticUtils.lightImpact();
+                  if (_elapsedTime < _setDuration) {
+                    _showExitWarning();
+                  } else {
+                    Navigator.pop(context);
+                  }
+                },
+                child: Container(
+                  padding: const EdgeInsets.all(8),
+                  decoration: BoxDecoration(
+                    color: Colors.grey.shade100,
+                    shape: BoxShape.circle,
+                  ),
+                  child: const Icon(
+                    Icons.close,
+                    color: Colors.black,
+                    size: 20,
+                  ),
+                ),
+              ),
+              
+              const SizedBox(width: 12),
+              
+              // Drill title (expanded to take remaining space)
+              Expanded(
+                child: Text(
+                  _editableDrill.drill.title,
+                  style: const TextStyle(
+                    fontFamily: 'Poppins',
+                    fontWeight: FontWeight.bold,
+                    fontSize: 18,
+                    color: Colors.black,
+                  ),
+                  maxLines: 2,
+                  overflow: TextOverflow.ellipsis,
+                ),
+              ),
+            ],
+          ),
+          
+          const SizedBox(height: 12),
+          
+          // Row with skill badge and drill info chips
+          Row(
+            children: [
+              // Skill badge
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                decoration: BoxDecoration(
+                  color: AppTheme.getSkillColor(_editableDrill.drill.skill).withOpacity(0.1),
+                  borderRadius: BorderRadius.circular(10),
+                  border: Border.all(
+                    color: AppTheme.getSkillColor(_editableDrill.drill.skill).withOpacity(0.3),
+                  ),
+                ),
+                child: Text(
+                  SkillUtils.formatSkillForDisplay(_editableDrill.drill.skill),
+                  style: TextStyle(
+                    fontFamily: 'Poppins',
+                    fontWeight: FontWeight.w600,
+                    fontSize: 11,
+                    color: AppTheme.getSkillColor(_editableDrill.drill.skill),
+                  ),
+                ),
+              ),
+              
+              const SizedBox(width: 8),
+              
+              // Drill info chips
+              Expanded(
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.end,
+                  children: [
+                    _buildInfoChip('${_editableDrill.totalSets} sets', Icons.repeat),
+                    const SizedBox(width: 6),
+                    _buildInfoChip('${_editableDrill.totalReps} reps', Icons.fitness_center),
+                    const SizedBox(width: 6),
+                    _buildInfoChip('${_editableDrill.totalDuration} mins', Icons.schedule),
+                  ],
+                ),
+              ),
+            ],
+          ),
+          
+          const SizedBox(height: 12),
+          
+          // Sets progress and completion percentage
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
@@ -171,13 +453,6 @@ class _DrillFollowAlongViewState extends State<DrillFollowAlongView> {
                 decoration: BoxDecoration(
                   color: AppTheme.primaryYellow,
                   borderRadius: BorderRadius.circular(20),
-                  boxShadow: [
-                    BoxShadow(
-                      color: AppTheme.primaryYellow.withOpacity(0.3),
-                      blurRadius: 4,
-                      offset: const Offset(0, 2),
-                    ),
-                  ],
                 ),
                 child: Text(
                   _editableDrill.setsDone >= _editableDrill.totalSets 
@@ -191,23 +466,13 @@ class _DrillFollowAlongViewState extends State<DrillFollowAlongView> {
                   ),
                 ),
               ),
-              Container(
-                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-                decoration: BoxDecoration(
-                  color: Colors.white,
-                  borderRadius: BorderRadius.circular(12),
-                  border: Border.all(
-                    color: Colors.grey.shade300,
-                  ),
-                ),
-                child: Text(
-                  '${(_editableDrill.progress * 100).toInt()}% Complete',
-                  style: TextStyle(
-                    fontFamily: 'Poppins',
-                    fontWeight: FontWeight.w600,
-                    fontSize: 12,
-                    color: Colors.grey.shade700,
-                  ),
+              Text(
+                '${(_editableDrill.progress * 100).toInt()}% Complete',
+                style: TextStyle(
+                  fontFamily: 'Poppins',
+                  fontWeight: FontWeight.w600,
+                  fontSize: 12,
+                  color: Colors.grey.shade700,
                 ),
               ),
             ],
@@ -215,19 +480,18 @@ class _DrillFollowAlongViewState extends State<DrillFollowAlongView> {
           
           const SizedBox(height: 12),
           
-          // Progress bar - simple and clean
+          // Progress bar
           LayoutBuilder(
             builder: (context, constraints) {
               return Container(
                 width: double.infinity,
                 height: 8,
                 decoration: BoxDecoration(
-                  color: Colors.white,
+                  color: Colors.grey.shade200,
                   borderRadius: BorderRadius.circular(4),
                 ),
                 child: Stack(
                   children: [
-                    // Progress fill - simple color
                     AnimatedContainer(
                       duration: const Duration(milliseconds: 500),
                       width: constraints.maxWidth * _editableDrill.progress,
@@ -247,60 +511,39 @@ class _DrillFollowAlongViewState extends State<DrillFollowAlongView> {
     );
   }
 
-  Widget _buildDrillHeader() {
-    return Column(
-      children: [
-        // Drill title
-        Text(
-          _editableDrill.drill.title,
-          style: const TextStyle(
-            fontFamily: 'Poppins',
-            fontWeight: FontWeight.bold,
-            fontSize: 20,
-            color: Colors.black,
+  Widget _buildBottomSection() {
+    return Container(
+      margin: const EdgeInsets.all(16),
+      padding: const EdgeInsets.all(12), // Reduced from 16
+      decoration: BoxDecoration(
+        color: Colors.white.withOpacity(0.7), // Reduced opacity from 0.85 to 0.7
+        borderRadius: BorderRadius.circular(20),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.1),
+            blurRadius: 12,
+            offset: const Offset(0, 4),
           ),
-          textAlign: TextAlign.center,
-          maxLines: 2,
-          overflow: TextOverflow.ellipsis,
-        ),
-        
-        const SizedBox(height: 6),
-        
-        // Skill badge
-        Container(
-          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-          decoration: BoxDecoration(
-            color: AppTheme.getSkillColor(_editableDrill.drill.skill).withOpacity(0.1),
-            borderRadius: BorderRadius.circular(12),
-            border: Border.all(
-              color: AppTheme.getSkillColor(_editableDrill.drill.skill).withOpacity(0.3),
-            ),
-          ),
-          child: Text(
-            SkillUtils.formatSkillForDisplay(_editableDrill.drill.skill), // ✅ UPDATED: Use centralized skill formatting
-            style: TextStyle(
-              fontFamily: 'Poppins',
-              fontWeight: FontWeight.w600,
-              fontSize: 11,
-              color: AppTheme.getSkillColor(_editableDrill.drill.skill),
-            ),
-          ),
-        ),
-        
-        const SizedBox(height: 8),
-        
-        // Session info row
-        Row(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            _buildInfoChip('${_editableDrill.totalSets} sets', Icons.repeat),
-            const SizedBox(width: 8),
-            _buildInfoChip('${_editableDrill.totalReps} reps', Icons.fitness_center),
-            const SizedBox(width: 8),
-            _buildInfoChip('${_editableDrill.totalDuration} mins', Icons.schedule),
-          ],
-        ),
-      ],
+        ],
+      ),
+      child: Column(
+        children: [
+          const SizedBox(height: 4), // Add small spacing to move timer down slightly
+          
+          // Timer display (simplified)
+          _buildTimerDisplay(),
+          
+          const SizedBox(height: 14), // Reduced from 16
+          
+          // Control buttons
+          _buildControlButtons(),
+          
+          const SizedBox(height: 10), // Reduced from 12
+          
+          // Done button
+          _buildDoneButton(),
+        ],
+      ),
     );
   }
 
@@ -334,219 +577,106 @@ class _DrillFollowAlongViewState extends State<DrillFollowAlongView> {
     );
   }
 
-  Widget _buildVideoPlayer() {
-    if (_editableDrill.drill.videoUrl.isNotEmpty) {
-      return Container(
-        height: 240, // Increased from 180 to make video bigger and easier to see
-        child: DrillVideoPlayer(
-          videoUrl: _editableDrill.drill.videoUrl,
-          aspectRatio: 16 / 9,
-          showControls: true,
-        ),
-      );
-    } else {
-      // Fallback placeholder when no video URL
-      return Container(
-        width: double.infinity,
-        height: 200, // Increased from 160 to match bigger video size
-        decoration: BoxDecoration(
-          color: Colors.grey.shade200,
-          borderRadius: BorderRadius.circular(16),
-        ),
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Icon(
-              Icons.videocam_off,
-              size: 40, // Reduced from 48
-              color: Colors.grey.shade600,
-            ),
-            const SizedBox(height: 6), // Reduced from 8
-            Text(
-              'No video for this drill right now,',
-              style: TextStyle(
-                fontFamily: 'Poppins',
-                fontSize: 12, // Reduced from 14
-                color: Colors.grey.shade600,
-              ),
-              textAlign: TextAlign.center,
-            ),
-            Text(
-              'coming soon!',
-              style: TextStyle(
-                fontFamily: 'Poppins',
-                fontSize: 12, // Reduced from 14
-                fontWeight: FontWeight.bold,
-                color: Colors.grey.shade700,
-              ),
-              textAlign: TextAlign.center,
-            ),
-          ],
-        ),
-      );
-    }
-  }
-
-  Widget _buildPlayControls() {
-    return Container(
-      padding: const EdgeInsets.all(16), // Reduced from 20
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(16),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withOpacity(0.08),
-            blurRadius: 10,
-            offset: const Offset(0, 2),
-          ),
-        ],
-      ),
-      child: Column(
-        children: [
-          // Timer display - more compact
-          Container(
-            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8), // Reduced padding
-            decoration: BoxDecoration(
-              color: AppTheme.lightGray,
-              borderRadius: BorderRadius.circular(12),
-            ),
-            child: Column(
-              children: [
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    Icon(
-                      Icons.timer,
-                      color: AppTheme.primaryYellow,
-                      size: 16, // Reduced from 18
-                    ),
-                    const SizedBox(width: 6), // Reduced from 8
-                    const Text(
-                      'Time Remaining',
-                      style: TextStyle(
-                        fontFamily: 'Poppins',
-                        fontWeight: FontWeight.w600,
-                        fontSize: 12, // Reduced from 14
-                        color: AppTheme.primaryDark,
-                      ),
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 6), // Reduced from 8
-                Text(
-                  _formatTime(_elapsedTime),
-                  style: const TextStyle(
-                    fontFamily: 'Poppins',
-                    fontWeight: FontWeight.bold,
-                    fontSize: 32, // Reduced from 38
-                    color: AppTheme.primaryDark,
-                  ),
-                ),
-              ],
-            ),
-          ),
-          
-          const SizedBox(height: 16), // Reduced from 20
-          
-          // Control buttons row
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-            children: [
-              // Info button
-              CircularControlButton(
-                icon: Icons.info_outline,
-                onPressed: () {
-                  HapticUtils.lightImpact(); // Light haptic for info
-                  _showInfoPopup();
-                },
-                color: AppTheme.primaryLightBlue,
-                size: 44,
-              ),
-              // Play/Pause button (larger) - more compact
-              PlayPauseButton(
-                isPlaying: _isPlaying,
-                onPlayPressed: () {
-                  _togglePlayPause();
-                },
-                onPausePressed: () {
-                  _togglePlayPause();
-                },
-                onCompletePressed: () {
-                  _completeDrill();
-                },
-                isComplete: _editableDrill.setsDone >= _editableDrill.totalSets,
-                countdownValue: _showCountdown ? _countdownValue : null,
-                debugMode: AppConfig.debug,
-                disabled: _editableDrill.setsDone >= _editableDrill.totalSets,
-                size: 80
-              ),
-              // Article (details) button - replaces ellipsis
-              CircularControlButton(
-                icon: Icons.article,
-                onPressed: () {
-                  HapticUtils.lightImpact();
-                  _showDrillDetails(context);
-                },
-                color: Colors.grey.shade500,
-                size: 44,
-              ),
-            ],
-          ),
-          
-          const SizedBox(height: 10), // Reduced from 12
-          
-        ],
+  Widget _buildTimerDisplay() {
+    return Text(
+      _formatTime(_elapsedTime),
+      style: const TextStyle(
+        fontFamily: 'Poppins',
+        fontWeight: FontWeight.bold,
+        fontSize: 28, // Reduced from 36
+        color: AppTheme.primaryDark,
       ),
     );
   }
 
-  Widget _buildActionButtons() {
-    return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 4),
-      child: Row(
-        children: [
-          // Done button - more compact
-          Expanded(
-            child: ElevatedButton(
-              onPressed: _editableDrill.setsDone >= _editableDrill.totalSets ? () {
-                HapticUtils.mediumImpact(); // Medium haptic for completion
-                _completeDrill();
-              } : null,
-              style: ElevatedButton.styleFrom(
-                backgroundColor: _editableDrill.setsDone >= _editableDrill.totalSets 
-                    ? AppTheme.success
-                    : Colors.grey.shade400,
-                foregroundColor: Colors.white,
-                elevation: _editableDrill.setsDone >= _editableDrill.totalSets ? 2 : 0,
-                shadowColor: _editableDrill.setsDone >= _editableDrill.totalSets 
-                    ? AppTheme.success.withOpacity(0.3) 
-                    : Colors.transparent,
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(16),
-                ),
-                padding: const EdgeInsets.symmetric(vertical: 10), // Reduced from 14
-              ),
-              child: Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  if (_editableDrill.setsDone >= _editableDrill.totalSets) ...[
-                    const Icon(Icons.check_circle, size: 16, color: Colors.white), // Reduced from 18
-                    const SizedBox(width: 4), // Reduced from 6
-                  ],
-                  const Text(
-                    'Done',
-                    style: TextStyle(
-                      fontFamily: 'Poppins',
-                      fontWeight: FontWeight.bold,
-                      fontSize: 14, // Reduced from 16
-                      color: Colors.white,
-                    ),
-                  ),
-                ],
+  Widget _buildControlButtons() {
+    return Row(
+      mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+      children: [
+        // Info button
+        CircularControlButton(
+          icon: Icons.info_outline,
+          onPressed: () {
+            HapticUtils.lightImpact();
+            _showInfoPopup();
+          },
+          color: AppTheme.primaryLightBlue,
+          size: 44, // Reduced from 50
+        ),
+        
+        // Play/Pause button (larger)
+        PlayPauseButton(
+          isPlaying: _isPlaying,
+          onPlayPressed: () {
+            _togglePlayPause();
+          },
+          onPausePressed: () {
+            _togglePlayPause();
+          },
+          onCompletePressed: () {
+            _completeDrill();
+          },
+          isComplete: _editableDrill.setsDone >= _editableDrill.totalSets,
+          countdownValue: _showCountdown ? _countdownValue : null,
+          debugMode: AppConfig.debug,
+          disabled: _editableDrill.setsDone >= _editableDrill.totalSets,
+          size: 70, // Reduced from 90
+        ),
+        
+        // Details button
+        CircularControlButton(
+          icon: Icons.article,
+          onPressed: () {
+            HapticUtils.lightImpact();
+            _showDrillDetails(context);
+          },
+          color: Colors.grey.shade500,
+          size: 44, // Reduced from 50
+        ),
+      ],
+    );
+  }
+
+  Widget _buildDoneButton() {
+    return SizedBox(
+      width: double.infinity,
+      child: ElevatedButton(
+        onPressed: _editableDrill.setsDone >= _editableDrill.totalSets ? () {
+          HapticUtils.mediumImpact();
+          _completeDrill();
+        } : null,
+        style: ElevatedButton.styleFrom(
+          backgroundColor: _editableDrill.setsDone >= _editableDrill.totalSets 
+              ? AppTheme.success
+              : Colors.grey.shade400,
+          foregroundColor: Colors.white,
+          elevation: _editableDrill.setsDone >= _editableDrill.totalSets ? 2 : 0,
+          shadowColor: _editableDrill.setsDone >= _editableDrill.totalSets 
+              ? AppTheme.success.withOpacity(0.3) 
+              : Colors.transparent,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(16),
+          ),
+          padding: const EdgeInsets.symmetric(vertical: 12), // Reduced from 16
+        ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            if (_editableDrill.setsDone >= _editableDrill.totalSets) ...[
+              const Icon(Icons.check_circle, size: 18, color: Colors.white), // Reduced from 20
+              const SizedBox(width: 6), // Reduced from 8
+            ],
+            const Text(
+              'Done',
+              style: TextStyle(
+                fontFamily: 'Poppins',
+                fontWeight: FontWeight.bold,
+                fontSize: 16, // Reduced from 18
+                color: Colors.white,
               ),
             ),
-          ),
-        ],
+          ],
+        ),
       ),
     );
   }
@@ -599,7 +729,7 @@ class _DrillFollowAlongViewState extends State<DrillFollowAlongView> {
     // Start background countdown with drill name for lock screen widget
     _backgroundTimer.startCountdown(
       countdownValue: 3,
-      drillName: _editableDrill.drill.title, // Pass drill name to lock screen widget
+      drillName: _editableDrill.drill.title,
       onTick: (value) {
         if (mounted) {
           setState(() {
@@ -623,7 +753,7 @@ class _DrillFollowAlongViewState extends State<DrillFollowAlongView> {
     // Start background timer with callbacks and drill name for lock screen widget
     _backgroundTimer.startTimer(
       durationSeconds: _elapsedTime,
-      drillName: _editableDrill.drill.title, // Pass drill name to lock screen widget
+      drillName: _editableDrill.drill.title,
       debugMode: AppConfig.debug,
       onTick: (remainingTime) {
         if (mounted) {
@@ -667,7 +797,7 @@ class _DrillFollowAlongViewState extends State<DrillFollowAlongView> {
     await _stopAllTimers();
     
     _editableDrill.isCompleted = true;
-    _editableDrill.setsDone = _editableDrill.totalSets; // Ensure setsDone equals totalSets when completed
+    _editableDrill.setsDone = _editableDrill.totalSets;
     
     // Update the drill in the session
     _updateDrillInSession();
@@ -717,7 +847,7 @@ class _DrillFollowAlongViewState extends State<DrillFollowAlongView> {
     InfoPopupWidget.show(
       context,
       title: 'Background Timer & Lock Screen Widget',
-      description: 'This drill timer will continue running even when your phone screen is off!\n\n🔒 Lock Screen Widget: See live countdown and progress on your lock screen\n\n🎵 Audio Cues: Turn off silent mode and turn up your audio to hear countdown sounds and completion alerts.\n\n⏱️ Background Timer: The timer uses background audio to keep running when you lock your phone or switch apps.\n\n▶️ Controls: Use pause/resume buttons in the lock screen notification.\n\nPress play to start the 3-second countdown, then use the timer to pace yourself during reps.',
+      description: 'This drill timer will continue running even when your phone screen is off!\n\n🔒 Lock Screen Widget: See live countdown and progress on your lock screen\n\n🎵 Audio Cues: Turn off silent mode and turn up your audio to hear countdown sounds and completion alerts.\n\n⏱️ Background Timer: The timer uses background audio to keep running when you lock your phone or switch apps.\n\n▶️ Controls: Use pause/resume buttons in the lock screen notification.\n\nPress play to start the 3-second countdown, then use the timer to pace yourself during reps.\n\n👆 Tap anywhere on the video to hide/show controls for a cleaner view!',
       riveFileName: 'Bravo_Animation.riv',
     );
   }
