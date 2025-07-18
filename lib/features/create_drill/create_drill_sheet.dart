@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import 'package:image_picker/image_picker.dart'; // Add this import for video picker
+import 'dart:io'; // Add this import for File support
 import '../../models/drill_model.dart';
 import '../../models/drill_group_model.dart';
 import '../../services/custom_drill_service.dart';
@@ -8,6 +10,7 @@ import '../../constants/app_theme.dart';
 import '../../utils/haptic_utils.dart';
 import '../../widgets/bravo_button.dart';
 import '../../widgets/info_popup_widget.dart'; // ✅ ADDED: Import for reusable info popup
+import '../../widgets/drill_video_player.dart'; // Add this import for video preview
 import '../../features/onboarding/onboarding_flow.dart'; // ✅ ADDED: Import for navigation to onboarding
 
 class CreateDrillSheet extends StatefulWidget {
@@ -41,6 +44,12 @@ class _CreateDrillSheetState extends State<CreateDrillSheet> {
   
   bool _isLoading = false;
   DrillModel? _createdDrill;
+
+  // Video picking functionality
+  final ImagePicker _picker = ImagePicker();
+  File? _selectedVideoFile;
+  String? _videoPath;
+  bool _isVideoLoading = false;
 
   final List<String> _availableSkills = [
     'Passing',
@@ -136,6 +145,166 @@ class _CreateDrillSheetState extends State<CreateDrillSheet> {
     HapticUtils.lightImpact();
   }
 
+  // Video picker methods
+  Future<void> _pickVideo() async {
+    try {
+      print('🎬 Starting video picker...');
+      print('🎬 Image picker instance: $_picker');
+      
+      setState(() {
+        _isVideoLoading = true;
+      });
+
+      print('🎬 Attempting to pick video from gallery...');
+      
+      // Try to pick video with retry mechanism
+      XFile? video;
+      int retryCount = 0;
+      const maxRetries = 3;
+      
+      while (video == null && retryCount < maxRetries) {
+        try {
+          video = await _picker.pickVideo(
+            source: ImageSource.gallery,
+            maxDuration: const Duration(minutes: 1),
+          );
+          break;
+        } catch (e) {
+          retryCount++;
+          print('🎬 Attempt $retryCount failed: $e');
+          
+          if (retryCount < maxRetries) {
+            print('🎬 Retrying in 1 second...');
+            await Future.delayed(const Duration(seconds: 1));
+          } else {
+            rethrow;
+          }
+        }
+      }
+
+      print('🎬 Video picker result: ${video?.path ?? 'null'}');
+
+      if (video != null) {
+        print('🎬 Video selected: ${video.path}');
+        final file = File(video.path);
+        
+        // Check if file exists
+        final exists = await file.exists();
+        print('🎬 File exists: $exists');
+        
+        if (exists) {
+          final size = await file.length();
+          print('🎬 File size: ${size} bytes');
+        }
+        
+        setState(() {
+          _selectedVideoFile = file;
+          _videoPath = video!.path; // Use ! since we already checked video != null
+          _isVideoLoading = false;
+        });
+        HapticUtils.lightImpact();
+        
+        // Show success message
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('Video selected successfully!'),
+              backgroundColor: Colors.green,
+              duration: Duration(seconds: 2),
+            ),
+          );
+        }
+      } else {
+        print('🎬 No video selected (user cancelled)');
+        setState(() {
+          _isVideoLoading = false;
+        });
+        
+        // Show info message
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('No video selected'),
+              duration: Duration(seconds: 1),
+            ),
+          );
+        }
+      }
+    } catch (e, stackTrace) {
+      print('🎬 Error picking video: $e');
+      print('🎬 Stack trace: $stackTrace');
+      
+      setState(() {
+        _isVideoLoading = false;
+      });
+      
+      // Enhanced error messages based on error type
+      String errorMessage = 'Error picking video';
+      String actionText = 'Retry';
+      
+      if (e.toString().contains('channel-error')) {
+        errorMessage = 'Camera/Photos access issue. Please restart the app and try again.';
+        actionText = 'Settings';
+      } else if (e.toString().contains('permission')) {
+        errorMessage = 'Permission denied. Please allow photo library access in Settings.';
+        actionText = 'Settings';
+      } else {
+        errorMessage = 'Error picking video: ${e.toString()}';
+      }
+      
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(errorMessage),
+            backgroundColor: AppTheme.error,
+            duration: const Duration(seconds: 5),
+            action: SnackBarAction(
+              label: actionText,
+              textColor: Colors.white,
+              onPressed: actionText == 'Settings' ? _showPermissionDialog : _pickVideo,
+            ),
+          ),
+        );
+      }
+    }
+  }
+
+  // Show permission dialog
+  void _showPermissionDialog() {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Photo Library Access'),
+        content: const Text(
+          'This app needs access to your photo library to select videos for custom drills.\n\n'
+          'Please go to Settings > Privacy & Security > Photos and enable access for BravoBall.',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('Cancel'),
+          ),
+          ElevatedButton(
+            onPressed: () {
+              Navigator.pop(context);
+              // Note: Opening settings would require url_launcher with specific iOS settings URL
+            },
+            style: ElevatedButton.styleFrom(backgroundColor: AppTheme.primaryYellow),
+            child: const Text('OK', style: TextStyle(color: Colors.white)),
+          ),
+        ],
+      ),
+    );
+  }
+
+  void _removeVideo() {
+    setState(() {
+      _selectedVideoFile = null;
+      _videoPath = null;
+    });
+    HapticUtils.lightImpact();
+  }
+
   void _toggleSubSkill(String subSkill) {
     setState(() {
       if (_subSkills.contains(subSkill)) {
@@ -183,7 +352,7 @@ class _CreateDrillSheetState extends State<CreateDrillSheet> {
         equipment: _equipment,
         trainingStyle: _selectedTrainingStyle,
         difficulty: _selectedDifficulty,
-        videoUrl: '', // ✅ UPDATED: No longer collecting video URL from users
+        videoUrl: _videoPath ?? '', // ✅ UPDATED: Pass the selected video path
       );
 
       if (drill != null) {
@@ -924,84 +1093,207 @@ Custom drills are personalized training exercises that you create specifically f
                     ],
                     const SizedBox(height: 24),
                     
-                    // Video Upload - Coming Soon
-                    _buildSectionTitle('Video Upload'),
+                    // Video Upload
+                    _buildSectionTitle('Video Upload (Optional)'),
                     const SizedBox(height: 16),
                     
-                    Container(
-                      width: double.infinity,
-                      padding: const EdgeInsets.all(20),
-                      decoration: BoxDecoration(
-                        gradient: LinearGradient(
-                          colors: [
-                            AppTheme.primaryYellow.withOpacity(0.1),
-                            AppTheme.primaryYellow.withOpacity(0.05),
-                          ],
-                          begin: Alignment.topLeft,
-                          end: Alignment.bottomRight,
+                    // Video picker and preview section
+                    if (_isVideoLoading)
+                      Container(
+                        width: double.infinity,
+                        height: 200,
+                        decoration: BoxDecoration(
+                          color: AppTheme.lightGray,
+                          borderRadius: BorderRadius.circular(12),
                         ),
-                        borderRadius: BorderRadius.circular(12),
-                        border: Border.all(
-                          color: AppTheme.primaryYellow.withOpacity(0.3),
-                          width: 1,
-                        ),
-                      ),
-                      child: Column(
-                        children: [
-                          Icon(
-                            Icons.videocam_outlined,
-                            size: 40,
-                            color: AppTheme.primaryYellow,
-                          ),
-                          const SizedBox(height: 12),
-                          const Text(
-                            'Video Upload Coming Soon!',
-                            style: TextStyle(
-                              fontSize: 18,
-                              fontWeight: FontWeight.bold,
-                              color: AppTheme.primaryDark,
-                            ),
-                          ),
-                          const SizedBox(height: 8),
-                          const Text(
-                            'Soon you\'ll be able to record and upload videos of your custom drills to help and share your creativity with the BravoBall community!',
-                            style: TextStyle(
-                              fontSize: 14,
-                              color: AppTheme.primaryGray,
-                              height: 1.4,
-                            ),
-                            textAlign: TextAlign.center,
-                          ),
-                          const SizedBox(height: 16),
-                          Container(
-                            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-                            decoration: BoxDecoration(
-                              color: AppTheme.primaryYellow.withOpacity(0.2),
-                              borderRadius: BorderRadius.circular(20),
-                            ),
-                            child: Row(
-                              mainAxisSize: MainAxisSize.min,
-                              children: [
-                                Icon(
-                                  Icons.rocket_launch,
-                                  size: 16,
-                                  color: AppTheme.primaryYellow,
+                        child: const Center(
+                          child: Column(
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            children: [
+                              CircularProgressIndicator(
+                                valueColor: AlwaysStoppedAnimation<Color>(AppTheme.primaryYellow),
+                              ),
+                              SizedBox(height: 12),
+                              Text(
+                                'Loading video...',
+                                style: TextStyle(
+                                  fontSize: 16,
+                                  fontWeight: FontWeight.w600,
+                                  color: AppTheme.primaryDark,
                                 ),
-                                const SizedBox(width: 6),
-                                const Text(
-                                  'Stay tuned for updates!',
-                                  style: TextStyle(
-                                    fontSize: 12,
-                                    fontWeight: FontWeight.w600,
-                                    color: AppTheme.primaryDark,
-                                  ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      )
+                    else if (_selectedVideoFile != null && _videoPath != null)
+                      // Video preview and remove option
+                      Column(
+                        children: [
+                          Container(
+                            decoration: BoxDecoration(
+                              borderRadius: BorderRadius.circular(12),
+                              boxShadow: [
+                                BoxShadow(
+                                  color: Colors.black.withOpacity(0.1),
+                                  blurRadius: 8,
+                                  offset: const Offset(0, 4),
                                 ),
                               ],
                             ),
+                            child: ClipRRect(
+                              borderRadius: BorderRadius.circular(12),
+                              child: DrillVideoPlayer(
+                                videoUrl: _videoPath!,
+                                aspectRatio: 16 / 9,
+                                showControls: true,
+                              ),
+                            ),
+                          ),
+                          const SizedBox(height: 12),
+                          Row(
+                            children: [
+                              Icon(
+                                Icons.check_circle,
+                                color: AppTheme.success,
+                                size: 20,
+                              ),
+                              const SizedBox(width: 8),
+                              const Expanded(
+                                child: Text(
+                                  'Video selected successfully!',
+                                  style: TextStyle(
+                                    fontSize: 14,
+                                    fontWeight: FontWeight.w600,
+                                    color: AppTheme.success,
+                                  ),
+                                ),
+                              ),
+                              TextButton.icon(
+                                onPressed: _removeVideo,
+                                icon: const Icon(Icons.delete, color: AppTheme.error),
+                                label: const Text(
+                                  'Remove',
+                                  style: TextStyle(color: AppTheme.error),
+                                ),
+                              ),
+                            ],
                           ),
                         ],
+                      )
+                    else
+                      // Video picker button
+                      Container(
+                        width: double.infinity,
+                        padding: const EdgeInsets.all(20),
+                        decoration: BoxDecoration(
+                          border: Border.all(
+                            color: AppTheme.primaryYellow.withOpacity(0.3),
+                            width: 2,
+                            style: BorderStyle.solid,
+                          ),
+                          borderRadius: BorderRadius.circular(12),
+                          color: AppTheme.primaryYellow.withOpacity(0.05),
+                        ),
+                        child: Column(
+                          children: [
+                            Icon(
+                              Icons.videocam_outlined,
+                              size: 48,
+                              color: AppTheme.primaryYellow,
+                            ),
+                            const SizedBox(height: 16),
+                            const Text(
+                              'Add a Video of Your Drill',
+                              style: TextStyle(
+                                fontSize: 18,
+                                fontWeight: FontWeight.bold,
+                                color: AppTheme.primaryDark,
+                              ),
+                            ),
+                            const SizedBox(height: 8),
+                            const Text(
+                              'Upload a video from your camera roll to demonstrate your custom drill. This helps you remember the technique!',
+                              style: TextStyle(
+                                fontSize: 14,
+                                color: AppTheme.primaryGray,
+                                height: 1.4,
+                              ),
+                              textAlign: TextAlign.center,
+                            ),
+                            const SizedBox(height: 20),
+                            ElevatedButton.icon(
+                              onPressed: _pickVideo,
+                              icon: const Icon(Icons.upload, color: Colors.white),
+                              label: const Text(
+                                'Choose Video from Camera Roll',
+                                style: TextStyle(
+                                  fontSize: 16,
+                                  fontWeight: FontWeight.w600,
+                                  color: Colors.white,
+                                ),
+                              ),
+                              style: ElevatedButton.styleFrom(
+                                backgroundColor: AppTheme.primaryYellow,
+                                padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+                                shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(12),
+                                ),
+                                elevation: 2,
+                              ),
+                            ),
+                            const SizedBox(height: 12),
+                            TextButton.icon(
+                              onPressed: () {
+                                setState(() {
+                                  // Skip video for now - this will create drill without video
+                                });
+                                ScaffoldMessenger.of(context).showSnackBar(
+                                  const SnackBar(
+                                    content: Text('Proceeding without video. You can create the drill and add video later.'),
+                                    duration: Duration(seconds: 2),
+                                  ),
+                                );
+                              },
+                              icon: const Icon(Icons.skip_next, color: AppTheme.primaryGray),
+                              label: const Text(
+                                'Skip video for now',
+                                style: TextStyle(
+                                  fontSize: 14,
+                                  color: AppTheme.primaryGray,
+                                ),
+                              ),
+                            ),
+                            const SizedBox(height: 12),
+                            Container(
+                              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                              decoration: BoxDecoration(
+                                color: AppTheme.primaryYellow.withOpacity(0.1),
+                                borderRadius: BorderRadius.circular(16),
+                              ),
+                              child: Row(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  Icon(
+                                    Icons.info_outline,
+                                    size: 16,
+                                    color: AppTheme.primaryYellow,
+                                  ),
+                                  const SizedBox(width: 6),
+                                  const Text(
+                                    'Videos are stored locally on your device',
+                                    style: TextStyle(
+                                      fontSize: 12,
+                                      fontWeight: FontWeight.w500,
+                                      color: AppTheme.primaryDark,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ],
+                        ),
                       ),
-                    ),
                     const SizedBox(height: 32),
                     
                     // Create Button

@@ -5,6 +5,7 @@ import 'package:provider/provider.dart';
 import 'package:video_player/video_player.dart';
 import 'dart:async';
 import 'dart:ui';
+import 'dart:io'; // ✅ ADDED: Import for File support
 import '../../models/editable_drill_model.dart';
 import '../../services/app_state_service.dart';
 import '../../services/audio_service.dart';
@@ -15,6 +16,7 @@ import '../../config/app_config.dart';
 import '../../widgets/bravo_button.dart';
 import '../../widgets/info_popup_widget.dart';
 import '../../widgets/warning_dialog.dart';
+import '../../widgets/drill_video_background.dart'; // ✅ ADDED: Import new reusable widget
 import '../../utils/haptic_utils.dart';
 import '../../utils/skill_utils.dart';
 import 'drill_detail_view.dart';
@@ -40,7 +42,8 @@ class DrillFollowAlongView extends StatefulWidget {
   State<DrillFollowAlongView> createState() => _DrillFollowAlongViewState();
 }
 
-class _DrillFollowAlongViewState extends State<DrillFollowAlongView> {
+class _DrillFollowAlongViewState extends State<DrillFollowAlongView>
+    with TickerProviderStateMixin {
   late EditableDrillModel _editableDrill;
   
   // Background timer service
@@ -60,11 +63,15 @@ class _DrillFollowAlongViewState extends State<DrillFollowAlongView> {
   // Audio state
   bool _finalCountdownPlayed = false;
   
-  // Video player controllers
-  VideoPlayerController? _videoController; // Single controller instead of two
-  bool _isVideoInitialized = false;
-  bool _hasVideo = false;
-  bool _isVideoLoading = false; // Add loading state
+  // ✅ ADDED: Animation controllers for UI overlay containers
+  late AnimationController _uiAnimationController;
+  late Animation<double> _topSectionSlideAnimation;
+  late Animation<double> _bottomSectionSlideAnimation;
+  late Animation<double> _uiFadeAnimation;
+  late Animation<double> _topSectionScaleAnimation;
+  late Animation<double> _bottomSectionScaleAnimation;
+  
+  // ✅ REMOVED: Video player controller and related state - now handled by DrillVideoBackground
 
   @override
   void initState() {
@@ -74,53 +81,60 @@ class _DrillFollowAlongViewState extends State<DrillFollowAlongView> {
     _setDuration = _editableDrill.calculateSetDuration();
     _elapsedTime = _setDuration;
     
-    // Initialize video if available
-    if (_editableDrill.drill.videoUrl.isNotEmpty) {
-      _initializeVideo();
-    }
+    // ✅ ADDED: Initialize UI animation controller
+    _uiAnimationController = AnimationController(
+      duration: const Duration(milliseconds: 800),
+      vsync: this,
+    );
+
+    // ✅ ADDED: Setup UI animations
+    _uiFadeAnimation = Tween<double>(
+      begin: 0.0,
+      end: 1.0,
+    ).animate(CurvedAnimation(
+      parent: _uiAnimationController,
+      curve: const Interval(0.0, 0.6, curve: Curves.easeOut),
+    ));
+
+    _topSectionSlideAnimation = Tween<double>(
+      begin: -50.0,
+      end: 0.0,
+    ).animate(CurvedAnimation(
+      parent: _uiAnimationController,
+      curve: const Interval(0.0, 0.7, curve: Curves.easeOutCubic),
+    ));
+
+    _bottomSectionSlideAnimation = Tween<double>(
+      begin: 50.0,
+      end: 0.0,
+    ).animate(CurvedAnimation(
+      parent: _uiAnimationController,
+      curve: const Interval(0.2, 0.9, curve: Curves.easeOutCubic),
+    ));
+
+    _topSectionScaleAnimation = Tween<double>(
+      begin: 0.8,
+      end: 1.0,
+    ).animate(CurvedAnimation(
+      parent: _uiAnimationController,
+      curve: const Interval(0.0, 0.6, curve: Curves.easeOutBack),
+    ));
+
+    _bottomSectionScaleAnimation = Tween<double>(
+      begin: 0.8,
+      end: 1.0,
+    ).animate(CurvedAnimation(
+      parent: _uiAnimationController,
+      curve: const Interval(0.2, 0.8, curve: Curves.easeOutBack),
+    ));
+    
+    // ✅ REMOVED: Video initialization - now handled by DrillVideoBackground
     
     // Initialize background timer service
     _initializeBackgroundTimer();
-  }
-
-  Future<void> _initializeVideo() async {
-    try {
-      if (_editableDrill.drill.videoUrl.isEmpty) return;
-      
-      setState(() {
-        _isVideoLoading = true; // Start loading
-      });
-      
-      final videoUrl = Uri.parse(_editableDrill.drill.videoUrl);
-      
-      // Initialize single controller
-      _videoController = VideoPlayerController.networkUrl(videoUrl);
-      
-      await _videoController!.initialize();
-      
-      // Configure the controller
-      await Future.wait([
-        _videoController!.setLooping(true),
-        _videoController!.setVolume(0.0),
-      ]);
-      
-      // Start playing the video
-      await _videoController!.play();
-      
-      setState(() {
-        _isVideoInitialized = true;
-        _hasVideo = true;
-        _isVideoLoading = false; // Stop loading
-      });
-    } catch (e) {
-      if (kDebugMode) {
-        print('Video initialization error: $e');
-      }
-      setState(() {
-        _hasVideo = false;
-        _isVideoLoading = false; // Stop loading on error
-      });
-    }
+    
+    // ✅ ADDED: Start UI animations
+    _uiAnimationController.forward();
   }
 
   Future<void> _initializeBackgroundTimer() async {
@@ -133,8 +147,10 @@ class _DrillFollowAlongViewState extends State<DrillFollowAlongView> {
 
   @override
   void dispose() {
-    // Clean up video controller
-    _videoController?.dispose();
+    // ✅ REMOVED: Video controller disposal - now handled by DrillVideoBackground
+    
+    // ✅ ADDED: Dispose UI animation controller
+    _uiAnimationController.dispose();
     
     // Clean up background timer and wake lock
     _stopAllTimers();
@@ -148,189 +164,56 @@ class _DrillFollowAlongViewState extends State<DrillFollowAlongView> {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: Colors.white,
-      body: GestureDetector(
-        onTap: () {
-          // Toggle UI visibility when tapping on video
-          if (_hasVideo) {
-            setState(() {
-              _hideUI = !_hideUI;
-            });
-          }
-        },
-        child: Stack(
-          children: [
-            // Background layer
-            _buildBackground(),
-            
-            // UI Overlay (can be hidden)
-            if (!_hideUI) _buildUIOverlay(),
-          ],
-        ),
-      ),
+    // ✅ UPDATED: Use new reusable DrillVideoBackground widget
+    return DrillVideoBackground(
+      videoUrl: _editableDrill.drill.videoUrl,
+      onTap: () {
+        // Toggle UI visibility when tapping on video
+        setState(() {
+          _hideUI = !_hideUI;
+        });
+      },
+      child: !_hideUI ? _buildUIOverlay() : const SizedBox.shrink(),
     );
   }
 
-  Widget _buildBackground() {
-    if (_isVideoLoading) {
-      return _buildVideoLoadingState();
-    } else if (_hasVideo && _isVideoInitialized && _videoController != null) {
-      return _buildVideoBackground();
-    } else {
-      return _buildNoVideoBackground();
-    }
-  }
-
-  Widget _buildVideoLoadingState() {
-    return Container(
-      color: Colors.white,
-      child: Center(
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            // Loading spinner
-            Container(
-              width: 60,
-              height: 60,
-              child: CircularProgressIndicator(
-                strokeWidth: 4,
-                valueColor: AlwaysStoppedAnimation<Color>(AppTheme.primaryYellow),
-              ),
-            ),
-            
-            const SizedBox(height: 24),
-            
-            // Loading text
-            const Text(
-              'Loading drill video...',
-              style: TextStyle(
-                fontFamily: 'Poppins',
-                fontSize: 16,
-                fontWeight: FontWeight.w600,
-                color: AppTheme.primaryDark,
-              ),
-            ),
-            
-            const SizedBox(height: 8),
-            
-            // Secondary text
-            Text(
-              'Please wait while we prepare your training',
-              style: TextStyle(
-                fontFamily: 'Poppins',
-                fontSize: 14,
-                fontWeight: FontWeight.w400,
-                color: Colors.grey.shade600,
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  Widget _buildVideoBackground() {
-    // Determine if video is portrait or landscape
-    final videoAspectRatio = _videoController!.value.aspectRatio;
-    final isPortraitVideo = videoAspectRatio < 1.0;
-    
-    return Stack(
-      children: [
-        // Blurred background video (full screen) - same video, blurred
-        Positioned.fill(
-          child: ClipRect(
-            child: ImageFiltered(
-              imageFilter: ImageFilter.blur(sigmaX: 20, sigmaY: 20),
-              child: FittedBox(
-                fit: BoxFit.cover, // This prevents warping while covering the full screen
-                child: SizedBox(
-                  width: _videoController!.value.size.width,
-                  height: _videoController!.value.size.height,
-                  child: VideoPlayer(_videoController!), // Same video controller
-                ),
-              ),
-            ),
-          ),
-        ),
-        
-        // Sharp foreground video in center - same video, clear
-        Center(
-          child: Container(
-            width: MediaQuery.of(context).size.width, // Full width
-            height: isPortraitVideo 
-                ? MediaQuery.of(context).size.height * 0.6
-                : MediaQuery.of(context).size.width / videoAspectRatio,
-            child: ClipRRect(
-              borderRadius: BorderRadius.circular(0), // No border radius for edge-to-edge
-              child: VideoPlayer(_videoController!), // Same video controller
-            ),
-          ),
-        ),
-      ],
-    );
-  }
-
-  Widget _buildNoVideoBackground() {
-    return Container(
-      color: Colors.white,
-      child: Center(
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            // Message bubble above Bravo
-            Container(
-              margin: const EdgeInsets.only(bottom: 20),
-              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-              decoration: BoxDecoration(
-                color: AppTheme.lightGray,
-                borderRadius: BorderRadius.circular(20),
-                boxShadow: [
-                  BoxShadow(
-                    color: Colors.black.withOpacity(0.1),
-                    blurRadius: 8,
-                    offset: const Offset(0, 2),
-                  ),
-                ],
-              ),
-              child: const Text(
-                'No drill video yet, coming soon!',
-                style: TextStyle(
-                  fontFamily: 'Poppins',
-                  fontSize: 14,
-                  fontWeight: FontWeight.w600,
-                  color: AppTheme.primaryDark,
-                ),
-              ),
-            ),
-            
-            // Bravo character
-            Container(
-              width: 120,
-              height: 120,
-              child: const rive.RiveAnimation.asset(
-                'assets/rive/Bravo_Animation.riv',
-                fit: BoxFit.contain,
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
+  // ✅ REMOVED: All video background building methods - now handled by DrillVideoBackground
 
   Widget _buildUIOverlay() {
     return SafeArea(
-      child: Column(
-        children: [
-          // Top section with all drill info, progress, and close button
-          _buildTopSection(),
-          
-          const Spacer(),
-          
-          // Bottom section with timer and controls only
-          _buildBottomSection(),
-        ],
+      child: AnimatedBuilder(
+        animation: _uiAnimationController,
+        builder: (context, child) {
+          return Column(
+            children: [
+              // ✅ ANIMATED: Top section with slide, scale, and fade animations
+              Transform.translate(
+                offset: Offset(0, _topSectionSlideAnimation.value),
+                child: Transform.scale(
+                  scale: _topSectionScaleAnimation.value,
+                  child: FadeTransition(
+                    opacity: _uiFadeAnimation,
+                    child: _buildTopSection(),
+                  ),
+                ),
+              ),
+              
+              const Spacer(),
+              
+              // ✅ ANIMATED: Bottom section with slide, scale, and fade animations
+              Transform.translate(
+                offset: Offset(0, _bottomSectionSlideAnimation.value),
+                child: Transform.scale(
+                  scale: _bottomSectionScaleAnimation.value,
+                  child: FadeTransition(
+                    opacity: _uiFadeAnimation,
+                    child: _buildBottomSection(),
+                  ),
+                ),
+              ),
+            ],
+          );
+        },
       ),
     );
   }
@@ -340,7 +223,7 @@ class _DrillFollowAlongViewState extends State<DrillFollowAlongView> {
       margin: const EdgeInsets.all(16),
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: Colors.white.withOpacity(0.7), // Reduced opacity from 0.85 to 0.7
+        color: Colors.white.withOpacity(0.9), // ✅ UPDATED: Increased opacity from 0.7 to 0.9
         borderRadius: BorderRadius.circular(16),
         boxShadow: [
           BoxShadow(
@@ -516,7 +399,7 @@ class _DrillFollowAlongViewState extends State<DrillFollowAlongView> {
       margin: const EdgeInsets.all(16),
       padding: const EdgeInsets.all(12), // Reduced from 16
       decoration: BoxDecoration(
-        color: Colors.white.withOpacity(0.7), // Reduced opacity from 0.85 to 0.7
+        color: Colors.white.withOpacity(0.9), // ✅ UPDATED: Increased opacity from 0.7 to 0.9
         borderRadius: BorderRadius.circular(20),
         boxShadow: [
           BoxShadow(

@@ -2,14 +2,14 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../../models/drill_model.dart';
 import '../../widgets/bravo_button.dart';
-import '../../widgets/drill_video_player.dart';
+import '../../widgets/drill_video_background.dart'; // ✅ ADDED: Import video background widget
 import '../../constants/app_theme.dart';
 import '../../utils/haptic_utils.dart';
-import '../../utils/skill_utils.dart'; // ✅ ADDED: Import centralized skill utilities
+import '../../utils/skill_utils.dart';
 import '../../services/app_state_service.dart';
-import '../../widgets/save_to_collection_dialog.dart'; // ✅ ADDED: Import reusable save to collection dialog
+import '../../widgets/save_to_collection_dialog.dart';
 
-class DrillDetailView extends StatelessWidget {
+class DrillDetailView extends StatefulWidget {
   final DrillModel drill;
   final VoidCallback? onAddToSession;
   final bool isInSession;
@@ -22,501 +22,506 @@ class DrillDetailView extends StatelessWidget {
   }) : super(key: key);
 
   @override
+  State<DrillDetailView> createState() => _DrillDetailViewState();
+}
+
+class _DrillDetailViewState extends State<DrillDetailView>
+    with TickerProviderStateMixin {
+  late AnimationController _animationController;
+  late Animation<double> _slideAnimation;
+  late Animation<double> _fadeAnimation;
+  
+  // ✅ ADDED: Track current sheet position for click cycling
+  double _currentSheetSize = 0.4;
+  final List<double> _snapSizes = [0.2, 0.4, 0.8];
+  late DraggableScrollableController _sheetController; // ✅ FIXED: Proper controller management
+
+  @override
+  void initState() {
+    super.initState();
+    _sheetController = DraggableScrollableController(); // ✅ ADDED: Initialize controller
+    
+    _animationController = AnimationController(
+      duration: const Duration(milliseconds: 600),
+      vsync: this,
+    );
+
+    _slideAnimation = Tween<double>(
+      begin: 1.0,
+      end: 0.0,
+    ).animate(CurvedAnimation(
+      parent: _animationController,
+      curve: Curves.easeOutCubic,
+    ));
+
+    _fadeAnimation = Tween<double>(
+      begin: 0.0,
+      end: 1.0,
+    ).animate(CurvedAnimation(
+      parent: _animationController,
+      curve: const Interval(0.3, 1.0, curve: Curves.easeOut),
+    ));
+
+    // Start the animation
+    _animationController.forward();
+  }
+
+  @override
+  void dispose() {
+    _animationController.dispose();
+    _sheetController.dispose(); // ✅ ADDED: Dispose sheet controller
+    super.dispose();
+  }
+
+  // ✅ FIXED: Method to cycle through sheet positions when handle is tapped
+  void _cycleSheetPosition() {
+    final currentIndex = _snapSizes.indexOf(_currentSheetSize);
+    final nextIndex = (currentIndex + 1) % _snapSizes.length;
+    final nextSize = _snapSizes[nextIndex];
+    
+    _sheetController.animateTo(
+      nextSize,
+      duration: const Duration(milliseconds: 300),
+      curve: Curves.easeInOut,
+    );
+    
+    setState(() {
+      _currentSheetSize = nextSize;
+    });
+    
+    HapticUtils.lightImpact();
+  }
+
+  @override
   Widget build(BuildContext context) {
-    return Consumer<AppStateService>(
-      builder: (context, appState, child) {
-        final isLiked = appState.isDrillLiked(drill);
-        final isSavedInCollection = appState.isDrillSavedInAnyCollection(drill); // ✅ NEW: Check if saved
-        
-        return Scaffold(
-          backgroundColor: Colors.white,
-          appBar: AppBar(
-            backgroundColor: Colors.white,
-            elevation: 0.5,
-            leading: IconButton(
-              icon: const Icon(Icons.arrow_back, color: Colors.black),
-              onPressed: () {
-                HapticUtils.lightImpact(); // Light haptic for navigation
-                Navigator.pop(context);
-              },
+    return DrillVideoBackground(
+      videoUrl: widget.drill.videoUrl,
+      child: _buildContent(),
+    );
+  }
+
+  Widget _buildContent() {
+    return Scaffold(
+      backgroundColor: Colors.transparent,
+      appBar: AppBar(
+        backgroundColor: Colors.transparent,
+        elevation: 0,
+        leading: Container(
+          margin: const EdgeInsets.all(8),
+          decoration: BoxDecoration(
+            color: Colors.black.withOpacity(0.3),
+            shape: BoxShape.circle,
+          ),
+          child: IconButton(
+            icon: const Icon(Icons.arrow_back, color: Colors.white),
+            onPressed: () {
+              HapticUtils.lightImpact();
+              Navigator.pop(context);
+            },
+          ),
+        ),
+        actions: [
+          Container(
+            margin: const EdgeInsets.all(8),
+            decoration: BoxDecoration(
+              color: Colors.black.withOpacity(0.3),
+              shape: BoxShape.circle,
             ),
-            title: Text(
-              drill.title,
-              style: const TextStyle(
-                fontFamily: 'Poppins',
-                fontWeight: FontWeight.bold,
-                color: Colors.black,
-                fontSize: 18,
-              ),
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
-            ),
-            centerTitle: true,
-            actions: [
-              // Replace individual buttons with ellipsis popup menu
-              PopupMenuButton<String>(
-                icon: Icon(Icons.more_vert, color: Colors.grey.shade600, size: 24),
-                onSelected: (value) async {
-                  if (value == 'like') {
-                    HapticUtils.lightImpact(); // Light haptic for like action
-                    final wasLiked = appState.isDrillLiked(drill);
-                    appState.toggleLikedDrill(drill);
-                    
-                    // Show feedback message
+            child: PopupMenuButton<String>(
+              icon: const Icon(Icons.more_vert, color: Colors.white),
+              onSelected: (value) async {
+                if (value == 'like') {
+                  HapticUtils.lightImpact();
+                  final appState = Provider.of<AppStateService>(context, listen: false);
+                  final wasLiked = appState.isDrillLiked(widget.drill);
+                  appState.toggleLikedDrill(widget.drill);
+                  
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(
+                      content: Text(wasLiked 
+                        ? 'Removed ${widget.drill.title} from liked drills' 
+                        : 'Added ${widget.drill.title} to liked drills'),
+                      duration: const Duration(seconds: 2),
+                      backgroundColor: Colors.green,
+                    ),
+                  );
+                } else if (value == 'session') {
+                  HapticUtils.mediumImpact();
+                  final appState = Provider.of<AppStateService>(context, listen: false);
+                  final wasInSession = appState.isDrillInSession(widget.drill);
+                  
+                  if (wasInSession) {
+                    appState.removeDrillFromSession(widget.drill);
                     ScaffoldMessenger.of(context).showSnackBar(
                       SnackBar(
-                        content: Text(wasLiked 
-                          ? 'Removed ${drill.title} from liked drills' 
-                          : 'Added ${drill.title} to liked drills'),
+                        content: Text('Removed ${widget.drill.title} from session'),
                         duration: const Duration(seconds: 2),
                         backgroundColor: Colors.green,
                       ),
                     );
-                  } else if (value == 'session') {
-                    HapticUtils.mediumImpact(); // Medium haptic for session action
-                    final wasInSession = appState.isDrillInSession(drill);
-                    
-                    if (wasInSession) {
-                      appState.removeDrillFromSession(drill);
-                      // Show feedback message
+                  } else {
+                    final success = appState.addDrillToSession(widget.drill);
+                    if (success) {
                       ScaffoldMessenger.of(context).showSnackBar(
                         SnackBar(
-                          content: Text('Removed ${drill.title} from session'),
+                          content: Text('Added ${widget.drill.title} to session'),
                           duration: const Duration(seconds: 2),
                           backgroundColor: Colors.green,
                         ),
                       );
                     } else {
-                      final success = appState.addDrillToSession(drill);
-                      if (success) {
-                        // Show feedback message
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          SnackBar(
-                            content: Text('Added ${drill.title} to session'),
-                            duration: const Duration(seconds: 2),
-                            backgroundColor: Colors.green,
-                          ),
-                        );
-                      } else {
-                        // Show limit warning message
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          SnackBar(
-                            content: const Text('Session limit reached! You can only add up to 10 drills to a session.'),
-                            duration: const Duration(seconds: 3),
-                            backgroundColor: Colors.orange,
-                            action: SnackBarAction(
-                              label: 'OK',
-                              textColor: Colors.white,
-                              onPressed: () {},
-                            ),
-                          ),
-                        );
-                      }
-                    }
-                  } else if (value == 'add_to_group') {
-                    HapticUtils.lightImpact(); // Light haptic for collection action
-                    _showSaveToCollectionDialog(context, appState);
-                  }
-                },
-                itemBuilder: (context) {
-                  final isLiked = appState.isDrillLiked(drill);
-                  final isInSession = appState.isDrillInSession(drill);
-                  return [
-                    PopupMenuItem(
-                      value: 'like',
-                      child: Row(
-                        children: [
-                          Icon(
-                            isLiked ? Icons.favorite : Icons.favorite_border,
-                            color: isLiked ? Colors.red : Colors.grey,
-                            size: 20,
-                          ),
-                          const SizedBox(width: 8),
-                          Text(isLiked ? 'Unlike' : 'Like'),
-                        ],
-                      ),
-                    ),
-                    PopupMenuItem(
-                      value: 'session',
-                      child: Row(
-                        children: [
-                          Icon(
-                            isInSession ? Icons.fitness_center : Icons.add_circle_outline,
-                            color: isInSession ? Colors.blue : Colors.grey,
-                            size: 20,
-                          ),
-                          const SizedBox(width: 8),
-                          Text(isInSession ? 'Remove from Session' : 'Add to Session'),
-                        ],
-                      ),
-                    ),
-                    PopupMenuItem(
-                      value: 'add_to_group',
-                      child: Row(
-                        children: [
-                          Icon(
-                            Icons.folder_outlined,
-                            color: Colors.grey,
-                            size: 20,
-                          ),
-                          const SizedBox(width: 8),
-                          const Text('Add to Collection'),
-                        ],
-                      ),
-                    ),
-                  ];
-                },
-              ),
-              const SizedBox(width: 8),
-            ],
-          ),
-          body: SingleChildScrollView(
-            padding: const EdgeInsets.all(16),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                // Video player section
-                Column(
-                  children: [
-                    if (drill.videoUrl.isNotEmpty)
-                      DrillVideoPlayer(
-                        videoUrl: drill.videoUrl,
-                        aspectRatio: 16 / 9,
-                        showControls: true,
-                      )
-                    else
-                      // Fallback placeholder when no video URL
-                      Container(
-                        width: double.infinity,
-                        height: 200,
-                        decoration: BoxDecoration(
-                          color: Colors.grey.shade200,
-                          borderRadius: BorderRadius.circular(16),
-                        ),
-                        child: Column(
-                          mainAxisAlignment: MainAxisAlignment.center,
-                          children: [
-                            Icon(
-                              Icons.videocam_off,
-                              size: 48,
-                              color: Colors.grey.shade600,
-                            ),
-                            const SizedBox(height: 8),
-                            Text(
-                              'No video for this drill right now,',
-                              style: TextStyle(
-                                fontFamily: 'Poppins',
-                                fontSize: 14,
-                                color: Colors.grey.shade600,
-                              ),
-                              textAlign: TextAlign.center,
-                            ),
-                            Text(
-                              'coming soon!',
-                              style: TextStyle(
-                                fontFamily: 'Poppins',
-                                fontSize: 14,
-                                fontWeight: FontWeight.bold,
-                                color: Colors.grey.shade700,
-                              ),
-                              textAlign: TextAlign.center,
-                            ),
-                          ],
-                        ),
-                      ),
-                    const SizedBox(height: 24),
-                  ],
-                ),
-                
-                // Drill header with icon and basic info
-                _buildDrillHeader(),
-                
-                const SizedBox(height: 24),
-                
-                // Description
-                _buildSection(
-                  title: 'Description',
-                  content: Text(
-                    drill.description,
-                    style: const TextStyle(
-                      fontFamily: 'Poppins',
-                      fontSize: 16,
-                      color: Colors.black87,
-                      height: 1.5,
-                    ),
-                  ),
-                ),
-                
-                const SizedBox(height: 20),
-                
-                // Instructions
-                if (drill.instructions.isNotEmpty)
-                  _buildSection(
-                    title: 'Instructions',
-                    content: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: drill.instructions.asMap().entries.map((entry) {
-                        final index = entry.key;
-                        final instruction = entry.value;
-                        return Padding(
-                          padding: const EdgeInsets.only(bottom: 8),
-                          child: Row(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Container(
-                                width: 24,
-                                height: 24,
-                                decoration: BoxDecoration(
-                                  color: AppTheme.getSkillColor(drill.skill),
-                                  shape: BoxShape.circle,
-                                ),
-                                child: Center(
-                                  child: Text(
-                                    '${index + 1}',
-                                    style: const TextStyle(
-                                      fontFamily: 'Poppins',
-                                      fontWeight: FontWeight.bold,
-                                      color: Colors.white,
-                                      fontSize: 12,
-                                    ),
-                                  ),
-                                ),
-                              ),
-                              const SizedBox(width: 12),
-                              Expanded(
-                                child: Text(
-                                  instruction,
-                                  style: const TextStyle(
-                                    fontFamily: 'Poppins',
-                                    fontSize: 15,
-                                    color: Colors.black87,
-                                    height: 1.4,
-                                  ),
-                                ),
-                              ),
-                            ],
-                          ),
-                        );
-                      }).toList(),
-                    ),
-                  ),
-                
-                const SizedBox(height: 20),
-                
-                // Tips
-                if (drill.tips.isNotEmpty)
-                  _buildSection(
-                    title: 'Tips',
-                    content: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: drill.tips.map((tip) {
-                        return Padding(
-                          padding: const EdgeInsets.only(bottom: 8),
-                          child: Row(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              const Icon(
-                                Icons.lightbulb_outline,
-                                color: Colors.amber,
-                                size: 20,
-                              ),
-                              const SizedBox(width: 12),
-                              Expanded(
-                                child: Text(
-                                  tip,
-                                  style: const TextStyle(
-                                    fontFamily: 'Poppins',
-                                    fontSize: 15,
-                                    color: Colors.black87,
-                                    height: 1.4,
-                                  ),
-                                ),
-                              ),
-                            ],
-                          ),
-                        );
-                      }).toList(),
-                    ),
-                  ),
-                
-                const SizedBox(height: 20),
-                
-                // Equipment needed
-                if (drill.equipment.isNotEmpty)
-                  _buildSection(
-                    title: 'Equipment Needed',
-                    content: Wrap(
-                      spacing: 8,
-                      runSpacing: 8,
-                      children: drill.equipment.map((equipment) {
-                        return Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-                          decoration: BoxDecoration(
-                            color: Colors.grey.shade100,
-                            borderRadius: BorderRadius.circular(20),
-                            border: Border.all(color: Colors.grey.shade300),
-                          ),
-                          child: Row(
-                            mainAxisSize: MainAxisSize.min,
-                            children: [
-                              Icon(
-                                _getEquipmentIcon(equipment),
-                                size: 16,
-                                color: Colors.grey.shade600,
-                              ),
-                              const SizedBox(width: 6),
-                              Text(
-                                equipment,
-                                style: const TextStyle(
-                                  fontFamily: 'Poppins',
-                                  fontSize: 14,
-                                  color: Colors.black87,
-                                ),
-                              ),
-                            ],
-                          ),
-                        );
-                      }).toList(),
-                    ),
-                  ),
-                
-                const SizedBox(height: 20),
-                
-                // Skills developed
-                _buildSection(
-                  title: 'Skills Developed',
-                  content: Wrap(
-                    spacing: 8,
-                    runSpacing: 8,
-                    children: drill.subSkills.map((subSkill) {
-                      // ✅ Strip underscores and replace with spaces
-                      final displaySubSkill = SkillUtils.formatSkillForDisplay(subSkill); // ✅ UPDATED: Use centralized skill formatting
-                      return Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-                        decoration: BoxDecoration(
-                          color: AppTheme.getSkillColor(drill.skill).withOpacity(0.1),
-                          borderRadius: BorderRadius.circular(20),
-                          border: Border.all(color: AppTheme.getSkillColor(drill.skill).withOpacity(0.3)),
-                        ),
-                        child: Text(
-                          displaySubSkill,
-                          style: TextStyle(
-                            fontFamily: 'Poppins',
-                            fontSize: 14,
-                            color: AppTheme.getSkillColor(drill.skill),
-                            fontWeight: FontWeight.w500,
-                          ),
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        const SnackBar(
+                          content: Text('Session limit reached! You can only add up to 10 drills to a session.'),
+                          duration: Duration(seconds: 3),
+                          backgroundColor: Colors.orange,
                         ),
                       );
-                    }).toList(),
+                    }
+                  }
+                } else if (value == 'add_to_group') {
+                  HapticUtils.lightImpact();
+                  SaveToCollectionDialog.show(context, widget.drill);
+                }
+              },
+              itemBuilder: (context) {
+                final appState = Provider.of<AppStateService>(context, listen: false);
+                final isLiked = appState.isDrillLiked(widget.drill);
+                final isInSession = appState.isDrillInSession(widget.drill);
+                return [
+                  PopupMenuItem(
+                    value: 'like',
+                    child: Row(
+                      children: [
+                        Icon(
+                          isLiked ? Icons.favorite : Icons.favorite_border,
+                          color: isLiked ? Colors.red : Colors.grey,
+                          size: 20,
+                        ),
+                        const SizedBox(width: 8),
+                        Text(isLiked ? 'Unlike' : 'Like'),
+                      ],
+                    ),
                   ),
-                ),
-                
-                const SizedBox(height: 32),
-              ],
+                  PopupMenuItem(
+                    value: 'session',
+                    child: Row(
+                      children: [
+                        Icon(
+                          isInSession ? Icons.fitness_center : Icons.add_circle_outline,
+                          color: isInSession ? Colors.blue : Colors.grey,
+                          size: 20,
+                        ),
+                        const SizedBox(width: 8),
+                        Text(isInSession ? 'Remove from Session' : 'Add to Session'),
+                      ],
+                    ),
+                  ),
+                  PopupMenuItem(
+                    value: 'add_to_group',
+                    child: Row(
+                      children: [
+                        Icon(
+                          Icons.folder_outlined,
+                          color: Colors.grey,
+                          size: 20,
+                        ),
+                        const SizedBox(width: 8),
+                        const Text('Add to Collection'),
+                      ],
+                    ),
+                  ),
+                ];
+              },
             ),
           ),
-          bottomNavigationBar: onAddToSession != null ? Container(
-            padding: const EdgeInsets.all(16),
-            decoration: BoxDecoration(
-              color: Colors.white,
-              boxShadow: [
-                BoxShadow(
-                  color: Colors.black.withOpacity(0.05),
-                  blurRadius: 10,
-                  offset: const Offset(0, -2),
+        ],
+      ),
+      body: AnimatedBuilder(
+        animation: _slideAnimation,
+        builder: (context, child) {
+          return Stack(
+            children: [
+              // ✅ UPDATED: Draggable bottom sheet with proper controller
+              Positioned.fill(
+                child: DraggableScrollableSheet(
+                  initialChildSize: 0.4, // Start at 40% of screen height
+                  minChildSize: 0.2, // Can be collapsed to 20% 
+                  maxChildSize: 0.8, // Can be expanded to 80%
+                  snap: true, // Snap to positions
+                  snapSizes: const [0.2, 0.4, 0.8], // Snap points
+                  controller: _sheetController, // ✅ FIXED: Use proper controller
+                  builder: (context, scrollController) {
+                    return Transform.translate(
+                      offset: Offset(0, MediaQuery.of(context).size.height * 0.4 * _slideAnimation.value),
+                      child: FadeTransition(
+                        opacity: _fadeAnimation,
+                        child: _buildDraggableBottomSheet(scrollController),
+                      ),
+                    );
+                  },
                 ),
-              ],
-            ),
-            child: SafeArea(
-              child: BravoButton(
-                text: isInSession ? 'Remove from Session' : 'Add to Session',
-                onPressed: () {
-                  HapticUtils.mediumImpact(); // Medium haptic for add to session
-                  onAddToSession?.call();
-                },
-                color: isInSession ? Colors.red : const Color(0xFFF9CC53),
-                backColor: isInSession ? Colors.red.shade700 : AppTheme.primaryDarkYellow,
-                textColor: Colors.white,
-                height: 52,
-                textSize: 16,
               ),
-            ),
-          ) : null,
-        );
-      },
+            ],
+          );
+        },
+      ),
     );
   }
 
-  void _showSaveToCollectionDialog(BuildContext context, AppStateService appState) {
-    // Use the reusable SaveToCollectionDialog
-    SaveToCollectionDialog.show(context, drill);
-  }
-
-  Widget _buildDrillHeader() {
+  Widget _buildDraggableBottomSheet(ScrollController scrollController) {
     return Container(
-      padding: const EdgeInsets.all(20),
-      decoration: BoxDecoration(
-        color: AppTheme.getSkillColor(drill.skill).withOpacity(0.1),
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: AppTheme.getSkillColor(drill.skill).withOpacity(0.3)),
+      decoration: const BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black26,
+            blurRadius: 20,
+            offset: Offset(0, -10),
+          ),
+        ],
       ),
-      child: Row(
+      child: Column(
         children: [
-          // Skill icon
-          Container(
-            width: 60,
-            height: 60,
-            decoration: BoxDecoration(
-              color: AppTheme.getSkillColor(drill.skill),
-              borderRadius: BorderRadius.circular(12),
-            ),
-            child: Icon(
-              _getSkillIcon(drill.skill),
-              color: Colors.white,
-              size: 32,
+          // ✅ ENHANCED: Clickable handle bar that cycles through positions
+          GestureDetector(
+            onTap: _cycleSheetPosition, // ✅ FIXED: Direct method call
+            child: Container(
+              width: double.infinity, // Make entire top area clickable
+              padding: const EdgeInsets.symmetric(vertical: 12),
+              child: Column(
+                children: [
+                  Container(
+                    width: 40,
+                    height: 4,
+                    decoration: BoxDecoration(
+                      color: Colors.grey.shade300,
+                      borderRadius: BorderRadius.circular(2),
+                    ),
+                  ),
+                ],
+              ),
             ),
           ),
           
-          const SizedBox(width: 16),
-          
-          // Drill info
+          // ✅ IMPROVED: Scrollable content that works even when minimized
           Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  SkillUtils.formatSkillForDisplay(drill.skill), // ✅ UPDATED: Use centralized skill formatting
-                  style: TextStyle(
-                    fontFamily: 'Poppins',
-                    fontWeight: FontWeight.w600,
-                    fontSize: 14,
-                    color: AppTheme.getSkillColor(drill.skill),
-                  ),
-                ),
-                const SizedBox(height: 4),
-                Text(
-                  drill.title,
-                  style: const TextStyle(
-                    fontFamily: 'Poppins',
-                    fontWeight: FontWeight.bold,
-                    fontSize: 20,
-                    color: Colors.black87,
-                  ),
-                ),
-                const SizedBox(height: 8),
-                Row(
+            child: NotificationListener<ScrollNotification>(
+              onNotification: (notification) {
+                // Allow scroll events to bubble up properly
+                return false;
+              },
+              child: SingleChildScrollView(
+                controller: scrollController,
+                physics: const AlwaysScrollableScrollPhysics(), // ✅ ADDED: Ensure always scrollable
+                padding: const EdgeInsets.symmetric(horizontal: 20),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    _buildInfoChip('${drill.sets} sets'),
-                    const SizedBox(width: 8),
-                    _buildInfoChip('${drill.reps} reps'),
-                    const SizedBox(width: 8),
-                    _buildInfoChip('${drill.duration} mins'),
+                    // Drill header
+                    _buildDrillHeader(),
+                    
+                    const SizedBox(height: 24),
+                    
+                    // Description
+                    _buildSection(
+                      title: 'Description',
+                      content: Text(
+                        widget.drill.description,
+                        style: const TextStyle(
+                          fontFamily: 'Poppins',
+                          fontSize: 16,
+                          color: Colors.black87,
+                          height: 1.5,
+                        ),
+                      ),
+                    ),
+                    
+                    const SizedBox(height: 20),
+                    
+                    // Instructions
+                    if (widget.drill.instructions.isNotEmpty)
+                      _buildSection(
+                        title: 'Instructions',
+                        content: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: widget.drill.instructions.asMap().entries.map((entry) {
+                            final index = entry.key;
+                            final instruction = entry.value;
+                            return Padding(
+                              padding: const EdgeInsets.only(bottom: 8),
+                              child: Row(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Container(
+                                    width: 24,
+                                    height: 24,
+                                    decoration: BoxDecoration(
+                                      color: AppTheme.getSkillColor(widget.drill.skill),
+                                      shape: BoxShape.circle,
+                                    ),
+                                    child: Center(
+                                      child: Text(
+                                        '${index + 1}',
+                                        style: const TextStyle(
+                                          fontFamily: 'Poppins',
+                                          fontWeight: FontWeight.bold,
+                                          color: Colors.white,
+                                          fontSize: 12,
+                                        ),
+                                      ),
+                                    ),
+                                  ),
+                                  const SizedBox(width: 12),
+                                  Expanded(
+                                    child: Text(
+                                      instruction,
+                                      style: const TextStyle(
+                                        fontFamily: 'Poppins',
+                                        fontSize: 14,
+                                        color: Colors.black87,
+                                        height: 1.4,
+                                      ),
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            );
+                          }).toList(),
+                        ),
+                      ),
+                    
+                    const SizedBox(height: 20),
+                    
+                    // Tips
+                    if (widget.drill.tips.isNotEmpty)
+                      _buildSection(
+                        title: 'Tips',
+                        content: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: widget.drill.tips.map((tip) {
+                            return Padding(
+                              padding: const EdgeInsets.only(bottom: 8),
+                              child: Row(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Container(
+                                    margin: const EdgeInsets.only(top: 4),
+                                    width: 6,
+                                    height: 6,
+                                    decoration: BoxDecoration(
+                                      color: AppTheme.getSkillColor(widget.drill.skill),
+                                      shape: BoxShape.circle,
+                                    ),
+                                  ),
+                                  const SizedBox(width: 12),
+                                  Expanded(
+                                    child: Text(
+                                      tip,
+                                      style: const TextStyle(
+                                        fontFamily: 'Poppins',
+                                        fontSize: 14,
+                                        color: Colors.black87,
+                                        height: 1.4,
+                                      ),
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            );
+                          }).toList(),
+                        ),
+                      ),
+                    
+                    const SizedBox(height: 20),
+                    
+                    // Equipment
+                    if (widget.drill.equipment.isNotEmpty)
+                      _buildSection(
+                        title: 'Equipment',
+                        content: Wrap(
+                          spacing: 8,
+                          runSpacing: 8,
+                          children: widget.drill.equipment.map((equipment) {
+                            return Container(
+                              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                              decoration: BoxDecoration(
+                                color: Colors.grey.shade100,
+                                borderRadius: BorderRadius.circular(16),
+                                border: Border.all(color: Colors.grey.shade300),
+                              ),
+                              child: Text(
+                                equipment,
+                                style: const TextStyle(
+                                  fontFamily: 'Poppins',
+                                  fontSize: 12,
+                                  fontWeight: FontWeight.w500,
+                                  color: Colors.black87,
+                                ),
+                              ),
+                            );
+                          }).toList(),
+                        ),
+                      ),
+                    
+                    const SizedBox(height: 20),
+                    
+                    // Bottom action button
+                    if (!widget.isInSession)
+                      Padding(
+                        padding: const EdgeInsets.only(bottom: 20),
+                        child: SizedBox(
+                          width: double.infinity,
+                          height: 56,
+                          child: ElevatedButton(
+                            onPressed: () {
+                              HapticUtils.mediumImpact();
+                              if (widget.onAddToSession != null) {
+                                widget.onAddToSession!();
+                              } else {
+                                final appState = Provider.of<AppStateService>(context, listen: false);
+                                final success = appState.addDrillToSession(widget.drill);
+                                if (success) {
+                                  ScaffoldMessenger.of(context).showSnackBar(
+                                    SnackBar(
+                                      content: Text('Added ${widget.drill.title} to session'),
+                                      backgroundColor: AppTheme.success,
+                                    ),
+                                  );
+                                  Navigator.pop(context);
+                                } else {
+                                  ScaffoldMessenger.of(context).showSnackBar(
+                                    const SnackBar(
+                                      content: Text('Session limit reached! You can only add up to 10 drills to a session.'),
+                                      backgroundColor: Colors.orange,
+                                    ),
+                                  );
+                                }
+                              }
+                            },
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: AppTheme.primaryYellow,
+                              foregroundColor: Colors.white,
+                              elevation: 2,
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(16),
+                              ),
+                            ),
+                            child: const Text(
+                              'Add to Session',
+                              style: TextStyle(
+                                fontFamily: 'Poppins',
+                                fontWeight: FontWeight.bold,
+                                fontSize: 16,
+                              ),
+                            ),
+                          ),
+                        ),
+                      ),
                   ],
                 ),
-                const SizedBox(height: 8),
-                _buildDifficultyBadge(),
-              ],
+              ),
             ),
           ),
         ],
@@ -524,56 +529,81 @@ class DrillDetailView extends StatelessWidget {
     );
   }
 
-  Widget _buildInfoChip(String text) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: Colors.grey.shade300),
-      ),
-      child: Text(
-        text,
-        style: const TextStyle(
-          fontFamily: 'Poppins',
-          fontSize: 12,
-          fontWeight: FontWeight.w500,
-          color: Colors.black87,
+  Widget _buildDrillHeader() {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          widget.drill.title,
+          style: const TextStyle(
+            fontFamily: 'Poppins',
+            fontWeight: FontWeight.bold,
+            fontSize: 24,
+            color: Colors.black87,
+          ),
         ),
-      ),
+        const SizedBox(height: 12),
+        
+        // Skill badge and stats
+        Row(
+          children: [
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+              decoration: BoxDecoration(
+                color: AppTheme.getSkillColor(widget.drill.skill).withOpacity(0.1),
+                borderRadius: BorderRadius.circular(16),
+                border: Border.all(
+                  color: AppTheme.getSkillColor(widget.drill.skill).withOpacity(0.3),
+                ),
+              ),
+              child: Text(
+                SkillUtils.formatSkillForDisplay(widget.drill.skill),
+                style: TextStyle(
+                  fontFamily: 'Poppins',
+                  fontWeight: FontWeight.w600,
+                  fontSize: 12,
+                  color: AppTheme.getSkillColor(widget.drill.skill),
+                ),
+              ),
+            ),
+            const Spacer(),
+            _buildStatChip('${widget.drill.sets} sets', Icons.repeat),
+            const SizedBox(width: 8),
+            _buildStatChip('${widget.drill.reps} reps', Icons.fitness_center),
+            const SizedBox(width: 8),
+            _buildStatChip('${widget.drill.duration} min', Icons.schedule),
+          ],
+        ),
+      ],
     );
   }
 
-  Widget _buildDifficultyBadge() {
-    Color badgeColor;
-    switch (drill.difficulty.toLowerCase()) {
-      case 'beginner':
-        badgeColor = Colors.green;
-        break;
-      case 'intermediate':
-        badgeColor = Colors.orange;
-        break;
-      case 'advanced':
-        badgeColor = Colors.red;
-        break;
-      default:
-        badgeColor = Colors.grey;
-    }
-
+  Widget _buildStatChip(String text, IconData icon) {
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
       decoration: BoxDecoration(
-        color: badgeColor,
-        borderRadius: BorderRadius.circular(12),
+        color: Colors.grey.shade100,
+        borderRadius: BorderRadius.circular(8),
       ),
-      child: Text(
-        drill.difficulty,
-        style: const TextStyle(
-          fontFamily: 'Poppins',
-          fontSize: 12,
-          fontWeight: FontWeight.bold,
-          color: Colors.white,
-        ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(
+            icon,
+            size: 14,
+            color: Colors.grey.shade600,
+          ),
+          const SizedBox(width: 4),
+          Text(
+            text,
+            style: TextStyle(
+              fontFamily: 'Poppins',
+              fontWeight: FontWeight.w500,
+              fontSize: 12,
+              color: Colors.grey.shade600,
+            ),
+          ),
+        ],
       ),
     );
   }
@@ -591,43 +621,9 @@ class DrillDetailView extends StatelessWidget {
             color: Colors.black87,
           ),
         ),
-        const SizedBox(height: 12),
+        const SizedBox(height: 8),
         content,
       ],
     );
-  }
-
-  IconData _getSkillIcon(String skill) {
-    switch (skill.toLowerCase()) {
-      case 'passing':
-        return Icons.arrow_forward;
-      case 'shooting':
-        return Icons.sports_soccer;
-      case 'dribbling':
-        return Icons.directions_run;
-      case 'first touch':
-        return Icons.touch_app;
-      case 'defending':
-        return Icons.shield;
-      case 'goalkeeping':
-        return Icons.sports_handball;
-      case 'fitness':
-        return Icons.sports;
-      default:
-        return Icons.sports;
-    }
-  }
-
-  IconData _getEquipmentIcon(String equipment) {
-    switch (equipment.toLowerCase()) {
-      case 'soccer ball':
-        return Icons.sports_soccer;
-      case 'cones':
-        return Icons.traffic;
-      case 'goal':
-        return Icons.sports_soccer;
-      default:
-        return Icons.sports;
-    }
   }
 } 
