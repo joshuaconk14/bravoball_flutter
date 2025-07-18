@@ -1549,6 +1549,12 @@ class AppStateService extends ChangeNotifier {
     }
     
     if (!_sessionDrills.any((d) => d.id == drill.id)) {
+      if (kDebugMode) {
+        print('🔍 [ADD_DRILL] Adding drill to session: ${drill.title}');
+        print('🔍 [ADD_DRILL] Drill ID: ${drill.id}');
+        print('🔍 [ADD_DRILL] isCustom: ${drill.isCustom}');
+      }
+      
       _sessionDrills.add(drill);
       
       // Create editable version with default values
@@ -1560,6 +1566,12 @@ class AppStateService extends ChangeNotifier {
         totalDuration: drill.duration > 0 ? drill.duration : 5,
         isCompleted: false,
       );
+      
+      if (kDebugMode) {
+        print('🔍 [ADD_DRILL] Created EditableDrillModel');
+        print('🔍 [ADD_DRILL] EditableDrill isCustom: ${editableDrill.drill.isCustom}');
+      }
+      
       _editableSessionDrills.add(editableDrill);
       
       // Reset session state when adding new drills
