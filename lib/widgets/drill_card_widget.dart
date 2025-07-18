@@ -6,6 +6,7 @@ import '../utils/skill_utils.dart'; // ✅ ADDED: Import centralized skill utili
 import 'package:provider/provider.dart'; // Added for Provider
 import '../services/app_state_service.dart'; // Added for AppStateService
 import 'save_to_collection_dialog.dart'; // ✅ ADDED: Import reusable dialog
+import 'package:flutter/foundation.dart'; // Added for kDebugMode
 
 class DraggableDrillCard extends StatelessWidget {
   final DrillModel drill;
@@ -342,22 +343,43 @@ class DraggableDrillCard extends StatelessWidget {
   }
 
   String _getSkillIconPath(String skill) {
-    switch (skill.toLowerCase()) {
+    if (kDebugMode) {
+      print('🔍 [ICON_DEBUG] Skill: "$skill" (length: ${skill.length})');
+      print('🔍 [ICON_DEBUG] Skill.toLowerCase(): "${skill.toLowerCase()}"');
+    }
+    
+    // Normalize the skill name for better matching
+    final normalizedSkill = skill.toLowerCase().replaceAll('_', ' ').trim();
+    
+    if (kDebugMode) {
+      print('🔍 [ICON_DEBUG] Normalized skill: "$normalizedSkill"');
+    }
+    
+    switch (normalizedSkill) {
       case 'passing':
+        if (kDebugMode) print('🔍 [ICON_DEBUG] Matched: passing');
         return 'assets/drill-icons/Player_Passing.png';
       case 'shooting':
+        if (kDebugMode) print('🔍 [ICON_DEBUG] Matched: shooting');
         return 'assets/drill-icons/Player_Shooting.png';
       case 'dribbling':
+        if (kDebugMode) print('🔍 [ICON_DEBUG] Matched: dribbling');
         return 'assets/drill-icons/Player_Dribbling.png';
       case 'first touch':
+      case 'firsttouch':
+        if (kDebugMode) print('🔍 [ICON_DEBUG] Matched: first touch');
         return 'assets/drill-icons/Player_First_Touch.png';
       case 'defending':
+        if (kDebugMode) print('🔍 [ICON_DEBUG] Matched: defending (using dribbling fallback)');
         return 'assets/drill-icons/Player_Dribbling.png'; // Use dribbling as fallback for defending
       case 'goalkeeping':
+        if (kDebugMode) print('🔍 [ICON_DEBUG] Matched: goalkeeping (using dribbling fallback)');
         return 'assets/drill-icons/Player_Dribbling.png'; // Use dribbling as fallback for goalkeeping
       case 'fitness':
+        if (kDebugMode) print('🔍 [ICON_DEBUG] Matched: fitness (using dribbling fallback)');
         return 'assets/drill-icons/Player_Dribbling.png'; // Use dribbling as fallback for fitness
       default:
+        if (kDebugMode) print('🔍 [ICON_DEBUG] No match found, using dribbling fallback');
         return 'assets/drill-icons/Player_Dribbling.png'; // Fallback to dribbling icon
     }
   }

@@ -3,6 +3,7 @@ import 'package:provider/provider.dart';
 import '../../constants/app_theme.dart';
 import '../../services/app_state_service.dart';
 import '../../models/drill_group_model.dart';
+import '../../models/drill_model.dart'; // ✅ ADDED: Import DrillModel
 import '../../widgets/reusable_drill_search_view.dart';
 import '../../widgets/info_popup_widget.dart';
 import '../../widgets/guest_account_overlay.dart'; // ✅ NEW: Import reusable guest overlay
@@ -11,6 +12,8 @@ import '../../utils/skill_utils.dart'; // ✅ ADDED: Import centralized skill ut
 import '../../features/onboarding/onboarding_flow.dart'; // ✅ ADDED: Import OnboardingFlow
 import 'drill_group_detail_view.dart';
 import '../../widgets/warning_dialog.dart'; // ✅ ADDED: Import WarningDialog
+import '../../widgets/drill_card_widget.dart'; // ✅ ADDED: Import drill card widget
+import '../../features/session_generator/drill_detail_view.dart'; // ✅ ADDED: Import DrillDetailView
 
 class SavedDrillsView extends StatefulWidget {
   const SavedDrillsView({Key? key}) : super(key: key);
@@ -19,10 +22,18 @@ class SavedDrillsView extends StatefulWidget {
   State<SavedDrillsView> createState() => _SavedDrillsViewState();
 }
 
-class _SavedDrillsViewState extends State<SavedDrillsView> {
+class _SavedDrillsViewState extends State<SavedDrillsView> with SingleTickerProviderStateMixin {
+  late TabController _tabController;
+
+  @override
+  void initState() {
+    super.initState();
+    _tabController = TabController(length: 2, vsync: this);
+  }
 
   @override
   void dispose() {
+    _tabController.dispose();
     super.dispose();
   }
 
@@ -44,19 +55,25 @@ class _SavedDrillsViewState extends State<SavedDrillsView> {
                       child: Column(
                         children: [
                           const SizedBox(height: 20),
-                          // Centered title
-                          Text(
-                            'Saved Drills',
-                            style: AppTheme.headlineMedium.copyWith(
-                              color: Colors.white,
-                            ),
-                            textAlign: TextAlign.center,
-                          ),
-                          const SizedBox(height: 16),
-                          // Add button row
+                          // Header row with title and add button
                           Row(
-                            mainAxisAlignment: MainAxisAlignment.end,
                             children: [
+                              // Add button on the left (invisible to balance the right button)
+                              Container(
+                                width: 56, // Same width as the right button
+                                height: 56,
+                              ),
+                              // Centered title
+                              Expanded(
+                                child: Text(
+                                  'Saved Drills',
+                                  style: AppTheme.headlineMedium.copyWith(
+                                    color: Colors.white,
+                                  ),
+                                  textAlign: TextAlign.center,
+                                ),
+                              ),
+                              // Add button on the right
                               Container(
                                 decoration: BoxDecoration(
                                   color: Colors.white.withOpacity(0.2),
@@ -76,13 +93,6 @@ class _SavedDrillsViewState extends State<SavedDrillsView> {
                               ),
                             ],
                           ),
-                          const SizedBox(height: 10),
-                          Text(
-                            'Organize your favorite drills into collections',
-                            style: AppTheme.bodyMedium.copyWith(
-                              color: Colors.white.withOpacity(0.9),
-                            ),
-                          ),
                         ],
                       ),
                     ),
@@ -101,33 +111,50 @@ class _SavedDrillsViewState extends State<SavedDrillsView> {
                         child: Column(
                           children: [
                             const SizedBox(height: 20),
-                            Padding(
-                              padding: const EdgeInsets.symmetric(horizontal: 20),
-                              child: Row(
-                                children: [
-                                  Text(
-                                    'Your Drill Collections',
-                                    style: AppTheme.headlineSmall.copyWith(
-                                      color: AppTheme.primaryDark,
-                                    ),
-                                  ),
-                                  const Spacer(),
-                                  IconButton(
-                                    onPressed: () {
-                                      HapticUtils.lightImpact(); // Light haptic for info
-                                      _showInfoDialog(context);
-                                    },
-                                    icon: const Icon(
-                                      Icons.info_outline,
-                                      color: AppTheme.primaryGray,
-                                    ),
-                                  ),
+                            // Tab bar
+                            Container(
+                              margin: const EdgeInsets.symmetric(horizontal: 20),
+                              decoration: BoxDecoration(
+                                color: Colors.grey.shade100,
+                                borderRadius: BorderRadius.circular(12),
+                              ),
+                              child: TabBar(
+                                controller: _tabController,
+                                indicator: BoxDecoration(
+                                  color: AppTheme.primaryPurple,
+                                  borderRadius: BorderRadius.circular(12),
+                                ),
+                                indicatorSize: TabBarIndicatorSize.tab, // ✅ ADDED: Make indicator fill entire tab
+                                labelColor: Colors.white,
+                                unselectedLabelColor: AppTheme.primaryGray,
+                                labelStyle: const TextStyle(
+                                  fontFamily: AppTheme.fontPoppins,
+                                  fontWeight: FontWeight.bold,
+                                  fontSize: 14,
+                                ),
+                                unselectedLabelStyle: const TextStyle(
+                                  fontFamily: AppTheme.fontPoppins,
+                                  fontWeight: FontWeight.w500,
+                                  fontSize: 14,
+                                ),
+                                tabs: const [
+                                  Tab(text: 'Collections'),
+                                  Tab(text: 'Custom Drills'),
                                 ],
                               ),
                             ),
                             const SizedBox(height: 20),
+                            // Tab content
                             Expanded(
-                              child: _buildGroupsGrid(appState),
+                              child: TabBarView(
+                                controller: _tabController,
+                                children: [
+                                  // Collections tab
+                                  _buildCollectionsTab(appState),
+                                  // Custom drills tab
+                                  _buildCustomDrillsTab(appState),
+                                ],
+                              ),
                             ),
                           ],
                         ),
@@ -147,6 +174,172 @@ class _SavedDrillsViewState extends State<SavedDrillsView> {
             ],
           ),
         );
+      },
+    );
+  }
+
+  // Collections tab content
+  Widget _buildCollectionsTab(AppStateService appState) {
+    return Column(
+      children: [
+        Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 20),
+          child: Row(
+            children: [
+              Text(
+                'Your Drill Collections',
+                style: AppTheme.headlineSmall.copyWith(
+                  color: AppTheme.primaryDark,
+                ),
+              ),
+              const Spacer(),
+              IconButton(
+                onPressed: () {
+                  HapticUtils.lightImpact(); // Light haptic for info
+                  _showInfoDialog(context);
+                },
+                icon: const Icon(
+                  Icons.info_outline,
+                  color: AppTheme.primaryGray,
+                ),
+              ),
+            ],
+          ),
+        ),
+        const SizedBox(height: 20),
+        Expanded(
+          child: _buildGroupsGrid(appState),
+        ),
+      ],
+    );
+  }
+
+  // Custom drills tab content
+  Widget _buildCustomDrillsTab(AppStateService appState) {
+    final customDrills = appState.customDrills;
+    
+    return Column(
+      children: [
+        Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 20),
+          child: Row(
+            children: [
+              Text(
+                'Custom Drills',
+                style: AppTheme.headlineSmall.copyWith(
+                  color: AppTheme.primaryDark,
+                ),
+              ),
+              const Spacer(),
+              Text(
+                '${customDrills.length} drill${customDrills.length == 1 ? '' : 's'}',
+                style: AppTheme.bodyMedium.copyWith(
+                  color: AppTheme.primaryGray,
+                ),
+              ),
+            ],
+          ),
+        ),
+        const SizedBox(height: 20),
+        Expanded(
+          child: customDrills.isEmpty
+              ? _buildEmptyCustomDrillsState()
+              : _buildCustomDrillsList(customDrills, appState),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildEmptyCustomDrillsState() {
+    return Center(
+      child: Padding(
+        padding: const EdgeInsets.all(40),
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Container(
+              padding: const EdgeInsets.all(24),
+              decoration: BoxDecoration(
+                color: AppTheme.primaryPurple.withOpacity(0.1),
+                borderRadius: BorderRadius.circular(24),
+              ),
+              child: const Icon(
+                Icons.sports_soccer_outlined,
+                size: 48,
+                color: AppTheme.primaryPurple,
+              ),
+            ),
+            const SizedBox(height: 24),
+            Text(
+              'No custom drills yet',
+              style: AppTheme.titleLarge.copyWith(
+                color: AppTheme.primaryDark,
+              ),
+            ),
+            const SizedBox(height: 8),
+            Text(
+              'Create your first custom drill to see it here',
+              style: AppTheme.bodyMedium.copyWith(
+                color: AppTheme.primaryGray,
+              ),
+              textAlign: TextAlign.center,
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildCustomDrillsList(List<DrillModel> customDrills, AppStateService appState) {
+    return ListView.builder(
+      padding: const EdgeInsets.symmetric(horizontal: 20),
+      itemCount: customDrills.length,
+      itemBuilder: (context, index) {
+        final drill = customDrills[index];
+        return Padding(
+          padding: const EdgeInsets.only(bottom: 12),
+          child: DraggableDrillCard(
+            drill: drill,
+            onTap: () {
+              HapticUtils.mediumImpact();
+              // Navigate to drill detail view
+              Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (context) => DrillDetailView(
+                    drill: drill,
+                    isInSession: appState.isDrillInSession(drill),
+                    onAddToSession: null,
+                  ),
+                ),
+              );
+            },
+            onDelete: () {
+              HapticUtils.lightImpact();
+              _showDeleteCustomDrillDialog(drill, appState);
+            },
+            showOverlayIcons: true,
+          ),
+        );
+      },
+    );
+  }
+
+  void _showDeleteCustomDrillDialog(DrillModel drill, AppStateService appState) {
+    WarningDialog.show(
+      context: context,
+      title: 'Delete Custom Drill',
+      content: 'Are you sure you want to delete "${drill.title}"? This action cannot be undone.',
+      cancelText: 'Cancel',
+      continueText: 'Delete',
+      warningColor: Colors.red,
+      warningIcon: Icons.delete_forever,
+      onCancel: () {
+        HapticUtils.lightImpact();
+      },
+      onContinue: () {
+        HapticUtils.mediumImpact();
+        appState.deleteCustomDrill(drill.id);
       },
     );
   }

@@ -193,4 +193,35 @@ class CustomDrillService {
         return 'medium';
     }
   }
+
+  /// Delete a custom drill
+  Future<bool> deleteCustomDrill(String drillId) async {
+    try {
+      if (kDebugMode) {
+        print('🗑️ Deleting custom drill: $drillId');
+      }
+
+      final response = await _apiService.delete(
+        '/api/custom-drills/$drillId/',
+        requiresAuth: true,
+      );
+
+      if (response.isSuccess) {
+        if (kDebugMode) {
+          print('✅ Successfully deleted custom drill: $drillId');
+        }
+        return true;
+      } else {
+        if (kDebugMode) {
+          print('❌ Failed to delete custom drill: ${response.statusCode} ${response.error}');
+        }
+        return false;
+      }
+    } catch (e) {
+      if (kDebugMode) {
+        print('❌ Error deleting custom drill: $e');
+      }
+      return false;
+    }
+  }
 } 
