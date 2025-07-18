@@ -913,6 +913,31 @@ class AppStateService extends ChangeNotifier {
       if (kDebugMode) print('❌ Error refreshing custom drills: $e');
     }
   }
+
+  // ✅ ADDED: Delete a custom drill
+  Future<bool> deleteCustomDrill(String drillId) async {
+    if (AppConfig.useTestData) return true;
+    
+    try {
+      if (kDebugMode) print('🗑️ Deleting custom drill: $drillId');
+      
+      final success = await _customDrillService.deleteCustomDrill(drillId);
+      
+      if (success) {
+        // Remove from local list
+        _customDrills.removeWhere((drill) => drill.id == drillId);
+        notifyListeners();
+        if (kDebugMode) print('✅ Custom drill deleted successfully');
+        return true;
+      } else {
+        if (kDebugMode) print('❌ Failed to delete custom drill');
+        return false;
+      }
+    } catch (e) {
+      if (kDebugMode) print('❌ Error deleting custom drill: $e');
+      return false;
+    }
+  }
   
   // ===== STATE MANAGEMENT UTILITIES =====
   // Internal state management helpers

@@ -510,7 +510,10 @@ class SelectableDrillCard extends StatelessWidget {
   }) : super(key: key);
 
   String _getSkillIconPath(String skill) {
-    switch (skill.toLowerCase()) {
+    // Normalize the skill name for better matching
+    final normalizedSkill = skill.toLowerCase().replaceAll('_', ' ').trim();
+    
+    switch (normalizedSkill) {
       case 'passing':
         return 'assets/drill-icons/Player_Passing.png';
       case 'shooting':
@@ -518,6 +521,7 @@ class SelectableDrillCard extends StatelessWidget {
       case 'dribbling':
         return 'assets/drill-icons/Player_Dribbling.png';
       case 'first touch':
+      case 'firsttouch':
         return 'assets/drill-icons/Player_First_Touch.png';
       case 'defending':
         return 'assets/drill-icons/Player_Dribbling.png'; // Use dribbling as fallback for defending
