@@ -971,6 +971,17 @@ class AppStateService extends ChangeNotifier {
   // ===== SESSION COMPLETION SECTION =====
   // Handle completion of training sessions
   Future<void> addCompletedSession(CompletedSession session) async {
+    // ✅ ADDED: Guest mode check - don't save progress for guests
+    if (isGuestMode) {
+      if (kDebugMode) {
+        print('👤 Guest mode detected - skipping progress save');
+        print('   Session type: ${session.sessionType}');
+        print('   Date: ${session.date}');
+        print('   Drills: ${session.drills.length}');
+      }
+      return; // Don't save progress for guest users
+    }
+    
     _completedSessions.add(session);
         
     if (kDebugMode) {
@@ -1050,6 +1061,17 @@ class AppStateService extends ChangeNotifier {
 
   // Add completed session and sync to backend
   Future<void> _addCompletedSessionWithSync(CompletedSession session) async {
+    // ✅ ADDED: Guest mode check - don't save progress for guests
+    if (isGuestMode) {
+      if (kDebugMode) {
+        print('👤 Guest mode detected - skipping session sync');
+        print('   Session type: ${session.sessionType}');
+        print('   Date: ${session.date}');
+        print('   Drills: ${session.drills.length}');
+      }
+      return; // Don't save progress for guest users
+    }
+    
     _completedSessions.add(session);
     await _syncCompletedSessionImmediate(session);
   }

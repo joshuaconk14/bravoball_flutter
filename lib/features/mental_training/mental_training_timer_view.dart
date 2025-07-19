@@ -410,6 +410,27 @@ class _MentalTrainingTimerViewState extends State<MentalTrainingTimerView>
       // Update app state to count this as a completed session for the day
       final appState = Provider.of<AppStateService>(context, listen: false);
       
+      // ✅ ADDED: Guest mode check - don't save progress for guests
+      if (appState.isGuestMode) {
+        if (kDebugMode) {
+          print('👤 Guest mode detected - skipping mental training progress save');
+          print('   Duration: ${widget.durationMinutes} minutes');
+        }
+        
+        // ✅ ADDED: Show brief message to guests that progress isn't saved
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('Great job! Create an account to save your progress and track your streak.'),
+              duration: Duration(seconds: 3),
+              behavior: SnackBarBehavior.floating,
+            ),
+          );
+        }
+        
+        return; // Don't save progress for guest users
+      }
+      
       // Create a CompletedSession for mental training
       final mentalTrainingCompletedSession = CompletedSession(
         date: DateTime.now(),
