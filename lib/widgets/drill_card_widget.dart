@@ -7,6 +7,7 @@ import 'package:provider/provider.dart'; // Added for Provider
 import '../services/app_state_service.dart'; // Added for AppStateService
 import 'save_to_collection_dialog.dart'; // ✅ ADDED: Import reusable dialog
 import 'package:flutter/foundation.dart'; // Added for kDebugMode
+import '../features/create_drill/edit_custom_drill_sheet.dart'; // ✅ ADDED: Import edit custom drill sheet
 
 class DraggableDrillCard extends StatelessWidget {
   final DrillModel drill;
@@ -223,13 +224,22 @@ class DraggableDrillCard extends StatelessWidget {
                           HapticUtils.lightImpact(); // Light haptic for collection action
                           final appState = Provider.of<AppStateService>(context, listen: false);
                           SaveToCollectionDialog.show(context, drill);
+                        } else if (value == 'edit_drill' && drill.isCustom) {
+                          HapticUtils.lightImpact(); // Light haptic for edit action
+                          Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                              builder: (context) => EditCustomDrillSheet(drill: drill),
+                            ),
+                          );
                         }
                       },
                       itemBuilder: (context) {
                         final appState = Provider.of<AppStateService>(context, listen: false);
                         final isLiked = appState.isDrillLiked(drill);
                         final isInSession = appState.isDrillInSession(drill);
-                        return [
+                        
+                        List<PopupMenuItem<String>> menuItems = [
                           PopupMenuItem(
                             value: 'like',
                             child: Row(
@@ -273,6 +283,28 @@ class DraggableDrillCard extends StatelessWidget {
                             ),
                           ),
                         ];
+
+                        // ✅ ADDED: Add "Edit Drill" option for custom drills only
+                        if (drill.isCustom) {
+                          menuItems.add(
+                            PopupMenuItem(
+                              value: 'edit_drill',
+                              child: Row(
+                                children: [
+                                  Icon(
+                                    Icons.edit_outlined,
+                                    color: Colors.grey,
+                                    size: 20,
+                                  ),
+                                  const SizedBox(width: 8),
+                                  const Text('Edit Drill'),
+                                ],
+                              ),
+                            ),
+                          );
+                        }
+
+                        return menuItems;
                       },
                     ),
                   ],

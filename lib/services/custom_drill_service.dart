@@ -13,6 +13,87 @@ class CustomDrillService {
 
   final ApiService _apiService = ApiService.shared;
 
+  /// Update a custom drill
+  Future<DrillModel?> updateCustomDrill({
+    required String drillId,
+    required String title,
+    required String description,
+    required String skill,
+    required List<String> subSkills,
+    required int sets,
+    required int reps,
+    required int duration,
+    required List<String> instructions,
+    required List<String> tips,
+    required List<String> equipment,
+    required String trainingStyle,
+    required String difficulty,
+    String videoUrl = '',
+  }) async {
+    try {
+      if (kDebugMode) {
+        print('📤 Updating custom drill: $title');
+      }
+
+      // Map frontend skill to backend category
+      final backendCategory = _mapSkillToBackendCategory(skill);
+      
+      // Map training style to intensity
+      final intensity = _mapTrainingStyleToIntensity(trainingStyle);
+
+      final requestBody = {
+        'title': title,
+        'description': description,
+        'type': backendCategory,
+        'duration': duration,
+        'sets': sets,
+        'reps': reps,
+        'equipment': equipment,
+        'suitable_locations': ['full_field', 'medium_field'],
+        'intensity': intensity,
+        'training_styles': [trainingStyle],
+        'difficulty': difficulty.toLowerCase(),
+        'primary_skill': {
+          'category': backendCategory,
+          'sub_skill': subSkills.isNotEmpty ? subSkills.first : 'general',
+        },
+        'instructions': instructions,
+        'tips': tips,
+        'common_mistakes': [],
+        'progression_steps': [],
+        'variations': [],
+        'video_url': videoUrl,
+      };
+
+      final response = await _apiService.put(
+        '/api/custom-drills/$drillId/',
+        body: requestBody,
+        requiresAuth: true,
+      );
+
+      if (response.isSuccess && response.data != null) {
+        final drillResponse = DrillResponse.fromJson(response.data!);
+        final drillModel = _convertToLocalModel(drillResponse);
+        
+        if (kDebugMode) {
+          print('✅ Successfully updated custom drill: ${drillModel.title}');
+        }
+        
+        return drillModel;
+      } else {
+        if (kDebugMode) {
+          print('❌ Failed to update custom drill: ${response.statusCode} ${response.error}');
+        }
+        return null;
+      }
+    } catch (e) {
+      if (kDebugMode) {
+        print('❌ Error updating custom drill: $e');
+      }
+      return null;
+    }
+  }
+
   /// Create a custom drill
   Future<DrillModel?> createCustomDrill({
     required String title,

@@ -11,6 +11,7 @@ import '../../utils/skill_utils.dart';
 import '../../services/app_state_service.dart';
 import '../../services/custom_drill_service.dart'; // ✅ ADDED: Import custom drill service
 import '../../widgets/save_to_collection_dialog.dart';
+import '../create_drill/edit_custom_drill_sheet.dart'; // ✅ ADDED: Import edit custom drill sheet
 
 class DrillDetailView extends StatefulWidget {
   final DrillModel drill;
@@ -273,6 +274,14 @@ class _DrillDetailViewState extends State<DrillDetailView>
                 } else if (value == 'edit_video' && widget.drill.isCustom) {
                   HapticUtils.lightImpact();
                   _pickNewVideo();
+                } else if (value == 'edit_drill' && widget.drill.isCustom) {
+                  HapticUtils.lightImpact();
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (context) => EditCustomDrillSheet(drill: widget.drill),
+                    ),
+                  );
                 }
               },
               itemBuilder: (context) {
@@ -348,6 +357,26 @@ class _DrillDetailViewState extends State<DrillDetailView>
                                 ),
                           const SizedBox(width: 8),
                           Text(_isVideoLoading ? 'Updating...' : 'Edit Video'),
+                        ],
+                      ),
+                    ),
+                  );
+                }
+
+                // ✅ ADDED: Add "Edit Drill" option for custom drills only
+                if (widget.drill.isCustom) {
+                  menuItems.add(
+                    PopupMenuItem(
+                      value: 'edit_drill',
+                      child: Row(
+                        children: [
+                          Icon(
+                            Icons.edit_outlined,
+                            color: Colors.grey,
+                            size: 20,
+                          ),
+                          const SizedBox(width: 8),
+                          Text('Edit Drill'),
                         ],
                       ),
                     ),
@@ -590,58 +619,7 @@ class _DrillDetailViewState extends State<DrillDetailView>
                     
                     const SizedBox(height: 20),
                     
-                    // Bottom action button
-                    if (!widget.isInSession)
-                      Padding(
-                        padding: const EdgeInsets.only(bottom: 20),
-                        child: SizedBox(
-                          width: double.infinity,
-                          height: 56,
-                          child: ElevatedButton(
-                            onPressed: () {
-                              HapticUtils.mediumImpact();
-                              if (widget.onAddToSession != null) {
-                                widget.onAddToSession!();
-                              } else {
-                                final appState = Provider.of<AppStateService>(context, listen: false);
-                                final success = appState.addDrillToSession(widget.drill);
-                                if (success) {
-                                  ScaffoldMessenger.of(context).showSnackBar(
-                                    SnackBar(
-                                      content: Text('Added ${widget.drill.title} to session'),
-                                      backgroundColor: AppTheme.success,
-                                    ),
-                                  );
-                                  Navigator.pop(context);
-                                } else {
-                                  ScaffoldMessenger.of(context).showSnackBar(
-                                    const SnackBar(
-                                      content: Text('Session limit reached! You can only add up to 10 drills to a session.'),
-                                      backgroundColor: Colors.orange,
-                                    ),
-                                  );
-                                }
-                              }
-                            },
-                            style: ElevatedButton.styleFrom(
-                              backgroundColor: AppTheme.primaryYellow,
-                              foregroundColor: Colors.white,
-                              elevation: 2,
-                              shape: RoundedRectangleBorder(
-                                borderRadius: BorderRadius.circular(16),
-                              ),
-                            ),
-                            child: const Text(
-                              'Add to Session',
-                              style: TextStyle(
-                                fontFamily: 'Poppins',
-                                fontWeight: FontWeight.bold,
-                                fontSize: 16,
-                              ),
-                            ),
-                          ),
-                        ),
-                      ),
+                    
                   ],
                 ),
               ),
