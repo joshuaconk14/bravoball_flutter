@@ -44,6 +44,7 @@ dependencies:
   timezone: ^0.9.4  # Required for scheduled notifications
   uuid: ^4.3.3  # For generating unique identifiers
   image_picker: ^1.1.2  # For picking videos from camera roll
+  path_provider: ^2.1.4  # For accessing device storage directories
 
 dev_dependencies:
   flutter_test:

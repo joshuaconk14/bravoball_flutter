@@ -6,6 +6,7 @@ import '../../models/drill_model.dart';
 import '../../models/drill_group_model.dart';
 import '../../services/custom_drill_service.dart';
 import '../../services/app_state_service.dart';
+import '../../services/video_file_service.dart'; // ✅ ADDED: Import video file service
 import '../../constants/app_theme.dart';
 import '../../utils/haptic_utils.dart';
 import '../../widgets/bravo_button.dart';
@@ -149,7 +150,6 @@ class _CreateDrillSheetState extends State<CreateDrillSheet> {
   Future<void> _pickVideo() async {
     try {
       print('🎬 Starting video picker...');
-      print('🎬 Image picker instance: $_picker');
       
       setState(() {
         _isVideoLoading = true;
@@ -186,33 +186,68 @@ class _CreateDrillSheetState extends State<CreateDrillSheet> {
 
       if (video != null) {
         print('🎬 Video selected: ${video.path}');
-        final file = File(video.path);
+        final tempFile = File(video.path);
         
-        // Check if file exists
-        final exists = await file.exists();
-        print('🎬 File exists: $exists');
+        // Check if temporary file exists
+        final exists = await tempFile.exists();
+        print('🎬 Temp file exists: $exists');
         
         if (exists) {
-          final size = await file.length();
-          print('🎬 File size: ${size} bytes');
-        }
-        
-        setState(() {
-          _selectedVideoFile = file;
-          _videoPath = video!.path; // Use ! since we already checked video != null
-          _isVideoLoading = false;
-        });
-        HapticUtils.lightImpact();
-        
-        // Show success message
-        if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(
-              content: Text('Video selected successfully!'),
-              backgroundColor: Colors.green,
-              duration: Duration(seconds: 2),
-            ),
-          );
+          final size = await tempFile.length();
+          print('🎬 Temp file size: ${(size / 1024 / 1024).toStringAsFixed(1)} MB');
+          
+          // ✅ UPDATED: Copy temporary file to permanent storage
+          final permanentPath = await VideoFileService.instance.copyVideoToPermanentStorage(video.path);
+          
+          if (permanentPath != null) {
+            setState(() {
+              _selectedVideoFile = File(permanentPath); // Point to permanent file
+              _videoPath = permanentPath; // Store permanent path
+              _isVideoLoading = false;
+            });
+            
+            HapticUtils.lightImpact();
+            
+            // Show success message
+            if (mounted) {
+              ScaffoldMessenger.of(context).showSnackBar(
+                const SnackBar(
+                  content: Text('Video selected and saved successfully!'),
+                  backgroundColor: Colors.green,
+                  duration: Duration(seconds: 2),
+                ),
+              );
+            }
+          } else {
+            // Failed to copy to permanent storage
+            setState(() {
+              _isVideoLoading = false;
+            });
+            
+            if (mounted) {
+              ScaffoldMessenger.of(context).showSnackBar(
+                const SnackBar(
+                  content: Text('Failed to save video. Please try again.'),
+                  backgroundColor: AppTheme.error,
+                  duration: Duration(seconds: 3),
+                ),
+              );
+            }
+          }
+        } else {
+          setState(() {
+            _isVideoLoading = false;
+          });
+          
+          if (mounted) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              const SnackBar(
+                content: Text('Selected video file not found'),
+                backgroundColor: AppTheme.error,
+                duration: Duration(seconds: 3),
+              ),
+            );
+          }
         }
       } else {
         print('🎬 No video selected (user cancelled)');

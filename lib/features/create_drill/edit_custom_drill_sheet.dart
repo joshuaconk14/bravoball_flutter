@@ -5,6 +5,7 @@ import 'dart:io';
 import '../../models/drill_model.dart';
 import '../../services/custom_drill_service.dart';
 import '../../services/app_state_service.dart';
+import '../../services/video_file_service.dart'; // ✅ ADDED: Import video file service
 import '../../constants/app_theme.dart';
 import '../../utils/haptic_utils.dart';
 import '../../widgets/bravo_button.dart';
@@ -194,15 +195,47 @@ class _EditCustomDrillSheetState extends State<EditCustomDrillSheet> {
       );
 
       if (video != null) {
-        final file = File(video.path);
-        final exists = await file.exists();
+        final tempFile = File(video.path);
+        final exists = await tempFile.exists();
         
         if (exists) {
-          setState(() {
-            _selectedVideoFile = file;
-            _videoPath = video.path;
-          });
-          HapticUtils.mediumImpact();
+          // ✅ UPDATED: Copy temporary file to permanent storage
+          final permanentPath = await VideoFileService.instance.copyVideoToPermanentStorage(video.path);
+          
+          if (permanentPath != null) {
+            // ✅ ADDED: Immediately save the video to the backend
+            final customDrillService = CustomDrillService.shared;
+            final success = await customDrillService.updateCustomDrillVideo(
+              widget.drill.id,
+              permanentPath,
+            );
+
+            if (success) {
+              setState(() {
+                _selectedVideoFile = File(permanentPath); // Point to permanent file
+                _videoPath = permanentPath; // Store permanent path
+              });
+
+              // ✅ ADDED: Refresh custom drills in app state so changes are immediate
+              final appState = Provider.of<AppStateService>(context, listen: false);
+              await appState.refreshCustomDrillsFromBackend();
+
+              HapticUtils.mediumImpact();
+              
+              // Show success message
+              ScaffoldMessenger.of(context).showSnackBar(
+                const SnackBar(
+                  content: Text('Video updated successfully!'),
+                  backgroundColor: Colors.green,
+                  duration: Duration(seconds: 2),
+                ),
+              );
+            } else {
+              _showErrorMessage('Failed to save video to server. Please try again.');
+            }
+          } else {
+            _showErrorMessage('Failed to save video. Please try again.');
+          }
         } else {
           _showErrorMessage('Selected video file not found');
         }
@@ -245,6 +278,7 @@ class _EditCustomDrillSheetState extends State<EditCustomDrillSheet> {
 
     try {
       final customDrillService = CustomDrillService.shared;
+      // ✅ UPDATED: Note that video is already saved separately when user picks it
       final drill = await customDrillService.updateCustomDrill(
         drillId: widget.drill.id,
         title: _titleController.text.trim(),
@@ -259,7 +293,7 @@ class _EditCustomDrillSheetState extends State<EditCustomDrillSheet> {
         equipment: _equipment,
         trainingStyle: _selectedTrainingStyle,
         difficulty: _selectedDifficulty,
-        videoUrl: _videoPath ?? '',
+        videoUrl: _videoPath ?? '', // Use current video path (already saved if updated)
       );
 
       if (drill != null) {
@@ -268,7 +302,7 @@ class _EditCustomDrillSheetState extends State<EditCustomDrillSheet> {
         });
         HapticUtils.heavyImpact();
         
-        // Refresh custom drills in app state so updated drill appears immediately
+        // ✅ ADDED: Refresh custom drills in app state so updated drill appears immediately
         final appState = Provider.of<AppStateService>(context, listen: false);
         await appState.refreshCustomDrillsFromBackend();
         
@@ -822,6 +856,7 @@ class _EditCustomDrillSheetState extends State<EditCustomDrillSheet> {
                     borderRadius: BorderRadius.circular(12),
                     child: DrillVideoPlayer(
                       videoUrl: _videoPath!,
+                      key: ValueKey(_videoPath), // ✅ ADDED: Force rebuild when video changes
                     ),
                   ),
                 ),
@@ -854,12 +889,48 @@ class _EditCustomDrillSheetState extends State<EditCustomDrillSheet> {
                   if (_videoPath != null && _videoPath!.isNotEmpty) ...[
                     const SizedBox(width: 12),
                     ElevatedButton.icon(
-                      onPressed: () {
+                      onPressed: () async {
+                        // ✅ UPDATED: Immediately remove video from server
                         setState(() {
-                          _videoPath = null;
-                          _selectedVideoFile = null;
+                          _isVideoLoading = true;
                         });
-                        HapticUtils.lightImpact();
+
+                        try {
+                          final customDrillService = CustomDrillService.shared;
+                          final success = await customDrillService.updateCustomDrillVideo(
+                            widget.drill.id,
+                            '', // Empty string to remove video
+                          );
+
+                          if (success) {
+                            setState(() {
+                              _videoPath = null;
+                              _selectedVideoFile = null;
+                            });
+
+                            // Refresh custom drills in app state
+                            final appState = Provider.of<AppStateService>(context, listen: false);
+                            await appState.refreshCustomDrillsFromBackend();
+
+                            HapticUtils.lightImpact();
+                            
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              const SnackBar(
+                                content: Text('Video removed successfully!'),
+                                backgroundColor: Colors.green,
+                                duration: Duration(seconds: 2),
+                              ),
+                            );
+                          } else {
+                            _showErrorMessage('Failed to remove video. Please try again.');
+                          }
+                        } catch (e) {
+                          _showErrorMessage('Error removing video: ${e.toString()}');
+                        } finally {
+                          setState(() {
+                            _isVideoLoading = false;
+                          });
+                        }
                       },
                       icon: const Icon(Icons.delete),
                       label: const Text('Remove'),

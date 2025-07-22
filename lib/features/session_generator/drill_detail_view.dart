@@ -1,7 +1,5 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
-import 'package:image_picker/image_picker.dart'; // ✅ ADDED: Import for video picker
-import 'dart:io'; // ✅ ADDED: Import for File support
 import '../../models/drill_model.dart';
 import '../../widgets/bravo_button.dart';
 import '../../widgets/drill_video_background.dart'; // ✅ ADDED: Import video background widget
@@ -9,7 +7,6 @@ import '../../constants/app_theme.dart';
 import '../../utils/haptic_utils.dart';
 import '../../utils/skill_utils.dart';
 import '../../services/app_state_service.dart';
-import '../../services/custom_drill_service.dart'; // ✅ ADDED: Import custom drill service
 import '../../widgets/save_to_collection_dialog.dart';
 import '../create_drill/edit_custom_drill_sheet.dart'; // ✅ ADDED: Import edit custom drill sheet
 
@@ -40,10 +37,8 @@ class _DrillDetailViewState extends State<DrillDetailView>
   final List<double> _snapSizes = [0.2, 0.4, 0.8];
   late DraggableScrollableController _sheetController; // ✅ FIXED: Proper controller management
 
-  // ✅ ADDED: Video editing functionality for custom drills
-  final ImagePicker _picker = ImagePicker();
-  bool _isVideoLoading = false;
-  String? _updatedVideoPath;
+  // ✅ REMOVED: Video editing functionality - now handled only in Edit Drill screen
+  // Video editing is accessible through the "Edit Drill" option in the popup menu
 
   @override
   void initState() {
@@ -101,70 +96,77 @@ class _DrillDetailViewState extends State<DrillDetailView>
     HapticUtils.lightImpact();
   }
 
-  // ✅ ADDED: Video editing methods for custom drills
-  Future<void> _pickNewVideo() async {
-    try {
-      setState(() {
-        _isVideoLoading = true;
-      });
+  // ✅ REMOVED: Video editing methods for custom drills
+  // Future<void> _pickNewVideo() async {
+  //   try {
+  //     setState(() {
+  //       _isVideoLoading = true;
+  //     });
 
-      final video = await _picker.pickVideo(
-        source: ImageSource.gallery,
-        maxDuration: const Duration(minutes: 1),
-      );
+  //     final video = await _picker.pickVideo(
+  //       source: ImageSource.gallery,
+  //       maxDuration: const Duration(minutes: 1),
+  //     );
 
-      if (video != null) {
-        final file = File(video.path);
-        final exists = await file.exists();
+  //     if (video != null) {
+  //       final tempFile = File(video.path);
+  //       final exists = await tempFile.exists();
         
-        if (exists) {
-          // Update the custom drill with new video
-          await _updateCustomDrillVideo(video.path);
-        } else {
-          _showErrorMessage('Selected video file not found');
-        }
-      }
-    } catch (e) {
-      _showErrorMessage('Error selecting video: ${e.toString()}');
-    } finally {
-      setState(() {
-        _isVideoLoading = false;
-      });
-    }
-  }
+  //       if (exists) {
+  //         // ✅ UPDATED: Copy temporary file to permanent storage
+  //         final permanentPath = await VideoFileService.instance.copyVideoToPermanentStorage(video.path);
+          
+  //         if (permanentPath != null) {
+  //           // Update the custom drill with new permanent video path
+  //           await _updateCustomDrillVideo(permanentPath);
+  //         } else {
+  //           _showErrorMessage('Failed to save video. Please try again.');
+  //         }
+  //       } else {
+  //         _showErrorMessage('Selected video file not found');
+  //       }
+  //     }
+  //   } catch (e) {
+  //     _showErrorMessage('Error selecting video: ${e.toString()}');
+  //   } finally {
+  //     setState(() {
+  //       _isVideoLoading = false;
+  //     });
+  //   }
+  // }
 
-  Future<void> _updateCustomDrillVideo(String newVideoPath) async {
-    try {
-      final customDrillService = CustomDrillService.shared;
-      final success = await customDrillService.updateCustomDrillVideo(
-        widget.drill.id,
-        newVideoPath,
-      );
+  // Future<void> _updateCustomDrillVideo(String newVideoPath) async {
+  //   try {
+  //     final customDrillService = CustomDrillService.shared;
+  //     final success = await customDrillService.updateCustomDrillVideo(
+  //       widget.drill.id,
+  //       newVideoPath,
+  //     );
 
-      if (success) {
-        setState(() {
-          _updatedVideoPath = newVideoPath;
-        });
+  //     if (success) {
+  //       setState(() {
+  //         _updatedVideoPath = newVideoPath;
+  //       });
 
-        // Refresh custom drills in app state
-        final appState = Provider.of<AppStateService>(context, listen: false);
-        await appState.refreshCustomDrillsFromBackend();
+  //       // Refresh custom drills in app state
+  //       final appState = Provider.of<AppStateService>(context, listen: false);
+  //       await appState.refreshCustomDrillsFromBackend();
 
-        HapticUtils.mediumImpact();
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('Video updated successfully!'),
-            backgroundColor: Colors.green,
-            duration: Duration(seconds: 2),
-          ),
-        );
-      } else {
-        _showErrorMessage('Failed to update video. Please try again.');
-      }
-    } catch (e) {
-      _showErrorMessage('Error updating video: ${e.toString()}');
-    }
-  }
+  //       HapticUtils.mediumImpact();
+  //       ScaffoldMessenger.of(context).showSnackBar(
+  //         const SnackBar(
+  //           content: Text('Video updated successfully!'),
+  //           backgroundColor: Colors.green,
+  //           duration: Duration(seconds: 2),
+  //         ),
+  //       );
+  //     } else {
+  //       _showErrorMessage('Failed to update video. Please try again.');
+  //     }
+  //   } catch (e) {
+  //     _showErrorMessage('Error updating video: ${e.toString()}');
+  //   }
+  // }
 
   void _showErrorMessage(String message) {
     ScaffoldMessenger.of(context).showSnackBar(
@@ -178,13 +180,9 @@ class _DrillDetailViewState extends State<DrillDetailView>
 
   @override
   Widget build(BuildContext context) {
-    // ✅ UPDATED: Use updated video path if available for custom drills
-    final videoUrlToUse = widget.drill.isCustom && _updatedVideoPath != null 
-        ? _updatedVideoPath! 
-        : widget.drill.videoUrl;
-        
+    // ✅ UPDATED: Use drill's video URL directly
     return DrillVideoBackground(
-      videoUrl: videoUrlToUse,
+      videoUrl: widget.drill.videoUrl,
       child: _buildContent(),
     );
   }
@@ -271,9 +269,6 @@ class _DrillDetailViewState extends State<DrillDetailView>
                 } else if (value == 'add_to_group') {
                   HapticUtils.lightImpact();
                   SaveToCollectionDialog.show(context, widget.drill);
-                } else if (value == 'edit_video' && widget.drill.isCustom) {
-                  HapticUtils.lightImpact();
-                  _pickNewVideo();
                 } else if (value == 'edit_drill' && widget.drill.isCustom) {
                   HapticUtils.lightImpact();
                   Navigator.push(
@@ -334,36 +329,10 @@ class _DrillDetailViewState extends State<DrillDetailView>
                   ),
                 ];
 
-                // ✅ ADDED: Add "Edit Video" option for custom drills only
-                if (widget.drill.isCustom) {
-                  menuItems.add(
-                    PopupMenuItem(
-                      value: 'edit_video',
-                      child: Row(
-                        children: [
-                          _isVideoLoading
-                              ? const SizedBox(
-                                  width: 20,
-                                  height: 20,
-                                  child: CircularProgressIndicator(
-                                    strokeWidth: 2,
-                                    color: AppTheme.primaryYellow,
-                                  ),
-                                )
-                              : Icon(
-                                  Icons.videocam_outlined,
-                                  color: Colors.grey,
-                                  size: 20,
-                                ),
-                          const SizedBox(width: 8),
-                          Text(_isVideoLoading ? 'Updating...' : 'Edit Video'),
-                        ],
-                      ),
-                    ),
-                  );
-                }
+                // ✅ REMOVED: Edit Video option - now only available through Edit Drill
+                // Users can edit videos within the Edit Drill screen
 
-                // ✅ ADDED: Add "Edit Drill" option for custom drills only
+                // ✅ UPDATED: Only show "Edit Drill" option for custom drills
                 if (widget.drill.isCustom) {
                   menuItems.add(
                     PopupMenuItem(
