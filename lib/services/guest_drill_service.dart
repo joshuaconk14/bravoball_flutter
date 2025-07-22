@@ -167,6 +167,7 @@ class GuestDrillService {
       'first_touch': 'First Touch',
       'defending': 'Defending',
       'fitness': 'Fitness',
+      'goalkeeping': 'Goalkeeping', // ✅ ADDED: Missing goalkeeping mapping
       'general': 'General',
     };
     

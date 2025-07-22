@@ -240,8 +240,58 @@ class BackgroundTimerService {
 
   /// Resume the timer
   void resumeTimer() {
+    if (!_isTimerPaused || _isTimerRunning) return; // Can only resume if paused
+    
     _isTimerRunning = true;
     _isTimerPaused = false;
+    
+    // ✅ FIXED: Restart the actual timer with remaining time
+    if (_remainingSeconds > 0) {
+      bool finalCountdownPlayed = _remainingSeconds <= 3;
+      
+      _timer = Timer.periodic(const Duration(seconds: 1), (timer) {
+        if (!_isTimerRunning || _isTimerPaused) {
+          timer.cancel();
+          return;
+        }
+        
+        if (_remainingSeconds > 0) {
+          _remainingSeconds--;
+          _onTimerTick?.call(_remainingSeconds);
+          
+          // Update lock screen widget
+          _notificationService.updateTimerNotification(
+            drillName: _currentDrillName,
+            totalDurationSeconds: _totalDurationSeconds,
+            remainingSeconds: _remainingSeconds,
+            isPaused: false,
+          );
+          
+          // Play final countdown at 3 seconds (only once)
+          if (_remainingSeconds <= 3 && _remainingSeconds > 0 && !finalCountdownPlayed) {
+            finalCountdownPlayed = true;
+            _playCountdownFinalSound();
+          }
+          
+          // Haptic feedback at intervals
+          if (_remainingSeconds == 30 || _remainingSeconds == 10) {
+            HapticFeedback.lightImpact();
+          } else if (_remainingSeconds <= 3 && _remainingSeconds > 0) {
+            HapticFeedback.mediumImpact();
+          }
+        } else {
+          // Timer complete
+          timer.cancel();
+          _isTimerRunning = false;
+          _onTimerComplete?.call();
+          HapticFeedback.heavyImpact();
+          
+          // Show completion notification and stop timer widget
+          _notificationService.showTimerCompletionNotification(drillName: _currentDrillName);
+          _notificationService.stopTimerNotification();
+        }
+      });
+    }
     
     // Update lock screen widget to show active state
     _notificationService.updateTimerNotification(
@@ -252,7 +302,7 @@ class BackgroundTimerService {
     );
     
     if (kDebugMode) {
-      print('▶️ Timer resumed with lock screen widget update');
+      print('▶️ Timer resumed from ${_remainingSeconds}s with lock screen widget update');
     }
   }
 

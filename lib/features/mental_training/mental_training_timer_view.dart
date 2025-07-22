@@ -211,7 +211,12 @@ class _MentalTrainingTimerViewState extends State<MentalTrainingTimerView>
     });
     
     if (_quotes.isNotEmpty) {
-      _quoteController.forward();
+      _quoteController.forward().then((_) {
+        // Start quote scheduling after the first quote animation completes
+        if (_isRunning) {
+          _scheduleNextQuote();
+        }
+      });
     }
   }
 
@@ -261,8 +266,7 @@ class _MentalTrainingTimerViewState extends State<MentalTrainingTimerView>
       },
     );
     
-    // Start quote rotation
-    _startQuoteRotation();
+    // Quote rotation is now handled dynamically in _loadQuotes after first quote animation
   }
   
   // ✅ UPDATED: Start the main mental training timer with properly synced progress
@@ -299,12 +303,20 @@ class _MentalTrainingTimerViewState extends State<MentalTrainingTimerView>
   void _startQuoteRotation() {
     if (_quotes.isEmpty) return;
     
-    // Adjust quote rotation speed for debug mode
-    final quoteInterval = AppConfig.fastMentalTrainingTimers 
-        ? const Duration(milliseconds: 800) // Fast rotation in debug mode
-        : const Duration(seconds: 8); // Normal rotation
+    // Start with the first quote and use its specific display duration
+    _scheduleNextQuote();
+  }
+
+  void _scheduleNextQuote() {
+    if (_quotes.isEmpty || _currentQuote == null) return;
     
-    _quoteTimer = Timer.periodic(quoteInterval, (timer) {
+    // Get the display duration for the current quote
+    final quoteDuration = AppConfig.fastMentalTrainingTimers 
+        ? const Duration(milliseconds: 800) // Fast rotation in debug mode
+        : Duration(seconds: _currentQuote!.displayDuration); // Use quote's specific duration
+    
+    _quoteTimer?.cancel(); // Cancel any existing timer
+    _quoteTimer = Timer(quoteDuration, () {
       _showNextQuote();
     });
   }
@@ -321,6 +333,9 @@ class _MentalTrainingTimerViewState extends State<MentalTrainingTimerView>
       
       // Animate in new quote
       _quoteController.forward();
+      
+      // Schedule the next quote with its specific duration
+      _scheduleNextQuote();
     });
   }
 
@@ -330,7 +345,12 @@ class _MentalTrainingTimerViewState extends State<MentalTrainingTimerView>
     });
     _backgroundTimer.pauseTimer(); // Pause the background timer
     _quoteTimer?.cancel();
-    _progressController.stop(); // ✅ UPDATED: Stop progress animation
+    
+    // ✅ FIXED: Use reset and save current value instead of stop for better resume
+    if (_progressController.isAnimating) {
+      _progressController.stop();
+    }
+    
     _pulseController.stop();
     _rippleController.stop();
   }
@@ -340,15 +360,31 @@ class _MentalTrainingTimerViewState extends State<MentalTrainingTimerView>
       _isPaused = false;
     });
     
-    // ✅ UPDATED: Resume progress animation from current position
-    if (!_progressController.isCompleted) {
+    // ✅ FIXED: Resume progress animation with proper synchronization
+    if (!_progressController.isCompleted && !_isCountdownPhase) {
+      // Calculate the current progress based on remaining time
+      final totalDuration = AppConfig.fastMentalTrainingTimers ? _totalSeconds : widget.durationMinutes * 60;
+      final elapsedTime = totalDuration - _remainingSeconds;
+      final currentProgress = elapsedTime / totalDuration;
+      
+      // Set the progress controller to the current position and continue
+      _progressController.value = currentProgress;
+      _progressController.forward();
+    } else if (!_progressController.isCompleted) {
+      // For countdown phase, just continue the animation
       _progressController.forward();
     }
+    
     _pulseController.repeat(reverse: true);
     _rippleController.repeat();
     
-    _backgroundTimer.resumeTimer(); // Resume the background timer
-    _startQuoteRotation();
+    // ✅ FIXED: Resume the background timer properly
+    _backgroundTimer.resumeTimer();
+    
+    // ✅ FIXED: Resume quote scheduling if we have quotes loaded
+    if (_quotes.isNotEmpty && _currentQuote != null) {
+      _scheduleNextQuote();
+    }
   }
 
   void _stopTimer() {

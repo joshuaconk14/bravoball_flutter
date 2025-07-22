@@ -185,6 +185,7 @@ class DrillApiService {
       'Dribbling': 'dribbling',
       'First Touch': 'first_touch',
       'Defending': 'defending',
+      'Goalkeeping': 'goalkeeping', // ✅ ADDED: Missing goalkeeping mapping
       'Fitness': 'fitness',
     };
     
@@ -200,6 +201,7 @@ class DrillApiService {
       'first_touch': 'First Touch',
       'fitness': 'Fitness',
       'defending': 'Defending',
+      'goalkeeping': 'Goalkeeping', // ✅ ADDED: Missing goalkeeping mapping
     };
     
     return skillMap[apiCategory.toLowerCase()] ?? apiCategory;
