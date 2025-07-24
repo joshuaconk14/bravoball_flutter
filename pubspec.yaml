@@ -45,6 +45,7 @@ dependencies:
   uuid: ^4.3.3  # For generating unique identifiers
   image_picker: ^1.1.2  # For picking videos from camera roll
   path_provider: ^2.1.4  # For accessing device storage directories
+  permission_handler: ^11.3.1  # For handling runtime permissions on Android
 
 dev_dependencies:
   flutter_test:
@@ -82,9 +83,9 @@ flutter:
     - assets/fonts/
     - assets/drill-icons/
     - assets/audio/
-    - assets/audio/321-start.MP3
-    - assets/audio/321-done.MP3
-    - assets/audio/success.MP3
+    - assets/audio/321-start.mp3
+    - assets/audio/321-done.mp3
+    - assets/audio/success.mp3
     - assets/audio/silent-timer.mp3  # Silent audio for background timer
 
   # An image asset can refer to one or more resolution-specific "variants", see

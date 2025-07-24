@@ -4,7 +4,6 @@ import 'package:rive/rive.dart';
 import 'dart:ui' as ui show Gradient;
 import 'package:flutter/painting.dart' as painting;
 import '../../widgets/bravo_button.dart';
-import '../../widgets/guest_account_overlay.dart'; // ✅ NEW: Import reusable guest overlay
 import '../../widgets/circular_drill_button.dart'; // ✅ NEW: Import circular drill button
 import '../../widgets/warning_dialog.dart'; // ✅ NEW: Import reusable warning dialog
 import '../../models/editable_drill_model.dart';
@@ -19,6 +18,7 @@ import 'session_completion_view.dart';
 import '../../views/main_tab_view.dart';
 import 'package:flutter/foundation.dart'; // Added for kDebugMode
 import '../mental_training/mental_training_setup_view.dart'; // Added for MentalTrainingSetupView
+import '../../widgets/guest_account_creation_dialog.dart'; // ✅ ADDED: Import reusable dialog
 
 class SessionGeneratorHomeFieldView extends StatefulWidget {
   const SessionGeneratorHomeFieldView({Key? key}) : super(key: key);
@@ -406,12 +406,14 @@ class _SessionGeneratorHomeFieldViewState extends State<SessionGeneratorHomeFiel
               // ✅ NEW: Check if guest mode - show overlay instead of completion
               if (appState.isGuestMode && appState.isSessionComplete) {
                 HapticUtils.mediumImpact();
-                GuestAccountOverlay.show(
+                GuestAccountCreationDialog.show(
                   context: context,
                   title: 'Create an account to earn rewards',
                   description: 'Track your progress, earn achievements, and unlock all features by creating an account.',
                   themeColor: AppTheme.primaryYellow,
-                  showDismissButton: true,
+                  icon: Icons.emoji_events, // Trophy icon
+                  showContinueAsGuest: true,
+                  continueAsGuestText: 'Continue as Guest',
                 );
                 return;
               }

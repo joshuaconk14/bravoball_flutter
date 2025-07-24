@@ -26,6 +26,7 @@ class NotificationService {
     // Initialize timezone data
     tz.initializeTimeZones();
 
+    // ✅ IMPROVED: Better Android notification channel setup
     const androidSettings = AndroidInitializationSettings('@mipmap/ic_launcher');
     const iosSettings = DarwinInitializationSettings(
       requestAlertPermission: true,
@@ -39,10 +40,74 @@ class NotificationService {
     );
 
     await _notifications.initialize(initializationSettings);
+    
+    // ✅ ADDED: Create Android notification channels explicitly
+    await _createAndroidNotificationChannels();
+    
     _isInitialized = true;
 
     if (kDebugMode) {
-      print('🔔 Notification service initialized');
+      print('🔔 Notification service initialized with Android channels');
+    }
+  }
+
+  /// ✅ NEW: Create Android notification channels for better compatibility
+  Future<void> _createAndroidNotificationChannels() async {
+    if (kDebugMode) {
+      print('📱 Creating Android notification channels...');
+    }
+
+    // Timer Widget Channel - for persistent timer notifications
+    const timerWidgetChannel = AndroidNotificationChannel(
+      'timer_widget_channel',
+      'Drill Timer Widget',
+      description: 'Live drill timer with controls',
+      importance: Importance.high,
+      playSound: false,
+      enableVibration: false,
+      enableLights: false,
+      showBadge: true,
+    );
+
+    // Timer Completion Channel - for completion alerts
+    const timerCompletionChannel = AndroidNotificationChannel(
+      'timer_completion_channel',
+      'Timer Completion',
+      description: 'Drill timer completion alerts',
+      importance: Importance.high,
+      playSound: true,
+      enableVibration: true,
+      enableLights: true,
+      showBadge: true,
+    );
+
+    // Legacy Timer Channel - for scheduled notifications
+    const timerChannel = AndroidNotificationChannel(
+      'timer_channel',
+      'Drill Timer',
+      description: 'Notifications for drill timer completion',
+      importance: Importance.high,
+      playSound: true,
+      enableVibration: true,
+      enableLights: true,
+      showBadge: true,
+    );
+
+    // Create all channels
+    await _notifications
+        .resolvePlatformSpecificImplementation<AndroidFlutterLocalNotificationsPlugin>()
+        ?.createNotificationChannel(timerWidgetChannel);
+        
+    await _notifications
+        .resolvePlatformSpecificImplementation<AndroidFlutterLocalNotificationsPlugin>()
+        ?.createNotificationChannel(timerCompletionChannel);
+        
+    await _notifications
+        .resolvePlatformSpecificImplementation<AndroidFlutterLocalNotificationsPlugin>()
+        ?.createNotificationChannel(timerChannel);
+
+    if (kDebugMode) {
+      print('✅ Android notification channels created successfully');
     }
   }
 

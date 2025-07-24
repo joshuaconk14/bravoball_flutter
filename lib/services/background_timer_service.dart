@@ -393,7 +393,7 @@ class BackgroundTimerService {
     
     try {
       await _effectsPlayer.setPlayerMode(PlayerMode.lowLatency);
-      await _effectsPlayer.play(AssetSource('audio/321-start.MP3'));
+      await _effectsPlayer.play(AssetSource('audio/321-start.mp3'));
       
       if (kDebugMode) {
         print('🔊 Playing countdown start sound using effects player');
@@ -412,7 +412,7 @@ class BackgroundTimerService {
     
     try {
       await _effectsPlayer.setPlayerMode(PlayerMode.lowLatency);
-      await _effectsPlayer.play(AssetSource('audio/321-done.MP3'));
+      await _effectsPlayer.play(AssetSource('audio/321-done.mp3'));
       
       if (kDebugMode) {
         print('🔊 Playing countdown final sound using effects player');

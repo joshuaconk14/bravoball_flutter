@@ -7,12 +7,13 @@ import '../../models/drill_group_model.dart';
 import '../../services/custom_drill_service.dart';
 import '../../services/app_state_service.dart';
 import '../../services/video_file_service.dart'; // ✅ ADDED: Import video file service
+import '../../services/permission_service.dart'; // ✅ ADDED: Import permission service
 import '../../constants/app_theme.dart';
 import '../../utils/haptic_utils.dart';
 import '../../widgets/bravo_button.dart';
 import '../../widgets/info_popup_widget.dart'; // ✅ ADDED: Import for reusable info popup
 import '../../widgets/drill_video_player.dart'; // Add this import for video preview
-import '../../features/onboarding/onboarding_flow.dart'; // ✅ ADDED: Import for navigation to onboarding
+import '../../widgets/guest_account_creation_dialog.dart'; // ✅ ADDED: Import reusable dialog
 
 class CreateDrillSheet extends StatefulWidget {
   const CreateDrillSheet({Key? key}) : super(key: key);
@@ -146,10 +147,33 @@ class _CreateDrillSheetState extends State<CreateDrillSheet> {
     HapticUtils.lightImpact();
   }
 
-  // Video picker methods
+  // Video picker with enhanced Android permission handling
   Future<void> _pickVideo() async {
     try {
       print('🎬 Starting video picker...');
+      
+      // ✅ ADDED: Check permissions first (especially important for Android)
+      final permissionService = PermissionService.shared;
+      
+      // Check if we already have permission
+      bool hasPermission = await permissionService.hasPhotoLibraryPermission();
+      
+      if (!hasPermission) {
+        // Request permission
+        hasPermission = await permissionService.requestPhotoLibraryPermission();
+        
+        if (!hasPermission) {
+          // Check if permission was permanently denied
+          final isPermanentlyDenied = await permissionService.isPhotoLibraryPermissionPermanentlyDenied();
+          
+          if (isPermanentlyDenied) {
+            _showPermissionDeniedDialog();
+          } else {
+            _showPermissionRequiredDialog();
+          }
+          return;
+        }
+      }
       
       setState(() {
         _isVideoLoading = true;
@@ -275,14 +299,11 @@ class _CreateDrillSheetState extends State<CreateDrillSheet> {
       
       // Enhanced error messages based on error type
       String errorMessage = 'Error picking video';
-      String actionText = 'Retry';
       
       if (e.toString().contains('channel-error')) {
         errorMessage = 'Camera/Photos access issue. Please restart the app and try again.';
-        actionText = 'Settings';
       } else if (e.toString().contains('permission')) {
         errorMessage = 'Permission denied. Please allow photo library access in Settings.';
-        actionText = 'Settings';
       } else {
         errorMessage = 'Error picking video: ${e.toString()}';
       }
@@ -294,9 +315,12 @@ class _CreateDrillSheetState extends State<CreateDrillSheet> {
             backgroundColor: AppTheme.error,
             duration: const Duration(seconds: 5),
             action: SnackBarAction(
-              label: actionText,
+              label: 'Settings',
               textColor: Colors.white,
-              onPressed: actionText == 'Settings' ? _showPermissionDialog : _pickVideo,
+              onPressed: () async {
+                final permissionService = PermissionService.shared;
+                await permissionService.openPermissionSettings();
+              },
             ),
           ),
         );
@@ -304,15 +328,16 @@ class _CreateDrillSheetState extends State<CreateDrillSheet> {
     }
   }
 
-  // Show permission dialog
-  void _showPermissionDialog() {
+  // ✅ ADDED: Show dialog for permanently denied permissions
+  void _showPermissionDeniedDialog() {
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
-        title: const Text('Photo Library Access'),
-        content: const Text(
-          'This app needs access to your photo library to select videos for custom drills.\n\n'
-          'Please go to Settings > Privacy & Security > Photos and enable access for BravoBall.',
+        title: const Text('Permission Required'),
+        content: Text(
+          Platform.isAndroid 
+            ? 'Photo/Media access is required to select videos. Please enable it in Settings > Apps > BravoBall > Permissions.'
+            : 'Photo Library access is required to select videos. Please enable it in Settings > Privacy & Security > Photos.',
         ),
         actions: [
           TextButton(
@@ -320,16 +345,54 @@ class _CreateDrillSheetState extends State<CreateDrillSheet> {
             child: const Text('Cancel'),
           ),
           ElevatedButton(
-            onPressed: () {
+            onPressed: () async {
               Navigator.pop(context);
-              // Note: Opening settings would require url_launcher with specific iOS settings URL
+              final permissionService = PermissionService.shared;
+              await permissionService.openPermissionSettings();
             },
             style: ElevatedButton.styleFrom(backgroundColor: AppTheme.primaryYellow),
-            child: const Text('OK', style: TextStyle(color: Colors.white)),
+            child: const Text('Open Settings', style: TextStyle(color: Colors.white)),
           ),
         ],
       ),
     );
+  }
+
+  // ✅ ADDED: Show dialog for initially required permissions
+  void _showPermissionRequiredDialog() {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Photo Access Required'),
+        content: const Text(
+          'This app needs access to your photos and videos to let you select custom drill videos from your camera roll.',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('Cancel'),
+          ),
+          ElevatedButton(
+            onPressed: () async {
+              Navigator.pop(context);
+              // Try requesting permission again
+              final permissionService = PermissionService.shared;
+              final granted = await permissionService.requestPhotoLibraryPermission();
+              if (granted) {
+                _pickVideo(); // Retry video picking
+              }
+            },
+            style: ElevatedButton.styleFrom(backgroundColor: AppTheme.primaryYellow),
+            child: const Text('Grant Permission', style: TextStyle(color: Colors.white)),
+          ),
+        ],
+      ),
+    );
+  }
+
+  // Show permission dialog (legacy method - can be removed)
+  void _showPermissionDialog() {
+    _showPermissionDeniedDialog();
   }
 
   void _removeVideo() {
@@ -591,137 +654,17 @@ Custom drills are personalized training exercises that you create specifically f
     }
   }
 
-  // ✅ ADDED: Show guest account prompt for drill creation
+  // ✅ UPDATED: Use reusable guest account creation dialog
   void _showGuestAccountPrompt() {
     HapticUtils.mediumImpact();
-    showDialog(
+    GuestAccountCreationDialog.show(
       context: context,
-      barrierDismissible: false,
-      builder: (context) => Dialog(
-        backgroundColor: Colors.transparent,
-        insetPadding: const EdgeInsets.all(20),
-        child: Container(
-          padding: const EdgeInsets.all(24),
-          decoration: BoxDecoration(
-            color: Colors.white,
-            borderRadius: BorderRadius.circular(20),
-            boxShadow: [
-              BoxShadow(
-                color: Colors.black.withOpacity(0.15),
-                blurRadius: 20,
-                offset: const Offset(0, 10),
-              ),
-            ],
-          ),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              // Icon
-              Container(
-                width: 80,
-                height: 80,
-                decoration: BoxDecoration(
-                  color: AppTheme.primaryYellow.withOpacity(0.1),
-                  shape: BoxShape.circle,
-                ),
-                child: Icon(
-                  Icons.account_circle_outlined,
-                  size: 50,
-                  color: AppTheme.primaryYellow,
-                ),
-              ),
-              const SizedBox(height: 20),
-              
-              // Title
-              const Text(
-                'Create Account Required',
-                style: TextStyle(
-                  fontFamily: AppTheme.fontPoppins,
-                  fontSize: 22,
-                  fontWeight: FontWeight.bold,
-                  color: AppTheme.primaryDark,
-                ),
-                textAlign: TextAlign.center,
-              ),
-              const SizedBox(height: 12),
-              
-              // Description
-              const Text(
-                'Custom drills are saved to your personal account. Create an account to save and access your drills across all devices.',
-                style: TextStyle(
-                  fontFamily: AppTheme.fontPoppins,
-                  fontSize: 16,
-                  color: AppTheme.primaryGray,
-                  height: 1.4,
-                ),
-                textAlign: TextAlign.center,
-              ),
-              const SizedBox(height: 24),
-              
-              // Buttons
-              Row(
-                children: [
-                  Expanded(
-                    child: TextButton(
-                      onPressed: () {
-                        HapticUtils.lightImpact();
-                        Navigator.pop(context);
-                      },
-                      style: TextButton.styleFrom(
-                        padding: const EdgeInsets.symmetric(vertical: 12),
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(12),
-                        ),
-                      ),
-                      child: const Text(
-                        'Cancel',
-                        style: TextStyle(
-                          fontFamily: AppTheme.fontPoppins,
-                          fontSize: 16,
-                          fontWeight: FontWeight.w600,
-                          color: AppTheme.primaryGray,
-                        ),
-                      ),
-                    ),
-                  ),
-                  const SizedBox(width: 12),
-                  Expanded(
-                    flex: 2,
-                    child: ElevatedButton(
-                      onPressed: () {
-                        HapticUtils.mediumImpact();
-                        // ✅ FIXED: Use popUntil to close all dialogs/sheets, then navigate
-                        Navigator.popUntil(context, (route) => route.isFirst);
-                        Navigator.pushReplacement(
-                          context,
-                          MaterialPageRoute(builder: (context) => const OnboardingFlow()),
-                        );
-                      },
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: AppTheme.primaryYellow,
-                        foregroundColor: Colors.white,
-                        padding: const EdgeInsets.symmetric(vertical: 12),
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(12),
-                        ),
-                        elevation: 2,
-                      ),
-                      child: const Text(
-                        'Create Account',
-                        style: TextStyle(
-                          fontFamily: AppTheme.fontPoppins,
-                          fontSize: 16,
-                          fontWeight: FontWeight.bold,
-                        ),
-                      ),
-                    ),
-                  ),
-                ],
-              ),
-            ],
-          ),
-        ),
-      ),
+      title: 'Create Account Required',
+      description: 'Custom drills are saved to your personal account. Create an account to save and access your drills across all devices.',
+      themeColor: AppTheme.primaryYellow,
+      icon: Icons.account_circle_outlined,
+      showContinueAsGuest: true, // ✅ UPDATED: Show continue as guest option
+      continueAsGuestText: 'Continue as Guest',
     );
   }
 

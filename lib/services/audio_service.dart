@@ -23,7 +23,7 @@ class AudioService {
     if (_isMuted) return;
     
     try {
-      await _player.play(AssetSource('audio/321-start.MP3'));
+      await _player.play(AssetSource('audio/321-start.mp3'));
     } catch (e) {
       print('Error playing countdown start sound: $e');
     }
@@ -34,7 +34,7 @@ class AudioService {
     if (_isMuted) return;
     
     try {
-      await _player.play(AssetSource('audio/321-done.MP3'));
+      await _player.play(AssetSource('audio/321-done.mp3'));
     } catch (e) {
       print('Error playing final countdown sound: $e');
     }
@@ -46,7 +46,7 @@ class AudioService {
     if (_isMuted) return;
     
     try {
-      await _player.play(AssetSource('audio/success.MP3'));
+      await _player.play(AssetSource('audio/success.mp3'));
     } catch (e) {
       print('Error playing success sound: $e');
     }

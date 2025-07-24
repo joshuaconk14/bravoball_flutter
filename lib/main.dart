@@ -12,6 +12,7 @@ import 'services/app_state_service.dart';
 import 'services/api_service.dart';
 import 'services/authentication_service.dart';
 import 'services/user_manager_service.dart';
+import 'services/android_compatibility_service.dart'; // ✅ ADDED: Import Android compatibility service
 import 'constants/app_theme.dart';
 import 'config/app_config.dart';
 
@@ -36,6 +37,9 @@ void main() async {
     print('🌐 Phone Wi-Fi IP: ${AppConfig.phoneWifiIP}');
   }
   
+  // ✅ ADDED: Initialize Android compatibility service
+  await AndroidCompatibilityService.shared.initialize();
+  
   // Initialize services
   ApiService.shared.initialize();
   
@@ -48,6 +52,8 @@ void main() async {
   
   if (kDebugMode) {
     print('✅ All services initialized successfully');
+    // ✅ ADDED: Log Android debug info if on Android
+    AndroidCompatibilityService.shared.logAndroidDebugInfo();
   }
   
   runApp(const MyApp());

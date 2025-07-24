@@ -253,5 +253,4 @@ class _DrillVideoBackgroundState extends State<DrillVideoBackground> {
         ),
       ),
     );
-  }
-} 
+  }} 

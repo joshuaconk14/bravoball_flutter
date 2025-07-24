@@ -47,7 +47,7 @@ class MentalTrainingService extends ChangeNotifier {
         endpoint: '/api/mental-training/quotes',
         method: 'GET',
         queryParameters: queryParams,
-        requiresAuth: true,
+        requiresAuth: false, // ✅ UPDATED: Changed to false for guest mode access
       );
 
       if (response.isSuccess && response.data != null) {

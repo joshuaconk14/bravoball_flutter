@@ -17,6 +17,7 @@ import '../../views/main_tab_view.dart';
 import '../../config/app_config.dart'; // Added for debug mode
 import 'package:flutter/foundation.dart'; // Added for kDebugMode
 import 'package:uuid/uuid.dart'; // Added for UUID generation
+import '../../widgets/guest_account_creation_dialog.dart'; // ✅ ADDED: Import reusable dialog
 
 class MentalTrainingTimerView extends StatefulWidget {
   final int durationMinutes;
@@ -446,22 +447,16 @@ class _MentalTrainingTimerViewState extends State<MentalTrainingTimerView>
       // Update app state to count this as a completed session for the day
       final appState = Provider.of<AppStateService>(context, listen: false);
       
-      // ✅ ADDED: Guest mode check - don't save progress for guests
+      // ✅ UPDATED: Guest mode check - show account creation dialog and navigate to home
       if (appState.isGuestMode) {
         if (kDebugMode) {
           print('👤 Guest mode detected - skipping mental training progress save');
           print('   Duration: ${widget.durationMinutes} minutes');
         }
         
-        // ✅ ADDED: Show brief message to guests that progress isn't saved
+        // ✅ UPDATED: Show proper account creation dialog for guests
         if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(
-              content: Text('Great job! Create an account to save your progress and track your streak.'),
-              duration: Duration(seconds: 3),
-              behavior: SnackBarBehavior.floating,
-            ),
-          );
+          _showGuestCompletionDialog();
         }
         
         return; // Don't save progress for guest users
@@ -520,6 +515,26 @@ class _MentalTrainingTimerViewState extends State<MentalTrainingTimerView>
         print('❌ Error saving mental training session: $e');
       }
     }
+  }
+
+  void _showGuestCompletionDialog() {
+    GuestAccountCreationDialog.show(
+      context: context,
+      title: 'Great Job!',
+      description: 'You completed your mental training session! Create an account to save your progress and track your streak.',
+      themeColor: AppTheme.primaryYellow,
+      icon: Icons.celebration,
+      showContinueAsGuest: true,
+      continueAsGuestText: 'Continue as Guest',
+      onContinueAsGuest: () {
+        Navigator.of(context).pushAndRemoveUntil(
+          MaterialPageRoute(
+            builder: (_) => const MainTabView(initialIndex: 0),
+          ),
+          (route) => false,
+        );
+      },
+    );
   }
 
   @override

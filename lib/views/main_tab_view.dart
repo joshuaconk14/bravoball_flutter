@@ -8,6 +8,9 @@ import '../features/profile/profile_view.dart';
 import '../features/create_drill/create_drill_sheet.dart';
 import '../constants/app_theme.dart';
 import '../utils/haptic_utils.dart';
+import '../services/app_state_service.dart'; // ✅ ADDED: Import for guest mode checking
+import '../widgets/guest_account_creation_dialog.dart'; // ✅ ADDED: Import reusable dialog
+import 'package:provider/provider.dart'; // ✅ ADDED: Import for Provider
 
 class MainTabView extends StatefulWidget {
   final int initialIndex;
@@ -43,6 +46,23 @@ class _MainTabViewState extends State<MainTabView> {
 
   void _showCreateDrillSheet() {
     HapticUtils.mediumImpact();
+    
+    // ✅ ADDED: Check for guest mode and show account creation dialog
+    final appState = Provider.of<AppStateService>(context, listen: false);
+    if (appState.isGuestMode) {
+      GuestAccountCreationDialog.show(
+        context: context,
+        title: 'Create Account Required',
+        description: 'Custom drills are saved to your personal account. Create an account to save and access your drills across all devices.',
+        themeColor: AppTheme.primaryYellow,
+        icon: Icons.account_circle_outlined,
+        showContinueAsGuest: true, // ✅ UPDATED: Show continue as guest option
+        continueAsGuestText: 'Continue as Guest',
+      );
+      return;
+    }
+    
+    // Show create drill sheet for authenticated users
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
@@ -112,7 +132,7 @@ class _MainTabViewState extends State<MainTabView> {
             ),
             // Center create drill button
             Positioned(
-              top: -30, // ✅ INCREASED: Move button higher above the bar
+              top: -20, // ✅ LOWERED: Moved from -30 to -20 to avoid blocking toast messages
               left: 0,
               right: 0,
               child: Center(
@@ -135,7 +155,7 @@ class _MainTabViewState extends State<MainTabView> {
                     child: const Icon(
                       Icons.add,
                       color: AppTheme.white,
-                      size: 34, // ✅ INCREASED: Made slightly bigger
+                      size: 42, // ✅ INCREASED: Made slightly bigger
                     ),
                   ),
                 ),

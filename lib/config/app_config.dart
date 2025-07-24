@@ -12,7 +12,7 @@ class AppConfig {
   /// 1: Production
   /// 2: Computer (localhost)
   /// 3: Phone (Wi-Fi IP)
-  static const int appDevCase = 3; // For changing devices when testing
+  static const int appDevCase = 2; // For changing devices when testing
 
   /// Debug mode toggle
   static const bool debug = true; // Set false in production
