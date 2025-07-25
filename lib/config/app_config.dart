@@ -12,10 +12,10 @@ class AppConfig {
   /// 1: Production
   /// 2: Computer (localhost)
   /// 3: Phone (Wi-Fi IP)
-  static const int appDevCase = 2; // For changing devices when testing
+  static const int appDevCase = 1; // PRODUCTION - Changed from 2 for store submission
 
   /// Debug mode toggle
-  static const bool debug = true; // Set false in production
+  static const bool debug = false; // PRODUCTION - Changed from true for store submission
 
   /// Wi-Fi IP address for phone testing - loaded from .env file
   /// You can find this by running `ipconfig getifaddr en0` on macOS

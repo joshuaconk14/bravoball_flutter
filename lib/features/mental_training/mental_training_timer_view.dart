@@ -80,14 +80,43 @@ class _MentalTrainingTimerViewState extends State<MentalTrainingTimerView>
     _initializeAnimations();
     _loadQuotes();
     _initializeBackgroundTimer(); // ✅ ADDED: Initialize background timer
+    
+    // ✅ NEW: Add comprehensive debugging for Android testing
+    if (kDebugMode) {
+      _logSystemDebugInfo();
+    }
   }
   
-  // ✅ ADDED: Initialize background timer service
+  // ✅ NEW: Initialize background timer service
   Future<void> _initializeBackgroundTimer() async {
     await _backgroundTimer.initializeBackgroundSession();
     
     if (kDebugMode) {
       print('🧠 Background timer initialized for mental training');
+      print('   • Background session active: ${_backgroundTimer.isBackgroundSessionActive}');
+      print('   • Lock screen widget available: ${_backgroundTimer.isLockScreenWidgetActive}');
+      print('   • Audio muted: ${AudioService.isMuted}');
+    }
+  }
+
+  // ✅ NEW: Log comprehensive system info for Android testing
+  void _logSystemDebugInfo() {
+    if (kDebugMode) {
+      print('🤖 === MENTAL TRAINING DEBUG INFO ===');
+      print('🎯 Timer Configuration:');
+      print('   • Duration: ${widget.durationMinutes} minutes (${_totalSeconds}s)');
+      print('   • Fast debug mode: ${AppConfig.fastMentalTrainingTimers}');
+      print('🔊 Audio System:');
+      print('   • Audio muted: ${AudioService.isMuted}');
+      print('   • Available sounds: 321-start.mp3, 321-done.mp3, success.mp3, silent-timer.mp3');
+      print('⏱️ Background Features:');
+      print('   • Background timer service: ${_backgroundTimer.isBackgroundSessionActive}');
+      print('   • Wake lock service: Available');
+      print('   • Notification service: Available');
+      print('🧠 Mental Training Setup:');
+      print('   • Quotes loaded: ${_quotes.length}');
+      print('   • Quote cycling: ${_quoteTimer != null ? 'Active' : 'Inactive'}');
+      print('=====================================');
     }
   }
 
@@ -211,12 +240,12 @@ class _MentalTrainingTimerViewState extends State<MentalTrainingTimerView>
       }
     });
     
+    // ✅ UPDATED: Start quote animation and immediately begin cycling
+    // Quote cycling will now run independently of timer state
     if (_quotes.isNotEmpty) {
       _quoteController.forward().then((_) {
-        // Start quote scheduling after the first quote animation completes
-        if (_isRunning) {
-          _scheduleNextQuote();
-        }
+        // Start quote rotation immediately after first quote loads
+        _startQuoteRotation();
       });
     }
   }
@@ -299,12 +328,18 @@ class _MentalTrainingTimerViewState extends State<MentalTrainingTimerView>
         }
       },
     );
+    
+    // ✅ REMOVED: Quote rotation is now handled independently in _loadQuotes()
+    // No need to start it here since it's already running
   }
 
   void _startQuoteRotation() {
     if (_quotes.isEmpty) return;
     
-    // Start with the first quote and use its specific display duration
+    // ✅ UPDATED: Quote rotation now runs independently of timer state
+    _quoteTimer?.cancel();
+    
+    // Start continuous quote cycling
     _scheduleNextQuote();
   }
 
@@ -390,7 +425,7 @@ class _MentalTrainingTimerViewState extends State<MentalTrainingTimerView>
 
   void _stopTimer() {
     _backgroundTimer.stopTimer(); // Stop the background timer
-    _quoteTimer?.cancel();
+    _quoteTimer?.cancel(); // ✅ FIXED: Cancel quote timer on stop
     _progressController.stop(); // ✅ UPDATED: Stop progress animation
     _pulseController.stop();
     _rippleController.stop();
@@ -404,6 +439,12 @@ class _MentalTrainingTimerViewState extends State<MentalTrainingTimerView>
       _mainTimerProgress = 0.0;
       _showCountdown = false; // ✅ UPDATED: Reset countdown display
       _isCompleted = false; // ✅ ADDED: Reset completion state
+      // ✅ FIXED: Reset quote state for fresh start on next session
+      _currentQuoteIndex = 0;
+      if (_quotes.isNotEmpty) {
+        _currentQuote = _quotes.first;
+        _quoteController.reset();
+      }
     });
     
     _progressController.reset(); // ✅ UPDATED: Reset progress controller
@@ -633,9 +674,37 @@ class _MentalTrainingTimerViewState extends State<MentalTrainingTimerView>
             ),
           ),
         ),
+        // Spacer to balance the layout
         const SizedBox(width: 40),
       ],
     );
+  }
+
+  // ✅ NEW: Test audio functionality
+  void _testAudioSounds() async {
+    if (kDebugMode) {
+      print('🔊 Testing audio sounds...');
+      
+      // Test countdown start sound
+      print('🔊 Playing countdown start sound...');
+      await AudioService.playCountdownStart();
+      
+      // Wait 2 seconds
+      await Future.delayed(const Duration(seconds: 2));
+      
+      // Test countdown final sound  
+      print('🔊 Playing countdown final sound...');
+      await AudioService.playCountdownFinal();
+      
+      // Wait 2 seconds
+      await Future.delayed(const Duration(seconds: 2));
+      
+      // Test success sound
+      print('🔊 Playing success sound...');
+      await AudioService.playSuccess();
+      
+      print('✅ Audio test complete');
+    }
   }
 
   Widget _buildTimerSection() {
@@ -845,6 +914,11 @@ class _MentalTrainingTimerViewState extends State<MentalTrainingTimerView>
             child: SlideTransition(
               position: _quoteSlideAnimation,
               child: Container(
+                // ✅ FIXED: Add constraints to prevent overflow
+                constraints: const BoxConstraints(
+                  maxHeight: 200, // Maximum height for quote section
+                  maxWidth: double.infinity,
+                ),
                 padding: const EdgeInsets.all(24),
                 margin: const EdgeInsets.symmetric(horizontal: 16),
                 decoration: BoxDecoration(
@@ -865,27 +939,41 @@ class _MentalTrainingTimerViewState extends State<MentalTrainingTimerView>
                     ),
                   ],
                 ),
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Text(
-                      '"${_currentQuote!.text}"',
-                      style: AppTheme.titleMedium.copyWith(
-                        color: AppTheme.primaryDark,
-                        height: 1.4,
-                        fontStyle: FontStyle.italic,
+                child: SingleChildScrollView( // ✅ FIXED: Add scrolling for very long quotes
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      // ✅ FIXED: Improved text handling with proper overflow behavior
+                      Flexible(
+                        child: Text(
+                          '"${_currentQuote!.text}"',
+                          style: AppTheme.titleMedium.copyWith(
+                            color: AppTheme.primaryDark,
+                            height: 1.4,
+                            fontStyle: FontStyle.italic,
+                            // ✅ FIXED: Dynamic font size based on quote length
+                            fontSize: _currentQuote!.text.length > 150 ? 14 : 16,
+                          ),
+                          textAlign: TextAlign.center,
+                          // ✅ FIXED: Proper text overflow handling
+                          overflow: TextOverflow.visible,
+                          softWrap: true,
+                        ),
                       ),
-                      textAlign: TextAlign.center,
-                    ),
-                    const SizedBox(height: 16),
-                    Text(
-                      '— ${_currentQuote!.author}',
-                      style: AppTheme.bodyMedium.copyWith(
-                        color: AppTheme.primaryGray,
-                        fontWeight: FontWeight.w600,
+                      const SizedBox(height: 16),
+                      Text(
+                        '— ${_currentQuote!.author}',
+                        style: AppTheme.bodyMedium.copyWith(
+                          color: AppTheme.primaryGray,
+                          fontWeight: FontWeight.w600,
+                          fontSize: 14, // ✅ FIXED: Consistent author font size
+                        ),
+                        textAlign: TextAlign.center,
+                        overflow: TextOverflow.ellipsis, // ✅ FIXED: Handle long author names
+                        maxLines: 2,
                       ),
-                    ),
-                  ],
+                    ],
+                  ),
                 ),
               ),
             ),

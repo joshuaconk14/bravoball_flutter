@@ -82,11 +82,10 @@ flutter:
     - assets/rive/Tab_Dude.riv
     - assets/fonts/
     - assets/drill-icons/
-    - assets/audio/
     - assets/audio/321-start.mp3
     - assets/audio/321-done.mp3
     - assets/audio/success.mp3
-    - assets/audio/silent-timer.mp3  # Silent audio for background timer
+    - assets/audio/silent-timer.mp3
 
   # An image asset can refer to one or more resolution-specific "variants", see
   # https://flutter.dev/to/resolution-aware-images
