@@ -17,6 +17,7 @@ import '../../views/main_tab_view.dart';
 import '../../config/app_config.dart'; // Added for debug mode
 import 'package:flutter/foundation.dart'; // Added for kDebugMode
 import 'package:uuid/uuid.dart'; // Added for UUID generation
+import '../../widgets/guest_account_overlay.dart'; // Added for guest account overlay
 
 class MentalTrainingTimerView extends StatefulWidget {
   final int durationMinutes;
@@ -417,16 +418,8 @@ class _MentalTrainingTimerViewState extends State<MentalTrainingTimerView>
           print('   Duration: ${widget.durationMinutes} minutes');
         }
         
-        // ✅ ADDED: Show brief message to guests that progress isn't saved
-        if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(
-              content: Text('Great job! Create an account to save your progress and track your streak.'),
-              duration: Duration(seconds: 3),
-              behavior: SnackBarBehavior.floating,
-            ),
-          );
-        }
+        // ✅ REMOVED: SnackBar message since we're showing overlay on "Back to Home"
+        // Guests will see the guest account overlay when they click "Back to Home"
         
         return; // Don't save progress for guest users
       }
@@ -854,12 +847,26 @@ class _MentalTrainingTimerViewState extends State<MentalTrainingTimerView>
             child: BravoButton(
               text: 'Back to Home',
               onPressed: () {
-                Navigator.of(context).pushAndRemoveUntil(
-                  MaterialPageRoute(
-                    builder: (_) => const MainTabView(initialIndex: 0),
-                  ),
-                  (route) => false,
-                );
+                // ✅ ADDED: Check if guest mode and show overlay instead of navigating
+                final appState = Provider.of<AppStateService>(context, listen: false);
+                if (appState.isGuestMode) {
+                  // Show guest account overlay for guests
+                  GuestAccountOverlay.show(
+                    context: context,
+                    title: 'Create an account to save your progress',
+                    description: 'Great job completing your mental training! Create an account to track your progress, earn achievements, and unlock all features.',
+                    themeColor: AppTheme.primaryYellow,
+                    showDismissButton: true,
+                  );
+                } else {
+                  // Navigate normally for authenticated users
+                  Navigator.of(context).pushAndRemoveUntil(
+                    MaterialPageRoute(
+                      builder: (_) => const MainTabView(initialIndex: 0),
+                    ),
+                    (route) => false,
+                  );
+                }
               },
               color: AppTheme.primaryYellow,
               backColor: AppTheme.primaryDarkYellow,
