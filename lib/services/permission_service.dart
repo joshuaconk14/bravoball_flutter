@@ -21,10 +21,33 @@ class PermissionService {
 
       // On iOS, use photos permission
       if (Platform.isIOS) {
+        // Check current status first
+        final currentStatus = await Permission.photos.status;
+        if (kDebugMode) {
+          print('🔐 [PermissionService] Current iOS Photos permission status: $currentStatus');
+        }
+        
+        // If already permanently denied, don't try to request again
+        if (currentStatus == PermissionStatus.permanentlyDenied) {
+          if (kDebugMode) {
+            print('🔐 [PermissionService] iOS Photos permission permanently denied - cannot request again');
+          }
+          return false;
+        }
+        
+        // If already granted or limited, return true
+        if (currentStatus == PermissionStatus.granted || currentStatus == PermissionStatus.limited) {
+          if (kDebugMode) {
+            print('🔐 [PermissionService] iOS Photos permission already granted/limited');
+          }
+          return true;
+        }
+        
+        // Request permission
         final status = await Permission.photos.request();
         
         if (kDebugMode) {
-          print('🔐 [PermissionService] iOS Photos permission: $status');
+          print('🔐 [PermissionService] iOS Photos permission request result: $status');
         }
         
         return status == PermissionStatus.granted || status == PermissionStatus.limited;
@@ -156,5 +179,31 @@ class PermissionService {
     } else {
       return 'Permission required to select videos for custom drills.';
     }
+  }
+
+  /// Get detailed instructions for enabling photo library permissions
+  String getDetailedPermissionInstructions() {
+    if (Platform.isAndroid) {
+      return '''To enable photo/media access:
+1. Open your device Settings
+2. Go to Apps or Application Manager
+3. Find and tap "BravoBall" or "Bravoball Flutter"
+4. Tap "Permissions"
+5. Find "Photos and media" or "Storage" and enable it
+6. Return to the app and try again''';
+    } else {
+      return '''To enable photo library access:
+1. Open your device Settings
+2. Scroll down and tap "Privacy & Security"
+3. Tap "Photos"
+4. Find "BravoBall" or "Bravoball Flutter" in the list
+5. Select "All Photos" or "Selected Photos"
+6. Return to the app and try again''';
+    }
+  }
+
+  /// Check if we should show a detailed instruction dialog
+  Future<bool> shouldShowDetailedInstructions() async {
+    return await isPhotoLibraryPermissionPermanentlyDenied();
   }
 } 

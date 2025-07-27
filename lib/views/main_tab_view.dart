@@ -8,7 +8,7 @@ import '../features/profile/profile_view.dart';
 import '../features/create_drill/create_drill_sheet.dart';
 import '../constants/app_theme.dart';
 import '../utils/haptic_utils.dart';
-import '../services/app_state_service.dart'; // ✅ ADDED: Import for guest mode checking
+import '../services/app_state_service.dart'; // ✅ ADDED: Import for loading state checking
 import '../widgets/guest_account_creation_dialog.dart'; // ✅ ADDED: Import reusable dialog
 import 'package:provider/provider.dart'; // ✅ ADDED: Import for Provider
 
@@ -73,9 +73,16 @@ class _MainTabViewState extends State<MainTabView> {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      body: _widgetOptions[_selectedIndex],
-      bottomNavigationBar: Container(
+    return Consumer<AppStateService>(
+      builder: (context, appState, child) {
+        // Show loading screen while initial data is being fetched
+        if (appState.isInitialLoad) {
+          return _buildLoadingScreen();
+        }
+        
+        return Scaffold(
+          body: _widgetOptions[_selectedIndex],
+          bottomNavigationBar: Container(
         decoration: BoxDecoration(
           border: Border(
             top: BorderSide(
@@ -159,6 +166,64 @@ class _MainTabViewState extends State<MainTabView> {
                     ),
                   ),
                 ),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+      },
+    );
+  }
+
+  // Loading screen shown while backend data is being fetched
+  Widget _buildLoadingScreen() {
+    return Scaffold(
+      backgroundColor: AppTheme.backgroundPrimary,
+      body: Center(
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            // Logo/Animation placeholder
+            Container(
+              width: 120,
+              height: 120,
+              decoration: BoxDecoration(
+                color: AppTheme.primaryYellow.withOpacity(0.1),
+                borderRadius: BorderRadius.circular(AppTheme.radiusLarge),
+              ),
+              child: Icon(
+                Icons.sports_soccer,
+                size: 60,
+                color: AppTheme.primaryYellow,
+              ),
+            ),
+            
+            const SizedBox(height: AppTheme.spacingLarge),
+            
+            // App Name
+            Text(
+              'BravoBall',
+              style: AppTheme.headlineLarge.copyWith(
+                color: AppTheme.primaryYellow,
+                fontSize: 36,
+              ),
+            ),
+            
+            const SizedBox(height: AppTheme.spacingMedium),
+            
+            // Loading indicator
+            CircularProgressIndicator(
+              valueColor: AlwaysStoppedAnimation<Color>(AppTheme.primaryYellow),
+              strokeWidth: 3,
+            ),
+            
+            const SizedBox(height: AppTheme.spacingMedium),
+            
+            Text(
+              'Loading your training data...',
+              style: AppTheme.bodyMedium.copyWith(
+                color: AppTheme.primaryGray,
               ),
             ),
           ],

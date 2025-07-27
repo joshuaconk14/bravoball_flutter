@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:image_picker/image_picker.dart'; // Add this import for video picker
+import 'package:permission_handler/permission_handler.dart'; // Add this import for permission status
+import 'package:path_provider/path_provider.dart'; // Add this import for directory access
 import 'dart:io'; // Add this import for File support
 import '../../models/drill_model.dart';
 import '../../models/drill_group_model.dart';
@@ -14,6 +16,7 @@ import '../../widgets/bravo_button.dart';
 import '../../widgets/info_popup_widget.dart'; // ✅ ADDED: Import for reusable info popup
 import '../../widgets/drill_video_player.dart'; // Add this import for video preview
 import '../../widgets/guest_account_creation_dialog.dart'; // ✅ ADDED: Import reusable dialog
+import 'package:flutter/foundation.dart'; // Add this import for kDebugMode
 
 class CreateDrillSheet extends StatefulWidget {
   const CreateDrillSheet({Key? key}) : super(key: key);
@@ -152,28 +155,8 @@ class _CreateDrillSheetState extends State<CreateDrillSheet> {
     try {
       print('🎬 Starting video picker...');
       
-      // ✅ ADDED: Check permissions first (especially important for Android)
-      final permissionService = PermissionService.shared;
-      
-      // Check if we already have permission
-      bool hasPermission = await permissionService.hasPhotoLibraryPermission();
-      
-      if (!hasPermission) {
-        // Request permission
-        hasPermission = await permissionService.requestPhotoLibraryPermission();
-        
-        if (!hasPermission) {
-          // Check if permission was permanently denied
-          final isPermanentlyDenied = await permissionService.isPhotoLibraryPermissionPermanentlyDenied();
-          
-          if (isPermanentlyDenied) {
-            _showPermissionDeniedDialog();
-          } else {
-            _showPermissionRequiredDialog();
-          }
-          return;
-        }
-      }
+      // ✅ SIMPLIFIED: Try picking video directly first without permission checks
+      // Since we're only accessing existing videos, iOS often allows this without explicit permission
       
       setState(() {
         _isVideoLoading = true;
@@ -181,114 +164,58 @@ class _CreateDrillSheetState extends State<CreateDrillSheet> {
 
       print('🎬 Attempting to pick video from gallery...');
       
-      // Try to pick video with retry mechanism
-      XFile? video;
-      int retryCount = 0;
-      const maxRetries = 3;
-      
-      while (video == null && retryCount < maxRetries) {
-        try {
-          video = await _picker.pickVideo(
-            source: ImageSource.gallery,
-            maxDuration: const Duration(minutes: 1),
-          );
-          break;
-        } catch (e) {
-          retryCount++;
-          print('🎬 Attempt $retryCount failed: $e');
-          
-          if (retryCount < maxRetries) {
-            print('🎬 Retrying in 1 second...');
-            await Future.delayed(const Duration(seconds: 1));
-          } else {
-            rethrow;
-          }
-        }
-      }
+      // Try to pick video directly
+      final video = await _picker.pickVideo(
+        source: ImageSource.gallery,
+        maxDuration: const Duration(minutes: 1),
+      );
 
       print('🎬 Video picker result: ${video?.path ?? 'null'}');
 
       if (video != null) {
-        print('🎬 Video selected: ${video.path}');
         final tempFile = File(video.path);
-        
-        // Check if temporary file exists
         final exists = await tempFile.exists();
-        print('🎬 Temp file exists: $exists');
         
         if (exists) {
-          final size = await tempFile.length();
-          print('🎬 Temp file size: ${(size / 1024 / 1024).toStringAsFixed(1)} MB');
+          print('🎬 Video file exists, copying to permanent storage...');
           
-          // ✅ UPDATED: Copy temporary file to permanent storage
+          // Copy to permanent storage
           final permanentPath = await VideoFileService.instance.copyVideoToPermanentStorage(video.path);
           
           if (permanentPath != null) {
             setState(() {
-              _selectedVideoFile = File(permanentPath); // Point to permanent file
-              _videoPath = permanentPath; // Store permanent path
-              _isVideoLoading = false;
+              _selectedVideoFile = File(permanentPath);
+              _videoPath = permanentPath;
             });
             
-            HapticUtils.lightImpact();
+            HapticUtils.mediumImpact();
             
-            // Show success message
             if (mounted) {
               ScaffoldMessenger.of(context).showSnackBar(
                 const SnackBar(
-                  content: Text('Video selected and saved successfully!'),
-                  backgroundColor: Colors.green,
+                  content: Text('✅ Video selected successfully!'),
+                  backgroundColor: AppTheme.success,
                   duration: Duration(seconds: 2),
                 ),
               );
             }
-          } else {
-            // Failed to copy to permanent storage
-            setState(() {
-              _isVideoLoading = false;
-            });
             
-            if (mounted) {
-              ScaffoldMessenger.of(context).showSnackBar(
-                const SnackBar(
-                  content: Text('Failed to save video. Please try again.'),
-                  backgroundColor: AppTheme.error,
-                  duration: Duration(seconds: 3),
-                ),
-              );
-            }
+            print('✅ Video selected and saved successfully');
+          } else {
+            _showErrorMessage('Failed to save video. Please try again.');
           }
         } else {
-          setState(() {
-            _isVideoLoading = false;
-          });
-          
-          if (mounted) {
-            ScaffoldMessenger.of(context).showSnackBar(
-              const SnackBar(
-                content: Text('Selected video file not found'),
-                backgroundColor: AppTheme.error,
-                duration: Duration(seconds: 3),
-              ),
-            );
-          }
+          _showErrorMessage('Selected video file not found.');
         }
       } else {
-        print('🎬 No video selected (user cancelled)');
-        setState(() {
-          _isVideoLoading = false;
-        });
-        
-        // Show info message
-        if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(
-              content: Text('No video selected'),
-              duration: Duration(seconds: 1),
-            ),
-          );
-        }
+        print('ℹ️ User cancelled video selection');
+        // User cancelled - this is normal, no error message needed
       }
+
+      setState(() {
+        _isVideoLoading = false;
+      });
+
     } catch (e, stackTrace) {
       print('🎬 Error picking video: $e');
       print('🎬 Stack trace: $stackTrace');
@@ -297,58 +224,190 @@ class _CreateDrillSheetState extends State<CreateDrillSheet> {
         _isVideoLoading = false;
       });
       
-      // Enhanced error messages based on error type
-      String errorMessage = 'Error picking video';
-      
-      if (e.toString().contains('channel-error')) {
-        errorMessage = 'Camera/Photos access issue. Please restart the app and try again.';
-      } else if (e.toString().contains('permission')) {
-        errorMessage = 'Permission denied. Please allow photo library access in Settings.';
+      // Only show permission dialog if the error seems permission-related
+      if (e.toString().toLowerCase().contains('permission') || 
+          e.toString().toLowerCase().contains('access') ||
+          e.toString().toLowerCase().contains('denied')) {
+        
+        print('🔐 Permission-related error detected, showing permission guidance');
+        _showPermissionDeniedDialog();
+        
       } else {
-        errorMessage = 'Error picking video: ${e.toString()}';
-      }
-      
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(errorMessage),
-            backgroundColor: AppTheme.error,
-            duration: const Duration(seconds: 5),
-            action: SnackBarAction(
-              label: 'Settings',
-              textColor: Colors.white,
-              onPressed: () async {
-                final permissionService = PermissionService.shared;
-                await permissionService.openPermissionSettings();
-              },
+        // Show generic error for other issues
+        String errorMessage = 'Error selecting video';
+        
+        if (e.toString().contains('channel-error')) {
+          errorMessage = 'Camera/Photos access issue. Please restart the app and try again.';
+        } else {
+          errorMessage = 'Error selecting video: ${e.toString()}';
+        }
+        
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text(errorMessage),
+              backgroundColor: AppTheme.error,
+              duration: const Duration(seconds: 4),
+              action: SnackBarAction(
+                label: 'Try Again',
+                textColor: Colors.white,
+                onPressed: () {
+                  _pickVideo(); // Retry
+                },
+              ),
             ),
-          ),
-        );
+          );
+        }
       }
     }
   }
 
-  // ✅ ADDED: Show dialog for permanently denied permissions
+  // Helper method to show error messages
+  void _showErrorMessage(String message) {
+    if (mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(message),
+          backgroundColor: AppTheme.error,
+          duration: const Duration(seconds: 3),
+        ),
+      );
+    }
+  }
+
+  // ✅ IMPROVED: Show dialog for permanently denied permissions with clearer instructions
   void _showPermissionDeniedDialog() {
+    print('🔐 [CreateDrill] Showing permission denied dialog to user');
+    
     showDialog(
       context: context,
+      barrierDismissible: false, // Prevent dismissing by tapping outside
       builder: (context) => AlertDialog(
-        title: const Text('Permission Required'),
-        content: Text(
-          Platform.isAndroid 
-            ? 'Photo/Media access is required to select videos. Please enable it in Settings > Apps > BravoBall > Permissions.'
-            : 'Photo Library access is required to select videos. Please enable it in Settings > Privacy & Security > Photos.',
+        title: Row(
+          children: [
+            Icon(
+              Icons.photo_library_outlined,
+              color: AppTheme.primaryYellow,
+              size: 24,
+            ),
+            const SizedBox(width: 8),
+            const Text('Permission Required'),
+          ],
+        ),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              Platform.isAndroid 
+                ? 'Photo/Media access was previously denied and must be enabled manually in Settings.'
+                : 'Photo Library access was previously denied and must be enabled manually in Settings.',
+              style: const TextStyle(fontSize: 16),
+            ),
+            const SizedBox(height: 16),
+            Container(
+              padding: const EdgeInsets.all(12),
+              decoration: BoxDecoration(
+                color: AppTheme.primaryYellow.withOpacity(0.1),
+                borderRadius: BorderRadius.circular(8),
+                border: Border.all(color: AppTheme.primaryYellow.withOpacity(0.3)),
+              ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    'To enable:',
+                    style: TextStyle(
+                      fontSize: 14,
+                      fontWeight: FontWeight.bold,
+                      color: AppTheme.primaryDark,
+                    ),
+                  ),
+                  const SizedBox(height: 4),
+                  Text(
+                    Platform.isAndroid
+                      ? '1. Tap "Open Settings" below\n2. Go to Permissions\n3. Enable Photos/Media access\n4. Return to this app'
+                      : '1. Tap "Open Settings" below\n2. Find "Photos" in the list\n3. Select "All Photos" or "Selected Photos"\n4. Return to this app',
+                    style: const TextStyle(fontSize: 14, color: Colors.black87),
+                  ),
+                  const SizedBox(height: 8),
+                  Container(
+                    padding: const EdgeInsets.all(8),
+                    decoration: BoxDecoration(
+                      color: AppTheme.success.withOpacity(0.1),
+                      borderRadius: BorderRadius.circular(6),
+                    ),
+                    child: Row(
+                      children: [
+                        Icon(
+                          Icons.lightbulb_outline,
+                          size: 16,
+                          color: AppTheme.success,
+                        ),
+                        const SizedBox(width: 6),
+                        Expanded(
+                          child: Text(
+                            'After enabling in Settings, tap "Check Again" below',
+                            style: TextStyle(
+                              fontSize: 12,
+                              color: AppTheme.success,
+                              fontWeight: FontWeight.w500,
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
         ),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context),
             child: const Text('Cancel'),
           ),
+          TextButton(
+            onPressed: () async {
+              Navigator.pop(context);
+              _refreshPermissionsAndRetry();
+            },
+            child: const Text('Check Again'),
+          ),
           ElevatedButton(
             onPressed: () async {
               Navigator.pop(context);
+              print('🔐 [CreateDrill] User tapped Open Settings');
+              
               final permissionService = PermissionService.shared;
-              await permissionService.openPermissionSettings();
+              final opened = await permissionService.openPermissionSettings();
+              
+              print('🔐 [CreateDrill] Settings opened: $opened');
+              
+              // Always show a helpful message to guide the user
+              if (mounted) {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  SnackBar(
+                    content: Text(
+                      opened 
+                        ? 'Settings opened! Please enable photo library access and return to the app.'
+                        : Platform.isAndroid
+                          ? 'Please go to Settings > Apps > BravoBall > Permissions and enable Photo/Media access'
+                          : 'Please go to Settings > Privacy & Security > Photos and enable access for BravoBall',
+                    ),
+                    duration: const Duration(seconds: 8),
+                    backgroundColor: AppTheme.primaryYellow,
+                    action: SnackBarAction(
+                      label: 'Try Again',
+                      textColor: Colors.white,
+                      onPressed: () {
+                        _refreshPermissionsAndRetry();
+                      },
+                    ),
+                  ),
+                );
+              }
             },
             style: ElevatedButton.styleFrom(backgroundColor: AppTheme.primaryYellow),
             child: const Text('Open Settings', style: TextStyle(color: Colors.white)),
@@ -358,7 +417,7 @@ class _CreateDrillSheetState extends State<CreateDrillSheet> {
     );
   }
 
-  // ✅ ADDED: Show dialog for initially required permissions
+  // ✅ IMPROVED: Show dialog for initially required permissions
   void _showPermissionRequiredDialog() {
     showDialog(
       context: context,
@@ -380,6 +439,12 @@ class _CreateDrillSheetState extends State<CreateDrillSheet> {
               final granted = await permissionService.requestPhotoLibraryPermission();
               if (granted) {
                 _pickVideo(); // Retry video picking
+              } else {
+                // If still denied, check if it's now permanently denied
+                final isPermanentlyDenied = await permissionService.isPhotoLibraryPermissionPermanentlyDenied();
+                if (isPermanentlyDenied) {
+                  _showPermissionDeniedDialog();
+                }
               }
             },
             style: ElevatedButton.styleFrom(backgroundColor: AppTheme.primaryYellow),
@@ -388,6 +453,170 @@ class _CreateDrillSheetState extends State<CreateDrillSheet> {
         ],
       ),
     );
+  }
+
+  // ✅ DEBUG: Method to check and log current permission status
+  Future<void> _debugPermissionStatus() async {
+    final permissionService = PermissionService.shared;
+    
+    final hasPermission = await permissionService.hasPhotoLibraryPermission();
+    final isPermanentlyDenied = await permissionService.isPhotoLibraryPermissionPermanentlyDenied();
+    
+    print('🔍 [DEBUG] Current permission status:');
+    print('   Has permission: $hasPermission');
+    print('   Permanently denied: $isPermanentlyDenied');
+    
+    if (Platform.isIOS) {
+      final status = await Permission.photos.status;
+      print('   Raw iOS status: $status');
+      print('   Status meanings:');
+      print('     - granted: Full access to all photos');
+      print('     - limited: Access to selected photos only');
+      print('     - denied: No access');
+      print('     - permanentlyDenied: User must enable in Settings');
+      
+      // Additional iOS-specific checks
+      print('   iOS-specific checks:');
+      print('     - Can request permission: ${status != PermissionStatus.permanentlyDenied}');
+      print('     - Should work with limited: ${status == PermissionStatus.limited}');
+    }
+  }
+
+  // ✅ NEW: Alternative video picker method for testing
+  Future<void> _pickVideoAlternative() async {
+    try {
+      print('🎬 [ALTERNATIVE] Trying alternative video picker approach...');
+      
+      setState(() {
+        _isVideoLoading = true;
+      });
+
+      // Try picking without any permission checks first
+      final video = await _picker.pickVideo(
+        source: ImageSource.gallery,
+        maxDuration: const Duration(minutes: 1),
+      );
+
+      if (video != null) {
+        print('✅ [ALTERNATIVE] Video picked successfully: ${video.path}');
+        
+        final tempFile = File(video.path);
+        final exists = await tempFile.exists();
+        
+        if (exists) {
+          final permanentPath = await VideoFileService.instance.copyVideoToPermanentStorage(video.path);
+          
+          if (permanentPath != null) {
+            setState(() {
+              _selectedVideoFile = File(permanentPath);
+              _videoPath = permanentPath;
+            });
+            
+            HapticUtils.mediumImpact();
+            
+            ScaffoldMessenger.of(context).showSnackBar(
+              const SnackBar(
+                content: Text('✅ Video selected successfully with alternative method!'),
+                backgroundColor: Colors.green,
+                duration: Duration(seconds: 3),
+              ),
+            );
+          }
+        }
+      } else {
+        print('❌ [ALTERNATIVE] No video selected');
+      }
+
+      setState(() {
+        _isVideoLoading = false;
+      });
+
+    } catch (e, stackTrace) {
+      print('❌ [ALTERNATIVE] Error: $e');
+      print('❌ [ALTERNATIVE] Stack: $stackTrace');
+      
+      setState(() {
+        _isVideoLoading = false;
+      });
+      
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Alternative method failed: ${e.toString()}'),
+          backgroundColor: AppTheme.error,
+          duration: const Duration(seconds: 4),
+        ),
+      );
+    }
+  }
+
+  // ✅ NEW: Complete diagnostic method
+  Future<void> _runCompleteDiagnostics() async {
+    print('\n🔍 ===== COMPLETE VIDEO PICKER DIAGNOSTICS =====');
+    
+    // 1. Platform check
+    print('📱 Platform: ${Platform.operatingSystem} ${Platform.operatingSystemVersion}');
+    
+    // 2. Permission status
+    await _debugPermissionStatus();
+    
+    // 3. Plugin availability check
+    try {
+      print('🔌 Checking image_picker plugin...');
+      final picker = ImagePicker();
+      print('   ImagePicker instance created: ${picker != null}');
+    } catch (e) {
+      print('❌ ImagePicker plugin error: $e');
+    }
+    
+    // 4. File system check
+    try {
+      print('📁 Checking file system access...');
+      final documentsDir = await getApplicationDocumentsDirectory();
+      print('   Documents directory: ${documentsDir.path}');
+      final tempDir = await getTemporaryDirectory();
+      print('   Temp directory: ${tempDir.path}');
+    } catch (e) {
+      print('❌ File system error: $e');
+    }
+    
+    // 5. Try alternative picker
+    print('🎬 Testing alternative video picker...');
+    
+    print('===== END DIAGNOSTICS =====\n');
+  }
+
+  // ✅ NEW: Method to refresh permission status and retry video picker
+  Future<void> _refreshPermissionsAndRetry() async {
+    print('🔄 [CreateDrill] Refreshing permission status...');
+    
+    // Force refresh by waiting a moment and checking again
+    await Future.delayed(const Duration(milliseconds: 500));
+    
+    final permissionService = PermissionService.shared;
+    final hasPermission = await permissionService.hasPhotoLibraryPermission();
+    
+    await _debugPermissionStatus();
+    
+    if (hasPermission) {
+      print('✅ [CreateDrill] Permission now granted! Retrying video picker...');
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Permission granted! Opening video picker...'),
+          backgroundColor: AppTheme.success,
+          duration: Duration(seconds: 2),
+        ),
+      );
+      _pickVideo();
+    } else {
+      print('❌ [CreateDrill] Permission still not granted');
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Permission still not detected. Please ensure "All Photos" or "Selected Photos" is enabled and try again.'),
+          backgroundColor: AppTheme.error,
+          duration: Duration(seconds: 4),
+        ),
+      );
+    }
   }
 
   // Show permission dialog (legacy method - can be removed)

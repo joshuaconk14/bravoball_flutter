@@ -13,8 +13,10 @@ import 'services/api_service.dart';
 import 'services/authentication_service.dart';
 import 'services/user_manager_service.dart';
 import 'services/android_compatibility_service.dart'; // ✅ ADDED: Import Android compatibility service
+import 'services/loading_state_service.dart';
 import 'constants/app_theme.dart';
 import 'config/app_config.dart';
+import 'widgets/bravo_loading_indicator.dart';
 
 // Global flag to track intro animation - persists across widget rebuilds
 bool _hasShownIntroAnimation = false;
@@ -100,6 +102,7 @@ class _MyAppState extends State<MyApp> {
         ChangeNotifierProvider.value(value: AppStateService.instance),
         ChangeNotifierProvider.value(value: UserManagerService.instance),
         ChangeNotifierProvider.value(value: AuthenticationService.shared),
+        ChangeNotifierProvider.value(value: LoadingStateService.instance),
       ],
       child: MaterialApp(
         title: 'BravoBall',
@@ -140,7 +143,9 @@ class AuthenticationChecker extends StatelessWidget {
       builder: (context, userManager, authService, child) {
         // Show loading screen while checking authentication
         if (authService.isCheckingAuth) {
-          return const AuthLoadingScreen();
+          return const BravoLoginLoadingIndicator(
+            message: 'Welcome back! Checking your credentials...',
+          );
         }
 
         // Return appropriate content based on authentication state
@@ -212,7 +217,18 @@ class _AuthenticatedAppState extends State<AuthenticatedApp> {
 
   @override
   Widget build(BuildContext context) {
-    return const MainTabView();
+    return Consumer<AppStateService>(
+      builder: (context, appState, child) {
+        // Show a smoother loading transition while backend data loads
+        if (appState.isInitialLoad) {
+          return const BravoLoginLoadingIndicator(
+            message: 'Getting everything ready...',
+          );
+        }
+        
+        return const MainTabView();
+      },
+    );
   }
 }
 
@@ -227,62 +243,15 @@ class UnauthenticatedApp extends StatelessWidget {
 }
 
 /// Auth Loading Screen - Shows while checking authentication status on app start
+/// Now using the enhanced BravoLoadingIndicator
 class AuthLoadingScreen extends StatelessWidget {
   const AuthLoadingScreen({super.key});
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
+    return const BravoLoadingIndicator(
+      message: 'Welcome to BravoBall',
       backgroundColor: AppTheme.primaryPurple,
-      body: Center(
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            // Logo/Animation placeholder
-            Container(
-              width: 120,
-              height: 120,
-              decoration: BoxDecoration(
-                color: Colors.white.withOpacity(0.2),
-                borderRadius: BorderRadius.circular(AppTheme.radiusLarge),
-              ),
-              child: const Icon(
-                Icons.sports_soccer,
-                size: 60,
-                color: Colors.white,
-              ),
-            ),
-            
-            const SizedBox(height: AppTheme.spacingLarge),
-            
-            // App Name
-            Text(
-              'BravoBall',
-              style: AppTheme.headlineLarge.copyWith(
-                color: Colors.white,
-                fontSize: 36,
-              ),
-            ),
-            
-            const SizedBox(height: AppTheme.spacingMedium),
-            
-            // Loading indicator
-            const CircularProgressIndicator(
-              valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
-              strokeWidth: 3,
-            ),
-            
-            const SizedBox(height: AppTheme.spacingMedium),
-            
-            Text(
-              'Checking authentication...',
-              style: AppTheme.bodyMedium.copyWith(
-                color: Colors.white.withOpacity(0.8),
-              ),
-            ),
-          ],
-        ),
-      ),
     );
   }
 }

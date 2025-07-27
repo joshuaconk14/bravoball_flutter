@@ -12,10 +12,11 @@ class AppConfig {
   /// 1: Production
   /// 2: Computer (localhost)
   /// 3: Phone (Wi-Fi IP)
-  static const int appDevCase = 1; // PRODUCTION - Changed from 2 for store submission
+  /// 4: Staging (App Store Review)
+  static const int appDevCase = 4; // 🆕 STAGING - For App Store submission
 
   /// Debug mode toggle
-  static const bool debug = false; // PRODUCTION - Changed from true for store submission
+  static const bool debug = true; // PRODUCTION - Changed from true for store submission
 
   /// Wi-Fi IP address for phone testing - loaded from .env file
   /// You can find this by running `ipconfig getifaddr en0` on macOS
@@ -40,6 +41,9 @@ class AppConfig {
         case 3:
           // Wi-Fi IP for phone testing
           return 'http://$phoneWifiIP:8000';
+        case 4:
+          // 🆕 Staging environment for App Store review
+          return 'https://bravoball-staging.onrender.com';
         default:
           if (defaultTargetPlatform == TargetPlatform.android) {
             return 'http://10.0.2.2:8000';
@@ -48,8 +52,15 @@ class AppConfig {
           }
       }
     } else {
-      // Always use production in release builds
-      return 'https://bravoball-backend.onrender.com';
+      // 🆕 UPDATED: Use staging for App Store review, production otherwise
+      switch (appDevCase) {
+        case 4:
+          // Staging for App Store review
+          return 'https://bravoball-staging.onrender.com';
+        default:
+          // Production for normal release builds
+          return 'https://bravoball-backend.onrender.com';
+      }
     }
   }
 
@@ -63,6 +74,8 @@ class AppConfig {
         return 'Localhost';
       case 3:
         return 'Wi-Fi IP';
+      case 4:
+        return 'Staging';
       default:
         return 'Unknown';
     }

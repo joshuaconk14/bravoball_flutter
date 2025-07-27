@@ -168,15 +168,25 @@ class _SessionGeneratorHomeFieldViewState extends State<SessionGeneratorHomeFiel
                       children: [
                         Icon(Icons.local_fire_department, color: AppTheme.secondaryOrange, size: 24),
                         const SizedBox(width: 4),
-                        Text(
-                          '${appState.currentStreak}', // Use actual streak from AppStateService
-                          style: TextStyle(
-                            fontFamily: AppTheme.fontPoppins,
-                            fontSize: 20,
-                            color: AppTheme.secondaryOrange,
-                            fontWeight: FontWeight.bold,
-                          ),
-                        ),
+                        // Show loading indicator while initial data is being fetched
+                        appState.isInitialLoad 
+                          ? SizedBox(
+                              width: 16,
+                              height: 16,
+                              child: CircularProgressIndicator(
+                                strokeWidth: 2,
+                                valueColor: AlwaysStoppedAnimation<Color>(AppTheme.secondaryOrange),
+                              ),
+                            )
+                          : Text(
+                              '${appState.currentStreak}', // Use actual streak from AppStateService
+                              style: TextStyle(
+                                fontFamily: AppTheme.fontPoppins,
+                                fontSize: 20,
+                                color: AppTheme.secondaryOrange,
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
                       ],
                     );
                   },
@@ -639,6 +649,11 @@ class _SessionGeneratorHomeFieldViewState extends State<SessionGeneratorHomeFiel
 
   // Status message based on drill count
   Widget _buildStatusMessage(AppStateService appState) {
+    // Show loading message while initial data is being fetched
+    if (appState.isInitialLoad) {
+      return _buildStatusBubbleWithMessage("Loading your training data...");
+    }
+    
     final editableSessionDrills = appState.editableSessionDrills;
     final hasSessionDrills = editableSessionDrills.isNotEmpty;
     
@@ -663,6 +678,11 @@ class _SessionGeneratorHomeFieldViewState extends State<SessionGeneratorHomeFiel
       message = "You have $incompleteDrills drill${incompleteDrills == 1 ? '' : 's'}! Or try mental training.";
     }
 
+    return _buildStatusBubbleWithMessage(message);
+  }
+
+  // Helper method to build status bubble with any message
+  Widget _buildStatusBubbleWithMessage(String message) {
     return Column(
       children: [
         // Main bubble

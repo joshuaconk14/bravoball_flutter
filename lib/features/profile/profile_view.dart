@@ -71,15 +71,16 @@ class _ProfileViewState extends State<ProfileView> {
                           },
                         ),
                       ],
-                      // ✅ ADDED: Account Settings menu item for logout/delete options
-                      _buildMenuItem(
-                        icon: Icons.settings_outlined,
-                        title: 'Manage Account',
-                        onTap: () {
-                          HapticUtils.lightImpact(); // Light haptic for account settings
-                          _handleAccountSettings();
-                        },
-                      ),
+                      // ✅ ADDED: Account Settings menu item for logout/delete options (only for logged-in users)
+                      if (!context.read<UserManagerService>().isGuestMode)
+                        _buildMenuItem(
+                          icon: Icons.settings_outlined,
+                          title: 'Manage Account',
+                          onTap: () {
+                            HapticUtils.lightImpact(); // Light haptic for account settings
+                            _handleAccountSettings();
+                          },
+                        ),
                     ],
                   ),
                   

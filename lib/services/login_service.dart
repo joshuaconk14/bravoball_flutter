@@ -5,6 +5,7 @@ import '../models/login_state_model.dart';
 import 'api_service.dart';
 import 'user_manager_service.dart';
 import 'authentication_service.dart';
+import 'loading_state_service.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'app_state_service.dart';
 
@@ -18,6 +19,7 @@ class LoginService {
 
   final ApiService _apiService = ApiService.shared;
   final UserManagerService _userManager = UserManagerService.instance;
+  final LoadingStateService _loadingService = LoadingStateService.instance;
 
   /// Login user with email and password (mirrors Swift loginUser)
   Future<bool> loginUser({
@@ -40,6 +42,12 @@ class LoginService {
 
     loginModel.setLoading(true);
     loginModel.clearError();
+    
+    // Start loading with progress tracking
+    _loadingService.startLoading(
+      type: LoadingType.login,
+      initialMessage: 'Signing you in...',
+    );
 
     try {
       // Create login request
@@ -48,6 +56,9 @@ class LoginService {
         password: loginModel.password,
       );
 
+      // Update progress: validating credentials
+      _loadingService.updateProgress(0.3, message: 'Validating credentials...');
+      
       // Make API call to login endpoint
       final response = await _apiService.post(
         '/login/',
@@ -56,6 +67,9 @@ class LoginService {
       );
 
       if (response.isSuccess && response.data != null) {
+        // Update progress: connecting to server
+        _loadingService.updateProgress(0.6, message: 'Connecting to server...');
+        
         // Parse login response
         final loginResponse = LoginResponse.fromJson(response.data!);
         
@@ -64,6 +78,9 @@ class LoginService {
           print('🔑 Access token received: ${loginResponse.accessToken.substring(0, 20)}...');
         }
 
+        // Update progress: loading user data
+        _loadingService.updateProgress(0.9, message: 'Loading your data...');
+        
         // Update user manager with new auth data
         await _userManager.updateUserData(
           email: loginResponse.email,
@@ -71,6 +88,9 @@ class LoginService {
           refreshToken: loginResponse.refreshToken,
         );
 
+        // Complete loading
+        _loadingService.completeLoading();
+        
         // Reset login form
         loginModel.resetLoginInfo();
         
@@ -119,6 +139,10 @@ class LoginService {
       
     } finally {
       loginModel.setLoading(false);
+      // Reset loading service on error
+      if (_loadingService.isLoading) {
+        _loadingService.reset();
+      }
     }
   }
 

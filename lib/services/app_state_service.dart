@@ -14,6 +14,7 @@ import '../services/progress_data_sync_service.dart';
 import '../services/user_manager_service.dart';
 import '../services/drill_group_sync_service.dart';
 import '../services/preferences_sync_service.dart';
+import '../services/loading_state_service.dart';
 import './api_service.dart';
 import './custom_drill_service.dart';
 
@@ -559,9 +560,12 @@ class AppStateService extends ChangeNotifier {
     }
     
     final userManager = UserManagerService.instance;
+    final loadingService = LoadingStateService.instance;
+    
     if (!userManager.userHasAccountHistory) {
       if (kDebugMode) print('⚠️ No user account history, skipping backend data load');
       _isInitialLoad = false;
+      loadingService.completeLoading();
       notifyListeners();
       return;
     }
@@ -573,19 +577,31 @@ class AppStateService extends ChangeNotifier {
     try {
       if (kDebugMode) print('📥 Loading backend data...');
       
-      // Load all user data in sequence
+      // Load all user data in sequence with progress updates
+      loadingService.updateProgress(0.2, message: 'Loading your profile...');
       await _loadProgressDataFromBackend();
+      
+      loadingService.updateProgress(0.4, message: 'Fetching saved drills...');
       await _loadOrderedSessionDrillsFromBackend();
+      
+      loadingService.updateProgress(0.6, message: 'Loading training history...');
       await _loadDrillGroupsFromBackend();
+      
+      loadingService.updateProgress(0.8, message: 'Syncing preferences...');
       await _loadPreferencesFromBackend();
-      // ✅ ADDED: Load user's custom drills
+      
+      loadingService.updateProgress(0.9, message: 'Loading custom drills...');
       await _loadCustomDrillsFromBackend();
+      
+      loadingService.updateProgress(1.0, message: 'Setup complete!');
       
       if (kDebugMode) print('✅ Successfully loaded all backend data');
     } catch (e) {
       if (kDebugMode) print('❌ Error loading backend data: $e');
+      loadingService.updateMessage('Error loading data. Retrying...');
     } finally {
       _isInitialLoad = false;
+      loadingService.completeLoading();
       notifyListeners();
     }
   }
