@@ -534,15 +534,26 @@ class DrillGroupSyncService {
       for (final group in savedGroups) {
         final drillUuids = group.drills.map((drill) => drill.id).toList();
         
-        // Try to find matching existing group
+        if (kDebugMode) {
+          print('🔄 Syncing group: "${group.name}" (ID: ${group.id})');
+        }
+        
+        // Try to find matching existing group by ID (not name)
         DrillGroupResponse? existingGroup;
         try {
+          // Match by ID - convert backend int ID to string for comparison
           existingGroup = existingGroups.firstWhere(
-            (backendGroup) => backendGroup.name == group.name && !backendGroup.isLikedGroup,
+            (backendGroup) => backendGroup.id.toString() == group.id && !backendGroup.isLikedGroup,
           );
+          if (kDebugMode) {
+            print('📍 Found existing group: "${existingGroup.name}" (Backend ID: ${existingGroup.id})');
+          }
         } catch (e) {
-          // No matching group found
+          // No matching group found - this happens for newly created groups or when ID doesn't match
           existingGroup = null;
+          if (kDebugMode) {
+            print('📍 No existing group found for ID: ${group.id}');
+          }
         }
         
         if (existingGroup != null) {
@@ -555,18 +566,18 @@ class DrillGroupSyncService {
             isLikedGroup: false,
           );
           if (kDebugMode) {
-            print('✅ Updated group: ${group.name}');
+            print('✅ Updated group: "${group.name}" (ID: ${existingGroup.id})');
           }
         } else {
           // Create new group
-          await createDrillGroup(
+          final newGroup = await createDrillGroup(
             name: group.name,
             description: group.description,
             drillUuids: drillUuids,
             isLikedGroup: false,
           );
           if (kDebugMode) {
-            print('✅ Created new group: ${group.name}');
+            print('✅ Created new group: "${group.name}" (New ID: ${newGroup?.id})');
           }
         }
       }

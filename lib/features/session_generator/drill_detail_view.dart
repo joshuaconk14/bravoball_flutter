@@ -180,14 +180,21 @@ class _DrillDetailViewState extends State<DrillDetailView>
 
   @override
   Widget build(BuildContext context) {
-    // ✅ UPDATED: Use drill's video URL directly
-    return DrillVideoBackground(
-      videoUrl: widget.drill.videoUrl,
-      child: _buildContent(),
+    // ✅ UPDATED: Use Consumer to get latest drill data for reactive updates
+    return Consumer<AppStateService>(
+      builder: (context, appState, child) {
+        // Get the latest version of the drill from app state
+        final currentDrill = appState.getUpdatedDrill(widget.drill);
+        
+        return DrillVideoBackground(
+          videoUrl: currentDrill.videoUrl,
+          child: _buildContent(currentDrill),
+        );
+      },
     );
   }
 
-  Widget _buildContent() {
+  Widget _buildContent(DrillModel currentDrill) {
     return Scaffold(
       backgroundColor: Colors.transparent,
       appBar: AppBar(
@@ -220,14 +227,14 @@ class _DrillDetailViewState extends State<DrillDetailView>
                 if (value == 'like') {
                   HapticUtils.lightImpact();
                   final appState = Provider.of<AppStateService>(context, listen: false);
-                  final wasLiked = appState.isDrillLiked(widget.drill);
-                  appState.toggleLikedDrill(widget.drill);
+                  final wasLiked = appState.isDrillLiked(currentDrill);
+                  appState.toggleLikedDrill(currentDrill);
                   
                   ScaffoldMessenger.of(context).showSnackBar(
                     SnackBar(
                       content: Text(wasLiked 
-                        ? 'Removed ${widget.drill.title} from liked drills' 
-                        : 'Added ${widget.drill.title} to liked drills'),
+                        ? 'Removed ${currentDrill.title} from liked drills' 
+                        : 'Added ${currentDrill.title} to liked drills'),
                       duration: const Duration(seconds: 2),
                       backgroundColor: Colors.green,
                     ),
@@ -235,23 +242,23 @@ class _DrillDetailViewState extends State<DrillDetailView>
                 } else if (value == 'session') {
                   HapticUtils.mediumImpact();
                   final appState = Provider.of<AppStateService>(context, listen: false);
-                  final wasInSession = appState.isDrillInSession(widget.drill);
+                  final wasInSession = appState.isDrillInSession(currentDrill);
                   
                   if (wasInSession) {
-                    appState.removeDrillFromSession(widget.drill);
+                    appState.removeDrillFromSession(currentDrill);
                     ScaffoldMessenger.of(context).showSnackBar(
                       SnackBar(
-                        content: Text('Removed ${widget.drill.title} from session'),
+                        content: Text('Removed ${currentDrill.title} from session'),
                         duration: const Duration(seconds: 2),
                         backgroundColor: Colors.green,
                       ),
                     );
                   } else {
-                    final success = appState.addDrillToSession(widget.drill);
+                    final success = appState.addDrillToSession(currentDrill);
                     if (success) {
                       ScaffoldMessenger.of(context).showSnackBar(
                         SnackBar(
-                          content: Text('Added ${widget.drill.title} to session'),
+                          content: Text('Added ${currentDrill.title} to session'),
                           duration: const Duration(seconds: 2),
                           backgroundColor: Colors.green,
                         ),
@@ -268,21 +275,21 @@ class _DrillDetailViewState extends State<DrillDetailView>
                   }
                 } else if (value == 'add_to_group') {
                   HapticUtils.lightImpact();
-                  SaveToCollectionDialog.show(context, widget.drill);
-                } else if (value == 'edit_drill' && widget.drill.isCustom) {
+                  SaveToCollectionDialog.show(context, currentDrill);
+                } else if (value == 'edit_drill' && currentDrill.isCustom) {
                   HapticUtils.lightImpact();
                   Navigator.push(
                     context,
                     MaterialPageRoute(
-                      builder: (context) => EditCustomDrillSheet(drill: widget.drill),
+                      builder: (context) => EditCustomDrillSheet(drill: currentDrill),
                     ),
                   );
                 }
               },
               itemBuilder: (context) {
                 final appState = Provider.of<AppStateService>(context, listen: false);
-                final isLiked = appState.isDrillLiked(widget.drill);
-                final isInSession = appState.isDrillInSession(widget.drill);
+                final isLiked = appState.isDrillLiked(currentDrill);
+                final isInSession = appState.isDrillInSession(currentDrill);
                 
                 List<PopupMenuEntry<String>> menuItems = [
                   PopupMenuItem(
@@ -333,7 +340,7 @@ class _DrillDetailViewState extends State<DrillDetailView>
                 // Users can edit videos within the Edit Drill screen
 
                 // ✅ UPDATED: Only show "Edit Drill" option for custom drills
-                if (widget.drill.isCustom) {
+                if (currentDrill.isCustom) {
                   menuItems.add(
                     PopupMenuItem(
                       value: 'edit_drill',
@@ -377,7 +384,7 @@ class _DrillDetailViewState extends State<DrillDetailView>
                       offset: Offset(0, MediaQuery.of(context).size.height * 0.4 * _slideAnimation.value),
                       child: FadeTransition(
                         opacity: _fadeAnimation,
-                        child: _buildDraggableBottomSheet(scrollController),
+                        child: _buildDraggableBottomSheet(scrollController, currentDrill),
                       ),
                     );
                   },
@@ -390,7 +397,7 @@ class _DrillDetailViewState extends State<DrillDetailView>
     );
   }
 
-  Widget _buildDraggableBottomSheet(ScrollController scrollController) {
+  Widget _buildDraggableBottomSheet(ScrollController scrollController, DrillModel currentDrill) {
     return Container(
       decoration: const BoxDecoration(
         color: Colors.white,
@@ -441,7 +448,7 @@ class _DrillDetailViewState extends State<DrillDetailView>
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     // Drill header
-                    _buildDrillHeader(),
+                    _buildDrillHeader(currentDrill),
                     
                     const SizedBox(height: 24),
                     
@@ -449,7 +456,7 @@ class _DrillDetailViewState extends State<DrillDetailView>
                     _buildSection(
                       title: 'Description',
                       content: Text(
-                        widget.drill.description,
+                        currentDrill.description,
                         style: const TextStyle(
                           fontFamily: 'Poppins',
                           fontSize: 16,
@@ -462,12 +469,12 @@ class _DrillDetailViewState extends State<DrillDetailView>
                     const SizedBox(height: 20),
                     
                     // Instructions
-                    if (widget.drill.instructions.isNotEmpty)
+                    if (currentDrill.instructions.isNotEmpty)
                       _buildSection(
                         title: 'Instructions',
                         content: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
-                          children: widget.drill.instructions.asMap().entries.map((entry) {
+                          children: currentDrill.instructions.asMap().entries.map((entry) {
                             final index = entry.key;
                             final instruction = entry.value;
                             return Padding(
@@ -479,7 +486,7 @@ class _DrillDetailViewState extends State<DrillDetailView>
                                     width: 24,
                                     height: 24,
                                     decoration: BoxDecoration(
-                                      color: AppTheme.getSkillColor(widget.drill.skill),
+                                      color: AppTheme.getSkillColor(currentDrill.skill),
                                       shape: BoxShape.circle,
                                     ),
                                     child: Center(
@@ -516,12 +523,12 @@ class _DrillDetailViewState extends State<DrillDetailView>
                     const SizedBox(height: 20),
                     
                     // Tips
-                    if (widget.drill.tips.isNotEmpty)
+                    if (currentDrill.tips.isNotEmpty)
                       _buildSection(
                         title: 'Tips',
                         content: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
-                          children: widget.drill.tips.map((tip) {
+                          children: currentDrill.tips.map((tip) {
                             return Padding(
                               padding: const EdgeInsets.only(bottom: 8),
                               child: Row(
@@ -532,7 +539,7 @@ class _DrillDetailViewState extends State<DrillDetailView>
                                     width: 6,
                                     height: 6,
                                     decoration: BoxDecoration(
-                                      color: AppTheme.getSkillColor(widget.drill.skill),
+                                      color: AppTheme.getSkillColor(currentDrill.skill),
                                       shape: BoxShape.circle,
                                     ),
                                   ),
@@ -558,13 +565,13 @@ class _DrillDetailViewState extends State<DrillDetailView>
                     const SizedBox(height: 20),
                     
                     // Equipment
-                    if (widget.drill.equipment.isNotEmpty)
+                    if (currentDrill.equipment.isNotEmpty)
                       _buildSection(
                         title: 'Equipment',
                         content: Wrap(
                           spacing: 8,
                           runSpacing: 8,
-                          children: widget.drill.equipment.map((equipment) {
+                          children: currentDrill.equipment.map((equipment) {
                             return Container(
                               padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
                               decoration: BoxDecoration(
@@ -599,12 +606,12 @@ class _DrillDetailViewState extends State<DrillDetailView>
     );
   }
 
-  Widget _buildDrillHeader() {
+  Widget _buildDrillHeader(DrillModel currentDrill) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Text(
-          widget.drill.title,
+          currentDrill.title,
           style: const TextStyle(
             fontFamily: 'Poppins',
             fontWeight: FontWeight.bold,
@@ -620,28 +627,28 @@ class _DrillDetailViewState extends State<DrillDetailView>
             Container(
               padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
               decoration: BoxDecoration(
-                color: AppTheme.getSkillColor(widget.drill.skill).withOpacity(0.1),
+                color: AppTheme.getSkillColor(currentDrill.skill).withOpacity(0.1),
                 borderRadius: BorderRadius.circular(16),
                 border: Border.all(
-                  color: AppTheme.getSkillColor(widget.drill.skill).withOpacity(0.3),
+                  color: AppTheme.getSkillColor(currentDrill.skill).withOpacity(0.3),
                 ),
               ),
               child: Text(
-                SkillUtils.formatSkillForDisplay(widget.drill.skill),
+                SkillUtils.formatSkillForDisplay(currentDrill.skill),
                 style: TextStyle(
                   fontFamily: 'Poppins',
                   fontWeight: FontWeight.w600,
                   fontSize: 12,
-                  color: AppTheme.getSkillColor(widget.drill.skill),
+                  color: AppTheme.getSkillColor(currentDrill.skill),
                 ),
               ),
             ),
             const Spacer(),
-            _buildStatChip('${widget.drill.sets} sets', Icons.repeat),
+            _buildStatChip('${currentDrill.sets} sets', Icons.repeat),
             const SizedBox(width: 8),
-            _buildStatChip('${widget.drill.reps} reps', Icons.fitness_center),
+            _buildStatChip('${currentDrill.reps} reps', Icons.fitness_center),
             const SizedBox(width: 8),
-            _buildStatChip('${widget.drill.duration} min', Icons.schedule),
+            _buildStatChip('${currentDrill.duration} min', Icons.schedule),
           ],
         ),
       ],

@@ -42,6 +42,34 @@ class _DrillVideoBackgroundState extends State<DrillVideoBackground> {
     super.dispose();
   }
 
+  @override
+  void didUpdateWidget(DrillVideoBackground oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    
+    // Check if the video URL has changed
+    if (widget.videoUrl != oldWidget.videoUrl) {
+      if (kDebugMode) {
+        print('🔄 Video URL changed from "${oldWidget.videoUrl}" to "${widget.videoUrl}"');
+      }
+      
+      // Dispose old controller and reinitialize with new URL
+      _videoController?.dispose();
+      _videoController = null;
+      
+      // Reset state
+      setState(() {
+        _isVideoInitialized = false;
+        _hasVideo = false;
+        _isVideoLoading = false;
+      });
+      
+      // Initialize with new URL if not empty
+      if (widget.videoUrl.isNotEmpty) {
+        _initializeVideo();
+      }
+    }
+  }
+
   Future<void> _initializeVideo() async {
     try {
       if (widget.videoUrl.isEmpty) return;

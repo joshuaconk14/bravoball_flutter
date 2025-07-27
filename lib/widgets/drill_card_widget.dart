@@ -33,6 +33,18 @@ class DraggableDrillCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    // ✅ UPDATED: Use Consumer to get latest drill data for reactive updates
+    return Consumer<AppStateService>(
+      builder: (context, appState, child) {
+        // Get the latest version of the drill from app state
+        final currentDrill = appState.getUpdatedDrill(drill);
+        
+        return _buildCardContent(context, currentDrill);
+      },
+    );
+  }
+  
+  Widget _buildCardContent(BuildContext context, DrillModel currentDrill) {
     final cardContent = Container(
       margin: const EdgeInsets.symmetric(vertical: 4),
       decoration: BoxDecoration(
@@ -78,23 +90,23 @@ class DraggableDrillCard extends StatelessWidget {
                   height: 48,
                   padding: const EdgeInsets.all(4),
                   decoration: BoxDecoration(
-                    color: AppTheme.getSkillColor(drill.skill).withOpacity(0.1),
+                    color: AppTheme.getSkillColor(currentDrill.skill).withOpacity(0.1),
                     borderRadius: BorderRadius.circular(8),
                     border: Border.all(
-                      color: AppTheme.getSkillColor(drill.skill).withOpacity(0.3),
+                      color: AppTheme.getSkillColor(currentDrill.skill).withOpacity(0.3),
                       width: 1,
                     ),
                   ),
                   child: Image.asset(
-                    _getSkillIconPath(drill.skill),
+                    _getSkillIconPath(currentDrill.skill),
                     width: 40,
                     height: 40,
                     fit: BoxFit.contain,
                     errorBuilder: (context, error, stackTrace) {
                       // Fallback to generic icon if image fails to load
                       return Icon(
-                        _getSkillIconFallback(drill.skill),
-                        color: AppTheme.getSkillColor(drill.skill),
+                        _getSkillIconFallback(currentDrill.skill),
+                        color: AppTheme.getSkillColor(currentDrill.skill),
                         size: 24,
                       );
                     },
@@ -107,7 +119,7 @@ class DraggableDrillCard extends StatelessWidget {
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Text(
-                        drill.title,
+                        currentDrill.title,
                         style: const TextStyle(
                           fontFamily: 'Poppins',
                           fontWeight: FontWeight.bold,
@@ -119,7 +131,7 @@ class DraggableDrillCard extends StatelessWidget {
                       ),
                       const SizedBox(height: 4),
                       Text(
-                        SkillUtils.formatSkillForDisplay(drill.skill), // ✅ UPDATED: Use centralized skill formatting
+                        SkillUtils.formatSkillForDisplay(currentDrill.skill), // ✅ UPDATED: Use centralized skill formatting
                         style: TextStyle(
                           fontFamily: 'Poppins',
                           fontSize: 12,
@@ -129,7 +141,7 @@ class DraggableDrillCard extends StatelessWidget {
                       ),
                       const SizedBox(height: 4),
                       Text(
-                        '${sets ?? drill.sets} sets • ${reps ?? drill.reps} reps • ${duration ?? drill.duration} min',
+                        '${sets ?? currentDrill.sets} sets • ${reps ?? currentDrill.reps} reps • ${duration ?? currentDrill.duration} min',
                         style: TextStyle(
                           fontFamily: 'Poppins',
                           fontSize: 11,
@@ -165,15 +177,15 @@ class DraggableDrillCard extends StatelessWidget {
                         if (value == 'like') {
                           HapticUtils.lightImpact(); // Light haptic for like action
                           final appState = Provider.of<AppStateService>(context, listen: false);
-                          final wasLiked = appState.isDrillLiked(drill);
-                          appState.toggleLikedDrill(drill);
+                          final wasLiked = appState.isDrillLiked(currentDrill);
+                          appState.toggleLikedDrill(currentDrill);
                           
                           // Show feedback message
                           ScaffoldMessenger.of(context).showSnackBar(
                             SnackBar(
                               content: Text(wasLiked 
-                                ? 'Removed ${drill.title} from liked drills' 
-                                : 'Added ${drill.title} to liked drills'),
+                                ? 'Removed ${currentDrill.title} from liked drills' 
+                                : 'Added ${currentDrill.title} to liked drills'),
                               duration: const Duration(seconds: 2),
                               backgroundColor: Colors.green,
                             ),
@@ -181,25 +193,25 @@ class DraggableDrillCard extends StatelessWidget {
                         } else if (value == 'session') {
                           HapticUtils.mediumImpact(); // Medium haptic for session action
                           final appState = Provider.of<AppStateService>(context, listen: false);
-                          final wasInSession = appState.isDrillInSession(drill);
+                          final wasInSession = appState.isDrillInSession(currentDrill);
                           
                           if (wasInSession) {
-                            appState.removeDrillFromSession(drill);
+                            appState.removeDrillFromSession(currentDrill);
                             // Show feedback message
                             ScaffoldMessenger.of(context).showSnackBar(
                               SnackBar(
-                                content: Text('Removed ${drill.title} from session'),
+                                content: Text('Removed ${currentDrill.title} from session'),
                                 duration: const Duration(seconds: 2),
                                 backgroundColor: Colors.green,
                               ),
                             );
                           } else {
-                            final success = appState.addDrillToSession(drill);
+                            final success = appState.addDrillToSession(currentDrill);
                             if (success) {
                               // Show feedback message
                               ScaffoldMessenger.of(context).showSnackBar(
                                 SnackBar(
-                                  content: Text('Added ${drill.title} to session'),
+                                  content: Text('Added ${currentDrill.title} to session'),
                                   duration: const Duration(seconds: 2),
                                   backgroundColor: Colors.green,
                                 ),
@@ -223,21 +235,21 @@ class DraggableDrillCard extends StatelessWidget {
                         } else if (value == 'add_to_group') {
                           HapticUtils.lightImpact(); // Light haptic for collection action
                           final appState = Provider.of<AppStateService>(context, listen: false);
-                          SaveToCollectionDialog.show(context, drill);
-                        } else if (value == 'edit_drill' && drill.isCustom) {
+                          SaveToCollectionDialog.show(context, currentDrill);
+                        } else if (value == 'edit_drill' && currentDrill.isCustom) {
                           HapticUtils.lightImpact(); // Light haptic for edit action
                           Navigator.push(
                             context,
                             MaterialPageRoute(
-                              builder: (context) => EditCustomDrillSheet(drill: drill),
+                              builder: (context) => EditCustomDrillSheet(drill: currentDrill),
                             ),
                           );
                         }
                       },
                       itemBuilder: (context) {
                         final appState = Provider.of<AppStateService>(context, listen: false);
-                        final isLiked = appState.isDrillLiked(drill);
-                        final isInSession = appState.isDrillInSession(drill);
+                        final isLiked = appState.isDrillLiked(currentDrill);
+                        final isInSession = appState.isDrillInSession(currentDrill);
                         
                         List<PopupMenuItem<String>> menuItems = [
                           PopupMenuItem(
@@ -285,7 +297,7 @@ class DraggableDrillCard extends StatelessWidget {
                         ];
 
                         // ✅ ADDED: Add "Edit Drill" option for custom drills only
-                        if (drill.isCustom) {
+                        if (currentDrill.isCustom) {
                           menuItems.add(
                             PopupMenuItem(
                               value: 'edit_drill',
@@ -452,6 +464,18 @@ class SimpleDrillCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    // ✅ UPDATED: Use Consumer to get latest drill data for reactive updates
+    return Consumer<AppStateService>(
+      builder: (context, appState, child) {
+        // Get the latest version of the drill from app state
+        final currentDrill = appState.getUpdatedDrill(drill);
+        
+        return _buildCardContent(context, currentDrill);
+      },
+    );
+  }
+  
+  Widget _buildCardContent(BuildContext context, DrillModel currentDrill) {
     return Container(
       margin: const EdgeInsets.symmetric(vertical: 4, horizontal: 8),
       decoration: BoxDecoration(
@@ -486,23 +510,23 @@ class SimpleDrillCard extends StatelessWidget {
                   height: 48,
                   padding: const EdgeInsets.all(4),
                   decoration: BoxDecoration(
-                    color: AppTheme.getSkillColor(drill.skill).withOpacity(0.1),
+                    color: AppTheme.getSkillColor(currentDrill.skill).withOpacity(0.1),
                     borderRadius: BorderRadius.circular(8),
                     border: Border.all(
-                      color: AppTheme.getSkillColor(drill.skill).withOpacity(0.3),
+                      color: AppTheme.getSkillColor(currentDrill.skill).withOpacity(0.3),
                       width: 1,
                     ),
                   ),
                   child: Image.asset(
-                    _getSkillIconPath(drill.skill),
+                    _getSkillIconPath(currentDrill.skill),
                     width: 40,
                     height: 40,
                     fit: BoxFit.contain,
                     errorBuilder: (context, error, stackTrace) {
                       // Fallback to generic icon if image fails to load
                       return Icon(
-                        _getSkillIconFallback(drill.skill),
-                        color: AppTheme.getSkillColor(drill.skill),
+                        _getSkillIconFallback(currentDrill.skill),
+                        color: AppTheme.getSkillColor(currentDrill.skill),
                         size: 24,
                       );
                     },
@@ -517,7 +541,7 @@ class SimpleDrillCard extends StatelessWidget {
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Text(
-                        drill.title,
+                        currentDrill.title,
                         style: const TextStyle(
                           fontFamily: 'Poppins',
                           fontWeight: FontWeight.bold,
@@ -529,7 +553,7 @@ class SimpleDrillCard extends StatelessWidget {
                       ),
                       const SizedBox(height: 4),
                       Text(
-                        SkillUtils.formatSkillForDisplay(drill.skill), // ✅ UPDATED: Use centralized skill formatting
+                        SkillUtils.formatSkillForDisplay(currentDrill.skill), // ✅ UPDATED: Use centralized skill formatting
                         style: TextStyle(
                           fontFamily: 'Poppins',
                           fontSize: 12,
@@ -539,7 +563,7 @@ class SimpleDrillCard extends StatelessWidget {
                       ),
                       const SizedBox(height: 4),
                       Text(
-                        '${drill.sets} sets • ${drill.reps} reps • ${drill.duration} min',
+                        '${currentDrill.sets} sets • ${currentDrill.reps} reps • ${currentDrill.duration} min',
                         style: TextStyle(
                           fontFamily: 'Poppins',
                           fontSize: 11,

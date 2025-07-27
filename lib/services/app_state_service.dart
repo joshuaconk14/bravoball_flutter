@@ -930,6 +930,20 @@ class AppStateService extends ChangeNotifier {
     }
   }
 
+  // ✅ ADDED: Refresh drill groups from backend (can be called after custom drill updates)
+  Future<void> refreshDrillGroupsFromBackend() async {
+    if (AppConfig.useTestData) return;
+    
+    try {
+      if (kDebugMode) print('🔄 Refreshing drill groups from backend...');
+      await _loadDrillGroupsFromBackend();
+      notifyListeners();
+      if (kDebugMode) print('✅ Drill groups refreshed successfully');
+    } catch (e) {
+      if (kDebugMode) print('❌ Error refreshing drill groups: $e');
+    }
+  }
+
   // ✅ ADDED: Delete a custom drill
   Future<bool> deleteCustomDrill(String drillId) async {
     if (AppConfig.useTestData) return true;
@@ -953,6 +967,33 @@ class AppStateService extends ChangeNotifier {
       if (kDebugMode) print('❌ Error deleting custom drill: $e');
       return false;
     }
+  }
+
+  // ===== CUSTOM DRILL LOOKUP METHODS =====
+  // Methods to get updated drill data for reactive UI updates
+  
+  /// Get custom drill by ID from app state
+  /// Returns null if drill is not found in the custom drills list
+  DrillModel? getCustomDrillById(String drillId) {
+    try {
+      return _customDrills.firstWhere((drill) => drill.id == drillId);
+    } catch (e) {
+      // Drill not found
+      return null;
+    }
+  }
+
+  /// Get updated drill data - for custom drills, gets latest from app state
+  /// For non-custom drills, returns the original drill unchanged
+  /// This ensures UI always shows the most current drill data
+  DrillModel getUpdatedDrill(DrillModel originalDrill) {
+    if (originalDrill.isCustom) {
+      // For custom drills, get the latest version from app state
+      final updatedDrill = getCustomDrillById(originalDrill.id);
+      return updatedDrill ?? originalDrill; // Fallback to original if not found
+    }
+    // For non-custom drills, return as-is
+    return originalDrill;
   }
   
   // ===== STATE MANAGEMENT UTILITIES =====

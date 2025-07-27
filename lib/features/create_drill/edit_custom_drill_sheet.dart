@@ -302,9 +302,10 @@ class _EditCustomDrillSheetState extends State<EditCustomDrillSheet> {
         });
         HapticUtils.heavyImpact();
         
-        // ✅ ADDED: Refresh custom drills in app state so updated drill appears immediately
+        // ✅ ADDED: Refresh custom drills and drill groups so updated drill appears everywhere
         final appState = Provider.of<AppStateService>(context, listen: false);
         await appState.refreshCustomDrillsFromBackend();
+        await appState.refreshDrillGroupsFromBackend();
         
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
