@@ -44,7 +44,7 @@ class DrillSearchFilters {
     this.equipment,
     this.maxDuration,
     this.page = 1,
-    this.pageSize = 15,
+    this.pageSize = 20,
   });
 }
 
@@ -61,7 +61,7 @@ class TestDataService {
   static const int _maxApiDelayMs = 2000;
   
   // Pagination settings
-  static const int _defaultPageSize = 15;
+  static const int _defaultPageSize = 20;
   static const int _maxPageSize = 50;
 
   /// Generate comprehensive test drill database (30+ drills)

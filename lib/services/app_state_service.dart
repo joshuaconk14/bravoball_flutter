@@ -1184,8 +1184,8 @@ class AppStateService extends ChangeNotifier {
     try {
       // Handle different data sources based on app configuration
       if (isGuestMode) {
-        // Guest users get limited search results
-        final pageSize = 10;
+        // Guest users get limited search results  
+        final pageSize = 20;
         final guestDrills = await _guestDrillService.searchGuestDrills(
           query: query ?? _lastSearchQuery,
           category: skill ?? _lastSearchSkill,
@@ -1214,7 +1214,7 @@ class AppStateService extends ChangeNotifier {
           equipment: equipment,
           maxDuration: maxDuration,
           page: _currentSearchPage,
-          pageSize: 15,
+          pageSize: 20,
         );
         
         final response = await TestDataService.searchDrills(filters);
@@ -1236,7 +1236,7 @@ class AppStateService extends ChangeNotifier {
           category: skill ?? _lastSearchSkill,
           difficulty: difficulty ?? _lastSearchDifficulty,
           page: _currentSearchPage,
-          limit: 15,
+          limit: 20,
         );
         
         final newDrills = _drillApiService.convertToLocalModels(response.items);

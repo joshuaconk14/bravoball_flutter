@@ -104,6 +104,7 @@ class _ReusableDrillSearchViewState extends State<ReusableDrillSearchView> {
           )),
         ],
         onChanged: (value) {
+          HapticUtils.selectionClick(); // Haptic feedback for filter change
           setState(() {
             _selectedSkillFilter = value;
           });
@@ -143,6 +144,7 @@ class _ReusableDrillSearchViewState extends State<ReusableDrillSearchView> {
           )),
         ],
         onChanged: (value) {
+          HapticUtils.selectionClick(); // Haptic feedback for filter change
           setState(() {
             _selectedDifficultyFilter = value;
           });
@@ -166,6 +168,7 @@ class _ReusableDrillSearchViewState extends State<ReusableDrillSearchView> {
           const SizedBox(width: 8),
           IconButton(
             onPressed: () {
+              HapticUtils.lightImpact(); // Haptic feedback for clearing filters
               setState(() {
                 _selectedSkillFilter = null;
                 _selectedDifficultyFilter = null;
@@ -191,9 +194,31 @@ class _ReusableDrillSearchViewState extends State<ReusableDrillSearchView> {
                 ? appState.filterDrillsBySkill(_selectedSkillFilter!)
                 : appState.availableDrills));
 
-    if (appState.isLoading && !useBackend) {
-      return const Center(child: CircularProgressIndicator());
+    // Show loading indicator for initial search (both backend and local)
+    if (appState.isLoading && results.isEmpty) {
+      return Center(
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            CircularProgressIndicator(
+              valueColor: AlwaysStoppedAnimation<Color>(widget.themeColor),
+            ),
+            const SizedBox(height: 16),
+            Text(
+              'Searching drills...',
+              style: TextStyle(
+                fontFamily: AppTheme.fontPoppins,
+                fontSize: 16,
+                color: widget.themeColor,
+                fontWeight: FontWeight.w500,
+              ),
+            ),
+          ],
+        ),
+      );
     }
+    
+    // Show error state for local searches
     if (appState.lastError != null && !useBackend) {
       return Center(child: Text('Error: ${appState.lastError}'));
     }
@@ -219,7 +244,7 @@ class _ReusableDrillSearchViewState extends State<ReusableDrillSearchView> {
                   border: Border.all(color: Colors.orange.shade200),
                 ),
                 child: const Text(
-                  'Guest users have access to a limited set of drills. Create an account for full access to 100+ drills!',
+                  'Guest users have access to 4 drills per category. Create an account for full access to 100+ drills!',
                   style: TextStyle(
                     fontFamily: AppTheme.fontPoppins,
                     fontSize: 12,
@@ -237,6 +262,37 @@ class _ReusableDrillSearchViewState extends State<ReusableDrillSearchView> {
     
     return Column(
       children: [
+        // ✅ NEW: Loading indicator when refreshing with existing results
+        if (appState.isLoading && results.isNotEmpty)
+          Container(
+            width: double.infinity,
+            padding: const EdgeInsets.symmetric(vertical: 8),
+            color: widget.themeColor.withOpacity(0.1),
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                SizedBox(
+                  width: 16,
+                  height: 16,
+                  child: CircularProgressIndicator(
+                    strokeWidth: 2,
+                    valueColor: AlwaysStoppedAnimation<Color>(widget.themeColor),
+                  ),
+                ),
+                const SizedBox(width: 12),
+                Text(
+                  'Updating results...',
+                  style: TextStyle(
+                    fontFamily: AppTheme.fontPoppins,
+                    fontSize: 12,
+                    color: widget.themeColor,
+                    fontWeight: FontWeight.w500,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        
         // ✅ NEW: Guest mode banner
         if (appState.isGuestMode) _buildGuestBanner(results.length),
         
