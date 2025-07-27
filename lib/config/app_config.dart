@@ -16,7 +16,7 @@ class AppConfig {
   static const int appDevCase = 4; // 🆕 STAGING - For App Store submission
 
   /// Debug mode toggle
-  static const bool debug = true; // PRODUCTION - Changed from true for store submission
+  static const bool debug = false; // PRODUCTION - Changed from true for store submission
 
   /// Wi-Fi IP address for phone testing - loaded from .env file
   /// You can find this by running `ipconfig getifaddr en0` on macOS
