@@ -129,7 +129,7 @@ class _SessionGeneratorEditorPageState extends State<SessionGeneratorEditorPage>
                   ? Colors.grey.shade400 
                   : AppTheme.primaryLightBlue,
               foregroundColor: Colors.white,
-              onPressed: (appState.isLoadingPreferences || appState.editableSessionDrills.length >= 10) ? null : () {
+              onPressed: appState.editableSessionDrills.length >= 10 ? null : () {
                 HapticUtils.mediumImpact(); // Medium haptic for major action
                 Navigator.push(
                   context,
@@ -264,7 +264,7 @@ class _SessionGeneratorEditorPageState extends State<SessionGeneratorEditorPage>
                         ? 'Skills'
                         : 'Skills (${appState.preferences.selectedSkills.length})',
                     isSelected: appState.preferences.selectedSkills.isNotEmpty,
-                    onTap: appState.isLoadingPreferences ? null : () {
+                    onTap: () {
                       HapticUtils.lightImpact(); // Light haptic for filter selection
                       _showSkillsSheet(context, appState);
                     },
@@ -276,7 +276,7 @@ class _SessionGeneratorEditorPageState extends State<SessionGeneratorEditorPage>
                         ? PreferenceUtils.formatTimeForDisplay(appState.preferences.selectedTime!) 
                         : 'Time', // ✅ UPDATED: Use centralized time formatting
                     isSelected: appState.preferences.selectedTime != null,
-                    onTap: appState.isLoadingPreferences ? null : () {
+                    onTap: () {
                       HapticUtils.lightImpact(); // Light haptic for filter selection
                       _showFilterSheet(context, FilterType.time, appState);
                     },
@@ -288,7 +288,7 @@ class _SessionGeneratorEditorPageState extends State<SessionGeneratorEditorPage>
                         ? 'Equipment'
                         : 'Equipment (${_getValidEquipmentCount(appState.preferences.selectedEquipment)})',
                     isSelected: _getValidEquipmentCount(appState.preferences.selectedEquipment) > 0, // ✅ Fixed: Only selected if valid equipment count > 0
-                    onTap: appState.isLoadingPreferences ? null : () {
+                    onTap: () {
                       HapticUtils.lightImpact(); // Light haptic for filter selection
                       _showFilterSheet(context, FilterType.equipment, appState);
                     },
@@ -300,7 +300,7 @@ class _SessionGeneratorEditorPageState extends State<SessionGeneratorEditorPage>
                         ? PreferenceUtils.formatTrainingStyleForDisplay(appState.preferences.selectedTrainingStyle!) 
                         : 'Style', // ✅ UPDATED: Use centralized training style formatting
                     isSelected: appState.preferences.selectedTrainingStyle != null,
-                    onTap: appState.isLoadingPreferences ? null : () {
+                    onTap: () {
                       HapticUtils.lightImpact(); // Light haptic for filter selection
                       _showFilterSheet(context, FilterType.trainingStyle, appState);
                     },
@@ -312,7 +312,7 @@ class _SessionGeneratorEditorPageState extends State<SessionGeneratorEditorPage>
                         ? PreferenceUtils.formatLocationForDisplay(appState.preferences.selectedLocation!) 
                         : 'Location', // ✅ UPDATED: Use centralized location formatting
                     isSelected: appState.preferences.selectedLocation != null,
-                    onTap: appState.isLoadingPreferences ? null : () {
+                    onTap: () {
                       HapticUtils.lightImpact(); // Light haptic for filter selection
                       _showFilterSheet(context, FilterType.location, appState);
                     },
@@ -324,7 +324,7 @@ class _SessionGeneratorEditorPageState extends State<SessionGeneratorEditorPage>
                         ? PreferenceUtils.formatDifficultyForDisplay(appState.preferences.selectedDifficulty!) 
                         : 'Difficulty', // ✅ UPDATED: Use centralized difficulty formatting
                     isSelected: appState.preferences.selectedDifficulty != null,
-                    onTap: appState.isLoadingPreferences ? null : () {
+                    onTap: () {
                       HapticUtils.lightImpact(); // Light haptic for filter selection
                       _showFilterSheet(context, FilterType.difficulty, appState);
                     },
@@ -464,7 +464,7 @@ class _SessionGeneratorEditorPageState extends State<SessionGeneratorEditorPage>
                 elevation: 2,
                 padding: const EdgeInsets.symmetric(vertical: 16),
               ),
-              onPressed: appState.isLoadingPreferences ? null : () {
+              onPressed: () {
                 HapticUtils.mediumImpact(); // Medium haptic for major action
                 Navigator.push(
                   context,
@@ -553,7 +553,7 @@ class _SessionGeneratorEditorPageState extends State<SessionGeneratorEditorPage>
               ),
               const SizedBox(width: 12),
               GestureDetector(
-                onTap: appState.isLoadingPreferences ? null : () {
+                onTap: () {
                   HapticUtils.lightImpact(); // Light haptic for clear action
                   showDialog(
                     context: context,
@@ -583,9 +583,9 @@ class _SessionGeneratorEditorPageState extends State<SessionGeneratorEditorPage>
                 child: Container(
                   padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                   decoration: BoxDecoration(
-                    color: appState.isLoadingPreferences ? Colors.grey.shade100 : Colors.red.shade50,
+                    color: Colors.red.shade50,
                     borderRadius: BorderRadius.circular(12),
-                    border: Border.all(color: appState.isLoadingPreferences ? Colors.grey.shade300 : Colors.red.shade200),
+                    border: Border.all(color: Colors.red.shade200),
                   ),
                   child: Row(
                     mainAxisSize: MainAxisSize.min,
@@ -593,7 +593,7 @@ class _SessionGeneratorEditorPageState extends State<SessionGeneratorEditorPage>
                       Icon(
                         Icons.clear_all, 
                         size: 14, 
-                        color: appState.isLoadingPreferences ? Colors.grey.shade400 : Colors.red.shade600,
+                        color: Colors.red.shade600,
                       ),
                       const SizedBox(width: 4),
                       Text(
@@ -602,7 +602,7 @@ class _SessionGeneratorEditorPageState extends State<SessionGeneratorEditorPage>
                           fontFamily: 'Poppins',
                           fontSize: 12,
                           fontWeight: FontWeight.w500,
-                          color: appState.isLoadingPreferences ? Colors.grey.shade400 : Colors.red.shade600,
+                          color: Colors.red.shade600,
                         ),
                       ),
                     ],
@@ -664,11 +664,11 @@ class _SessionGeneratorEditorPageState extends State<SessionGeneratorEditorPage>
                   reps: editableDrill.totalReps,
                   duration: editableDrill.totalDuration,
                   isDraggable: !appState.isLoadingPreferences,
-                  onTap: appState.isLoadingPreferences ? null : () {
+                  onTap: () {
                     HapticUtils.lightImpact(); // Light haptic for drill interaction
                     _navigateToDrillDetail(context, editableDrill, appState);
                   },
-                  onDelete: appState.isLoadingPreferences ? null : () => appState.removeDrillFromSession(editableDrill.drill),
+                  onDelete: () => appState.removeDrillFromSession(editableDrill.drill),
                   showOverlayIcons: false,
                 ),
               );
@@ -747,7 +747,7 @@ class _SessionGeneratorEditorPageState extends State<SessionGeneratorEditorPage>
         color: Colors.transparent,
         child: InkWell(
           borderRadius: BorderRadius.circular(16),
-          onTap: (appState.isLoadingPreferences || isLimitReached) ? null : () {
+          onTap: isLimitReached ? null : () {
             HapticUtils.mediumImpact(); // Medium haptic for major action
             Navigator.push(
               context,
@@ -795,7 +795,7 @@ class _SessionGeneratorEditorPageState extends State<SessionGeneratorEditorPage>
             );
           },
           child: Opacity(
-            opacity: (appState.isLoadingPreferences || isLimitReached) ? 0.5 : 1.0,
+            opacity: isLimitReached ? 0.5 : 1.0,
             child: Padding(
               padding: const EdgeInsets.all(20),
               child: Row(

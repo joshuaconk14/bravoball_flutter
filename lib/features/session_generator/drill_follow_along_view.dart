@@ -186,7 +186,7 @@ class _DrillFollowAlongViewState extends State<DrillFollowAlongView>
           _hideUI = !_hideUI;
         });
       },
-      child: !_hideUI ? _buildUIOverlay() : const SizedBox.shrink(),
+      child: _buildUIOverlay(),
     );
   }
 
@@ -199,28 +199,46 @@ class _DrillFollowAlongViewState extends State<DrillFollowAlongView>
         builder: (context, child) {
           return Column(
             children: [
-              // ✅ ANIMATED: Top section with slide, scale, and fade animations
-              Transform.translate(
-                offset: Offset(0, _topSectionSlideAnimation.value),
-                child: Transform.scale(
-                  scale: _topSectionScaleAnimation.value,
-                  child: FadeTransition(
-                    opacity: _uiFadeAnimation,
-                    child: _buildTopSection(),
+              // ✅ ANIMATED: Top section with slide, scale, fade, and tap-to-hide animations
+              AnimatedOpacity(
+                opacity: !_hideUI ? 1.0 : 0.0,
+                duration: const Duration(milliseconds: 300),
+                child: AnimatedSlide(
+                  offset: !_hideUI ? Offset.zero : const Offset(0, -1.0),
+                  duration: const Duration(milliseconds: 300),
+                  curve: Curves.easeInOut,
+                  child: Transform.translate(
+                    offset: Offset(0, _topSectionSlideAnimation.value),
+                    child: Transform.scale(
+                      scale: _topSectionScaleAnimation.value,
+                      child: FadeTransition(
+                        opacity: _uiFadeAnimation,
+                        child: _buildTopSection(),
+                      ),
+                    ),
                   ),
                 ),
               ),
               
               const Spacer(),
               
-              // ✅ ANIMATED: Bottom section with slide, scale, and fade animations
-              Transform.translate(
-                offset: Offset(0, _bottomSectionSlideAnimation.value),
-                child: Transform.scale(
-                  scale: _bottomSectionScaleAnimation.value,
-                  child: FadeTransition(
-                    opacity: _uiFadeAnimation,
-                    child: _buildBottomSection(),
+              // ✅ ANIMATED: Bottom section with slide, scale, fade, and tap-to-hide animations
+              AnimatedOpacity(
+                opacity: !_hideUI ? 1.0 : 0.0,
+                duration: const Duration(milliseconds: 300),
+                child: AnimatedSlide(
+                  offset: !_hideUI ? Offset.zero : const Offset(0, 1.0),
+                  duration: const Duration(milliseconds: 300),
+                  curve: Curves.easeInOut,
+                  child: Transform.translate(
+                    offset: Offset(0, _bottomSectionSlideAnimation.value),
+                    child: Transform.scale(
+                      scale: _bottomSectionScaleAnimation.value,
+                      child: FadeTransition(
+                        opacity: _uiFadeAnimation,
+                        child: _buildBottomSection(),
+                      ),
+                    ),
                   ),
                 ),
               ),

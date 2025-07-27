@@ -920,15 +920,29 @@ Custom drills are personalized training exercises that you create specifically f
                   onPressed: () => Navigator.pop(context),
                   icon: const Icon(Icons.close, color: AppTheme.white),
                 ),
-                const Expanded(
-                  child: Text(
-                    'Create Custom Drill',
-                    style: TextStyle(
-                      fontSize: 20,
-                      fontWeight: FontWeight.bold,
-                      color: AppTheme.white,
-                    ),
-                    textAlign: TextAlign.center,
+                Expanded(
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      const Text(
+                        'Create Custom Drill',
+                        style: TextStyle(
+                          fontSize: 20,
+                          fontWeight: FontWeight.bold,
+                          color: AppTheme.white,
+                        ),
+                        textAlign: TextAlign.center,
+                      ),
+                      const SizedBox(height: 4),
+                      Text(
+                        'These drills are private to your account',
+                        style: TextStyle(
+                          fontSize: 12,
+                          color: AppTheme.white.withOpacity(0.8),
+                        ),
+                        textAlign: TextAlign.center,
+                      ),
+                    ],
                   ),
                 ),
                 // ✅ ADDED: Info button with popup explanation

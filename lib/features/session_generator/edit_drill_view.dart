@@ -42,6 +42,9 @@ class _EditDrillViewState extends State<EditDrillView>
   late Animation<double> _topSectionScaleAnimation;
   late Animation<double> _bottomSectionScaleAnimation;
   
+  // ✅ ADDED: UI visibility state for tap-to-hide functionality
+  bool _isUIVisible = true;
+  
   @override
   void initState() {
     super.initState();
@@ -132,175 +135,210 @@ class _EditDrillViewState extends State<EditDrillView>
   }
 
   Widget _buildOverlayContent() {
-    return SafeArea(
-      child: AnimatedBuilder(
-        animation: _uiAnimationController,
-        builder: (context, child) {
-          return Column(
-            children: [
-              // ✅ ANIMATED: Top section with slide, scale, and fade animations
-              Transform.translate(
-                offset: Offset(0, _topSectionSlideAnimation.value),
-                child: Transform.scale(
-                  scale: _topSectionScaleAnimation.value,
-                  child: FadeTransition(
-                    opacity: _uiFadeAnimation,
-                    child: _buildTopSection(),
+    return GestureDetector(
+      onTap: () {
+        HapticUtils.lightImpact();
+        _toggleUIVisibility();
+      },
+      behavior: HitTestBehavior.translucent,
+      child: SafeArea(
+        child: AnimatedBuilder(
+          animation: _uiAnimationController,
+          builder: (context, child) {
+            return Column(
+              children: [
+                // ✅ ANIMATED: Top section with slide, scale, and fade animations
+                AnimatedOpacity(
+                  opacity: _isUIVisible ? 1.0 : 0.0,
+                  duration: const Duration(milliseconds: 300),
+                  child: AnimatedSlide(
+                    offset: _isUIVisible ? Offset.zero : const Offset(0, -1.0),
+                    duration: const Duration(milliseconds: 300),
+                    curve: Curves.easeInOut,
+                    child: Transform.translate(
+                      offset: Offset(0, _topSectionSlideAnimation.value),
+                      child: Transform.scale(
+                        scale: _topSectionScaleAnimation.value,
+                        child: FadeTransition(
+                          opacity: _uiFadeAnimation,
+                          child: _buildTopSection(),
+                        ),
+                      ),
+                    ),
                   ),
                 ),
-              ),
-              
-              const Spacer(),
-              
-              // ✅ ANIMATED: Bottom section with slide, scale, and fade animations
-              Transform.translate(
-                offset: Offset(0, _bottomSectionSlideAnimation.value),
-                child: Transform.scale(
-                  scale: _bottomSectionScaleAnimation.value,
-                  child: FadeTransition(
-                    opacity: _uiFadeAnimation,
-                    child: _buildBottomSection(),
+                
+                const Spacer(),
+                
+                // ✅ ANIMATED: Bottom section with slide, scale, and fade animations
+                AnimatedOpacity(
+                  opacity: _isUIVisible ? 1.0 : 0.0,
+                  duration: const Duration(milliseconds: 300),
+                  child: AnimatedSlide(
+                    offset: _isUIVisible ? Offset.zero : const Offset(0, 1.0),
+                    duration: const Duration(milliseconds: 300),
+                    curve: Curves.easeInOut,
+                    child: Transform.translate(
+                      offset: Offset(0, _bottomSectionSlideAnimation.value),
+                      child: Transform.scale(
+                        scale: _bottomSectionScaleAnimation.value,
+                        child: FadeTransition(
+                          opacity: _uiFadeAnimation,
+                          child: _buildBottomSection(),
+                        ),
+                      ),
+                    ),
                   ),
                 ),
-              ),
-            ],
-          );
-        },
+              ],
+            );
+          },
+        ),
       ),
     );
   }
 
   Widget _buildTopSection() {
-    return Container(
-      margin: const EdgeInsets.all(16),
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: Colors.white.withOpacity(0.9), // ✅ UPDATED: Increased opacity from 0.7 to 0.9
-        borderRadius: BorderRadius.circular(16),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withOpacity(0.1),
-            blurRadius: 8,
-            offset: const Offset(0, 2),
-          ),
-        ],
-      ),
-      child: Column(
-        children: [
-          // Row with close button and drill title
-          Row(
-            children: [
-              // Close button
-              GestureDetector(
-                onTap: () {
-                  HapticUtils.lightImpact();
-                  Navigator.pop(context);
-                },
-                child: Container(
-                  padding: const EdgeInsets.all(8),
-                  decoration: BoxDecoration(
-                    color: Colors.grey.shade100,
-                    shape: BoxShape.circle,
-                  ),
-                  child: const Icon(
-                    Icons.close,
-                    color: Colors.black,
-                    size: 20,
-                  ),
-                ),
-              ),
-              
-              const SizedBox(width: 12),
-              
-              // Drill title (expanded to take remaining space)
-              Expanded(
-                child: Text(
-                  widget.editableDrill.drill.title,
-                  style: const TextStyle(
-                    fontFamily: 'Poppins',
-                    fontWeight: FontWeight.bold,
-                    fontSize: 18,
-                    color: Colors.black,
-                  ),
-                  maxLines: 2,
-                  overflow: TextOverflow.ellipsis,
-                ),
-              ),
-              
-              // Details button
-              GestureDetector(
-                onTap: () {
-                  HapticUtils.lightImpact();
-                  _showDrillDetails(context);
-                },
-                child: Container(
-                  padding: const EdgeInsets.all(8),
-                  decoration: BoxDecoration(
-                    color: Colors.grey.shade500,
-                    shape: BoxShape.circle,
-                  ),
-                  child: const Icon(
-                    Icons.article,
-                    color: Colors.white,
-                    size: 20,
+    return GestureDetector(
+      onTap: () {
+        // Absorb taps on the top section to prevent triggering the background tap
+      },
+      child: Container(
+        margin: const EdgeInsets.all(16),
+        padding: const EdgeInsets.all(16),
+        decoration: BoxDecoration(
+          color: Colors.white.withOpacity(0.9), // ✅ UPDATED: Increased opacity from 0.7 to 0.9
+          borderRadius: BorderRadius.circular(16),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withOpacity(0.1),
+              blurRadius: 8,
+              offset: const Offset(0, 2),
+            ),
+          ],
+        ),
+        child: Column(
+          children: [
+            // Row with close button and drill title
+            Row(
+              children: [
+                // Close button
+                GestureDetector(
+                  onTap: () {
+                    HapticUtils.lightImpact();
+                    Navigator.pop(context);
+                  },
+                  child: Container(
+                    padding: const EdgeInsets.all(8),
+                    decoration: BoxDecoration(
+                      color: Colors.grey.shade100,
+                      shape: BoxShape.circle,
+                    ),
+                    child: const Icon(
+                      Icons.close,
+                      color: Colors.black,
+                      size: 20,
+                    ),
                   ),
                 ),
+                
+                const SizedBox(width: 12),
+                
+                // Drill title (expanded to take remaining space)
+                Expanded(
+                  child: Text(
+                    widget.editableDrill.drill.title,
+                    style: const TextStyle(
+                      fontFamily: 'Poppins',
+                      fontWeight: FontWeight.bold,
+                      fontSize: 18,
+                      color: Colors.black,
+                    ),
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                ),
+                
+                // Details button
+                GestureDetector(
+                  onTap: () {
+                    HapticUtils.lightImpact();
+                    _showDrillDetails(context);
+                  },
+                  child: Container(
+                    padding: const EdgeInsets.all(8),
+                    decoration: BoxDecoration(
+                      color: Colors.grey.shade500,
+                      shape: BoxShape.circle,
+                    ),
+                    child: const Icon(
+                      Icons.article,
+                      color: Colors.white,
+                      size: 20,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+            
+            const SizedBox(height: 12),
+            
+            // Skill badge centered
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+              decoration: BoxDecoration(
+                color: AppTheme.getSkillColor(widget.editableDrill.drill.skill).withOpacity(0.1),
+                borderRadius: BorderRadius.circular(16),
+                border: Border.all(
+                  color: AppTheme.getSkillColor(widget.editableDrill.drill.skill).withOpacity(0.3),
+                ),
               ),
-            ],
-          ),
-          
-          const SizedBox(height: 12),
-          
-          // Skill badge centered
-          Container(
-            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-            decoration: BoxDecoration(
-              color: AppTheme.getSkillColor(widget.editableDrill.drill.skill).withOpacity(0.1),
-              borderRadius: BorderRadius.circular(16),
-              border: Border.all(
-                color: AppTheme.getSkillColor(widget.editableDrill.drill.skill).withOpacity(0.3),
+              child: Text(
+                SkillUtils.formatSkillForDisplay(widget.editableDrill.drill.skill),
+                style: TextStyle(
+                  fontFamily: 'Poppins',
+                  fontWeight: FontWeight.w600,
+                  fontSize: 12,
+                  color: AppTheme.getSkillColor(widget.editableDrill.drill.skill),
+                ),
               ),
             ),
-            child: Text(
-              SkillUtils.formatSkillForDisplay(widget.editableDrill.drill.skill),
-              style: TextStyle(
-                fontFamily: 'Poppins',
-                fontWeight: FontWeight.w600,
-                fontSize: 12,
-                color: AppTheme.getSkillColor(widget.editableDrill.drill.skill),
-              ),
-            ),
-          ),
-        ],
+          ],
+        ),
       ),
     );
   }
 
   Widget _buildBottomSection() {
-    return Container(
-      margin: const EdgeInsets.all(16),
-      padding: const EdgeInsets.all(12), // ✅ REDUCED: From 16 to 12
-      decoration: BoxDecoration(
-        color: Colors.white.withOpacity(0.9), // ✅ UPDATED: Increased opacity from 0.7 to 0.9
-        borderRadius: BorderRadius.circular(20),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withOpacity(0.1),
-            blurRadius: 12,
-            offset: const Offset(0, 4),
-          ),
-        ],
-      ),
-      child: Column(
-        children: [
-          // Edit controls
-          _buildEditControls(),
-          
-          const SizedBox(height: 16), // ✅ REDUCED: From 20 to 16
-          
-          // Save button
-          _buildSaveButton(),
-        ],
+    return GestureDetector(
+      onTap: () {
+        // Absorb taps on the bottom section to prevent triggering the background tap
+      },
+      child: Container(
+        margin: const EdgeInsets.all(16),
+        padding: const EdgeInsets.all(12), // ✅ REDUCED: From 16 to 12
+        decoration: BoxDecoration(
+          color: Colors.white.withOpacity(0.9), // ✅ UPDATED: Increased opacity from 0.7 to 0.9
+          borderRadius: BorderRadius.circular(20),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withOpacity(0.1),
+              blurRadius: 12,
+              offset: const Offset(0, 4),
+            ),
+          ],
+        ),
+        child: Column(
+          children: [
+            // Edit controls
+            _buildEditControls(),
+            
+            const SizedBox(height: 16), // ✅ REDUCED: From 20 to 16
+            
+            // Save button
+            _buildSaveButton(),
+          ],
+        ),
       ),
     );
   }
@@ -524,6 +562,13 @@ class _EditDrillViewState extends State<EditDrillView>
   void _stopHoldToRepeat() {
     _holdTimer?.cancel();
     _repeatTimer?.cancel();
+  }
+
+  // ✅ ADDED: Toggle UI visibility for tap-to-hide functionality
+  void _toggleUIVisibility() {
+    setState(() {
+      _isUIVisible = !_isUIVisible;
+    });
   }
 
   void _saveChanges() {
