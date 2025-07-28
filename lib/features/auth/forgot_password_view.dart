@@ -3,6 +3,8 @@ import 'package:provider/provider.dart';
 import '../../constants/app_theme.dart';
 import '../../services/forgot_password_service.dart';
 import '../../models/forgot_password_model.dart';
+import '../../widgets/bravo_button.dart'; // ✅ ADDED: Import BravoButton
+import '../../utils/haptic_utils.dart'; // ✅ ADDED: Import HapticUtils
 
 /// Forgot Password View
 /// Mirrors Swift ForgotPasswordSheet for password reset UI
@@ -22,6 +24,10 @@ class _ForgotPasswordViewState extends State<ForgotPasswordView> {
   final ForgotPasswordService _forgotPasswordService = ForgotPasswordService.shared;
   late ForgotPasswordModel _forgotPasswordModel;
   bool _isSending = false;
+  
+  // Controllers for password fields
+  final TextEditingController _newPasswordController = TextEditingController();
+  final TextEditingController _confirmPasswordController = TextEditingController();
 
   @override
   void initState() {
@@ -32,6 +38,8 @@ class _ForgotPasswordViewState extends State<ForgotPasswordView> {
   @override
   void dispose() {
     _forgotPasswordModel.dispose();
+    _newPasswordController.dispose();
+    _confirmPasswordController.dispose();
     super.dispose();
   }
 
@@ -218,46 +226,23 @@ class _ForgotPasswordViewState extends State<ForgotPasswordView> {
         // Send Code Button
         Consumer<ForgotPasswordModel>(
           builder: (context, model, child) {
-            return SizedBox(
-              width: double.infinity,
-              height: 50,
-              child: ElevatedButton(
-                onPressed: model.forgotPasswordEmail.isEmpty || _isSending
-                    ? null
-                    : () async {
-                        setState(() => _isSending = true);
-                        await _forgotPasswordService.sendForgotPassword(
-                          model.forgotPasswordEmail,
-                          model,
-                        );
-                        setState(() => _isSending = false);
-                      },
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: AppTheme.primaryYellow,
-                  foregroundColor: Colors.white,
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(AppTheme.radiusMedium),
-                  ),
-                  elevation: 2,
-                ),
-                child: _isSending
-                    ? const SizedBox(
-                        width: 20,
-                        height: 20,
-                        child: CircularProgressIndicator(
-                          strokeWidth: 2,
-                          valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
-                        ),
-                      )
-                    : Text(
-                        'Send Verification Code',
-                        style: AppTheme.titleMedium.copyWith(
-                          color: Colors.white,
-                          fontFamily: AppTheme.fontPoppins,
-                          fontWeight: FontWeight.w600,
-                        ),
-                      ),
-              ),
+            return BravoButton(
+              onPressed: model.forgotPasswordEmail.isEmpty || _isSending
+                  ? null
+                  : () async {
+                      HapticUtils.lightImpact(); // ✅ ADDED: Light haptic feedback
+                      setState(() => _isSending = true);
+                      await _forgotPasswordService.sendForgotPassword(
+                        model.forgotPasswordEmail,
+                        model,
+                      );
+                      setState(() => _isSending = false);
+                    },
+              text: _isSending ? 'Sending...' : 'Send Verification Code',
+              color: AppTheme.primaryYellow,
+              backColor: AppTheme.primaryDarkYellow,
+              textColor: Colors.white,
+              disabled: model.forgotPasswordEmail.isEmpty || _isSending,
             );
           },
         ),
@@ -381,46 +366,23 @@ class _ForgotPasswordViewState extends State<ForgotPasswordView> {
         // Verify Code Button
         Consumer<ForgotPasswordModel>(
           builder: (context, model, child) {
-            return SizedBox(
-              width: double.infinity,
-              height: 50,
-              child: ElevatedButton(
-                onPressed: model.forgotPasswordCode.length != 6 || _isSending
-                    ? null
-                    : () async {
-                        setState(() => _isSending = true);
-                        await _forgotPasswordService.verifyResetCode(
-                          model.forgotPasswordCode,
-                          model,
-                        );
-                        setState(() => _isSending = false);
-                      },
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: AppTheme.primaryYellow,
-                  foregroundColor: Colors.white,
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(AppTheme.radiusMedium),
-                  ),
-                  elevation: 2,
-                ),
-                child: _isSending
-                    ? const SizedBox(
-                        width: 20,
-                        height: 20,
-                        child: CircularProgressIndicator(
-                          strokeWidth: 2,
-                          valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
-                        ),
-                      )
-                    : Text(
-                        'Verify Code',
-                        style: AppTheme.titleMedium.copyWith(
-                          color: Colors.white,
-                          fontFamily: AppTheme.fontPoppins,
-                          fontWeight: FontWeight.w600,
-                        ),
-                      ),
-              ),
+            return BravoButton(
+              onPressed: model.forgotPasswordCode.length != 6 || _isSending
+                  ? null
+                  : () async {
+                      HapticUtils.lightImpact(); // ✅ ADDED: Light haptic feedback
+                      setState(() => _isSending = true);
+                      await _forgotPasswordService.verifyResetCode(
+                        model.forgotPasswordCode,
+                        model,
+                      );
+                      setState(() => _isSending = false);
+                    },
+              text: _isSending ? 'Verifying...' : 'Verify Code',
+              color: AppTheme.primaryYellow,
+              backColor: AppTheme.primaryDarkYellow,
+              textColor: Colors.white,
+              disabled: model.forgotPasswordCode.length != 6 || _isSending,
             );
           },
         ),
@@ -430,36 +392,24 @@ class _ForgotPasswordViewState extends State<ForgotPasswordView> {
         // Resend Code Button
         Consumer<ForgotPasswordModel>(
           builder: (context, model, child) {
-            return SizedBox(
-              width: double.infinity,
-              height: 50,
-              child: OutlinedButton(
-                onPressed: _isSending
-                    ? null
-                    : () async {
-                        setState(() => _isSending = true);
-                        await _forgotPasswordService.sendForgotPassword(
-                          model.forgotPasswordEmail,
-                          model,
-                        );
-                        setState(() => _isSending = false);
-                      },
-                style: OutlinedButton.styleFrom(
-                  foregroundColor: AppTheme.primaryYellow,
-                  side: BorderSide(color: AppTheme.primaryYellow),
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(AppTheme.radiusMedium),
-                  ),
-                ),
-                child: Text(
-                  'Resend Code',
-                  style: AppTheme.titleMedium.copyWith(
-                    color: AppTheme.primaryYellow,
-                    fontFamily: AppTheme.fontPoppins,
-                    fontWeight: FontWeight.w600,
-                  ),
-                ),
-              ),
+            return BravoButton(
+              onPressed: _isSending
+                  ? null
+                  : () async {
+                      HapticUtils.lightImpact(); // ✅ ADDED: Light haptic feedback
+                      setState(() => _isSending = true);
+                      await _forgotPasswordService.sendForgotPassword(
+                        model.forgotPasswordEmail,
+                        model,
+                      );
+                      setState(() => _isSending = false);
+                    },
+              text: 'Resend Code',
+              color: Colors.white,
+              backColor: AppTheme.lightGray,
+              textColor: AppTheme.primaryYellow,
+              disabled: _isSending,
+              borderSide: BorderSide(color: AppTheme.lightGray, width: 2),
             );
           },
         ),
@@ -498,7 +448,13 @@ class _ForgotPasswordViewState extends State<ForgotPasswordView> {
         // New Password Field
         Consumer<ForgotPasswordModel>(
           builder: (context, model, child) {
+            // Update controller when model changes
+            if (_newPasswordController.text != model.forgotPasswordNewPassword) {
+              _newPasswordController.text = model.forgotPasswordNewPassword;
+            }
+            
             return TextField(
+              controller: _newPasswordController,
               onChanged: (value) => model.forgotPasswordNewPassword = value,
               obscureText: !model.isNewPasswordVisible,
               textInputAction: TextInputAction.next,
@@ -542,7 +498,13 @@ class _ForgotPasswordViewState extends State<ForgotPasswordView> {
         // Confirm Password Field
         Consumer<ForgotPasswordModel>(
           builder: (context, model, child) {
+            // Update controller when model changes
+            if (_confirmPasswordController.text != model.forgotPasswordConfirmPassword) {
+              _confirmPasswordController.text = model.forgotPasswordConfirmPassword;
+            }
+            
             return TextField(
+              controller: _confirmPasswordController,
               onChanged: (value) => model.forgotPasswordConfirmPassword = value,
               obscureText: true,
               textInputAction: TextInputAction.done,
@@ -618,49 +580,44 @@ class _ForgotPasswordViewState extends State<ForgotPasswordView> {
         // Reset Password Button
         Consumer<ForgotPasswordModel>(
           builder: (context, model, child) {
-            return SizedBox(
-              width: double.infinity,
-              height: 50,
-              child: ElevatedButton(
-                onPressed: (model.forgotPasswordNewPassword.isEmpty ||
-                           model.forgotPasswordConfirmPassword.isEmpty ||
-                           _isSending)
-                    ? null
-                    : () async {
-                        setState(() => _isSending = true);
-                        await _forgotPasswordService.resetPassword(
-                          model.forgotPasswordNewPassword,
-                          model.forgotPasswordConfirmPassword,
-                          model,
-                        );
-                        setState(() => _isSending = false);
-                      },
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: AppTheme.primaryYellow,
-                  foregroundColor: Colors.white,
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(AppTheme.radiusMedium),
-                  ),
-                  elevation: 2,
-                ),
-                child: _isSending
-                    ? const SizedBox(
-                        width: 20,
-                        height: 20,
-                        child: CircularProgressIndicator(
-                          strokeWidth: 2,
-                          valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
-                        ),
-                      )
-                    : Text(
-                        'Reset Password',
-                        style: AppTheme.titleMedium.copyWith(
-                          color: Colors.white,
-                          fontFamily: AppTheme.fontPoppins,
-                          fontWeight: FontWeight.w600,
-                        ),
-                      ),
-              ),
+            return BravoButton(
+              onPressed: (model.forgotPasswordNewPassword.isEmpty ||
+                         model.forgotPasswordConfirmPassword.isEmpty ||
+                         _isSending)
+                  ? null
+                  : () async {
+                      HapticUtils.lightImpact(); // ✅ ADDED: Light haptic feedback
+                      setState(() => _isSending = true);
+                      await _forgotPasswordService.resetPassword(
+                        model.forgotPasswordNewPassword,
+                        model.forgotPasswordConfirmPassword,
+                        model,
+                        onSuccess: () {
+                          // Show success message
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            const SnackBar(
+                              content: Text('Password reset successfully!'),
+                              backgroundColor: AppTheme.success,
+                              duration: Duration(seconds: 3),
+                            ),
+                          );
+                          // Navigate back to login page
+                          if (widget.onClose != null) {
+                            widget.onClose!();
+                          } else {
+                            Navigator.of(context).pop();
+                          }
+                        },
+                      );
+                      setState(() => _isSending = false);
+                    },
+              text: _isSending ? 'Resetting...' : 'Reset Password',
+              color: AppTheme.primaryYellow,
+              backColor: AppTheme.primaryDarkYellow,
+              textColor: Colors.white,
+              disabled: model.forgotPasswordNewPassword.isEmpty ||
+                       model.forgotPasswordConfirmPassword.isEmpty ||
+                       _isSending,
             );
           },
         ),

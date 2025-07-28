@@ -1,4 +1,3 @@
-import 'dart:convert';
 import 'drill_model.dart';
 
 class EditableDrillModel {
@@ -43,9 +42,14 @@ class EditableDrillModel {
     return (setsDone / totalSets).clamp(0.0, 1.0);
   }
 
-  // Check if the drill is fully completed
+  // Check if the drill is fully completed (not skipped)
   bool get isFullyCompleted {
-    return isCompleted && setsDone >= totalSets;
+    return isCompleted || setsDone >= totalSets;
+  }
+
+  // Check if the drill is done (either completed or skipped)
+  bool get isDone {
+    return isCompleted;
   }
 
   // Calculate time per set based on total duration
@@ -91,11 +95,11 @@ class EditableDrillModel {
   factory EditableDrillModel.fromJson(Map<String, dynamic> json) {
     return EditableDrillModel(
       drill: DrillModel.fromJson(json['drill']),
-      setsDone: json['setsDone'] ?? 0,
-      totalSets: json['totalSets'] ?? 0,
-      totalReps: json['totalReps'] ?? 0,
-      totalDuration: json['totalDuration'] ?? 0,
-      isCompleted: json['isCompleted'] ?? false,
+      setsDone: json['setsDone'] ?? json['sets_done'] ?? 0,
+      totalSets: json['totalSets'] ?? json['sets'] ?? 0,
+      totalReps: json['totalReps'] ?? json['reps'] ?? 0,
+      totalDuration: json['totalDuration'] ?? json['duration'] ?? 0,
+      isCompleted: json['isCompleted'] ?? json['is_completed'] ?? false,
     );
   }
 

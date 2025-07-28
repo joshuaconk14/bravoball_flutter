@@ -34,7 +34,7 @@ class OnboardingView extends StatelessWidget {
             ),
             const SizedBox(height: 12),
             Text(
-              'Start Small. Dream Big',
+              'Start Small, Dream Big',
               style: const TextStyle(
                 fontFamily: 'Poppins',
                 fontSize: 18,

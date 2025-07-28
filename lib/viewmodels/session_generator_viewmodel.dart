@@ -103,11 +103,19 @@ class SessionGeneratorViewModel extends ChangeNotifier {
   }
   
   // Manual drill management methods
-  void addDrillToSession(DrillModel drill) {
+  bool addDrillToSession(DrillModel drill) {
+    // Check if session already has 10 drills (limit)
+    if (_sessionDrills.length >= 10) {
+      return false; // Cannot add more drills
+    }
+    
     if (!_sessionDrills.any((d) => d.id == drill.id)) {
       _sessionDrills.add(drill);
       notifyListeners();
+      return true; // Successfully added drill
     }
+    
+    return false; // Drill already exists in session
   }
   
   void removeDrillFromSession(DrillModel drill) {
@@ -214,7 +222,7 @@ class SessionGeneratorViewModel extends ChangeNotifier {
   // Mock data - replace with real data later
   static final List<DrillModel> _mockDrills = [
     DrillModel(
-      id: '1',
+      id: '550e8400-e29b-41d4-a716-446655440001',
       title: 'Ronaldinho drill to cone turn',
       skill: 'Dribbling',
       subSkills: ['Close control', '1v1 moves'],
@@ -228,9 +236,10 @@ class SessionGeneratorViewModel extends ChangeNotifier {
       trainingStyle: 'medium intensity',
       difficulty: 'intermediate',
       videoUrl: '',
+      isCustom: false, // ✅ ADDED: Set isCustom to false for mock drills
     ),
     DrillModel(
-      id: '2',
+      id: '550e8400-e29b-41d4-a716-446655440002',
       title: 'Quick Passing Drill',
       skill: 'Passing',
       subSkills: ['Short passing', 'One touch passing'],
@@ -244,9 +253,10 @@ class SessionGeneratorViewModel extends ChangeNotifier {
       trainingStyle: 'medium intensity',
       difficulty: 'beginner',
       videoUrl: '',
+      isCustom: false, // ✅ ADDED: Set isCustom to false for mock drills
     ),
     DrillModel(
-      id: '3',
+      id: '550e8400-e29b-41d4-a716-446655440003',
       title: 'Power Shot Training',
       skill: 'Shooting',
       subSkills: ['Power shots', 'First time shots'],
@@ -260,9 +270,10 @@ class SessionGeneratorViewModel extends ChangeNotifier {
       trainingStyle: 'high intensity',
       difficulty: 'advanced',
       videoUrl: '',
+      isCustom: false, // ✅ ADDED: Set isCustom to false for mock drills
     ),
     DrillModel(
-      id: '4',
+      id: '550e8400-e29b-41d4-a716-446655440004',
       title: 'First Touch Control',
       skill: 'First Touch',
       subSkills: ['Ground control', 'Touch and move'],
@@ -273,12 +284,13 @@ class SessionGeneratorViewModel extends ChangeNotifier {
       instructions: ['Receive ball cleanly', 'Touch away from pressure', 'Look up quickly'],
       tips: ['Cushion the ball', 'Use both feet', 'Keep ball close'],
       equipment: ['soccer ball'],
-      trainingStyle: 'medium intensity',
+      trainingStyle: 'low intensity',
       difficulty: 'intermediate',
       videoUrl: '',
+      isCustom: false, // ✅ ADDED: Set isCustom to false for mock drills
     ),
     DrillModel(
-      id: '5',
+      id: '550e8400-e29b-41d4-a716-446655440005',
       title: 'Long Range Passing',
       skill: 'Passing',
       subSkills: ['Long passing', 'Technique'],
@@ -292,9 +304,10 @@ class SessionGeneratorViewModel extends ChangeNotifier {
       trainingStyle: 'medium intensity',
       difficulty: 'advanced',
       videoUrl: '',
+      isCustom: false, // ✅ ADDED: Set isCustom to false for mock drills
     ),
     DrillModel(
-      id: '6',
+      id: '550e8400-e29b-41d4-a716-446655440006',
       title: 'Ball Mastery Skills',
       skill: 'Dribbling',
       subSkills: ['Ball mastery', 'Speed dribbling'],
@@ -305,12 +318,13 @@ class SessionGeneratorViewModel extends ChangeNotifier {
       instructions: ['Use both feet', 'Keep head up', 'Vary pace'],
       tips: ['Small touches', 'Stay relaxed', 'Practice daily'],
       equipment: ['soccer ball'],
-      trainingStyle: 'medium intensity',
+      trainingStyle: 'low intensity',
       difficulty: 'beginner',
       videoUrl: '',
+      isCustom: false, // ✅ ADDED: Set isCustom to false for mock drills
     ),
     DrillModel(
-      id: '7',
+      id: '550e8400-e29b-41d4-a716-446655440007',
       title: 'Advanced Shooting Combinations',
       skill: 'Shooting',
       subSkills: ['Finesse shots', 'Volleying'],
@@ -324,9 +338,10 @@ class SessionGeneratorViewModel extends ChangeNotifier {
       trainingStyle: 'high intensity',
       difficulty: 'advanced',
       videoUrl: '',
+      isCustom: false, // ✅ ADDED: Set isCustom to false for mock drills
     ),
     DrillModel(
-      id: '8',
+      id: '550e8400-e29b-41d4-a716-446655440008',
       title: 'Aerial Control Practice',
       skill: 'First Touch',
       subSkills: ['Aerial control', 'Juggling'],
@@ -337,9 +352,10 @@ class SessionGeneratorViewModel extends ChangeNotifier {
       instructions: ['Watch the ball', 'Use all surfaces', 'Keep it up'],
       tips: ['Relax your body', 'Small touches', 'Be patient'],
       equipment: ['soccer ball'],
-      trainingStyle: 'medium intensity',
+      trainingStyle: 'low intensity',
       difficulty: 'beginner',
       videoUrl: '',
+      isCustom: false, // ✅ ADDED: Set isCustom to false for mock drills
     ),
   ];
 } 

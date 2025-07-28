@@ -1,7 +1,5 @@
-import 'package:flutter/foundation.dart';
-
 class DrillModel {
-  final String id;
+  final String id; // This will store the UUID from backend
   final String title;
   final String skill;
   final List<String> subSkills;
@@ -15,14 +13,15 @@ class DrillModel {
   final String trainingStyle;
   final String difficulty;
   final String videoUrl;
+  final bool isCustom; // ✅ ADDED: Boolean flag to identify custom drills
 
   DrillModel({
     required this.id,
     required this.title,
     required this.skill,
     required this.subSkills,
-    this.sets = 0,
-    this.reps = 0,
+    required this.sets,
+    required this.reps,
     required this.duration,
     required this.description,
     required this.instructions,
@@ -31,12 +30,13 @@ class DrillModel {
     required this.trainingStyle,
     required this.difficulty,
     required this.videoUrl,
+    required this.isCustom,
   });
 
   // JSON serialization
   Map<String, dynamic> toJson() {
     return {
-      'id': id,
+      'uuid': id, // Use 'uuid' for backend compatibility
       'title': title,
       'skill': skill,
       'subSkills': subSkills,
@@ -50,12 +50,16 @@ class DrillModel {
       'trainingStyle': trainingStyle,
       'difficulty': difficulty,
       'videoUrl': videoUrl,
+      'is_custom': isCustom, // ✅ ADDED: Include is_custom field in JSON
     };
   }
 
   factory DrillModel.fromJson(Map<String, dynamic> json) {
+    // Handle both 'uuid' (new backend format) and 'id' (legacy format)
+    final drillId = json['uuid'] ?? json['id'] ?? '';
+    
     return DrillModel(
-      id: json['id'] ?? '',
+      id: drillId,
       title: json['title'] ?? '',
       skill: json['skill'] ?? '',
       subSkills: List<String>.from(json['subSkills'] ?? []),
@@ -69,6 +73,7 @@ class DrillModel {
       trainingStyle: json['trainingStyle'] ?? '',
       difficulty: json['difficulty'] ?? '',
       videoUrl: json['videoUrl'] ?? '',
+      isCustom: json['is_custom'] ?? false, // ✅ ADDED: Parse is_custom field from JSON
     );
   }
 

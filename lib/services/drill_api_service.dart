@@ -35,9 +35,11 @@ class DrillApiService {
         'limit': limit.toString(),
       };
 
-      // Add optional parameters
+      // Add optional parameters with proper mapping
       if (category != null && category.isNotEmpty) {
-        queryParams['category'] = category;
+        // Map frontend skill name to backend category name
+        final backendCategory = _mapSkillToBackendCategory(category);
+        queryParams['category'] = backendCategory;
       }
       if (difficulty != null && difficulty.isNotEmpty) {
         queryParams['difficulty'] = difficulty;
@@ -107,7 +109,7 @@ class DrillApiService {
   }
 
   /// Get a specific drill by ID
-  Future<DrillResponse?> getDrillById(int id) async {
+  Future<DrillResponse?> getDrillById(String id) async {
     try {
       _logRequest('getDrillById', '/api/drills/$id', {});
 
@@ -150,7 +152,7 @@ class DrillApiService {
     final trainingStyle = _mapIntensityToTrainingStyle(drillResponse.intensity);
 
     return DrillModel(
-      id: 'drill_${drillResponse.id}', // Generate local UUID-like ID
+      id: drillResponse.id.toString(), // Use the backend ID as UUID
       title: drillResponse.title,
       skill: _mapSkillCategory(skillCategory),
       subSkills: allSubSkills,
@@ -164,6 +166,7 @@ class DrillApiService {
       trainingStyle: trainingStyle,
       difficulty: _mapDifficulty(drillResponse.difficulty),
       videoUrl: drillResponse.videoUrl ?? '',
+      isCustom: drillResponse.isCustom, // ✅ UPDATED: Use the isCustom field from DrillResponse
     );
   }
 
@@ -174,6 +177,21 @@ class DrillApiService {
 
   // MARK: - Mapping Methods
 
+  /// Map frontend skill name to backend category name
+  String _mapSkillToBackendCategory(String frontendSkill) {
+    const skillToBackendMap = {
+      'Passing': 'passing',
+      'Shooting': 'shooting',
+      'Dribbling': 'dribbling',
+      'First Touch': 'first_touch',
+      'Defending': 'defending',
+      'Goalkeeping': 'goalkeeping', // ✅ ADDED: Missing goalkeeping mapping
+      'Fitness': 'fitness',
+    };
+    
+    return skillToBackendMap[frontendSkill] ?? frontendSkill.toLowerCase();
+  }
+
   /// Map API skill category to app skill category
   String _mapSkillCategory(String apiCategory) {
     const skillMap = {
@@ -183,6 +201,7 @@ class DrillApiService {
       'first_touch': 'First Touch',
       'fitness': 'Fitness',
       'defending': 'Defending',
+      'goalkeeping': 'Goalkeeping', // ✅ ADDED: Missing goalkeeping mapping
     };
     
     return skillMap[apiCategory.toLowerCase()] ?? apiCategory;
@@ -203,13 +222,13 @@ class DrillApiService {
   String _mapIntensityToTrainingStyle(String intensity) {
     switch (intensity.toLowerCase()) {
       case 'low':
-        return 'Low intensity';
+        return 'low intensity';
       case 'medium':
-        return 'Medium intensity';
+        return 'medium intensity';
       case 'high':
-        return 'High intensity';
+        return 'high intensity';
       default:
-        return 'Medium intensity';
+        return 'medium intensity';
     }
   }
 
@@ -261,7 +280,7 @@ class DrillApiService {
   List<DrillResponse> _getMockDrills() {
     return [
       DrillResponse(
-        id: 1,
+        id: '550e8400-e29b-41d4-a716-446655440001',
         title: 'One-Touch Passing Drill',
         description: 'Improve first-touch control and quick decision-making using the wall',
         type: 'passing',
@@ -292,7 +311,7 @@ class DrillApiService {
         variations: [],
       ),
       DrillResponse(
-        id: 2,
+        id: '550e8400-e29b-41d4-a716-446655440002',
         title: 'Cone Dribbling Challenge',
         description: 'Improve close control dribbling through a series of cones',
         type: 'dribbling',
@@ -324,7 +343,7 @@ class DrillApiService {
         variations: [],
       ),
       DrillResponse(
-        id: 3,
+        id: '550e8400-e29b-41d4-a716-446655440003',
         title: 'Power Shooting Practice',
         description: 'Basic shooting drill to improve accuracy and power',
         type: 'shooting',

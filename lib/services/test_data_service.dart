@@ -44,7 +44,7 @@ class DrillSearchFilters {
     this.equipment,
     this.maxDuration,
     this.page = 1,
-    this.pageSize = 15,
+    this.pageSize = 20,
   });
 }
 
@@ -61,7 +61,7 @@ class TestDataService {
   static const int _maxApiDelayMs = 2000;
   
   // Pagination settings
-  static const int _defaultPageSize = 15;
+  static const int _defaultPageSize = 20;
   static const int _maxPageSize = 50;
 
   /// Generate comprehensive test drill database (30+ drills)
@@ -69,15 +69,17 @@ class TestDataService {
     return [
       // DRIBBLING DRILLS
       DrillModel(
-        id: 'drill_001',
+        id: '550e8400-e29b-41d4-a716-446655440001',
         title: 'Cone Weaving Mastery',
         description: 'Master close control by weaving through cones with both feet. Focus on tight turns and quick changes of direction.',
         skill: 'Dribbling',
         subSkills: ['Ball Control', 'Agility', 'Both Feet'],
         difficulty: 'Beginner',
         equipment: ['Cones', 'Ball'],
-        trainingStyle: 'Individual',
+        trainingStyle: 'low intensity',
         duration: 12,
+        reps: 5,
+        sets: 3,
         videoUrl: 'https://example.com/cone-weaving',
         instructions: [
           'Set up 6-8 cones in a straight line, 2 yards apart',
@@ -90,18 +92,21 @@ class TestDataService {
           'Use small touches to maintain control',
           'Accelerate out of the last cone'
         ],
+        isCustom: false, // ✅ ADDED: Set isCustom to false for test drills
       ),
       
       DrillModel(
-        id: 'drill_002',
+        id: '550e8400-e29b-41d4-a716-446655440002',
         title: 'Ronaldinho Rainbow Flick',
         description: 'Learn the iconic rainbow flick to beat defenders in style. Practice the perfect touch and timing.',
         skill: 'Dribbling',
         subSkills: ['Skill Moves', 'Flair', 'Timing'],
         difficulty: 'Advanced',
         equipment: ['Ball', 'Wall'],
-        trainingStyle: 'Individual',
+        trainingStyle: 'low intensity',
         duration: 20,
+        reps: 10,
+        sets: 4,
         videoUrl: 'https://example.com/rainbow-flick',
         instructions: [
           'Start with the ball between your feet',
@@ -114,18 +119,21 @@ class TestDataService {
           'Keep your balance throughout the move',
           'Use this move sparingly in games'
         ],
+        isCustom: false, // ✅ ADDED: Set isCustom to false for test drills
       ),
 
       DrillModel(
-        id: 'drill_003',
+        id: '550e8400-e29b-41d4-a716-446655440003',
         title: 'Speed Dribbling Circuit',
         description: 'Develop explosive pace while maintaining ball control. Perfect for beating defenders on the break.',
         skill: 'Dribbling',
         subSkills: ['Speed', 'Control', 'Acceleration'],
         difficulty: 'Intermediate',
         equipment: ['Cones', 'Ball', 'Stopwatch'],
-        trainingStyle: 'Individual',
+        trainingStyle: 'low intensity',
         duration: 15,
+        reps: 6,
+        sets: 3,
         videoUrl: 'https://example.com/speed-dribbling',
         instructions: [
           'Set up 20-yard sprint with cones every 5 yards',
@@ -138,19 +146,22 @@ class TestDataService {
           'Keep your head up to see ahead',
           'Practice with both feet'
         ],
+        isCustom: false, // ✅ ADDED: Set isCustom to false for test drills
       ),
 
       // PASSING DRILLS
       DrillModel(
-        id: 'drill_004',
+        id: '550e8400-e29b-41d4-a716-446655440004',
         title: 'Precision Passing Gates',
         description: 'Improve passing accuracy by hitting targets of different sizes. Build confidence in your distribution.',
         skill: 'Passing',
         subSkills: ['Accuracy', 'Weight of Pass', 'Vision'],
         difficulty: 'Beginner',
         equipment: ['Cones', 'Ball', 'Targets'],
-        trainingStyle: 'Individual',
+        trainingStyle: 'low intensity',
         duration: 18,
+        reps: 10,
+        sets: 3,
         videoUrl: 'https://example.com/precision-passing',
         instructions: [
           'Set up 5 gates of different sizes using cones',
@@ -163,18 +174,21 @@ class TestDataService {
           'Follow through toward your target',
           'Keep your standing foot planted'
         ],
+        isCustom: false, // ✅ ADDED: Set isCustom to false for test drills
       ),
 
       DrillModel(
-        id: 'drill_005',
+        id: '550e8400-e29b-41d4-a716-446655440005',
         title: 'Long Range Distribution',
         description: 'Master long passes like a center-back. Switch play and find teammates across the field.',
         skill: 'Passing',
         subSkills: ['Long Pass', 'Technique', 'Power'],
         difficulty: 'Advanced',
         equipment: ['Ball', 'Targets', 'Markers'],
-        trainingStyle: 'Individual',
+        trainingStyle: 'low intensity',
         duration: 25,
+        reps: 5,
+        sets: 4,
         videoUrl: 'https://example.com/long-passing',
         instructions: [
           'Set up targets at 30, 40, and 50 yards',
@@ -187,18 +201,21 @@ class TestDataService {
           'Strike through the center of the ball',
           'Follow through with your kicking leg'
         ],
+        isCustom: false, // ✅ ADDED: Set isCustom to false for test drills
       ),
 
       DrillModel(
-        id: 'drill_006',
+        id: '550e8400-e29b-41d4-a716-446655440006',
         title: 'One-Touch Passing Wall',
         description: 'Develop quick passing under pressure. Perfect for tight spaces and quick combinations.',
         skill: 'Passing',
         subSkills: ['Quick Passing', 'First Touch', 'Pressure'],
         difficulty: 'Intermediate',
         equipment: ['Ball', 'Wall'],
-        trainingStyle: 'Individual',
+        trainingStyle: 'low intensity',
         duration: 16,
+        reps: 50,
+        sets: 2,
         videoUrl: 'https://example.com/one-touch-passing',
         instructions: [
           'Stand 5 yards from a wall',
@@ -211,19 +228,22 @@ class TestDataService {
           'Use the inside of your foot for control',
           'Keep the ball moving quickly'
         ],
+        isCustom: false, // ✅ ADDED: Set isCustom to false for test drills
       ),
 
       // SHOOTING DRILLS
       DrillModel(
-        id: 'drill_007',
+        id: '550e8400-e29b-41d4-a716-446655440007',
         title: 'Power Shot Technique',
         description: 'Learn to strike the ball with power and precision. Become a threat from outside the box.',
         skill: 'Shooting',
         subSkills: ['Power', 'Accuracy', 'Technique'],
         difficulty: 'Intermediate',
         equipment: ['Ball', 'Goal', 'Markers'],
-        trainingStyle: 'Individual',
+        trainingStyle: 'high intensity',
         duration: 22,
+        reps: 10,
+        sets: 3,
         videoUrl: 'https://example.com/power-shooting',
         instructions: [
           'Set up 5 shooting positions around the penalty area',
@@ -236,18 +256,21 @@ class TestDataService {
           'Keep your head steady and eyes on the ball',
           'Follow through in the direction of your target'
         ],
+        isCustom: false, // ✅ ADDED: Set isCustom to false for test drills
       ),
 
       DrillModel(
-        id: 'drill_008',
+        id: '550e8400-e29b-41d4-a716-446655440008',
         title: 'Finesse Shot Mastery',
         description: 'Master the art of placement over power. Learn to curl shots into the top corner.',
         skill: 'Shooting',
         subSkills: ['Placement', 'Curve', 'Finesse'],
         difficulty: 'Advanced',
         equipment: ['Ball', 'Goal', 'Cones'],
-        trainingStyle: 'Individual',
+        trainingStyle: 'medium intensity',
         duration: 20,
+        reps: 5,
+        sets: 4,
         videoUrl: 'https://example.com/finesse-shooting',
         instructions: [
           'Set up cones in the corners of the goal',
@@ -260,18 +283,21 @@ class TestDataService {
           'Lean into the shot for better accuracy',
           'Practice with both feet'
         ],
+        isCustom: false, // ✅ ADDED: Set isCustom to false for test drills
       ),
 
       DrillModel(
-        id: 'drill_009',
+        id: '550e8400-e29b-41d4-a716-446655440009',
         title: 'Volley Technique Training',
         description: 'Perfect your volleying technique for spectacular goals. Control and power in one motion.',
         skill: 'Shooting',
         subSkills: ['Volleys', 'Timing', 'Balance'],
         difficulty: 'Advanced',
         equipment: ['Ball', 'Goal', 'Wall'],
-        trainingStyle: 'Individual',
+        trainingStyle: 'high intensity',
         duration: 24,
+        reps: 5,
+        sets: 4,
         videoUrl: 'https://example.com/volley-shooting',
         instructions: [
           'Throw the ball up and volley it toward the goal',
@@ -284,19 +310,22 @@ class TestDataService {
           'Use your arms for balance',
           'Strike through the middle of the ball'
         ],
+        isCustom: false, // ✅ ADDED: Set isCustom to false for test drills
       ),
 
       // FIRST TOUCH DRILLS
       DrillModel(
-        id: 'drill_010',
+        id: '550e8400-e29b-41d4-a716-446655440010',
         title: 'Wall Control Challenge',
         description: 'Master your first touch using a wall. Control balls coming at different angles and speeds.',
         skill: 'First Touch',
         subSkills: ['Ball Control', 'Reaction', 'Softness'],
         difficulty: 'Beginner',
         equipment: ['Ball', 'Wall'],
-        trainingStyle: 'Individual',
+        trainingStyle: 'low intensity',
         duration: 14,
+        reps: 5,
+        sets: 3,
         videoUrl: 'https://example.com/wall-control',
         instructions: [
           'Stand 8 yards from a wall',
@@ -309,18 +338,21 @@ class TestDataService {
           'Get your body in line with the ball',
           'Practice with both feet equally'
         ],
+        isCustom: false, // ✅ ADDED: Set isCustom to false for test drills
       ),
 
       DrillModel(
-        id: 'drill_011',
+        id: '550e8400-e29b-41d4-a716-446655440011',
         title: 'Aerial Control Mastery',
         description: 'Control balls from the air like a professional. Essential for modern soccer.',
         skill: 'First Touch',
         subSkills: ['Aerial Control', 'Cushioning', 'Body Position'],
         difficulty: 'Intermediate',
         equipment: ['Ball'],
-        trainingStyle: 'Individual',
+        trainingStyle: 'low intensity',
         duration: 18,
+        reps: 5,
+        sets: 4,
         videoUrl: 'https://example.com/aerial-control',
         instructions: [
           'Throw the ball high in the air',
@@ -333,18 +365,21 @@ class TestDataService {
           'Relax your body to cushion the ball',
           'Get your body behind the ball'
         ],
+        isCustom: false, // ✅ ADDED: Set isCustom to false for test drills
       ),
 
       DrillModel(
-        id: 'drill_012',
+        id: '550e8400-e29b-41d4-a716-446655440012',
         title: 'Pressure Cooker First Touch',
         description: 'Perfect your first touch under pressure. Simulate game-like conditions.',
         skill: 'First Touch',
         subSkills: ['Pressure', 'Quick Feet', 'Composure'],
         difficulty: 'Advanced',
         equipment: ['Ball', 'Cones', 'Wall'],
-        trainingStyle: 'Individual',
+        trainingStyle: 'high intensity',
         duration: 16,
+        reps: 30,
+        sets: 2,
         videoUrl: 'https://example.com/pressure-touch',
         instructions: [
           'Set up in a small 5x5 yard box',
@@ -357,19 +392,22 @@ class TestDataService {
           'Use the space efficiently',
           'Keep your head up to see options'
         ],
+        isCustom: false, // ✅ ADDED: Set isCustom to false for test drills
       ),
 
       // DEFENDING DRILLS
       DrillModel(
-        id: 'drill_013',
+        id: '550e8400-e29b-41d4-a716-446655440013',
         title: 'Defensive Positioning Basics',
         description: 'Learn proper defensive stance and positioning. Foundation of good defending.',
         skill: 'Defending',
         subSkills: ['Positioning', 'Stance', 'Awareness'],
         difficulty: 'Beginner',
         equipment: ['Cones', 'Ball'],
-        trainingStyle: 'Individual',
+        trainingStyle: 'low intensity',
         duration: 15,
+        reps: 5,
+        sets: 3,
         videoUrl: 'https://example.com/defensive-positioning',
         instructions: [
           'Set up a 10x10 yard box with cones',
@@ -382,18 +420,21 @@ class TestDataService {
           'Keep your center of gravity low',
           'Don\'t dive in too early'
         ],
+        isCustom: false, // ✅ ADDED: Set isCustom to false for test drills
       ),
 
       DrillModel(
-        id: 'drill_014',
+        id: '550e8400-e29b-41d4-a716-446655440014',
         title: 'Tackling Technique',
         description: 'Master the art of clean tackling. Win the ball without fouling.',
         skill: 'Defending',
         subSkills: ['Tackling', 'Timing', 'Technique'],
         difficulty: 'Intermediate',
         equipment: ['Ball', 'Cones'],
-        trainingStyle: 'Individual',
+        trainingStyle: 'low intensity',
         duration: 20,
+        reps: 5,
+        sets: 4,
         videoUrl: 'https://example.com/tackling-technique',
         instructions: [
           'Practice slide tackles on a stationary ball',
@@ -406,18 +447,21 @@ class TestDataService {
           'Use the inside of your foot',
           'Get your body behind the ball'
         ],
+        isCustom: false, // ✅ ADDED: Set isCustom to false for test drills
       ),
 
       DrillModel(
-        id: 'drill_015',
+        id: '550e8400-e29b-41d4-a716-446655440015',
         title: 'Jockeying and Delay',
         description: 'Learn to delay attackers and force them into poor decisions. Patience is key.',
         skill: 'Defending',
         subSkills: ['Jockeying', 'Patience', 'Positioning'],
         difficulty: 'Advanced',
         equipment: ['Cones', 'Ball'],
-        trainingStyle: 'Individual',
+        trainingStyle: 'low intensity',
         duration: 18,
+        reps: 5,
+        sets: 4,
         videoUrl: 'https://example.com/jockeying',
         instructions: [
           'Set up a channel using cones',
@@ -430,19 +474,22 @@ class TestDataService {
           'Show the attacker where you want them to go',
           'Stay balanced and ready to react'
         ],
+        isCustom: false, // ✅ ADDED: Set isCustom to false for test drills
       ),
 
       // FITNESS DRILLS
       DrillModel(
-        id: 'drill_016',
+        id: '550e8400-e29b-41d4-a716-446655440016',
         title: 'Sprint Interval Training',
         description: 'Build explosive speed and endurance. Essential for modern soccer fitness.',
         skill: 'Fitness',
         subSkills: ['Speed', 'Endurance', 'Recovery'],
         difficulty: 'Intermediate',
         equipment: ['Cones', 'Stopwatch'],
-        trainingStyle: 'Individual',
+        trainingStyle: 'high intensity',
         duration: 25,
+        reps: 8,
+        sets: 4,
         videoUrl: 'https://example.com/sprint-intervals',
         instructions: [
           'Set up 40-yard sprint markers',
@@ -455,18 +502,21 @@ class TestDataService {
           'Use your arms for power',
           'Don\'t slow down at the end'
         ],
+        isCustom: false, // ✅ ADDED: Set isCustom to false for test drills
       ),
 
       DrillModel(
-        id: 'drill_017',
+        id: '550e8400-e29b-41d4-a716-446655440017',
         title: 'Agility Ladder Workout',
         description: 'Improve footwork and coordination. Essential for quick movements on the field.',
         skill: 'Fitness',
         subSkills: ['Agility', 'Coordination', 'Quick Feet'],
         difficulty: 'Beginner',
         equipment: ['Agility Ladder', 'Cones'],
-        trainingStyle: 'Individual',
+        trainingStyle: 'medium intensity',
         duration: 12,
+        reps: 3,
+        sets: 3,
         videoUrl: 'https://example.com/agility-ladder',
         instructions: [
           'Set up agility ladder on flat ground',
@@ -479,18 +529,21 @@ class TestDataService {
           'Keep your head up',
           'Focus on speed and precision'
         ],
+        isCustom: false, // ✅ ADDED: Set isCustom to false for test drills
       ),
 
       DrillModel(
-        id: 'drill_018',
+        id: '550e8400-e29b-41d4-a716-446655440018',
         title: 'Plyometric Power Training',
         description: 'Build explosive power for jumping and sprinting. Become more athletic.',
         skill: 'Fitness',
         subSkills: ['Power', 'Explosiveness', 'Jumping'],
         difficulty: 'Advanced',
         equipment: ['Cones', 'Markers'],
-        trainingStyle: 'Individual',
+        trainingStyle: 'high intensity',
         duration: 20,
+        reps: 5,
+        sets: 4,
         videoUrl: 'https://example.com/plyometric-training',
         instructions: [
           'Set up stations for different plyometric exercises',
@@ -503,19 +556,22 @@ class TestDataService {
           'Use your arms for momentum',
           'Focus on quality over quantity'
         ],
+        isCustom: false, // ✅ ADDED: Set isCustom to false for test drills
       ),
 
       // SPECIALIZED DRILLS
       DrillModel(
-        id: 'drill_019',
+        id: '550e8400-e29b-41d4-a716-446655440019',
         title: 'Goalkeeper Reaction Training',
         description: 'Improve reflexes and shot-stopping ability. Essential for goalkeepers.',
         skill: 'Goalkeeping',
         subSkills: ['Reactions', 'Diving', 'Positioning'],
         difficulty: 'Intermediate',
         equipment: ['Ball', 'Goal', 'Wall'],
-        trainingStyle: 'Individual',
+        trainingStyle: 'low intensity',
         duration: 18,
+        reps: 5,
+        sets: 4,
         videoUrl: 'https://example.com/goalkeeper-reactions',
         instructions: [
           'Stand in goal and have balls thrown at you',
@@ -528,18 +584,21 @@ class TestDataService {
           'Use proper diving technique',
           'Keep your eyes on the ball'
         ],
+        isCustom: false, // ✅ ADDED: Set isCustom to false for test drills
       ),
 
       DrillModel(
-        id: 'drill_020',
+        id: '550e8400-e29b-41d4-a716-446655440020',
         title: 'Set Piece Specialist',
         description: 'Master free kicks and corners. Become your team\'s dead ball specialist.',
         skill: 'Set Pieces',
         subSkills: ['Free Kicks', 'Corners', 'Technique'],
         difficulty: 'Advanced',
         equipment: ['Ball', 'Goal', 'Wall'],
-        trainingStyle: 'Individual',
+        trainingStyle: 'low intensity',
         duration: 30,
+        reps: 5,
+        sets: 4,
         videoUrl: 'https://example.com/set-pieces',
         instructions: [
           'Practice free kicks from different angles',
@@ -552,19 +611,22 @@ class TestDataService {
           'Pick your spot before you shoot',
           'Practice regularly to maintain accuracy'
         ],
+        isCustom: false, // ✅ ADDED: Set isCustom to false for test drills
       ),
 
       // ADDITIONAL ADVANCED DRILLS
       DrillModel(
-        id: 'drill_021',
+        id: '550e8400-e29b-41d4-a716-446655440021',
         title: 'Messi-Style Close Control',
         description: 'Master close control in tight spaces like Lionel Messi. Essential for creative players.',
         skill: 'Dribbling',
         subSkills: ['Close Control', 'Balance', 'Creativity'],
         difficulty: 'Advanced',
         equipment: ['Ball', 'Cones'],
-        trainingStyle: 'Individual',
+        trainingStyle: 'low intensity',
         duration: 22,
+        reps: 5,
+        sets: 3,
         videoUrl: 'https://example.com/messi-control',
         instructions: [
           'Set up a tight 3x3 yard box',
@@ -577,18 +639,21 @@ class TestDataService {
           'Use your body to shield the ball',
           'Change direction frequently'
         ],
+        isCustom: false, // ✅ ADDED: Set isCustom to false for test drills
       ),
 
       DrillModel(
-        id: 'drill_022',
+        id: '550e8400-e29b-41d4-a716-446655440022',
         title: 'Tiki-Taka Passing Precision',
         description: 'Master quick, short passes like Barcelona. Perfect for possession-based play.',
         skill: 'Passing',
         subSkills: ['Quick Passing', 'Accuracy', 'Movement'],
         difficulty: 'Intermediate',
         equipment: ['Ball', 'Cones', 'Wall'],
-        trainingStyle: 'Individual',
+        trainingStyle: 'low intensity',
         duration: 20,
+        reps: 50,
+        sets: 2,
         videoUrl: 'https://example.com/tiki-taka',
         instructions: [
           'Set up 3 targets in a triangle formation',
@@ -601,18 +666,21 @@ class TestDataService {
           'Use the inside of your foot for accuracy',
           'Move immediately after passing'
         ],
+        isCustom: false, // ✅ ADDED: Set isCustom to false for test drills
       ),
 
       DrillModel(
-        id: 'drill_023',
+        id: '550e8400-e29b-41d4-a716-446655440023',
         title: 'Cristiano Power Headers',
         description: 'Develop heading power and accuracy like Cristiano Ronaldo. Dominate in the air.',
         skill: 'Heading',
         subSkills: ['Power', 'Accuracy', 'Timing'],
         difficulty: 'Intermediate',
         equipment: ['Ball', 'Goal', 'Partner'],
-        trainingStyle: 'Partner',
+        trainingStyle: 'low intensity',
         duration: 16,
+        reps: 10,
+        sets: 3,
         videoUrl: 'https://example.com/power-headers',
         instructions: [
           'Have a partner throw balls for you to head',
@@ -625,18 +693,21 @@ class TestDataService {
           'Use your whole body for power',
           'Attack the ball, don\'t wait for it'
         ],
+        isCustom: false, // ✅ ADDED: Set isCustom to false for test drills
       ),
 
       DrillModel(
-        id: 'drill_024',
+        id: '550e8400-e29b-41d4-a716-446655440024',
         title: 'Neymar Skill Moves',
         description: 'Learn flashy skill moves to beat defenders. Add flair to your game.',
         skill: 'Dribbling',
         subSkills: ['Skill Moves', 'Creativity', 'Flair'],
         difficulty: 'Advanced',
         equipment: ['Ball', 'Cones'],
-        trainingStyle: 'Individual',
+        trainingStyle: 'low intensity',
         duration: 25,
+        reps: 5,
+        sets: 4,
         videoUrl: 'https://example.com/neymar-skills',
         instructions: [
           'Practice step-overs, rainbow flicks, and elasticos',
@@ -649,18 +720,21 @@ class TestDataService {
           'Use skills sparingly in games',
           'Perfect the basics first'
         ],
+        isCustom: false, // ✅ ADDED: Set isCustom to false for test drills
       ),
 
       DrillModel(
-        id: 'drill_025',
+        id: '550e8400-e29b-41d4-a716-446655440025',
         title: 'Goalkeeper Distribution',
         description: 'Improve goal kick and throwing accuracy. Start attacks from the back.',
         skill: 'Goalkeeping',
         subSkills: ['Distribution', 'Accuracy', 'Range'],
         difficulty: 'Intermediate',
         equipment: ['Ball', 'Targets', 'Goal'],
-        trainingStyle: 'Individual',
+        trainingStyle: 'low intensity',
         duration: 18,
+        reps: 5,
+        sets: 4,
         videoUrl: 'https://example.com/goalkeeper-distribution',
         instructions: [
           'Set up targets at different distances',
@@ -673,19 +747,22 @@ class TestDataService {
           'Follow through toward your target',
           'Practice with both feet'
         ],
+        isCustom: false, // ✅ ADDED: Set isCustom to false for test drills
       ),
 
       // TEAM PLAY DRILLS
       DrillModel(
-        id: 'drill_026',
+        id: '550e8400-e29b-41d4-a716-446655440026',
         title: '2v1 Attacking Play',
         description: 'Master 2v1 situations in attack. Learn when to pass and when to shoot.',
         skill: 'Team Play',
         subSkills: ['Decision Making', 'Passing', 'Movement'],
         difficulty: 'Intermediate',
         equipment: ['Ball', 'Cones', 'Partners'],
-        trainingStyle: 'Small Group',
+        trainingStyle: 'low intensity',
         duration: 20,
+        reps: 5,
+        sets: 3,
         videoUrl: 'https://example.com/2v1-attack',
         instructions: [
           'Set up with 2 attackers and 1 defender',
@@ -698,18 +775,21 @@ class TestDataService {
           'Look for the overlap',
           'Don\'t force the pass'
         ],
+        isCustom: false, // ✅ ADDED: Set isCustom to false for test drills
       ),
 
       DrillModel(
-        id: 'drill_027',
+        id: '550e8400-e29b-41d4-a716-446655440027',
         title: 'Small-Sided Games',
         description: 'Play 3v3 or 4v4 games to improve all aspects of your game.',
         skill: 'Team Play',
         subSkills: ['All Skills', 'Decision Making', 'Fitness'],
         difficulty: 'All Levels',
         equipment: ['Ball', 'Cones', 'Partners'],
-        trainingStyle: 'Small Group',
+        trainingStyle: 'low intensity',
         duration: 30,
+        reps: 5,
+        sets: 3,
         videoUrl: 'https://example.com/small-sided-games',
         instructions: [
           'Set up small goals or targets',
@@ -722,18 +802,21 @@ class TestDataService {
           'Use all the skills you\'ve practiced',
           'Communicate constantly'
         ],
+        isCustom: false, // ✅ ADDED: Set isCustom to false for test drills
       ),
 
       DrillModel(
-        id: 'drill_028',
+        id: '550e8400-e29b-41d4-a716-446655440028',
         title: 'Crossing and Finishing',
         description: 'Practice crossing from wide areas and finishing in the box.',
         skill: 'Crossing',
         subSkills: ['Crossing', 'Finishing', 'Timing'],
         difficulty: 'Intermediate',
         equipment: ['Ball', 'Goal', 'Cones'],
-        trainingStyle: 'Individual',
+        trainingStyle: 'low intensity',
         duration: 22,
+        reps: 5,
+        sets: 3,
         videoUrl: 'https://example.com/crossing-finishing',
         instructions: [
           'Set up wide positions for crossing',
@@ -746,18 +829,21 @@ class TestDataService {
           'Aim for the penalty spot',
           'Attack the ball when finishing'
         ],
+        isCustom: false, // ✅ ADDED: Set isCustom to false for test drills
       ),
 
       DrillModel(
-        id: 'drill_029',
+        id: '550e8400-e29b-41d4-a716-446655440029',
         title: 'Defensive Pressing',
         description: 'Learn to press as a unit and win the ball back quickly.',
         skill: 'Defending',
         subSkills: ['Pressing', 'Teamwork', 'Intensity'],
         difficulty: 'Advanced',
         equipment: ['Ball', 'Cones', 'Partners'],
-        trainingStyle: 'Small Group',
+        trainingStyle: 'low intensity',
         duration: 18,
+        reps: 5,
+        sets: 3,
         videoUrl: 'https://example.com/defensive-pressing',
         instructions: [
           'Work in groups of 3-4 players',
@@ -770,18 +856,21 @@ class TestDataService {
           'Press with intensity',
           'Don\'t leave gaps'
         ],
+        isCustom: false, // ✅ ADDED: Set isCustom to false for test drills
       ),
 
       DrillModel(
-        id: 'drill_030',
+        id: '550e8400-e29b-41d4-a716-446655440030',
         title: 'Mental Toughness Training',
         description: 'Build mental resilience and concentration. Essential for high-pressure situations.',
         skill: 'Mental',
         subSkills: ['Concentration', 'Resilience', 'Focus'],
         difficulty: 'All Levels',
         equipment: ['Ball', 'Cones'],
-        trainingStyle: 'Individual',
+        trainingStyle: 'low intensity',
         duration: 15,
+        reps: 5,
+        sets: 3,
         videoUrl: 'https://example.com/mental-training',
         instructions: [
           'Practice skills while under pressure',
@@ -794,6 +883,7 @@ class TestDataService {
           'Focus on the process, not the outcome',
           'Breathe deeply to stay calm'
         ],
+        isCustom: false, // ✅ ADDED: Set isCustom to false for test drills
       ),
     ];
   }
@@ -944,7 +1034,8 @@ class TestDataService {
         'Shooting': 0.45 + Random().nextDouble() * 0.4,
         'First Touch': 0.35 + Random().nextDouble() * 0.45,
         'Defending': 0.25 + Random().nextDouble() * 0.5,
-        'Fitness': 0.60 + Random().nextDouble() * 0.25,
+        'Goalkeeping': 0.20 + Random().nextDouble() * 0.55,
+        'Fitness': 0.30 + Random().nextDouble() * 0.5,
       },
       'totalSessions': 12 + Random().nextInt(20),
       'totalDrills': 45 + Random().nextInt(50),
@@ -1005,18 +1096,13 @@ class TestDataService {
   /// Get available skills/categories
   static List<String> getAvailableSkills() {
     return [
-      'Dribbling',
       'Passing', 
       'Shooting',
+      'Dribbling',
       'First Touch',
       'Defending',
-      'Fitness',
       'Goalkeeping',
-      'Set Pieces',
-      'Heading',
-      'Team Play',
-      'Crossing',
-      'Mental',
+      'Fitness',
     ];
   }
 

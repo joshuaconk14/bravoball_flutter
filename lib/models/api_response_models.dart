@@ -28,7 +28,7 @@ class SkillFocus {
 
 /// Drill response model matching backend DrillResponse
 class DrillResponse {
-  final int id;
+  final String id; // Changed from int to String for UUIDs
   final String title;
   final String description;
   final String type;
@@ -50,6 +50,7 @@ class DrillResponse {
   final List<String> variations;
   final String? videoUrl;
   final String? thumbnailUrl;
+  final bool isCustom; // ✅ ADDED: is_custom field
 
   DrillResponse({
     required this.id,
@@ -74,11 +75,12 @@ class DrillResponse {
     required this.variations,
     this.videoUrl,
     this.thumbnailUrl,
+    this.isCustom = false, // ✅ ADDED: Default to false
   });
 
   factory DrillResponse.fromJson(Map<String, dynamic> json) {
     return DrillResponse(
-      id: json['id'] ?? 0,
+      id: json['uuid']?.toString() ?? json['id']?.toString() ?? '', // Look for 'uuid' first, then 'id'
       title: json['title'] ?? '',
       description: json['description'] ?? '',
       type: json['type'] ?? '',
@@ -104,12 +106,13 @@ class DrillResponse {
       variations: List<String>.from(json['variations'] ?? []),
       videoUrl: json['video_url'] as String?,
       thumbnailUrl: json['thumbnail_url'] as String?,
+      isCustom: json['is_custom'] ?? false, // ✅ ADDED: Parse is_custom field
     );
   }
 
   Map<String, dynamic> toJson() {
     return {
-      'id': id,
+      'uuid': id, // Send as 'uuid' to match backend expectations
       'title': title,
       'description': description,
       'type': type,
@@ -131,6 +134,7 @@ class DrillResponse {
       'variations': variations,
       'video_url': videoUrl,
       'thumbnail_url': thumbnailUrl,
+      'is_custom': isCustom, // ✅ ADDED: Include is_custom field in JSON
     };
   }
 }

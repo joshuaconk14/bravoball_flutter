@@ -2,6 +2,11 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../../services/app_state_service.dart';
 import '../../constants/app_theme.dart';
+import '../../widgets/info_popup_widget.dart';
+import '../../widgets/guest_account_overlay.dart'; // ✅ NEW: Import reusable guest overlay
+import '../../utils/haptic_utils.dart';
+import '../../utils/skill_utils.dart'; // ✅ ADDED: Import centralized skill utilities
+import '../../features/onboarding/onboarding_flow.dart'; // ✅ ADDED: Import OnboardingFlow
 
 class ProgressView extends StatefulWidget {
   const ProgressView({Key? key}) : super(key: key);
@@ -32,45 +37,58 @@ class _ProgressViewState extends State<ProgressView> {
       builder: (context, appState, child) {
         return Scaffold(
           backgroundColor: AppTheme.primaryYellow,
-          body: SafeArea(
-            child: SingleChildScrollView(
-              child: Column(
-                children: [
-                  // Header section with day streak
-                  _buildHeaderSection(),
-                  
-                  // White section with calendar
-                  Container(
-                    width: double.infinity,
-                    constraints: BoxConstraints(
-                      minHeight: MediaQuery.of(context).size.height * 0.6,
-                    ),
-                    decoration: const BoxDecoration(
-                      color: Colors.white,
-                      borderRadius: BorderRadius.only(
-                        topLeft: Radius.circular(30),
-                        topRight: Radius.circular(30),
+          body: Stack(
+            children: [
+              // Main content
+              SafeArea(
+                child: SingleChildScrollView(
+                  child: Column(
+                    children: [
+                      // Header section with day streak
+                      _buildHeaderSection(),
+                      
+                      // White section with calendar
+                      Container(
+                        width: double.infinity,
+                        constraints: BoxConstraints(
+                          minHeight: MediaQuery.of(context).size.height * 0.6,
+                        ),
+                        decoration: const BoxDecoration(
+                          color: Colors.white,
+                          borderRadius: BorderRadius.only(
+                            topLeft: Radius.circular(30),
+                            topRight: Radius.circular(30),
+                          ),
+                        ),
+                        child: Column(
+                          children: [
+                            const SizedBox(height: 20),
+                            
+                            // Calendar section
+                            _buildCalendarSection(),
+                            
+                            const SizedBox(height: 20),
+                            
+                            // Progress stats
+                            _buildProgressStats(),
+                            
+                            const SizedBox(height: 40), // Bottom padding instead of Spacer
+                          ],
+                        ),
                       ),
-                    ),
-                    child: Column(
-                      children: [
-                        const SizedBox(height: 20),
-                        
-                        // Calendar section
-                        _buildCalendarSection(),
-                        
-                        const SizedBox(height: 20),
-                        
-                        // Progress stats
-                        _buildProgressStats(),
-                        
-                        const SizedBox(height: 40), // Bottom padding instead of Spacer
-                      ],
-                    ),
+                    ],
                   ),
-                ],
+                ),
               ),
-            ),
+              
+              // ✅ NEW: Guest mode overlay using reusable widget
+              if (appState.isGuestMode) 
+                GuestAccountOverlay(
+                  title: 'Create an account',
+                  description: 'Track your progress and unlock all features by creating an account.',
+                  themeColor: AppTheme.primaryYellow,
+                ),
+            ],
           ),
         );
       },
@@ -81,59 +99,71 @@ class _ProgressViewState extends State<ProgressView> {
     return SafeArea(
       bottom: false,
       child: Container(
-        padding: const EdgeInsets.all(20),
+        padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
         child: Column(
           children: [
-            const SizedBox(height: 20),
-            
-            // Progress title
+            const SizedBox(height: 10),
+            // Progress title - large
             Text(
               'Progress',
-              style: TextStyle(
-                fontFamily: AppTheme.fontPoppins,
-                fontSize: 25,
-                fontWeight: FontWeight.bold,
+              style: AppTheme.headlineMedium.copyWith(
                 color: AppTheme.white,
               ),
+              textAlign: TextAlign.center,
             ),
-            
-            const SizedBox(height: 40),
-            
-            // Streak display
+            const SizedBox(height: 18),
+            // Streak display (icon, number, and Day Streak in one row, all centered)
             Row(
               mainAxisAlignment: MainAxisAlignment.center,
+              crossAxisAlignment: CrossAxisAlignment.center,
               children: [
-                Icon(
+                Align(
+                  alignment: Alignment.center,
+                  child: Icon(
                   Icons.local_fire_department,
                   color: AppTheme.secondaryOrange,
                   size: 80,
-                ),
-                const SizedBox(width: 10),
-                Text(
-                  '3', // TODO: Connect to actual streak data
-                  style: TextStyle(
-                    fontFamily: AppTheme.fontPoppins,
-                    fontSize: 90,
-                    fontWeight: FontWeight.bold,
-                    color: AppTheme.white,
                   ),
                 ),
-              ],
-            ),
-            
-            const SizedBox(height: 10),
-            
-            Text(
-              'Day Streak',
+                const SizedBox(width: 10),
+                Consumer<AppStateService>(
+                  builder: (context, appState, child) {
+                    return Row(
+                      crossAxisAlignment: CrossAxisAlignment.center,
+                      children: [
+                        Align(
+                          alignment: Alignment.center,
+                          child: Text(
+                            '${appState.currentStreak}',
+                      style: TextStyle(
+                        fontFamily: AppTheme.fontPoppins,
+                        fontSize: 90,
+                        fontWeight: FontWeight.bold,
+                        color: AppTheme.white,
+                      ),
+                          ),
+                ),
+                        const SizedBox(width: 20),
+                        Align(
+                          alignment: Alignment.center,
+                          child: Text(
+                            'Day\nStreak',
               style: TextStyle(
                 fontFamily: AppTheme.fontPoppins,
-                fontSize: 22,
+                              fontSize: 16,
                 fontWeight: FontWeight.bold,
                 color: AppTheme.white,
               ),
+                            textAlign: TextAlign.left,
+                          ),
+                        ),
+                      ],
+                    );
+                  },
             ),
-            
-            const SizedBox(height: 30),
+              ],
+            ),
+            const SizedBox(height: 10),
           ],
         ),
       ),
@@ -152,7 +182,7 @@ class _ProgressViewState extends State<ProgressView> {
         ),
         child: Column(
           children: [
-            // Calendar header
+            // Calendar header with info icon moved here
             Row(
               children: [
                 Text(
@@ -165,14 +195,21 @@ class _ProgressViewState extends State<ProgressView> {
                   ),
                 ),
                 const SizedBox(width: 8),
-                Icon(
-                  Icons.info_outline,
-                  color: Colors.grey.shade600,
-                  size: 20,
+                GestureDetector(
+                  onTap: () {
+                    HapticUtils.lightImpact(); // Light haptic for info
+                    _showInfoDialog(context);
+                  },
+                  child: Icon(
+                    Icons.info_outline,
+                    color: AppTheme.primaryGray,
+                    size: 22,
+                  ),
                 ),
                 const Spacer(),
                 GestureDetector(
                   onTap: () {
+                    HapticUtils.lightImpact(); // Light haptic for view toggle
                     setState(() {
                       showWeekView = !showWeekView;
                     });
@@ -208,6 +245,7 @@ class _ProgressViewState extends State<ProgressView> {
                 children: [
                   IconButton(
                     onPressed: () {
+                      HapticUtils.lightImpact(); // Light haptic for month navigation
                       setState(() {
                         selectedDate = DateTime(selectedDate.year, selectedDate.month - 1, 1);
                       });
@@ -228,6 +266,7 @@ class _ProgressViewState extends State<ProgressView> {
                   ),
                   IconButton(
                     onPressed: () {
+                      HapticUtils.lightImpact(); // Light haptic for month navigation
                       setState(() {
                         selectedDate = DateTime(selectedDate.year, selectedDate.month + 1, 1);
                       });
@@ -284,12 +323,28 @@ class _ProgressViewState extends State<ProgressView> {
     final now = DateTime.now();
     final startOfWeek = now.subtract(Duration(days: now.weekday % 7));
     final appState = Provider.of<AppStateService>(context, listen: false);
+    
+    // 🧠 Debug mental training sessions in calendar
+    print('🧠 [CALENDAR] Building week view with ${appState.completedSessions.length} total sessions');
+    final mentalTrainingSessions = appState.completedSessions.where((s) => s.sessionType == 'mental_training').length;
+    print('🧠 [CALENDAR] Mental training sessions available: $mentalTrainingSessions');
+    
     return Row(
       mainAxisAlignment: MainAxisAlignment.spaceAround,
       children: List.generate(7, (index) {
         final date = startOfWeek.add(Duration(days: index));
         final isToday = _isSameDay(date, now);
         final hasSession = appState.completedSessions.any((s) => _isSameDay(s.date, date));
+        
+        // 🧠 Debug sessions for this specific day
+        final todaySessions = appState.completedSessions.where((s) => _isSameDay(s.date, date)).toList();
+        if (todaySessions.isNotEmpty) {
+          print('🧠 [CALENDAR] Day ${date.day}: ${todaySessions.length} sessions');
+          for (final session in todaySessions) {
+            print('   - Type: ${session.sessionType}, Date: ${session.date}, Drills: ${session.drills.length}');
+          }
+        }
+        
         return _buildDayCell(date.day, isToday, hasSession, date: date);
       }),
     );
@@ -337,9 +392,24 @@ class _ProgressViewState extends State<ProgressView> {
           final sessions = appState.completedSessions.where(
             (s) => s.date.year == date.year && s.date.month == date.month && s.date.day == date.day,
           );
+          
+          // 🧠 Debug what sessions are found for this day
+          print('🧠 [CALENDAR] Tapped on day ${date!.day}/${date!.month}/${date!.year}');
+          print('🧠 [CALENDAR] Found ${sessions.length} sessions for this day');
+          
+          for (final session in sessions) {
+            print('🧠 [CALENDAR] Session: type=${session.sessionType}, date=${session.date}, drills=${session.drills.length}');
+            if (session.sessionType == 'mental_training') {
+              print('🧠 [CALENDAR] Mental training session found! Will show drill results.');
+            }
+          }
+          
           if (sessions.isNotEmpty) {
+            HapticUtils.lightImpact(); // Light haptic for session view
             final session = sessions.first;
             _showSessionResults(session);
+          } else {
+            print('🧠 [CALENDAR] No sessions found for this day - no drill results to show');
           }
         }
       },
@@ -367,62 +437,790 @@ class _ProgressViewState extends State<ProgressView> {
   }
 
   Widget _buildProgressStats() {
-    return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 40),
-      child: Row(
-        children: [
-          Expanded(
-            child: Column(
-              children: [
-                Text(
-                  '1 day',
-                  style: TextStyle(
-                    fontFamily: AppTheme.fontPoppins,
-                    fontSize: 30,
-                    fontWeight: FontWeight.bold,
-                    color: AppTheme.primaryYellow,
+    return Consumer<AppStateService>(
+      builder: (context, appState, child) {
+        return Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 20),
+          child: Column(
+            children: [
+              // Main stats row (existing)
+              Row(
+            children: [
+              Expanded(
+                    child: _buildStatCard(
+                      value: appState.highestStreak == 1 ? '${appState.highestStreak} day' : '${appState.highestStreak} days',
+                      label: 'Highest Streak',
+                      icon: Icons.local_fire_department,
+                      color: AppTheme.secondaryOrange,
+                    ),
                   ),
-                ),
-                const SizedBox(height: 4),
-                Text(
-                  'Highest Streak',
-                  style: TextStyle(
-                    fontFamily: AppTheme.fontPoppins,
-                    fontSize: 16,
-                    fontWeight: FontWeight.bold,
-                    color: Colors.grey.shade600,
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: _buildStatCard(
+                      value: '${appState.countOfFullyCompletedSessions}',
+                      label: 'Sessions\nCompleted',
+                      icon: Icons.fitness_center,
+                      color: AppTheme.primaryYellow,
+                    ),
                   ),
-                ),
-              ],
-            ),
+                ],
+              ),
+              
+              const SizedBox(height: 16),
+              
+              // ✅ NEW: Favorite drill display
+              if (appState.favoriteDrill.isNotEmpty)
+                _buildFavoriteDrillSection(appState),
+              
+              const SizedBox(height: 16),
+              
+              // Enhanced stats grid
+              _buildEnhancedStatsGrid(appState),
+            ],
           ),
-          Expanded(
-            child: Column(
-              children: [
-                Text(
-                  '1',
-                  style: TextStyle(
-                    fontFamily: AppTheme.fontPoppins,
-                    fontSize: 30,
-                    fontWeight: FontWeight.bold,
-                    color: AppTheme.primaryYellow,
-                  ),
-                ),
-                const SizedBox(height: 4),
-                Text(
-                  'Sessions completed',
-                  style: TextStyle(
-                    fontFamily: AppTheme.fontPoppins,
-                    fontSize: 16,
-                    fontWeight: FontWeight.bold,
-                    color: Colors.grey.shade600,
-                  ),
-                ),
-              ],
-            ),
+        );
+      },
+    );
+  }
+
+  Widget _buildStatCard({
+    required String value,
+    required String label,
+    required IconData icon,
+    required Color color,
+  }) {
+    // Determine gradient and accent for each stat
+    Gradient gradient;
+    Color iconBg;
+    Color borderColor;
+    if (icon == Icons.local_fire_department) {
+      // Highest Streak (orange theme)
+      gradient = LinearGradient(
+        colors: [Colors.orange.shade100, Colors.deepOrange.shade50],
+        begin: Alignment.topLeft,
+        end: Alignment.bottomRight,
+      );
+      iconBg = Colors.orange.shade200;
+      borderColor = Colors.orange.shade300;
+    } else {
+      // Sessions Completed (yellow theme)
+      gradient = LinearGradient(
+        colors: [Colors.yellow.shade100, Colors.amber.shade50],
+        begin: Alignment.topLeft,
+        end: Alignment.bottomRight,
+      );
+      iconBg = Colors.yellow.shade200;
+      borderColor = Colors.amber.shade300;
+    }
+
+    return Container(
+      padding: const EdgeInsets.all(20),
+      decoration: BoxDecoration(
+        gradient: gradient,
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(color: borderColor, width: 2),
+        boxShadow: [
+          BoxShadow(
+            color: color.withValues(alpha: 0.10),
+            blurRadius: 16,
+            offset: const Offset(0, 4),
           ),
         ],
       ),
+                child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+          Container(
+            width: 48,
+            height: 48,
+            decoration: BoxDecoration(
+              color: iconBg,
+              shape: BoxShape.circle,
+              boxShadow: [
+                BoxShadow(
+                  color: color.withValues(alpha: 0.18),
+                  blurRadius: 8,
+                  offset: const Offset(0, 2),
+                ),
+              ],
+            ),
+            child: Icon(icon, color: color, size: 32),
+          ),
+          const SizedBox(height: 14),
+                    Text(
+            value,
+                      style: TextStyle(
+                        fontFamily: AppTheme.fontPoppins,
+              fontSize: 32,
+              fontWeight: FontWeight.w900,
+              color: color,
+              letterSpacing: 0.5,
+            ),
+            textAlign: TextAlign.center,
+          ),
+          const SizedBox(height: 6),
+          Text(
+            label,
+            style: TextStyle(
+              fontFamily: AppTheme.fontPoppins,
+              fontSize: 15,
+              fontWeight: FontWeight.w600,
+              color: Colors.grey.shade700,
+              height: 1.2,
+            ),
+            textAlign: TextAlign.center,
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildEnhancedStatsGrid(AppStateService appState) {
+    return Column(
+      children: [
+        // Group 1: Skill Breakdown (Dribbling, Passing, Shooting, First Touch)
+        _buildSkillStatsGroup(appState),
+        
+        const SizedBox(height: 16),
+        
+        // Group 2: Session Metrics (Drills per Session, Minutes per Session, Total Time)
+        _buildSessionMetricsGroup(appState),
+        
+        const SizedBox(height: 16),
+        
+        // Group 3: Personal Stats (Most Improved Skill, Unique Drills, Difficulty Breakdown)
+        _buildPositionAndFavoriteGroup(appState),
+        
+        const SizedBox(height: 16),
+        
+        // ✅ NEW: Group 4: Mental Training Stats
+        _buildMentalTrainingGroup(appState),
+      ],
+    );
+  }
+
+  Widget _buildSkillStatsGroup(AppStateService appState) {
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        gradient: LinearGradient(
+          colors: [Colors.grey.shade50, Colors.grey.shade100],
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+        ),
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: Colors.grey.shade300),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.grey.withValues(alpha: 0.1),
+            blurRadius: 8,
+            offset: const Offset(0, 2),
+          ),
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Icon(
+                Icons.sports_soccer,
+                color: Colors.grey.shade600,
+                size: 20,
+              ),
+              const SizedBox(width: 8),
+              Text(
+                'Drills completed',
+                style: TextStyle(
+                  fontFamily: AppTheme.fontPoppins,
+                  fontSize: 16,
+                  fontWeight: FontWeight.bold,
+                  color: Colors.grey.shade700,
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 12),
+          Row(
+            children: [
+              Expanded(
+                child: _buildSkillStatCard(
+                  value: '${appState.dribblingDrillsCompleted}',
+                  label: 'Dribbling',
+                  icon: Icons.directions_run,
+                  color: AppTheme.skillDribbling,
+                ),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: _buildSkillStatCard(
+                  value: '${appState.passingDrillsCompleted}',
+                  label: 'Passing',
+                  icon: Icons.arrow_forward,
+                  color: AppTheme.skillPassing,
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 12),
+          Row(
+            children: [
+              Expanded(
+                child: _buildSkillStatCard(
+                  value: '${appState.shootingDrillsCompleted}',
+                  label: 'Shooting',
+                  icon: Icons.sports_soccer,
+                  color: AppTheme.skillShooting,
+                ),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: _buildSkillStatCard(
+                  value: '${appState.defendingDrillsCompleted}',
+                  label: 'Defending',
+                  icon: Icons.shield,
+                  color: AppTheme.skillDefending,
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 12),
+          Row(
+            children: [
+              Expanded(
+                child: _buildSkillStatCard(
+                  value: '${appState.firstTouchDrillsCompleted}',
+                  label: 'First Touch',
+                  icon: Icons.touch_app,
+                  color: AppTheme.skillFirstTouch,
+                ),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: _buildSkillStatCard(
+                  value: '${appState.goalkeepingDrillsCompleted}',
+                  label: 'Goalkeeping',
+                  icon: Icons.sports_handball,
+                  color: AppTheme.skillGoalkeeping,
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 12),
+          Row(
+            children: [
+              Expanded(
+                child: _buildSkillStatCard(
+                  value: '${appState.fitnessDrillsCompleted}',
+                  label: 'Fitness',
+                  icon: Icons.sports,
+                  color: AppTheme.skillFitness,
+                ),
+              ),
+              const SizedBox(width: 12),
+              // Empty space to maintain 2-column layout
+              const Expanded(child: SizedBox()),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildSessionMetricsGroup(AppStateService appState) {
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        gradient: LinearGradient(
+          colors: [Colors.grey.shade50, Colors.grey.shade100],
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+        ),
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: Colors.grey.shade300),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.grey.withValues(alpha: 0.1),
+            blurRadius: 8,
+            offset: const Offset(0, 2),
+          ),
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Icon(
+                Icons.timer,
+                color: Colors.grey.shade600,
+                size: 20,
+              ),
+              const SizedBox(width: 8),
+              Text(
+                'Session Analytics',
+                style: TextStyle(
+                  fontFamily: AppTheme.fontPoppins,
+                  fontSize: 16,
+                  fontWeight: FontWeight.bold,
+                  color: Colors.grey.shade700,
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 12),
+          Row(
+            children: [
+              Expanded(
+                child: _buildSessionStatCard(
+                  value: appState.drillsPerSession.toInt().toString(),
+                  label: 'Average Drills\nper Session',
+                  icon: Icons.list_alt,
+                  color: Colors.blue,
+                ),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: _buildSessionStatCard(
+                  value: appState.minutesPerSession.toInt().toString(),
+                  label: 'Average Minutes\nper Session',
+                  icon: Icons.timer,
+                  color: Colors.green,
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 12),
+          Row(
+            children: [
+              Expanded(
+                child: _buildSessionStatCard(
+                  value: _formatTotalTime(appState.totalTimeAllSessions),
+                  label: 'Total Time\nAll Sessions',
+                  icon: Icons.schedule,
+                  color: Colors.purple,
+                ),
+              ),
+              const SizedBox(width: 12),
+              // Empty space to maintain 2-column layout
+              const Expanded(child: SizedBox()),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildPositionAndFavoriteGroup(AppStateService appState) {
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        gradient: LinearGradient(
+          colors: [Colors.grey.shade50, Colors.grey.shade100],
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+        ),
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: Colors.grey.shade300),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.grey.withValues(alpha: 0.1),
+            blurRadius: 8,
+            offset: const Offset(0, 2),
+          ),
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Icon(
+                Icons.person,
+                color: Colors.grey.shade600,
+                size: 20,
+              ),
+              const SizedBox(width: 8),
+              Text(
+                'Personal Stats',
+                style: TextStyle(
+                  fontFamily: AppTheme.fontPoppins,
+                  fontSize: 16,
+                  fontWeight: FontWeight.bold,
+                  color: Colors.grey.shade700,
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 12),
+          // First row: Most Improved Skill and Unique Drills
+          Row(
+            children: [
+              Expanded(
+                child: Tooltip(
+                  message: appState.mostImprovedSkill.isNotEmpty ? appState.mostImprovedSkill : 'No improvement data yet',
+                child: _buildPersonalStatCard(
+                    value: appState.mostImprovedSkill.isNotEmpty ? appState.mostImprovedSkill : '—',
+                    label: 'Most Improved\nSkill',
+                    icon: Icons.trending_up,
+                    color: Colors.green,
+                    maxLines: 2,
+                    valueFontSize: 15,
+                  ),
+                ),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                  child: _buildPersonalStatCard(
+                  value: '${appState.uniqueDrillsCompleted}',
+                  label: 'Unique Drills\nCompleted',
+                  icon: Icons.star,
+                  color: Colors.amber,
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 12),
+          // Second row: Difficulty breakdown
+          Row(
+            children: [
+              Expanded(
+                child: _buildPersonalStatCard(
+                  value: '${appState.beginnerDrillsCompleted}',
+                  label: 'Beginner',
+                  icon: Icons.school,
+                  color: Colors.green,
+                ),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: _buildPersonalStatCard(
+                  value: '${appState.intermediateDrillsCompleted}',
+                  label: 'Intermediate',
+                  icon: Icons.fitness_center,
+                  color: Colors.orange,
+                ),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: _buildPersonalStatCard(
+                  value: '${appState.advancedDrillsCompleted}',
+                  label: 'Advanced',
+                  icon: Icons.whatshot,
+                  color: Colors.red,
+                ),
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildMentalTrainingGroup(AppStateService appState) {
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        gradient: LinearGradient(
+          colors: [Colors.grey.shade50, Colors.grey.shade100],
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+        ),
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: Colors.grey.shade300),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.grey.withValues(alpha: 0.1),
+            blurRadius: 8,
+            offset: const Offset(0, 2),
+          ),
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Icon(
+                Icons.psychology,
+                color: Colors.grey.shade600,
+                size: 20,
+              ),
+              const SizedBox(width: 8),
+              Text(
+                'Mental Training',
+                style: TextStyle(
+                  fontFamily: AppTheme.fontPoppins,
+                  fontSize: 16,
+                  fontWeight: FontWeight.bold,
+                  color: Colors.grey.shade700,
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 12),
+          Row(
+            children: [
+              Expanded(
+                child: _buildPersonalStatCard(
+                  value: '${appState.mentalTrainingSessions}',
+                  label: 'Mental Training\nSessions',
+                  icon: Icons.psychology,
+                  color: Colors.purple,
+                ),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: _buildPersonalStatCard(
+                  value: _formatTotalTime(appState.totalMentalTrainingMinutes),
+                  label: 'Total Mental\nTraining Time',
+                  icon: Icons.timer,
+                  color: Colors.indigo,
+                ),
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildSkillStatCard({
+    required String value,
+    required String label,
+    required IconData icon,
+    required Color color,
+  }) {
+    return Container(
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: color.withValues(alpha: 0.3)),
+        boxShadow: [
+          BoxShadow(
+            color: color.withValues(alpha: 0.1),
+            blurRadius: 4,
+            offset: const Offset(0, 2),
+          ),
+        ],
+      ),
+      child: Column(
+        children: [
+          Icon(icon, color: color, size: 24),
+          const SizedBox(height: 6),
+          Text(
+            value,
+            style: TextStyle(
+              fontFamily: AppTheme.fontPoppins,
+              fontSize: 18,
+              fontWeight: FontWeight.bold,
+              color: color,
+                      ),
+                      textAlign: TextAlign.center,
+                    ),
+                    const SizedBox(height: 4),
+                    Text(
+            label,
+                      style: TextStyle(
+                        fontFamily: AppTheme.fontPoppins,
+              fontSize: 11,
+              fontWeight: FontWeight.w600,
+              color: Colors.grey.shade700,
+                      ),
+                      textAlign: TextAlign.center,
+                    ),
+                  ],
+                ),
+    );
+  }
+
+  Widget _buildSessionStatCard({
+    required String value,
+    required String label,
+    required IconData icon,
+    required Color color,
+  }) {
+    return Container(
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: color.withValues(alpha: 0.3)),
+        boxShadow: [
+          BoxShadow(
+            color: color.withValues(alpha: 0.1),
+            blurRadius: 4,
+            offset: const Offset(0, 2),
+          ),
+        ],
+      ),
+                child: Column(
+                  children: [
+          Icon(icon, color: color, size: 24),
+          const SizedBox(height: 6),
+                    Text(
+            value,
+                      style: TextStyle(
+                        fontFamily: AppTheme.fontPoppins,
+              fontSize: 18,
+                        fontWeight: FontWeight.bold,
+              color: color,
+                      ),
+                      textAlign: TextAlign.center,
+                    ),
+                    const SizedBox(height: 4),
+                    Text(
+            label,
+                      style: TextStyle(
+                        fontFamily: AppTheme.fontPoppins,
+              fontSize: 11,
+              fontWeight: FontWeight.w600,
+              color: Colors.grey.shade700,
+            ),
+            textAlign: TextAlign.center,
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildPersonalStatCard({
+    required String value,
+    required String label,
+    required IconData icon,
+    required Color color,
+    int maxLines = 1,
+    double? valueFontSize,
+  }) {
+    return Container(
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: color.withValues(alpha: 0.3)),
+        boxShadow: [
+          BoxShadow(
+            color: color.withValues(alpha: 0.1),
+            blurRadius: 4,
+            offset: const Offset(0, 2),
+          ),
+        ],
+      ),
+      child: Column(
+        children: [
+          Icon(icon, color: color, size: 24),
+          const SizedBox(height: 6),
+          Text(
+            value,
+            style: TextStyle(
+              fontFamily: AppTheme.fontPoppins,
+              fontSize: valueFontSize ?? 18,
+                        fontWeight: FontWeight.bold,
+              color: color,
+            ),
+            textAlign: TextAlign.center,
+            maxLines: maxLines,
+            overflow: TextOverflow.ellipsis,
+          ),
+          const SizedBox(height: 4),
+          Text(
+            label,
+            style: TextStyle(
+              fontFamily: AppTheme.fontPoppins,
+              fontSize: 11,
+              fontWeight: FontWeight.w600,
+              color: Colors.grey.shade700,
+                      ),
+                      textAlign: TextAlign.center,
+          ),
+        ],
+      ),
+    );
+  }
+
+  String _formatTotalTime(int totalMinutes) {
+    if (totalMinutes < 60) {
+      return '${totalMinutes}m';
+    } else if (totalMinutes < 1440) { // Less than 24 hours
+      final hours = totalMinutes ~/ 60;
+      final minutes = totalMinutes % 60;
+      return minutes > 0 ? '${hours}h ${minutes}m' : '${hours}h';
+    } else {
+      final days = totalMinutes ~/ 1440;
+      final hours = (totalMinutes % 1440) ~/ 60;
+      return hours > 0 ? '${days}d ${hours}h' : '${days}d';
+    }
+  }
+
+  Widget _buildFavoriteDrillSection(AppStateService appState) {
+    final favoriteDrillName = appState.favoriteDrill;
+    
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        gradient: LinearGradient(
+          colors: [Colors.pink.shade50, Colors.purple.shade50],
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+        ),
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: Colors.pink.shade200),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.pink.withValues(alpha: 0.1),
+            blurRadius: 8,
+            offset: const Offset(0, 2),
+          ),
+        ],
+      ),
+      child: Row(
+        children: [
+          Container(
+            width: 48,
+            height: 48,
+            decoration: BoxDecoration(
+              color: Colors.pink.shade100,
+              borderRadius: BorderRadius.circular(12),
+            ),
+            child: Icon(
+              Icons.favorite,
+              color: Colors.pink.shade600,
+              size: 24,
+            ),
+          ),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  'Your Favorite Drill',
+                  style: TextStyle(
+                    fontFamily: AppTheme.fontPoppins,
+                    fontSize: 12,
+                    fontWeight: FontWeight.w600,
+                    color: Colors.pink.shade700,
+                  ),
+                ),
+                const SizedBox(height: 4),
+                Text(
+                  favoriteDrillName,
+                  style: TextStyle(
+                    fontFamily: AppTheme.fontPoppins,
+                    fontSize: 16,
+                    fontWeight: FontWeight.bold,
+                    color: Colors.black87,
+                  ),
+                  maxLines: 2,
+                  overflow: TextOverflow.ellipsis,
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
     );
   }
 
@@ -438,6 +1236,15 @@ class _ProgressViewState extends State<ProgressView> {
     return date1.year == date2.year &&
            date1.month == date2.month &&
            date1.day == date2.day;
+  }
+
+  void _showInfoDialog(BuildContext context) {
+    InfoPopupWidget.show(
+      context,
+      title: 'Track Your Progress',
+      description: 'View your comprehensive training progress with detailed metrics:\n\n• Calendar shows your daily training activity\n• Track your current and highest streaks\n• Monitor drills completed by skill type\n• See your session averages and total training time\n• Discover your most improved skill and unique drills completed\n• View difficulty breakdown (Beginner, Intermediate, Advanced)\n• Find your favorite drills and training patterns\n\nTap on calendar days to view detailed session results.',
+      riveFileName: 'Bravo_Animation.riv',
+    );
   }
 } 
 
@@ -476,109 +1283,130 @@ class _DrillResultsViewState extends State<DrillResultsView> with SingleTickerPr
   Widget build(BuildContext context) {
     final session = widget.session;
     final percent = session.totalDrills == 0 ? 0.0 : session.totalCompletedDrills / session.totalDrills;
+    
+    // 🧠 Debug the session being displayed
+    print('🧠 [DRILL_RESULTS] Displaying session:');
+    print('   Type: ${session.sessionType}');
+    print('   Date: ${session.date}');
+    print('   Drills: ${session.drills.length}');
+    print('   Completed: ${session.totalCompletedDrills}/${session.totalDrills}');
+    
+    if (session.sessionType == 'mental_training') {
+      print('🧠 [DRILL_RESULTS] This is a mental training session!');
+      for (int i = 0; i < session.drills.length; i++) {
+        final drill = session.drills[i];
+        print('   Drill $i: ${drill.drill.title} (${drill.drill.skill})');
+      }
+    }
+    
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 32),
       decoration: const BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.vertical(top: Radius.circular(32)),
       ),
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        crossAxisAlignment: CrossAxisAlignment.center,
-        children: [
-          Row(
-            children: [
-              IconButton(
-                icon: const Icon(Icons.close),
-                onPressed: () => Navigator.of(context).pop(),
+      child: SingleChildScrollView(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.center,
+          children: [
+            Row(
+              children: [
+                IconButton(
+                  icon: const Icon(Icons.close),
+                  onPressed: () {
+                    HapticUtils.lightImpact(); // Light haptic for close
+                    Navigator.of(context).pop();
+                  },
+                ),
+                const Spacer(),
+              ],
+            ),
+            const SizedBox(height: 8),
+            Text(
+              _formatDate(session.date),
+              style: const TextStyle(
+                fontWeight: FontWeight.bold,
+                fontSize: 16,
+                color: Colors.black87,
               ),
-              const Spacer(),
-            ],
-          ),
-          const SizedBox(height: 8),
-          Text(
-            _formatDate(session.date),
-            style: const TextStyle(
-              fontWeight: FontWeight.bold,
-              fontSize: 16,
-              color: Colors.black87,
             ),
-          ),
-          const SizedBox(height: 24),
-          const Text(
-            'Score:',
-            style: TextStyle(
-              fontWeight: FontWeight.bold,
-              fontSize: 24,
-              color: Colors.black87,
-            ),
-          ),
-          const SizedBox(height: 8),
-          AnimatedBuilder(
-            animation: _animation,
-            builder: (context, child) {
-              return AnimatedProgressCircle(
-                percent: _animation.value,
-                label: '${session.totalCompletedDrills} / ${session.totalDrills}',
-                color: AppTheme.primaryYellow,
-              );
-            },
-          ),
-          const SizedBox(height: 32),
-          const Text(
-            'Drills:',
-            style: TextStyle(
-              fontWeight: FontWeight.bold,
-              fontSize: 22,
-              color: Colors.black87,
-            ),
-          ),
-          const SizedBox(height: 16),
-          ...session.drills.map((drill) => Padding(
-            padding: const EdgeInsets.only(bottom: 16.0),
-            child: Container(
-              width: double.infinity,
-              decoration: BoxDecoration(
-                color: AppTheme.primaryYellow,
-                borderRadius: BorderRadius.circular(18),
-                boxShadow: [
-                  BoxShadow(
-                    color: Colors.black.withOpacity(0.08),
-                    blurRadius: 8,
-                    offset: const Offset(0, 4),
-                  ),
-                ],
+            const SizedBox(height: 24),
+            const Text(
+              'Score:',
+              style: TextStyle(
+                fontWeight: FontWeight.bold,
+                fontSize: 24,
+                color: Colors.black87,
               ),
-              padding: const EdgeInsets.all(16),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    'Drill: ${drill.drill.title}',
-                    style: const TextStyle(
-                      fontWeight: FontWeight.bold,
-                      fontSize: 16,
-                      color: Colors.black,
+            ),
+            const SizedBox(height: 8),
+            AnimatedBuilder(
+              animation: _animation,
+              builder: (context, child) {
+                return AnimatedProgressCircle(
+                  percent: _animation.value,
+                  label: '${session.totalCompletedDrills} / ${session.totalDrills}',
+                  color: AppTheme.primaryYellow,
+                );
+              },
+            ),
+            const SizedBox(height: 32),
+            const Text(
+              'Drills:',
+              style: TextStyle(
+                fontWeight: FontWeight.bold,
+                fontSize: 22,
+                color: Colors.black87,
+              ),
+            ),
+            const SizedBox(height: 16),
+            ...session.drills.map((drill) => Padding(
+              padding: const EdgeInsets.only(bottom: 16.0),
+              child: Container(
+                width: double.infinity,
+                decoration: BoxDecoration(
+                  color: AppTheme.primaryYellow,
+                  borderRadius: BorderRadius.circular(18),
+                  boxShadow: [
+                    BoxShadow(
+                      color: Colors.black.withValues(alpha: 0.08),
+                      blurRadius: 8,
+                      offset: const Offset(0, 4),
                     ),
-                  ),
-                  const SizedBox(height: 6),
-                  Text(
-                    'Skill: ${drill.drill.skill}',
-                    style: const TextStyle(fontSize: 14, color: Colors.black87),
-                  ),
-                  Text(
-                    'Duration: ${drill.totalDuration}min    Sets: ${drill.totalSets}    Reps: ${drill.totalReps}',
-                    style: const TextStyle(fontSize: 14, color: Colors.black87),
-                  ),
-                  Text(
-                    'Equipment: ${drill.drill.equipment.join(", ")}',
-                    style: const TextStyle(fontSize: 14, color: Colors.black87),
-                  ),
-                ],
+                  ],
+                ),
+                padding: const EdgeInsets.all(16),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'Drill: ${drill.drill.title}',
+                      style: const TextStyle(
+                        fontWeight: FontWeight.bold,
+                        fontSize: 16,
+                        color: Colors.black,
+                      ),
+                    ),
+                    const SizedBox(height: 6),
+                    Text(
+                      'Skill: ${SkillUtils.formatSkillForDisplay(drill.drill.skill)}', // ✅ UPDATED: Use centralized skill formatting
+                      style: const TextStyle(fontSize: 14, color: Colors.black87),
+                    ),
+                    Text(
+                      'Duration: ${drill.totalDuration}min    Sets: ${drill.totalSets}    Reps: ${drill.totalReps}',
+                      style: const TextStyle(fontSize: 14, color: Colors.black87),
+                    ),
+                    Text(
+                      'Equipment: ${drill.drill.equipment.join(", ")}',
+                      style: const TextStyle(fontSize: 14, color: Colors.black87),
+                    ),
+                  ],
+                ),
               ),
-            ),
-          )),
-        ],
+            )),
+          ],
+        ),
       ),
     );
   }
@@ -616,7 +1444,7 @@ class AnimatedProgressCircle extends StatelessWidget {
             child: CircularProgressIndicator(
               value: percent,
               strokeWidth: 8,
-              backgroundColor: color.withOpacity(0.15),
+              backgroundColor: color.withValues(alpha: 0.15),
               valueColor: AlwaysStoppedAnimation<Color>(color),
             ),
           ),

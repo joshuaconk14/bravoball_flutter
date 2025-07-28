@@ -1,5 +1,6 @@
 import 'dart:convert';
 import 'package:flutter/foundation.dart';
+import 'package:flutter/material.dart';
 import 'api_service.dart';
 import '../models/forgot_password_model.dart';
 import '../models/api_response_models.dart';
@@ -14,24 +15,34 @@ class ForgotPasswordService {
   final ApiService _apiService = ApiService.shared;
 
   /// Check if email exists in the system
-  Future<bool> checkEmailExists(String email, ForgotPasswordModel forgotPasswordModel) async {
-    try {
-      final response = await _apiService.post(
-        '/check-existing-email/',
-        body: {'email': email},
-      );
-      if (response.isSuccess && response.statusCode == 200) {
-        final exists = response.data?['exists'];
-        return exists == true;
-      }
-      return false;
-    } catch (e) {
-      if (kDebugMode) {
-        print('Error checking email existence: $e');
-      }
-      return false;
+  Map<String, dynamic>? _asMap(dynamic data) {
+  if (data is Map<String, dynamic>) return data;
+  if (data is String) return jsonDecode(data) as Map<String, dynamic>;
+  return null;
+}
+
+Future<bool> checkEmailExists(String email, ForgotPasswordModel forgotPasswordModel) async {
+  try {
+    final response = await _apiService.post(
+      '/check-existing-email/',
+      body: {'email': email},
+    );
+    print('DEBUG: status=${response.statusCode}, data=${response.data}, type=${response.data.runtimeType}');
+    if (response.isSuccess && response.data != null) {
+      final data = _asMap(response.data);
+      print('DEBUG: decoded data=$data');
+      final exists = data?['exists'];
+      print('DEBUG: exists=$exists');
+      return exists == true;
     }
+    return false;
+  } catch (e) {
+    if (kDebugMode) {
+      print('Error checking email existence: $e');
+    }
+    return false;
   }
+}
 
   /// Send forgot password email with verification code
   Future<void> sendForgotPassword(String email, ForgotPasswordModel forgotPasswordModel) async {
@@ -50,7 +61,7 @@ class ForgotPasswordService {
         body: {'email': email},
       );
 
-      if (response.isSuccess && response.statusCode == 200) {
+      if (response.isSuccess && response.data != null) {
         forgotPasswordModel.forgotPasswordEmail = email;
         forgotPasswordModel.forgotPasswordStep = 2;
         forgotPasswordModel.forgotPasswordMessage = "Verification code sent to your email.";
@@ -79,8 +90,11 @@ class ForgotPasswordService {
         },
       );
 
-      if (response.isSuccess && response.statusCode == 200) {
+      if (response.isSuccess && response.data != null) {
         forgotPasswordModel.forgotPasswordCode = code;
+        // Clear password fields before moving to step 3
+        forgotPasswordModel.forgotPasswordNewPassword = '';
+        forgotPasswordModel.forgotPasswordConfirmPassword = '';
         forgotPasswordModel.forgotPasswordStep = 3;
         forgotPasswordModel.forgotPasswordMessage = "Code verified successfully.";
       } else {
@@ -98,8 +112,9 @@ class ForgotPasswordService {
   Future<void> resetPassword(
     String newPassword,
     String confirmPassword,
-    ForgotPasswordModel forgotPasswordModel,
-  ) async {
+    ForgotPasswordModel forgotPasswordModel, {
+    VoidCallback? onSuccess,
+  }) async {
     forgotPasswordModel.forgotPasswordMessage = '';
 
     // Validate passwords
@@ -124,10 +139,12 @@ class ForgotPasswordService {
         },
       );
 
-      if (response.isSuccess && response.statusCode == 200) {
+      if (response.isSuccess && response.data != null) {
         forgotPasswordModel.forgotPasswordMessage = "Password reset successfully!";
         // Reset all forgot password state
         forgotPasswordModel.resetForgotPasswordState();
+        // Call success callback to navigate back to login
+        onSuccess?.call();
       } else {
         final errorMessage = response.data?['message'] ?? response.error ?? 'Unknown error';
         forgotPasswordModel.forgotPasswordMessage = "Failed to reset password: $errorMessage";

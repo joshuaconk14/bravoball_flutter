@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:video_player/video_player.dart';
+import 'dart:io'; // Add this import for File support
 
 class DrillVideoPlayer extends StatefulWidget {
   final String videoUrl;
@@ -11,7 +12,7 @@ class DrillVideoPlayer extends StatefulWidget {
     required this.videoUrl,
     this.aspectRatio = 16 / 9,
     this.showControls = true,
-  }) : super(key: key);
+  });
 
   @override
   State<DrillVideoPlayer> createState() => _DrillVideoPlayerState();
@@ -40,8 +41,21 @@ class _DrillVideoPlayerState extends State<DrillVideoPlayer> {
 
       // Initialize controller based on URL type
       if (widget.videoUrl.startsWith('http')) {
+        // Network URL - existing functionality
         _controller = VideoPlayerController.networkUrl(Uri.parse(widget.videoUrl));
+      } else if (widget.videoUrl.startsWith('/') || widget.videoUrl.contains('\\')) {
+        // Local file path - new functionality for custom drills
+        final file = File(widget.videoUrl);
+        if (await file.exists()) {
+          _controller = VideoPlayerController.file(file);
+        } else {
+          setState(() {
+            _hasError = true;
+          });
+          return;
+        }
       } else {
+        // Asset file - existing functionality
         _controller = VideoPlayerController.asset(widget.videoUrl);
       }
 
@@ -88,7 +102,7 @@ class _DrillVideoPlayerState extends State<DrillVideoPlayer> {
           borderRadius: BorderRadius.circular(16),
           boxShadow: [
             BoxShadow(
-              color: Colors.black.withOpacity(0.1),
+              color: Colors.black.withValues(alpha: 0.1),
               blurRadius: 12,
               offset: const Offset(0, 4),
             ),
@@ -143,12 +157,13 @@ class _DrillVideoPlayerState extends State<DrillVideoPlayer> {
             ),
             const SizedBox(height: 8),
             Text(
-              'Video unavailable',
+              'No video for this drill right now',
               style: TextStyle(
                 fontFamily: 'Poppins',
                 fontSize: 14,
                 color: Colors.grey.shade600,
               ),
+              textAlign: TextAlign.center,
             ),
           ],
         ),
@@ -167,7 +182,7 @@ class _DrillVideoPlayerState extends State<DrillVideoPlayer> {
             begin: Alignment.bottomCenter,
             end: Alignment.topCenter,
             colors: [
-              Colors.black.withOpacity(0.7),
+              Colors.black.withValues(alpha: 0.7),
               Colors.transparent,
             ],
           ),
@@ -189,7 +204,7 @@ class _DrillVideoPlayerState extends State<DrillVideoPlayer> {
                 child: Container(
                   padding: const EdgeInsets.all(8),
                   decoration: BoxDecoration(
-                    color: Colors.black.withOpacity(0.5),
+                    color: Colors.black.withValues(alpha: 0.5),
                     shape: BoxShape.circle,
                   ),
                   child: Icon(
@@ -215,7 +230,7 @@ class _DrillVideoPlayerState extends State<DrillVideoPlayer> {
               Container(
                 padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                 decoration: BoxDecoration(
-                  color: Colors.black.withOpacity(0.5),
+                  color: Colors.black.withValues(alpha: 0.5),
                   borderRadius: BorderRadius.circular(4),
                 ),
                 child: Text(

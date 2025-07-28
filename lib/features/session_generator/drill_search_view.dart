@@ -7,6 +7,10 @@ import '../../config/app_config.dart';
 import '../../constants/app_theme.dart';
 import '../../widgets/drill_card_widget.dart';
 import 'drill_detail_view.dart';
+import '../../models/filter_models.dart';
+import '../../utils/haptic_utils.dart';
+import '../../utils/skill_utils.dart';
+import '../../utils/preference_utils.dart'; // ✅ ADDED: Import centralized preference utilities
 
 class DrillSearchView extends StatefulWidget {
   const DrillSearchView({Key? key}) : super(key: key);
@@ -135,48 +139,6 @@ class _DrillSearchViewState extends State<DrillSearchView> {
       padding: const EdgeInsets.all(AppTheme.spacingMedium),
       child: Column(
         children: [
-          // Debug indicator (only in debug mode)
-          if (AppConfig.shouldShowDebugMenu)
-            Container(
-              width: double.infinity,
-              padding: const EdgeInsets.all(8),
-              margin: const EdgeInsets.only(bottom: 12),
-              decoration: BoxDecoration(
-                color: AppConfig.useTestData 
-                    ? Colors.blue.withOpacity(0.1)
-                    : Colors.green.withOpacity(0.1),
-                border: Border.all(
-                  color: AppConfig.useTestData ? Colors.blue : Colors.green,
-                ),
-                borderRadius: BorderRadius.circular(8),
-              ),
-              child: Row(
-                children: [
-                  Icon(
-                    AppConfig.useTestData ? Icons.science : Icons.cloud,
-                    size: 16,
-                    color: AppConfig.useTestData ? Colors.blue : Colors.green,
-                  ),
-                  const SizedBox(width: 8),
-                  Text(
-                    AppConfig.useTestData ? 'Using Test Data' : 'Using Backend API',
-                    style: TextStyle(
-                      fontSize: 12,
-                      fontWeight: FontWeight.bold,
-                      color: AppConfig.useTestData ? Colors.blue : Colors.green,
-                    ),
-                  ),
-                  const Spacer(),
-                  Text(
-                    AppConfig.environmentName,
-                    style: TextStyle(
-                      fontSize: 10,
-                      color: AppConfig.useTestData ? Colors.blue : Colors.green,
-                    ),
-                  ),
-                ],
-              ),
-            ),
           
           // Search Bar
           TextField(
@@ -241,8 +203,6 @@ class _DrillSearchViewState extends State<DrillSearchView> {
                 'Shooting', 
                 'Dribbling',
                 'First Touch',
-                'Defending',
-                'Fitness'
               ],
               onChanged: (value) {
                 setState(() {
@@ -260,7 +220,7 @@ class _DrillSearchViewState extends State<DrillSearchView> {
             child: _buildFilterDropdown(
               label: 'Difficulty',
               value: _selectedDifficultyFilter,
-              items: const ['Beginner', 'Intermediate', 'Advanced'],
+              items: FilterOptions.difficultyOptions, // ✅ UPDATED: Use FilterOptions for consistency
               onChanged: (value) {
                 setState(() {
                   _selectedDifficultyFilter = value;
@@ -318,7 +278,12 @@ class _DrillSearchViewState extends State<DrillSearchView> {
         ),
         ...items.map((item) => DropdownMenuItem<String>(
           value: item,
-          child: Text(item, style: AppTheme.bodySmall),
+          child: Text(
+            label == 'Difficulty' 
+                ? PreferenceUtils.formatDifficultyForDisplay(item) 
+                : item, // ✅ UPDATED: Use centralized difficulty formatting
+            style: AppTheme.bodySmall
+          ),
         )),
       ],
       onChanged: onChanged,
@@ -397,6 +362,7 @@ class _DrillSearchViewState extends State<DrillSearchView> {
         await appState.refreshSearch();
       },
       child: ListView.builder(
+        key: const PageStorageKey('drill_search_list'), // Preserve scroll position
         controller: _scrollController,
         physics: const AlwaysScrollableScrollPhysics(),
         padding: const EdgeInsets.all(AppTheme.spacingMedium),
@@ -533,15 +499,31 @@ class _DrillSearchViewState extends State<DrillSearchView> {
 
   void _addDrillToSession(DrillModel drill) {
     final appState = Provider.of<AppStateService>(context, listen: false);
-    appState.addDrillToSession(drill);
+    final success = appState.addDrillToSession(drill);
     
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text('${drill.title} added to session'),
-        backgroundColor: AppTheme.success,
-        behavior: SnackBarBehavior.floating,
-      ),
-    );
+    if (success) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('${drill.title} added to session'),
+          backgroundColor: AppTheme.success,
+          behavior: SnackBarBehavior.floating,
+        ),
+      );
+    } else {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: const Text('Session limit reached! You can only add up to 10 drills to a session.'),
+          backgroundColor: Colors.orange,
+          behavior: SnackBarBehavior.floating,
+          duration: const Duration(seconds: 3),
+          action: SnackBarAction(
+            label: 'OK',
+            textColor: Colors.white,
+            onPressed: () {},
+          ),
+        ),
+      );
+    }
   }
 
   Widget _buildDrillCard(DrillModel drill, AppStateService appState) {
@@ -591,7 +573,7 @@ class _DrillSearchViewState extends State<DrillSearchView> {
                             vertical: 4,
                           ),
                           decoration: BoxDecoration(
-                            color: AppTheme.getSkillColor(drill.skill).withOpacity(0.1),
+                            color: AppTheme.getSkillColor(drill.skill).withValues(alpha: 0.1),
                             borderRadius: BorderRadius.circular(4),
                           ),
                           child: Text(
@@ -611,7 +593,7 @@ class _DrillSearchViewState extends State<DrillSearchView> {
                     Row(
                       children: [
                         Text(
-                          drill.skill,
+                          SkillUtils.formatSkillForDisplay(drill.skill),
                           style: AppTheme.bodySmall.copyWith(
                             color: AppTheme.getSkillColor(drill.skill),
                             fontWeight: FontWeight.w500,
@@ -647,7 +629,10 @@ class _DrillSearchViewState extends State<DrillSearchView> {
               IconButton(
                 onPressed: appState.isDrillInSession(drill) 
                     ? null 
-                    : () => _addDrillToSession(drill),
+                    : () {
+                        HapticUtils.lightImpact();
+                        _addDrillToSession(drill);
+                      },
                 icon: Icon(
                   appState.isDrillInSession(drill) 
                       ? Icons.check_circle 

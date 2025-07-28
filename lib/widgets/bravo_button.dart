@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import '../constants/app_theme.dart';
+import '../utils/haptic_utils.dart';
 
 class BravoButton extends StatefulWidget {
   final String text;
@@ -40,6 +42,8 @@ class _BravoButtonState extends State<BravoButton> with SingleTickerProviderStat
   late Animation<double> _offsetAnimation;
   bool _isPressed = false;
 
+  static const double _buttonDropOffset = 6.0;
+
   @override
   void initState() {
     super.initState();
@@ -48,7 +52,7 @@ class _BravoButtonState extends State<BravoButton> with SingleTickerProviderStat
       duration: const Duration(milliseconds: 80),
       reverseDuration: const Duration(milliseconds: 120),
     );
-    _offsetAnimation = Tween<double>(begin: 0, end: 8).animate(
+    _offsetAnimation = Tween<double>(begin: 0, end: _buttonDropOffset).animate(
       CurvedAnimation(parent: _controller, curve: Curves.easeInOut),
     );
   }
@@ -71,7 +75,7 @@ class _BravoButtonState extends State<BravoButton> with SingleTickerProviderStat
       setState(() => _isPressed = false);
       _controller.reverse();
       if (widget.enableHaptics) {
-        HapticFeedback.mediumImpact();
+        HapticUtils.mediumImpact(); // Use our haptic utility
       }
       if (widget.onPressed != null) widget.onPressed!();
     }
@@ -86,11 +90,11 @@ class _BravoButtonState extends State<BravoButton> with SingleTickerProviderStat
 
   @override
   Widget build(BuildContext context) {
-    final Color backColor = widget.disabled ? widget.backColor.withOpacity(0.5) : widget.backColor;
-    final Color frontColor = widget.disabled ? widget.color.withOpacity(0.5) : widget.color;
+    final Color backColor = widget.disabled ? AppTheme.buttonDisabledDarkGray : widget.backColor;
+    final Color frontColor = widget.disabled ? AppTheme.buttonDisabledGray : widget.color;
     return SizedBox(
       width: double.infinity,
-      height: widget.height + 6,
+      height: widget.height + _buttonDropOffset,
       child: GestureDetector(
         onTapDown: _onTapDown,
         onTapUp: _onTapUp,
@@ -102,7 +106,7 @@ class _BravoButtonState extends State<BravoButton> with SingleTickerProviderStat
             Positioned(
               left: 0,
               right: 0,
-              top: 6,
+              top: _buttonDropOffset,
               child: Container(
                 height: widget.height,
                 decoration: BoxDecoration(

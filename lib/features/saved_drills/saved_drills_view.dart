@@ -3,8 +3,17 @@ import 'package:provider/provider.dart';
 import '../../constants/app_theme.dart';
 import '../../services/app_state_service.dart';
 import '../../models/drill_group_model.dart';
+import '../../models/drill_model.dart'; // ✅ ADDED: Import DrillModel
 import '../../widgets/reusable_drill_search_view.dart';
+import '../../widgets/info_popup_widget.dart';
+import '../../widgets/guest_account_overlay.dart'; // ✅ NEW: Import reusable guest overlay
+import '../../utils/haptic_utils.dart';
+import '../../utils/skill_utils.dart'; // ✅ ADDED: Import centralized skill utilities
+import '../../features/onboarding/onboarding_flow.dart'; // ✅ ADDED: Import OnboardingFlow
 import 'drill_group_detail_view.dart';
+import '../../widgets/warning_dialog.dart'; // ✅ ADDED: Import WarningDialog
+import '../../widgets/drill_card_widget.dart'; // ✅ ADDED: Import drill card widget
+import '../../features/session_generator/drill_detail_view.dart'; // ✅ ADDED: Import DrillDetailView
 
 class SavedDrillsView extends StatefulWidget {
   const SavedDrillsView({Key? key}) : super(key: key);
@@ -13,15 +22,18 @@ class SavedDrillsView extends StatefulWidget {
   State<SavedDrillsView> createState() => _SavedDrillsViewState();
 }
 
-class _SavedDrillsViewState extends State<SavedDrillsView> {
-  String? _editingGroupId;
-  final TextEditingController _nameController = TextEditingController();
-  final TextEditingController _descriptionController = TextEditingController();
+class _SavedDrillsViewState extends State<SavedDrillsView> with SingleTickerProviderStateMixin {
+  late TabController _tabController;
+
+  @override
+  void initState() {
+    super.initState();
+    _tabController = TabController(length: 2, vsync: this);
+  }
 
   @override
   void dispose() {
-    _nameController.dispose();
-    _descriptionController.dispose();
+    _tabController.dispose();
     super.dispose();
   }
 
@@ -31,106 +43,303 @@ class _SavedDrillsViewState extends State<SavedDrillsView> {
       builder: (context, appState, child) {
         return Scaffold(
           backgroundColor: AppTheme.primaryPurple,
-          body: SafeArea(
-            child: Column(
-              children: [
-                // Header
-                Container(
-                  padding: const EdgeInsets.all(20),
-                  child: Column(
-                    children: [
-                      const SizedBox(height: 20),
-                      // Centered title
-                      Text(
-                        'Saved Drills',
-                        style: AppTheme.headlineMedium.copyWith(
-                          color: Colors.white,
-                        ),
-                        textAlign: TextAlign.center,
-                      ),
-                      const SizedBox(height: 16),
-                      // Add button row
-                      Row(
-                        mainAxisAlignment: MainAxisAlignment.end,
+          body: Stack(
+            children: [
+              // Main content
+              SafeArea(
+                child: Column(
+                  children: [
+                    // Header
+                    Container(
+                      padding: const EdgeInsets.all(20),
+                      child: Column(
                         children: [
-                          Container(
-                            decoration: BoxDecoration(
-                              color: Colors.white.withOpacity(0.2),
-                              borderRadius: BorderRadius.circular(12),
-                            ),
-                            child: IconButton(
-                              onPressed: () {
-                                _showCreateGroupDialog(context, appState);
-                              },
-                              icon: const Icon(
-                                Icons.add,
-                                color: Colors.white,
-                                size: 28,
-                              ),
-                            ),
-                          ),
-                        ],
-                      ),
-                      const SizedBox(height: 10),
-                      Text(
-                        'Organize your favorite drills into collections',
-                        style: AppTheme.bodyMedium.copyWith(
-                          color: Colors.white.withOpacity(0.9),
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-                
-                // Content
-                Expanded(
-                  child: Container(
-                    width: double.infinity,
-                    decoration: const BoxDecoration(
-                      color: Colors.white,
-                      borderRadius: BorderRadius.only(
-                        topLeft: Radius.circular(30),
-                        topRight: Radius.circular(30),
-                      ),
-                    ),
-                    child: Column(
-                      children: [
-                        const SizedBox(height: 20),
-                        Padding(
-                          padding: const EdgeInsets.symmetric(horizontal: 20),
-                          child: Row(
+                          const SizedBox(height: 20),
+                          // Header row with title and add button
+                          Row(
                             children: [
-                              Text(
-                                'Your Drill Collections',
-                                style: AppTheme.headlineSmall.copyWith(
-                                  color: AppTheme.primaryDark,
+                              // Add button on the left (invisible to balance the right button)
+                              Container(
+                                width: 56, // Same width as the right button
+                                height: 56,
+                              ),
+                              // Centered title
+                              Expanded(
+                                child: Text(
+                                  'Saved Drills',
+                                  style: AppTheme.headlineMedium.copyWith(
+                                    color: Colors.white,
+                                  ),
+                                  textAlign: TextAlign.center,
                                 ),
                               ),
-                              const Spacer(),
-                              IconButton(
-                                onPressed: () {
-                                  _showInfoDialog(context);
-                                },
-                                icon: const Icon(
-                                  Icons.info_outline,
-                                  color: AppTheme.primaryGray,
+                              // Add button on the right
+                              Container(
+                                decoration: BoxDecoration(
+                                  color: Colors.white.withValues(alpha: 0.2),
+                                  borderRadius: BorderRadius.circular(12),
+                                ),
+                                child: IconButton(
+                                  onPressed: () {
+                                    HapticUtils.mediumImpact(); // Medium haptic for create action
+                                    _showCreateGroupDialog(context, appState);
+                                  },
+                                  icon: const Icon(
+                                    Icons.add,
+                                    color: Colors.white,
+                                    size: 28,
+                                  ),
                                 ),
                               ),
                             ],
                           ),
-                        ),
-                        const SizedBox(height: 20),
-                        Expanded(
-                          child: _buildGroupsGrid(appState),
-                        ),
-                      ],
+                        ],
+                      ),
                     ),
-                  ),
+                    
+                    // Content
+                    Expanded(
+                      child: Container(
+                        width: double.infinity,
+                        decoration: const BoxDecoration(
+                          color: Colors.white,
+                          borderRadius: BorderRadius.only(
+                            topLeft: Radius.circular(30),
+                            topRight: Radius.circular(30),
+                          ),
+                        ),
+                        child: Column(
+                          children: [
+                            const SizedBox(height: 20),
+                            // Tab bar
+                            Container(
+                              margin: const EdgeInsets.symmetric(horizontal: 20),
+                              decoration: BoxDecoration(
+                                color: Colors.grey.shade100,
+                                borderRadius: BorderRadius.circular(12),
+                              ),
+                              child: TabBar(
+                                controller: _tabController,
+                                indicator: BoxDecoration(
+                                  color: AppTheme.primaryPurple,
+                                  borderRadius: BorderRadius.circular(12),
+                                ),
+                                indicatorSize: TabBarIndicatorSize.tab, // ✅ ADDED: Make indicator fill entire tab
+                                labelColor: Colors.white,
+                                unselectedLabelColor: AppTheme.primaryGray,
+                                labelStyle: const TextStyle(
+                                  fontFamily: AppTheme.fontPoppins,
+                                  fontWeight: FontWeight.bold,
+                                  fontSize: 14,
+                                ),
+                                unselectedLabelStyle: const TextStyle(
+                                  fontFamily: AppTheme.fontPoppins,
+                                  fontWeight: FontWeight.w500,
+                                  fontSize: 14,
+                                ),
+                                tabs: const [
+                                  Tab(text: 'Collections'),
+                                  Tab(text: 'Custom Drills'),
+                                ],
+                              ),
+                            ),
+                            const SizedBox(height: 20),
+                            // Tab content
+                            Expanded(
+                              child: TabBarView(
+                                controller: _tabController,
+                                children: [
+                                  // Collections tab
+                                  _buildCollectionsTab(appState),
+                                  // Custom drills tab
+                                  _buildCustomDrillsTab(appState),
+                                ],
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                  ],
                 ),
-              ],
-            ),
+              ),
+              
+              // ✅ NEW: Guest mode overlay using reusable widget
+              if (appState.isGuestMode) 
+                GuestAccountOverlay(
+                  title: 'Create an account',
+                  description: 'Save your favorite drills and create collections by creating an account.',
+                  themeColor: AppTheme.primaryPurple,
+                ),
+            ],
           ),
         );
+      },
+    );
+  }
+
+  // Collections tab content
+  Widget _buildCollectionsTab(AppStateService appState) {
+    return Column(
+      children: [
+        Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 20),
+          child: Row(
+            children: [
+              Text(
+                'Your Drill Collections',
+                style: AppTheme.headlineSmall.copyWith(
+                  color: AppTheme.primaryDark,
+                ),
+              ),
+              const Spacer(),
+              IconButton(
+                onPressed: () {
+                  HapticUtils.lightImpact(); // Light haptic for info
+                  _showInfoDialog(context);
+                },
+                icon: const Icon(
+                  Icons.info_outline,
+                  color: AppTheme.primaryGray,
+                ),
+              ),
+            ],
+          ),
+        ),
+        const SizedBox(height: 20),
+        Expanded(
+          child: _buildGroupsGrid(appState),
+        ),
+      ],
+    );
+  }
+
+  // Custom drills tab content
+  Widget _buildCustomDrillsTab(AppStateService appState) {
+    final customDrills = appState.customDrills;
+    
+    return Column(
+      children: [
+        Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 20),
+          child: Row(
+            children: [
+              Text(
+                'Custom Drills',
+                style: AppTheme.headlineSmall.copyWith(
+                  color: AppTheme.primaryDark,
+                ),
+              ),
+              const Spacer(),
+              Text(
+                '${customDrills.length} drill${customDrills.length == 1 ? '' : 's'}',
+                style: AppTheme.bodyMedium.copyWith(
+                  color: AppTheme.primaryGray,
+                ),
+              ),
+            ],
+          ),
+        ),
+        const SizedBox(height: 20),
+        Expanded(
+          child: customDrills.isEmpty
+              ? _buildEmptyCustomDrillsState()
+              : _buildCustomDrillsList(customDrills, appState),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildEmptyCustomDrillsState() {
+    return Center(
+      child: Padding(
+        padding: const EdgeInsets.all(40),
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Container(
+              padding: const EdgeInsets.all(24),
+              decoration: BoxDecoration(
+                color: AppTheme.primaryPurple.withValues(alpha: 0.1),
+                borderRadius: BorderRadius.circular(24),
+              ),
+              child: const Icon(
+                Icons.sports_soccer_outlined,
+                size: 48,
+                color: AppTheme.primaryPurple,
+              ),
+            ),
+            const SizedBox(height: 24),
+            Text(
+              'No custom drills yet',
+              style: AppTheme.titleLarge.copyWith(
+                color: AppTheme.primaryDark,
+              ),
+            ),
+            const SizedBox(height: 8),
+            Text(
+              'Create your first custom drill to see it here',
+              style: AppTheme.bodyMedium.copyWith(
+                color: AppTheme.primaryGray,
+              ),
+              textAlign: TextAlign.center,
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildCustomDrillsList(List<DrillModel> customDrills, AppStateService appState) {
+    return ListView.builder(
+      padding: const EdgeInsets.symmetric(horizontal: 20),
+      itemCount: customDrills.length,
+      itemBuilder: (context, index) {
+        final drill = customDrills[index];
+        return Padding(
+          padding: const EdgeInsets.only(bottom: 12),
+          child: DraggableDrillCard(
+            drill: drill,
+            onTap: () {
+              HapticUtils.mediumImpact();
+              // Navigate to drill detail view
+              Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (context) => DrillDetailView(
+                    drill: drill,
+                    isInSession: appState.isDrillInSession(drill),
+                    onAddToSession: null,
+                  ),
+                ),
+              );
+            },
+            onDelete: () {
+              HapticUtils.lightImpact();
+              _showDeleteCustomDrillDialog(drill, appState);
+            },
+            showOverlayIcons: true,
+          ),
+        );
+      },
+    );
+  }
+
+  void _showDeleteCustomDrillDialog(DrillModel drill, AppStateService appState) {
+    WarningDialog.show(
+      context: context,
+      title: 'Delete Custom Drill',
+      content: 'Are you sure you want to delete "${drill.title}"? This action cannot be undone.',
+      cancelText: 'Cancel',
+      continueText: 'Delete',
+      warningColor: Colors.red,
+      warningIcon: Icons.delete_forever,
+      onCancel: () {
+        HapticUtils.lightImpact();
+      },
+      onContinue: () {
+        HapticUtils.mediumImpact();
+        appState.deleteCustomDrill(drill.id);
       },
     );
   }
@@ -162,7 +371,8 @@ class _SavedDrillsViewState extends State<SavedDrillsView> {
 
   Widget _buildGroupCard(DrillGroup group, AppStateService appState) {
     return GestureDetector(
-      onTap: _editingGroupId == group.id ? null : () {
+      onTap: () {
+        HapticUtils.mediumImpact(); // Medium haptic for group navigation
         Navigator.push(
           context,
           MaterialPageRoute(
@@ -177,7 +387,7 @@ class _SavedDrillsViewState extends State<SavedDrillsView> {
           border: Border.all(color: Colors.grey.shade200),
           boxShadow: [
             BoxShadow(
-              color: Colors.black.withOpacity(0.08),
+              color: Colors.black.withValues(alpha: 0.08),
               blurRadius: 8,
               offset: const Offset(0, 2),
             ),
@@ -194,8 +404,8 @@ class _SavedDrillsViewState extends State<SavedDrillsView> {
                     padding: const EdgeInsets.all(12),
                     decoration: BoxDecoration(
                       color: group.isLikedDrillsGroup 
-                          ? AppTheme.secondaryRed.withOpacity(0.1)
-                          : AppTheme.primaryPurple.withOpacity(0.1),
+                          ? AppTheme.secondaryRed.withValues(alpha: 0.1)
+                          : AppTheme.primaryPurple.withValues(alpha: 0.1),
                       borderRadius: BorderRadius.circular(12),
                     ),
                     child: Icon(
@@ -207,104 +417,41 @@ class _SavedDrillsViewState extends State<SavedDrillsView> {
                     ),
                   ),
                   const Spacer(),
-                  if (!group.isLikedDrillsGroup)
-                    if (_editingGroupId == group.id)
-                      Row(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          IconButton(
-                            onPressed: () => _finishEditingGroup(group, appState),
-                            icon: const Icon(
-                              Icons.check,
-                              color: Colors.green,
-                              size: 20,
-                            ),
-                          ),
-                          IconButton(
-                            onPressed: _cancelEditing,
-                            icon: const Icon(
-                              Icons.close,
-                              color: Colors.red,
-                              size: 20,
-                            ),
-                          ),
-                        ],
-                      )
-                    else
-                      PopupMenuButton<String>(
-                        onSelected: (value) {
-                          if (value == 'edit') {
-                            _startEditingGroup(group);
-                          } else if (value == 'delete') {
-                            _showDeleteConfirmation(group, appState);
-                          }
-                        },
-                        itemBuilder: (context) => [
-                          const PopupMenuItem(
-                            value: 'edit',
-                            child: Row(
-                              children: [
-                                Icon(Icons.edit, color: AppTheme.primaryPurple),
-                                SizedBox(width: 8),
-                                Text('Edit'),
-                              ],
-                            ),
-                          ),
-                          const PopupMenuItem(
-                            value: 'delete',
-                            child: Row(
-                              children: [
-                                Icon(Icons.delete, color: Colors.red),
-                                SizedBox(width: 8),
-                                Text('Delete'),
-                              ],
-                            ),
-                          ),
-                        ],
-                        child: Icon(
-                          Icons.more_vert,
-                          color: Colors.grey.shade600,
+                  PopupMenuButton<String>(
+                    onSelected: (value) {
+                      if (value == 'delete') {
+                        HapticUtils.lightImpact(); // Light haptic for delete initiation
+                        _showDeleteConfirmation(group, appState);
+                      }
+                    },
+                    itemBuilder: (context) => [
+                      const PopupMenuItem(
+                        value: 'delete',
+                        child: Row(
+                          children: [
+                            Icon(Icons.delete, color: Colors.red),
+                            SizedBox(width: 8),
+                            Text('Delete'),
+                          ],
                         ),
                       ),
+                    ],
+                    child: Icon(
+                      Icons.more_vert,
+                      color: Colors.grey.shade600,
+                    ),
+                  ),
                 ],
               ),
               const SizedBox(height: 16),
-              // Group name - editable when in edit mode
-              if (_editingGroupId == group.id)
-                TextField(
-                  controller: _nameController,
-                  style: AppTheme.titleMedium.copyWith(
-                    color: AppTheme.primaryDark,
-                  ),
-                  decoration: InputDecoration(
-                    border: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(8),
-                      borderSide: BorderSide(color: AppTheme.primaryPurple.withOpacity(0.3)),
-                    ),
-                    enabledBorder: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(8),
-                      borderSide: BorderSide(color: AppTheme.primaryPurple.withOpacity(0.3)),
-                    ),
-                    focusedBorder: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(8),
-                      borderSide: BorderSide(color: AppTheme.primaryPurple, width: 2),
-                    ),
-                    contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-                    isDense: true,
-                    filled: true,
-                    fillColor: Colors.white,
-                  ),
-                  maxLines: 1,
-                )
-              else
-                Text(
-                  group.name,
-                  style: AppTheme.titleMedium.copyWith(
-                    color: AppTheme.primaryDark,
-                  ),
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
+              Text(
+                group.name,
+                style: AppTheme.titleMedium.copyWith(
+                  color: AppTheme.primaryDark,
                 ),
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+              ),
               const SizedBox(height: 4),
               Text(
                 '${group.drills.length} drill${group.drills.length == 1 ? '' : 's'}',
@@ -313,46 +460,11 @@ class _SavedDrillsViewState extends State<SavedDrillsView> {
                 ),
               ),
               const SizedBox(height: 8),
-              // Group description - editable when in edit mode
-              if (_editingGroupId == group.id)
-                TextField(
-                  controller: _descriptionController,
-                  style: AppTheme.bodySmall.copyWith(
-                    color: AppTheme.primaryGray,
-                  ),
-                  decoration: InputDecoration(
-                    border: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(8),
-                      borderSide: BorderSide(color: AppTheme.primaryPurple.withOpacity(0.3)),
-                    ),
-                    enabledBorder: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(8),
-                      borderSide: BorderSide(color: AppTheme.primaryPurple.withOpacity(0.3)),
-                    ),
-                    focusedBorder: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(8),
-                      borderSide: BorderSide(color: AppTheme.primaryPurple, width: 2),
-                    ),
-                    contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-                    isDense: true,
-                    filled: true,
-                    fillColor: Colors.white,
-                  ),
-                  maxLines: 2,
-                )
-              else
-                Text(
-                  group.description,
-                  style: AppTheme.bodySmall.copyWith(
-                    color: AppTheme.primaryGray,
-                  ),
-                  maxLines: 2,
-                  overflow: TextOverflow.ellipsis,
-                ),
               const Spacer(),
-              if (group.drills.isNotEmpty)
+              if (!group.isLikedDrillsGroup && group.drills.isNotEmpty)
                 Wrap(
-                  spacing: 4,
+                  spacing: 8,
+                  runSpacing: 6,
                   children: group.drills
                       .map((drill) => drill.skill)
                       .toSet()
@@ -360,11 +472,11 @@ class _SavedDrillsViewState extends State<SavedDrillsView> {
                       .map((skill) => Container(
                             padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
                             decoration: BoxDecoration(
-                              color: AppTheme.getSkillColor(skill).withOpacity(0.1),
+                              color: AppTheme.getSkillColor(skill).withValues(alpha: 0.1),
                               borderRadius: BorderRadius.circular(8),
                             ),
                             child: Text(
-                              skill,
+                              SkillUtils.formatSkillForDisplay(skill),
                               style: const TextStyle(
                                 fontFamily: AppTheme.fontPoppins,
                                 fontSize: 10,
@@ -391,7 +503,7 @@ class _SavedDrillsViewState extends State<SavedDrillsView> {
             Container(
               padding: const EdgeInsets.all(24),
               decoration: BoxDecoration(
-                color: AppTheme.primaryPurple.withOpacity(0.1),
+                color: AppTheme.primaryPurple.withValues(alpha: 0.1),
                 borderRadius: BorderRadius.circular(24),
               ),
               child: const Icon(
@@ -418,6 +530,7 @@ class _SavedDrillsViewState extends State<SavedDrillsView> {
             const SizedBox(height: 24),
             ElevatedButton.icon(
               onPressed: () {
+                HapticUtils.mediumImpact(); // Medium haptic for create collection
                 _showCreateGroupDialog(context, appState);
               },
               icon: const Icon(Icons.add),
@@ -437,161 +550,115 @@ class _SavedDrillsViewState extends State<SavedDrillsView> {
   void _showCreateGroupDialog(BuildContext context, AppStateService appState) {
     final nameController = TextEditingController();
     final descriptionController = TextEditingController();
+    final existingNames = appState.savedDrillGroups.map((g) => g.name.toLowerCase()).toSet();
 
     showDialog(
       context: context,
-      builder: (context) => AlertDialog(
-        title: const Text(
-          'Create New Collection',
-          style: TextStyle(fontFamily: AppTheme.fontPoppins),
-        ),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            TextField(
-              controller: nameController,
-              style: const TextStyle(fontFamily: AppTheme.fontPoppins),
-              decoration: const InputDecoration(
-                labelText: 'Collection Name',
-                labelStyle: TextStyle(fontFamily: AppTheme.fontPoppins),
+      builder: (dialogContext) {
+        String? errorText;
+        return StatefulBuilder(
+          builder: (context, setState) {
+            return AlertDialog(
+              title: const Text(
+                'Create New Collection',
+                style: TextStyle(fontFamily: AppTheme.fontPoppins),
               ),
-            ),
-            const SizedBox(height: 16),
-            TextField(
-              controller: descriptionController,
-              style: const TextStyle(fontFamily: AppTheme.fontPoppins),
-              maxLines: 3,
-              decoration: const InputDecoration(
-                labelText: 'Description (optional)',
-                labelStyle: TextStyle(fontFamily: AppTheme.fontPoppins),
+              content: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  TextField(
+                    controller: nameController,
+                    style: const TextStyle(fontFamily: AppTheme.fontPoppins),
+                    decoration: InputDecoration(
+                      labelText: 'Collection Name',
+                      labelStyle: const TextStyle(fontFamily: AppTheme.fontPoppins),
+                      errorText: errorText,
+                    ),
+                  ),
+                  const SizedBox(height: 16),
+                  TextField(
+                    controller: descriptionController,
+                    style: const TextStyle(fontFamily: AppTheme.fontPoppins),
+                    maxLines: 3,
+                    decoration: const InputDecoration(
+                      labelText: 'Description (optional)',
+                      labelStyle: TextStyle(fontFamily: AppTheme.fontPoppins),
+                    ),
+                  ),
+                ],
               ),
-            ),
-          ],
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: const Text(
-              'Cancel',
-              style: TextStyle(fontFamily: AppTheme.fontPoppins),
-            ),
-          ),
-          ElevatedButton(
-            onPressed: () {
-              if (nameController.text.isNotEmpty) {
-                appState.createDrillGroup(
-                  nameController.text,
-                  descriptionController.text.isEmpty
-                      ? 'Custom drill collection'
-                      : descriptionController.text,
-                );
-                Navigator.pop(context);
-              }
-            },
-            style: ElevatedButton.styleFrom(
-              backgroundColor: AppTheme.primaryPurple,
-              foregroundColor: Colors.white,
-            ),
-            child: const Text(
-              'Create',
-              style: TextStyle(fontFamily: AppTheme.fontPoppins),
-            ),
-          ),
-        ],
-      ),
+              actions: [
+                TextButton(
+                  onPressed: () {
+                    HapticUtils.lightImpact();
+                    Navigator.pop(dialogContext);
+                  },
+                  child: const Text(
+                    'Cancel',
+                    style: TextStyle(fontFamily: AppTheme.fontPoppins),
+                  ),
+                ),
+                ElevatedButton(
+                  onPressed: () {
+                    final name = nameController.text.trim();
+                    if (name.isEmpty) return;
+                    if (existingNames.contains(name.toLowerCase())) {
+                      setState(() => errorText = 'A collection with this name already exists.');
+                      return;
+                    }
+                    HapticUtils.mediumImpact();
+                    appState.createDrillGroup(
+                      name,
+                      descriptionController.text.isEmpty
+                          ? 'Custom drill collection'
+                          : descriptionController.text,
+                    );
+                    Navigator.pop(dialogContext);
+                  },
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: AppTheme.primaryPurple,
+                    foregroundColor: Colors.white,
+                  ),
+                  child: const Text(
+                    'Create',
+                    style: TextStyle(fontFamily: AppTheme.fontPoppins),
+                  ),
+                ),
+              ],
+            );
+          },
+        );
+      },
     );
   }
 
   void _showDeleteConfirmation(DrillGroup group, AppStateService appState) {
-    showDialog(
+    WarningDialog.show(
       context: context,
-      builder: (context) => AlertDialog(
-        title: const Text(
-          'Delete Collection',
-          style: TextStyle(fontFamily: AppTheme.fontPoppins),
-        ),
-        content: Text(
-          'Are you sure you want to delete "${group.name}"? This action cannot be undone.',
-          style: const TextStyle(fontFamily: AppTheme.fontPoppins),
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: const Text(
-              'Cancel',
-              style: TextStyle(fontFamily: AppTheme.fontPoppins),
-            ),
-          ),
-          TextButton(
-            onPressed: () {
-              appState.deleteDrillGroup(group.id);
-              Navigator.pop(context);
-            },
-            child: const Text(
-              'Delete',
-              style: TextStyle(
-                fontFamily: AppTheme.fontPoppins,
-                color: Colors.red,
-              ),
-            ),
-          ),
-        ],
-      ),
+      title: 'Delete Collection',
+      content: 'Are you sure you want to delete "${group.name}"? This action cannot be undone.',
+      cancelText: 'Cancel',
+      continueText: 'Delete',
+      warningColor: Colors.red,
+      warningIcon: Icons.delete_forever,
+      onCancel: () {
+        HapticUtils.lightImpact();
+      },
+      onContinue: () {
+        HapticUtils.mediumImpact();
+        appState.deleteDrillGroup(group.id);
+      },
     );
   }
 
   void _showInfoDialog(BuildContext context) {
-    showDialog(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: const Text(
-          'Saved Drills',
-          style: TextStyle(fontFamily: AppTheme.fontPoppins),
-        ),
-        content: const Text(
-          'Organize your favorite drills into collections for easy access.\n\n'
-          '• Heart icon shows your liked drills\n'
-          '• Create custom collections with the + button\n'
-          '• Tap any collection to view and manage drills',
-          style: TextStyle(fontFamily: AppTheme.fontPoppins),
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: const Text(
-              'Got it',
-              style: TextStyle(fontFamily: AppTheme.fontPoppins),
-            ),
-          ),
-        ],
-      ),
+    InfoPopupWidget.show(
+      context,
+      title: 'Your Drill Collections',
+      description: 'Create collections to organize your favorite drills for easy access.\n\nHeart drills you like and create custom playlists with the + button.',
+      riveFileName: 'Bravo_Animation.riv',
     );
   }
 
-  void _startEditingGroup(DrillGroup group) {
-    setState(() {
-      _editingGroupId = group.id;
-      _nameController.text = group.name;
-      _descriptionController.text = group.description;
-    });
-  }
-
-  void _finishEditingGroup(DrillGroup group, AppStateService appState) {
-    if (_nameController.text.trim().isNotEmpty) {
-      appState.editDrillGroup(
-        group.id,
-        _nameController.text.trim(),
-        _descriptionController.text.trim(),
-      );
-    }
-    setState(() {
-      _editingGroupId = null;
-    });
-  }
-
-  void _cancelEditing() {
-    setState(() {
-      _editingGroupId = null;
-    });
-  }
+  // ✅ REMOVED: _buildGuestOverlay method - now using reusable widget
 } 

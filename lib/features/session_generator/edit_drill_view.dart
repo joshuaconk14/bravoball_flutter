@@ -1,204 +1,354 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
-import '../../models/drill_model.dart';
+import 'dart:async';
+import '../../models/editable_drill_model.dart';
 import '../../services/app_state_service.dart';
 import '../../constants/app_theme.dart';
-import '../../widgets/drill_video_player.dart';
+import '../../widgets/drill_video_background.dart'; // ✅ ADDED: Import new video background widget
 import 'drill_detail_view.dart';
+import '../../utils/haptic_utils.dart';
+import '../../utils/skill_utils.dart';
 
 class EditDrillView extends StatefulWidget {
-  final DrillModel drill;
-  final VoidCallback? onSave; // Optional callback when changes are saved
+  final EditableDrillModel editableDrill;
+  final VoidCallback? onSave;
 
   const EditDrillView({
     Key? key,
-    required this.drill,
+    required this.editableDrill,
     this.onSave,
-  }) : super(key: key);
+  });
 
   @override
   State<EditDrillView> createState() => _EditDrillViewState();
 }
 
-class _EditDrillViewState extends State<EditDrillView> {
+class _EditDrillViewState extends State<EditDrillView>
+  with TickerProviderStateMixin {
   late int sets;
   late int reps;
   late int duration;
   
+  // Timers for hold-to-repeat functionality
+  Timer? _holdTimer;
+  Timer? _repeatTimer;
+  
+  // ✅ ADDED: Animation controllers for UI overlay containers
+  late AnimationController _uiAnimationController;
+  late Animation<double> _topSectionSlideAnimation;
+  late Animation<double> _bottomSectionSlideAnimation;
+  late Animation<double> _uiFadeAnimation;
+  late Animation<double> _topSectionScaleAnimation;
+  late Animation<double> _bottomSectionScaleAnimation;
+  
+  // ✅ ADDED: UI visibility state for tap-to-hide functionality
+  bool _isUIVisible = true;
+  
   @override
   void initState() {
     super.initState();
-    sets = widget.drill.sets;
-    reps = widget.drill.reps;
-    duration = widget.drill.duration;
+    sets = widget.editableDrill.totalSets;
+    reps = widget.editableDrill.totalReps;
+    duration = widget.editableDrill.totalDuration;
+    
+    // ✅ ADDED: Initialize UI animation controller
+    _uiAnimationController = AnimationController(
+      duration: const Duration(milliseconds: 800),
+      vsync: this,
+    );
+
+    // ✅ ADDED: Setup UI animations
+    _uiFadeAnimation = Tween<double>(
+      begin: 0.0,
+      end: 1.0,
+    ).animate(CurvedAnimation(
+      parent: _uiAnimationController,
+      curve: const Interval(0.0, 0.6, curve: Curves.easeOut),
+    ));
+
+    _topSectionSlideAnimation = Tween<double>(
+      begin: -50.0,
+      end: 0.0,
+    ).animate(CurvedAnimation(
+      parent: _uiAnimationController,
+      curve: const Interval(0.0, 0.7, curve: Curves.easeOutCubic),
+    ));
+
+    _bottomSectionSlideAnimation = Tween<double>(
+      begin: 50.0,
+      end: 0.0,
+    ).animate(CurvedAnimation(
+      parent: _uiAnimationController,
+      curve: const Interval(0.2, 0.9, curve: Curves.easeOutCubic),
+    ));
+
+    _topSectionScaleAnimation = Tween<double>(
+      begin: 0.8,
+      end: 1.0,
+    ).animate(CurvedAnimation(
+      parent: _uiAnimationController,
+      curve: const Interval(0.0, 0.6, curve: Curves.easeOutBack),
+    ));
+
+    _bottomSectionScaleAnimation = Tween<double>(
+      begin: 0.8,
+      end: 1.0,
+    ).animate(CurvedAnimation(
+      parent: _uiAnimationController,
+      curve: const Interval(0.2, 0.8, curve: Curves.easeOutBack),
+    ));
+    
+    // ✅ ADDED: Start UI animations
+    _uiAnimationController.forward();
+  }
+
+  @override
+  void dispose() {
+    _holdTimer?.cancel();
+    _repeatTimer?.cancel();
+    // ✅ ADDED: Dispose UI animation controller
+    _uiAnimationController.dispose();
+    super.dispose();
   }
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: Colors.white,
-      appBar: AppBar(
-        backgroundColor: Colors.white,
-        elevation: 0,
-        leading: IconButton(
-          icon: const Icon(Icons.close, color: Colors.black),
-          onPressed: () => Navigator.pop(context),
-        ),
-        title: const Text(
-          'Edit Drill',
-          style: TextStyle(
-            fontFamily: 'Poppins',
-            fontWeight: FontWeight.bold,
-            color: Colors.black,
-            fontSize: 18,
-          ),
-        ),
-        centerTitle: true,
-        actions: [
-          Padding(
-            padding: const EdgeInsets.only(right: 8.0),
-            child: ElevatedButton(
-              onPressed: () => _showDrillDetails(context),
-              style: ElevatedButton.styleFrom(
-                backgroundColor: Colors.grey.shade600,
-                foregroundColor: Colors.white,
-                elevation: 0,
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(12),
+    // ✅ UPDATED: Get updated video path for custom drills from app state
+    final appState = Provider.of<AppStateService>(context, listen: false);
+    String videoUrlToUse = widget.editableDrill.drill.videoUrl;
+    
+    // Check if this is a custom drill and if there's an updated version in app state
+    if (widget.editableDrill.drill.isCustom) {
+      final updatedDrill = appState.customDrills.firstWhere(
+        (drill) => drill.id == widget.editableDrill.drill.id,
+        orElse: () => widget.editableDrill.drill,
+      );
+      videoUrlToUse = updatedDrill.videoUrl;
+    }
+    
+    // ✅ UPDATED: Use new DrillVideoBackground widget
+    return DrillVideoBackground(
+      videoUrl: videoUrlToUse,
+      child: _buildOverlayContent(),
+    );
+  }
+
+  Widget _buildOverlayContent() {
+    return GestureDetector(
+      onTap: () {
+        HapticUtils.lightImpact();
+        _toggleUIVisibility();
+      },
+      behavior: HitTestBehavior.translucent,
+      child: SafeArea(
+        child: AnimatedBuilder(
+          animation: _uiAnimationController,
+          builder: (context, child) {
+            return Column(
+              children: [
+                // ✅ ANIMATED: Top section with slide, scale, and fade animations
+                AnimatedOpacity(
+                  opacity: _isUIVisible ? 1.0 : 0.0,
+                  duration: const Duration(milliseconds: 300),
+                  child: AnimatedSlide(
+                    offset: _isUIVisible ? Offset.zero : const Offset(0, -1.0),
+                    duration: const Duration(milliseconds: 300),
+                    curve: Curves.easeInOut,
+                    child: Transform.translate(
+                      offset: Offset(0, _topSectionSlideAnimation.value),
+                      child: Transform.scale(
+                        scale: _topSectionScaleAnimation.value,
+                        child: FadeTransition(
+                          opacity: _uiFadeAnimation,
+                          child: _buildTopSection(),
+                        ),
+                      ),
+                    ),
+                  ),
                 ),
-                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                minimumSize: const Size(0, 32),
-              ),
-              child: const Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Icon(Icons.info_outline, size: 14),
-                  SizedBox(width: 4),
-                  Text(
-                    'Details',
-                    style: TextStyle(
-                      fontFamily: 'Poppins',
-                      fontWeight: FontWeight.w600,
-                      fontSize: 12,
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          ),
-        ],
-      ),
-      body: Column(
-        children: [
-          Expanded(
-            child: SingleChildScrollView(
-              padding: const EdgeInsets.all(16),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  // Video placeholder (like in Swift app)
-                  _buildVideoSection(),
-                  
-                  const SizedBox(height: 24),
-                  
-                  // Drill title
-                  Text(
-                    widget.drill.title,
-                    style: const TextStyle(
-                      fontFamily: 'Poppins',
-                      fontWeight: FontWeight.bold,
-                      fontSize: 20,
-                      color: Colors.black,
-                    ),
-                  ),
-                  
-                  const SizedBox(height: 8),
-                  
-                  // Skill badge
-                  Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-                    decoration: BoxDecoration(
-                      color: _getSkillColor(widget.drill.skill).withOpacity(0.1),
-                      borderRadius: BorderRadius.circular(16),
-                      border: Border.all(
-                        color: _getSkillColor(widget.drill.skill).withOpacity(0.3),
-                      ),
-                    ),
-                    child: Text(
-                      widget.drill.skill,
-                      style: TextStyle(
-                        fontFamily: 'Poppins',
-                        fontWeight: FontWeight.w600,
-                        fontSize: 12,
-                        color: _getSkillColor(widget.drill.skill),
+                
+                const Spacer(),
+                
+                // ✅ ANIMATED: Bottom section with slide, scale, and fade animations
+                AnimatedOpacity(
+                  opacity: _isUIVisible ? 1.0 : 0.0,
+                  duration: const Duration(milliseconds: 300),
+                  child: AnimatedSlide(
+                    offset: _isUIVisible ? Offset.zero : const Offset(0, 1.0),
+                    duration: const Duration(milliseconds: 300),
+                    curve: Curves.easeInOut,
+                    child: Transform.translate(
+                      offset: Offset(0, _bottomSectionSlideAnimation.value),
+                      child: Transform.scale(
+                        scale: _bottomSectionScaleAnimation.value,
+                        child: FadeTransition(
+                          opacity: _uiFadeAnimation,
+                          child: _buildBottomSection(),
+                        ),
                       ),
                     ),
                   ),
-                  
-                  const SizedBox(height: 32),
-                  
-                  // Edit controls
-                  _buildEditControls(),
-                  
-                  const SizedBox(height: 32),
-                ],
-              ),
-            ),
-          ),
-          
-          // Save Changes button
-          _buildSaveButton(),
-        ],
+                ),
+              ],
+            );
+          },
+        ),
       ),
     );
   }
 
-  Widget _buildVideoSection() {
-    if (widget.drill.videoUrl.isNotEmpty) {
-      return DrillVideoPlayer(
-        videoUrl: widget.drill.videoUrl,
-        aspectRatio: 16 / 9,
-        showControls: true,
-      );
-    } else {
-      // Fallback placeholder when no video URL
-      return Container(
-        width: double.infinity,
-        height: 200,
+  Widget _buildTopSection() {
+    return GestureDetector(
+      onTap: () {
+        // Absorb taps on the top section to prevent triggering the background tap
+      },
+      child: Container(
+        margin: const EdgeInsets.all(16),
+        padding: const EdgeInsets.all(16),
         decoration: BoxDecoration(
-          color: Colors.grey.shade200,
+          color: Colors.white.withValues(alpha: 0.9), // ✅ UPDATED: Increased opacity from 0.7 to 0.9
           borderRadius: BorderRadius.circular(16),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withValues(alpha: 0.1),
+              blurRadius: 8,
+              offset: const Offset(0, 2),
+            ),
+          ],
         ),
         child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            Icon(
-              Icons.videocam_off,
-              size: 48,
-              color: Colors.grey.shade600,
+            // Row with close button and drill title
+            Row(
+              children: [
+                // Close button
+                GestureDetector(
+                  onTap: () {
+                    HapticUtils.lightImpact();
+                    Navigator.pop(context);
+                  },
+                  child: Container(
+                    padding: const EdgeInsets.all(8),
+                    decoration: BoxDecoration(
+                      color: Colors.grey.shade100,
+                      shape: BoxShape.circle,
+                    ),
+                    child: const Icon(
+                      Icons.close,
+                      color: Colors.black,
+                      size: 20,
+                    ),
+                  ),
+                ),
+                
+                const SizedBox(width: 12),
+                
+                // Drill title (expanded to take remaining space)
+                Expanded(
+                  child: Text(
+                    widget.editableDrill.drill.title,
+                    style: const TextStyle(
+                      fontFamily: 'Poppins',
+                      fontWeight: FontWeight.bold,
+                      fontSize: 18,
+                      color: Colors.black,
+                    ),
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                ),
+                
+                // Details button
+                GestureDetector(
+                  onTap: () {
+                    HapticUtils.lightImpact();
+                    _showDrillDetails(context);
+                  },
+                  child: Container(
+                    padding: const EdgeInsets.all(8),
+                    decoration: BoxDecoration(
+                      color: Colors.grey.shade500,
+                      shape: BoxShape.circle,
+                    ),
+                    child: const Icon(
+                      Icons.article,
+                      color: Colors.white,
+                      size: 20,
+                    ),
+                  ),
+                ),
+              ],
             ),
-            const SizedBox(height: 8),
-            Text(
-              'No video available',
-              style: TextStyle(
-                fontFamily: 'Poppins',
-                fontSize: 14,
-                color: Colors.grey.shade600,
+            
+            const SizedBox(height: 12),
+            
+            // Skill badge centered
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+              decoration: BoxDecoration(
+                color: AppTheme.getSkillColor(widget.editableDrill.drill.skill).withValues(alpha: 0.1),
+                borderRadius: BorderRadius.circular(16),
+                border: Border.all(
+                  color: AppTheme.getSkillColor(widget.editableDrill.drill.skill).withValues(alpha: 0.3),
+                ),
+              ),
+              child: Text(
+                SkillUtils.formatSkillForDisplay(widget.editableDrill.drill.skill),
+                style: TextStyle(
+                  fontFamily: 'Poppins',
+                  fontWeight: FontWeight.w600,
+                  fontSize: 12,
+                  color: AppTheme.getSkillColor(widget.editableDrill.drill.skill),
+                ),
               ),
             ),
           ],
         ),
-      );
-    }
+      ),
+    );
+  }
+
+  Widget _buildBottomSection() {
+    return GestureDetector(
+      onTap: () {
+        // Absorb taps on the bottom section to prevent triggering the background tap
+      },
+      child: Container(
+        margin: const EdgeInsets.all(16),
+        padding: const EdgeInsets.all(12), // ✅ REDUCED: From 16 to 12
+        decoration: BoxDecoration(
+          color: Colors.white.withValues(alpha: 0.9), // ✅ UPDATED: Increased opacity from 0.7 to 0.9
+          borderRadius: BorderRadius.circular(20),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withValues(alpha: 0.1),
+              blurRadius: 12,
+              offset: const Offset(0, 4),
+            ),
+          ],
+        ),
+        child: Column(
+          children: [
+            // Edit controls
+            _buildEditControls(),
+            
+            const SizedBox(height: 16), // ✅ REDUCED: From 20 to 16
+            
+            // Save button
+            _buildSaveButton(),
+          ],
+        ),
+      ),
+    );
   }
 
   Widget _buildEditControls() {
     return Column(
       children: [
         _buildControlRow('Sets', sets, (value) => setState(() => sets = value)),
-        const SizedBox(height: 16),
+        const SizedBox(height: 12), // ✅ REDUCED: From 16 to 12
         _buildControlRow('Reps', reps, (value) => setState(() => reps = value)),
-        const SizedBox(height: 16),
+        const SizedBox(height: 12), // ✅ REDUCED: From 16 to 12
         _buildControlRow('Minutes', duration, (value) => setState(() => duration = value)),
       ],
     );
@@ -214,7 +364,7 @@ class _EditDrillViewState extends State<EditDrillView> {
             style: const TextStyle(
               fontFamily: 'Poppins',
               fontWeight: FontWeight.w600,
-              fontSize: 16,
+              fontSize: 14, // ✅ REDUCED: From 16 to 14
               color: Colors.black87,
             ),
           ),
@@ -222,22 +372,34 @@ class _EditDrillViewState extends State<EditDrillView> {
         Expanded(
           flex: 3,
           child: Container(
-            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6), // ✅ REDUCED: From 16,8 to 12,6
             decoration: BoxDecoration(
               color: Colors.grey.shade100,
-              borderRadius: BorderRadius.circular(25),
+              borderRadius: BorderRadius.circular(20), // ✅ REDUCED: From 25 to 20
               border: Border.all(color: Colors.grey.shade300),
             ),
             child: Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
+                // Minus button
                 GestureDetector(
-                  onTap: () {
-                    if (value > 1) onChanged(value - 1);
-                  },
+                  onTapDown: value > 1 ? (_) {
+                    HapticUtils.lightImpact();
+                    _startHoldToRepeat(() {
+                      int currentValue = _getCurrentValue(label);
+                      if (currentValue > 1) {
+                        onChanged(currentValue - 1);
+                      }
+                    }, () {
+                      int currentValue = _getCurrentValue(label);
+                      return currentValue > 1;
+                    });
+                  } : null,
+                  onTapUp: (_) => _stopHoldToRepeat(),
+                  onTapCancel: () => _stopHoldToRepeat(),
                   child: Container(
-                    width: 32,
-                    height: 32,
+                    width: 28, // ✅ REDUCED: From 32 to 28
+                    height: 28, // ✅ REDUCED: From 32 to 28
                     decoration: BoxDecoration(
                       color: value > 1 ? Colors.grey.shade300 : Colors.grey.shade200,
                       shape: BoxShape.circle,
@@ -245,7 +407,7 @@ class _EditDrillViewState extends State<EditDrillView> {
                     child: Icon(
                       Icons.remove,
                       color: value > 1 ? Colors.black54 : Colors.grey.shade400,
-                      size: 16,
+                      size: 14, // ✅ REDUCED: From 16 to 14
                     ),
                   ),
                 ),
@@ -254,23 +416,37 @@ class _EditDrillViewState extends State<EditDrillView> {
                   style: const TextStyle(
                     fontFamily: 'Poppins',
                     fontWeight: FontWeight.bold,
-                    fontSize: 18,
+                    fontSize: 16, // ✅ REDUCED: From 18 to 16
                     color: Colors.black,
                   ),
                 ),
+                // Plus button
                 GestureDetector(
-                  onTap: () => onChanged(value + 1),
+                  onTapDown: value < _getMaxValue(label) ? (_) {
+                    HapticUtils.lightImpact();
+                    _startHoldToRepeat(() {
+                      int currentValue = _getCurrentValue(label);
+                      if (currentValue < _getMaxValue(label)) {
+                        onChanged(currentValue + 1);
+                      }
+                    }, () {
+                      int currentValue = _getCurrentValue(label);
+                      return currentValue < _getMaxValue(label);
+                    });
+                  } : null,
+                  onTapUp: (_) => _stopHoldToRepeat(),
+                  onTapCancel: () => _stopHoldToRepeat(),
                   child: Container(
-                    width: 32,
-                    height: 32,
+                    width: 28, // ✅ REDUCED: From 32 to 28
+                    height: 28, // ✅ REDUCED: From 32 to 28
                     decoration: BoxDecoration(
-                      color: Colors.grey.shade300,
+                      color: value < _getMaxValue(label) ? Colors.grey.shade300 : Colors.grey.shade200,
                       shape: BoxShape.circle,
                     ),
-                    child: const Icon(
+                    child: Icon(
                       Icons.add,
-                      color: Colors.black54,
-                      size: 16,
+                      color: value < _getMaxValue(label) ? Colors.black54 : Colors.grey.shade400,
+                      size: 14, // ✅ REDUCED: From 16 to 14
                     ),
                   ),
                 ),
@@ -283,44 +459,128 @@ class _EditDrillViewState extends State<EditDrillView> {
   }
 
   Widget _buildSaveButton() {
-    return Container(
-      padding: const EdgeInsets.all(16),
-      child: SizedBox(
-        width: double.infinity,
-        height: 56,
-        child: ElevatedButton(
-          onPressed: _saveChanges,
-          style: ElevatedButton.styleFrom(
-            backgroundColor: AppTheme.buttonPrimary,
-            foregroundColor: AppTheme.textOnPrimary,
-            elevation: 0,
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(AppTheme.radiusLarge),
-            ),
+    return SizedBox(
+      width: double.infinity,
+      height: 56,
+      child: ElevatedButton(
+        onPressed: () {
+          HapticUtils.mediumImpact();
+          _saveChanges();
+        },
+        style: ElevatedButton.styleFrom(
+          backgroundColor: AppTheme.primaryYellow,
+          foregroundColor: Colors.white,
+          elevation: 2,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(16),
           ),
-          child: Text(
-            'Save Changes',
-            style: AppTheme.buttonTextMedium,
+        ),
+        child: const Text(
+          'Save Changes',
+          style: TextStyle(
+            fontFamily: 'Poppins',
+            fontWeight: FontWeight.bold,
+            fontSize: 14, // ✅ REDUCED: From 16 to 14
           ),
         ),
       ),
     );
   }
 
+  // Helper methods remain the same
+  int _getCurrentValue(String label) {
+    switch (label) {
+      case 'Sets':
+        return sets;
+      case 'Reps':
+        return reps;
+      case 'Minutes':
+        return duration;
+      default:
+        return 0;
+    }
+  }
+
+  int _getMaxValue(String label) {
+    switch (label) {
+      case 'Sets':
+        return 99;
+      case 'Reps':
+        return 999;
+      case 'Minutes':
+        return 120;
+      default:
+        return 99;
+    }
+  }
+
+  void _startHoldToRepeat(VoidCallback action, bool Function() canContinue) {
+    _holdTimer?.cancel();
+    _repeatTimer?.cancel();
+    
+    action();
+    
+    _holdTimer = Timer(const Duration(milliseconds: 500), () {
+      if (canContinue()) {
+        _startRepeating(action, canContinue);
+      }
+    });
+  }
+
+  void _startRepeating(VoidCallback action, bool Function() canContinue) {
+    int elapsedMs = 0;
+    int lastActionTime = 0;
+    
+    _repeatTimer = Timer.periodic(const Duration(milliseconds: 50), (timer) {
+      if (!canContinue()) {
+        timer.cancel();
+        return;
+      }
+      
+      elapsedMs += 50;
+      
+      int currentInterval;
+      if (elapsedMs < 1000) {
+        currentInterval = 200;
+      } else if (elapsedMs < 2000) {
+        currentInterval = 150;
+      } else if (elapsedMs < 3000) {
+        currentInterval = 100;
+      } else {
+        currentInterval = 50;
+      }
+      
+      if (elapsedMs - lastActionTime >= currentInterval) {
+        action();
+        HapticUtils.lightImpact();
+        lastActionTime = elapsedMs;
+      }
+    });
+  }
+
+  void _stopHoldToRepeat() {
+    _holdTimer?.cancel();
+    _repeatTimer?.cancel();
+  }
+
+  // ✅ ADDED: Toggle UI visibility for tap-to-hide functionality
+  void _toggleUIVisibility() {
+    setState(() {
+      _isUIVisible = !_isUIVisible;
+    });
+  }
+
   void _saveChanges() {
-    // Update the drill in the session using AppStateService
     final appState = Provider.of<AppStateService>(context, listen: false);
     
-    // Only update if the drill is actually in the session
-    if (appState.isDrillInSession(widget.drill)) {
+    if (appState.isDrillInSession(widget.editableDrill.drill)) {
       appState.updateDrillInSession(
-        widget.drill.id,
+        widget.editableDrill.drill.id,
         sets: sets,
         reps: reps,
         duration: duration,
       );
       
-      // Call the onSave callback if provided
       widget.onSave?.call();
       
       ScaffoldMessenger.of(context).showSnackBar(
@@ -339,14 +599,10 @@ class _EditDrillViewState extends State<EditDrillView> {
       context,
       MaterialPageRoute(
         builder: (context) => DrillDetailView(
-          drill: widget.drill,
+          drill: widget.editableDrill.drill,
           isInSession: true,
         ),
       ),
     );
-  }
-
-  Color _getSkillColor(String skill) {
-    return AppTheme.getSkillColor(skill);
   }
 } 

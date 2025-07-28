@@ -33,6 +33,11 @@ class ForgotPasswordModel extends ChangeNotifier {
 
   set forgotPasswordStep(int value) {
     _forgotPasswordStep = value;
+    // Clear password fields when moving to step 3
+    if (value == 3) {
+      _forgotPasswordNewPassword = '';
+      _forgotPasswordConfirmPassword = '';
+    }
     notifyListeners();
   }
 

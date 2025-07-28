@@ -5,6 +5,9 @@ import '../models/login_state_model.dart';
 import 'api_service.dart';
 import 'user_manager_service.dart';
 import 'authentication_service.dart';
+import 'loading_state_service.dart';
+import 'package:shared_preferences/shared_preferences.dart';
+import 'app_state_service.dart';
 
 /// Login Service
 /// Mirrors Swift LoginService for handling authentication API calls
@@ -16,6 +19,7 @@ class LoginService {
 
   final ApiService _apiService = ApiService.shared;
   final UserManagerService _userManager = UserManagerService.instance;
+  final LoadingStateService _loadingService = LoadingStateService.instance;
 
   /// Login user with email and password (mirrors Swift loginUser)
   Future<bool> loginUser({
@@ -34,18 +38,38 @@ class LoginService {
 
     if (kDebugMode) {
       print('🔐 LoginService: Attempting login for ${loginModel.email}');
+      if (_userManager.isGuestMode) {
+        print('👤 LoginService: User is in guest mode, will exit guest mode before login');
+      }
     }
 
     loginModel.setLoading(true);
     loginModel.clearError();
+    
+    // Start loading with progress tracking
+    _loadingService.startLoading(
+      type: LoadingType.login,
+      initialMessage: 'Signing you in...',
+    );
 
     try {
+      // ✅ CRITICAL FIX: Exit guest mode before authentication attempt
+      if (_userManager.isGuestMode) {
+        await _userManager.exitGuestMode();
+        if (kDebugMode) {
+          print('✅ LoginService: Exited guest mode before login attempt');
+        }
+      }
+      
       // Create login request
       final loginRequest = LoginRequest(
         email: loginModel.email,
         password: loginModel.password,
       );
 
+      // Update progress: validating credentials
+      _loadingService.updateProgress(0.3, message: 'Validating credentials...');
+      
       // Make API call to login endpoint
       final response = await _apiService.post(
         '/login/',
@@ -54,6 +78,9 @@ class LoginService {
       );
 
       if (response.isSuccess && response.data != null) {
+        // Update progress: connecting to server
+        _loadingService.updateProgress(0.6, message: 'Connecting to server...');
+        
         // Parse login response
         final loginResponse = LoginResponse.fromJson(response.data!);
         
@@ -62,6 +89,9 @@ class LoginService {
           print('🔑 Access token received: ${loginResponse.accessToken.substring(0, 20)}...');
         }
 
+        // Update progress: loading user data
+        _loadingService.updateProgress(0.9, message: 'Loading your data...');
+        
         // Update user manager with new auth data
         await _userManager.updateUserData(
           email: loginResponse.email,
@@ -69,6 +99,13 @@ class LoginService {
           refreshToken: loginResponse.refreshToken,
         );
 
+        // ✅ CRITICAL FIX: Handle authentication state transition 
+        _loadingService.updateProgress(0.95, message: 'Setting up your account...');
+        await AppStateService.instance.handleAuthenticationTransition();
+
+        // Complete loading
+        _loadingService.completeLoading();
+        
         // Reset login form
         loginModel.resetLoginInfo();
         
@@ -78,10 +115,17 @@ class LoginService {
         // Handle API errors
         String errorMessage = 'Failed to login. Please try again.';
         
-        if (response.statusCode == 401) {
-          errorMessage = 'Invalid credentials, please try again.';
-        } else if (response.error != null) {
+        // ✅ IMPROVED: Use specific backend error messages when available
+        if (response.error != null) {
           errorMessage = response.error!;
+        } else if (response.statusCode == 401) {
+          errorMessage = 'Invalid credentials, please try again.';
+        } else if (response.statusCode == 400) {
+          errorMessage = 'Invalid request. Please check your information.';
+        } else if (response.statusCode == 429) {
+          errorMessage = 'Too many login attempts. Please wait before trying again.';
+        } else if (response.statusCode == 500) {
+          errorMessage = 'Server error. Please try again later.';
         }
         
         loginModel.setErrorMessage(errorMessage);
@@ -110,6 +154,10 @@ class LoginService {
       
     } finally {
       loginModel.setLoading(false);
+      // Reset loading service on error
+      if (_loadingService.isLoading) {
+        _loadingService.reset();
+      }
     }
   }
 
@@ -199,6 +247,10 @@ class LoginService {
       print('🚪 LoginService: Logging out user');
     }
 
+    // ✅ FORCE RESET: Clear any lingering session state that might interfere with navigation
+    final appState = AppStateService.instance;
+    appState.clearUserData();
+    
     // Clear user data
     await _userManager.logout();
     
@@ -207,6 +259,78 @@ class LoginService {
     
     if (kDebugMode) {
       print('✅ LoginService: User logged out successfully');
+    }
+  }
+
+  /// Delete user account and clear all data (mirrors Swift deleteAccount)
+  Future<bool> deleteAccount() async {
+    if (kDebugMode) {
+      print('🗑️ LoginService: Deleting user account');
+    }
+
+    try {
+      // Store email before clearing for logging
+      final userEmail = _userManager.email;
+      
+      // ✅ FORCE RESET: Clear any lingering session state that might interfere with navigation
+      final appState = AppStateService.instance;
+      appState.clearUserData();
+      
+      // Make DELETE request to backend
+      final response = await _apiService.delete(
+        '/delete-account/',
+        requiresAuth: true,
+      );
+
+      if (kDebugMode) {
+        print('📥 Backend response status: ${response.statusCode}');
+        if (response.data != null) {
+          print('Response: ${response.data}');
+        }
+      }
+
+      if (response.isSuccess) {
+        // Clear all user data
+        if (kDebugMode) {
+          print('\n🗑️ Deleting account for user: $userEmail');
+        }
+
+        // 1. Clear user manager data
+        await _userManager.logout();
+        if (kDebugMode) {
+          print('  ✓ Cleared user manager data');
+        }
+
+        // 2. Clear authentication service data
+        await AuthenticationService.shared.clearInvalidTokens();
+        if (kDebugMode) {
+          print('  ✓ Cleared authentication data');
+        }
+
+        // 3. Clear shared preferences (equivalent to UserDefaults)
+        final prefs = await SharedPreferences.getInstance();
+        await prefs.clear();
+        if (kDebugMode) {
+          print('  ✓ Cleared shared preferences data');
+        }
+
+        if (kDebugMode) {
+          print('✅ Account deleted and all data cleared successfully');
+        }
+        
+        return true;
+      } else {
+        if (kDebugMode) {
+          print('❌ Failed to delete account: ${response.statusCode}');
+          print('Error: ${response.error}');
+        }
+        return false;
+      }
+    } catch (e) {
+      if (kDebugMode) {
+        print('❌ Error deleting account: $e');
+      }
+      return false;
     }
   }
 } 

@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/foundation.dart';
+import 'package:flutter/services.dart'; // ✅ ADDED: For SystemChrome orientation locking
 import 'package:provider/provider.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:rive/rive.dart';
@@ -11,11 +12,22 @@ import 'services/app_state_service.dart';
 import 'services/api_service.dart';
 import 'services/authentication_service.dart';
 import 'services/user_manager_service.dart';
+import 'services/android_compatibility_service.dart'; // ✅ ADDED: Import Android compatibility service
+import 'services/loading_state_service.dart';
 import 'constants/app_theme.dart';
 import 'config/app_config.dart';
+import 'widgets/bravo_loading_indicator.dart';
+
+// Global flag to track intro animation - persists across widget rebuilds
+bool _hasShownIntroAnimation = false;
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
+  
+  // ✅ ADDED: Lock orientation to portrait only (iPhone-only, portrait-only)
+  await SystemChrome.setPreferredOrientations([
+    DeviceOrientation.portraitUp,
+  ]);
   
   // Load environment variables from .env file
   await dotenv.load(fileName: ".env");
@@ -26,6 +38,9 @@ void main() async {
     print('📱 ${AppConfig.debugInfo}');
     print('🌐 Phone Wi-Fi IP: ${AppConfig.phoneWifiIP}');
   }
+  
+  // ✅ ADDED: Initialize Android compatibility service
+  await AndroidCompatibilityService.shared.initialize();
   
   // Initialize services
   ApiService.shared.initialize();
@@ -39,13 +54,46 @@ void main() async {
   
   if (kDebugMode) {
     print('✅ All services initialized successfully');
+    // ✅ ADDED: Log Android debug info if on Android
+    AndroidCompatibilityService.shared.logAndroidDebugInfo();
   }
   
   runApp(const MyApp());
 }
 
-class MyApp extends StatelessWidget {
+class MyApp extends StatefulWidget {
   const MyApp({super.key});
+
+  @override
+  State<MyApp> createState() => _MyAppState();
+}
+
+class _MyAppState extends State<MyApp> {
+  bool _isShowingIntro = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _showIntroIfNeeded();
+  }
+
+  void _showIntroIfNeeded() {
+    if (!_hasShownIntroAnimation) {
+      setState(() {
+        _isShowingIntro = true;
+        _hasShownIntroAnimation = true; // Set global flag
+      });
+      
+      // Auto-complete intro after 6 seconds
+      Future.delayed(const Duration(seconds: 6), () {
+        if (mounted) {
+          setState(() {
+            _isShowingIntro = false;
+          });
+        }
+      });
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -54,11 +102,29 @@ class MyApp extends StatelessWidget {
         ChangeNotifierProvider.value(value: AppStateService.instance),
         ChangeNotifierProvider.value(value: UserManagerService.instance),
         ChangeNotifierProvider.value(value: AuthenticationService.shared),
+        ChangeNotifierProvider.value(value: LoadingStateService.instance),
       ],
       child: MaterialApp(
         title: 'BravoBall',
         theme: AppTheme.lightTheme,
-        home: const AuthenticationWrapper(),
+        home: Stack(
+          children: [
+            // Main app content
+            const AuthenticationChecker(),
+            
+            // Intro animation overlay (only on true app startup)
+            if (_isShowingIntro)
+              Container(
+                width: MediaQuery.of(context).size.width,
+                height: MediaQuery.of(context).size.height,
+                color: Colors.transparent,
+                child: const RiveAnimation.asset(
+                  'assets/rive/BravoBall_Intro.riv',
+                  fit: BoxFit.cover,
+                ),
+              ),
+          ],
+        ),
         debugShowCheckedModeBanner: false,
         // Show performance overlay if enabled in debug mode
         showPerformanceOverlay: AppConfig.showPerformanceOverlay,
@@ -67,10 +133,9 @@ class MyApp extends StatelessWidget {
   }
 }
 
-/// Authentication Wrapper
-/// Determines whether to show welcome page or main app based on auth state
-class AuthenticationWrapper extends StatelessWidget {
-  const AuthenticationWrapper({super.key});
+/// Authentication Checker - Simple widget that checks auth state and shows appropriate content
+class AuthenticationChecker extends StatelessWidget {
+  const AuthenticationChecker({super.key});
 
   @override
   Widget build(BuildContext context) {
@@ -78,178 +143,178 @@ class AuthenticationWrapper extends StatelessWidget {
       builder: (context, userManager, authService, child) {
         // Show loading screen while checking authentication
         if (authService.isCheckingAuth) {
-          return const AuthLoadingScreen();
-        }
-
-        // Show intro animation if needed
-        if (userManager.showIntroAnimation) {
-          return IntroAnimationScreen(
-            onComplete: () {
-              userManager.hideIntroAnimation();
-            },
+          return const BravoLoginLoadingIndicator(
+            message: 'Welcome back! Checking your credentials...',
           );
         }
 
-        // Show main app if user is logged in
-        if (userManager.isLoggedIn) {
-          return const MainTabView();
+        // ✅ NEW: State validation and recovery on app startup
+        if (!userManager.isInValidState) {
+          if (kDebugMode) {
+            print('🚨 DETECTED INVALID STATE ON APP STARTUP');
+            print(userManager.debugInfo);
+            print('Attempting state recovery...');
+          }
+          
+          // Attempt to recover from invalid state
+          WidgetsBinding.instance.addPostFrameCallback((_) async {
+            await _recoverFromInvalidState(userManager);
+          });
+          
+          return const BravoLoginLoadingIndicator(
+            message: 'Fixing account state...',
+          );
         }
 
-        // User is not logged in - show welcome page with create account and login buttons
-        return const OnboardingFlow();
+        // Return appropriate content based on authentication state
+        // ✅ UPDATED: Check for both logged in users AND guest users
+        if (userManager.isLoggedIn || userManager.isGuestMode) {
+          return const AuthenticatedApp();
+        } else {
+          return const UnauthenticatedApp();
+        }
+      },
+    );
+  }
+  
+  /// ✅ NEW: Recover from invalid authentication state
+  Future<void> _recoverFromInvalidState(UserManagerService userManager) async {
+    if (kDebugMode) {
+      print('🔧 Starting state recovery...');
+    }
+    
+    try {
+      // If user appears to be in guest mode but has tokens, clear the tokens
+      if (userManager.isGuestMode && (userManager.accessToken.isNotEmpty || userManager.refreshToken.isNotEmpty)) {
+        if (kDebugMode) {
+          print('🔧 Guest mode with tokens detected - clearing tokens');
+        }
+        await userManager.logout(skipNotification: true);
+        await userManager.enterGuestMode();
+      }
+      // If user appears authenticated but missing tokens, log them out
+      else if (userManager.isLoggedIn && userManager.accessToken.isEmpty) {
+        if (kDebugMode) {
+          print('🔧 Logged in without tokens detected - logging out');
+        }
+        await userManager.logout();
+      }
+      // If user has tokens but not marked as logged in, attempt to restore login state
+      else if (!userManager.isLoggedIn && userManager.accessToken.isNotEmpty && !userManager.isGuestMode) {
+        if (kDebugMode) {
+          print('🔧 Has tokens but not logged in - attempting to restore login state');
+        }
+        // This is a tricky case - we have tokens but user isn't marked as logged in
+        // We should validate the tokens with the backend or clear them
+        await userManager.logout(); // Clear potentially invalid tokens
+      }
+      
+      if (kDebugMode) {
+        print('✅ State recovery complete');
+        print(userManager.debugInfo);
+      }
+    } catch (e) {
+      if (kDebugMode) {
+        print('❌ Error during state recovery: $e');
+      }
+      // If recovery fails, force logout to ensure clean state
+      await userManager.logout();
+    }
+  }
+}
+
+/// Authenticated App - Handles logged-in user flow
+class AuthenticatedApp extends StatefulWidget {
+  const AuthenticatedApp({super.key});
+
+  @override
+  State<AuthenticatedApp> createState() => _AuthenticatedAppState();
+}
+
+class _AuthenticatedAppState extends State<AuthenticatedApp> {
+  bool _hasLoadedBackendData = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadBackendDataIfNeeded();
+  }
+
+  void _loadBackendDataIfNeeded() {
+    final userManager = UserManagerService.instance;
+    final appState = AppStateService.instance;
+    
+    // ✅ UPDATED: Skip backend data loading for guest users
+    if (userManager.isGuestMode) {
+      // Guest users don't need backend data, set initial load to false immediately
+      appState.setInitialLoadState(false);
+      
+      if (kDebugMode) {
+        print('👤 Guest user detected - skipping backend data load');
+      }
+      return;
+    }
+    
+    // Load backend data if user has account history and we haven't loaded yet
+    if (userManager.userHasAccountHistory && !_hasLoadedBackendData) {
+      if (kDebugMode) {
+        print('📱 Loading backend data for user: ${userManager.email}');
+      }
+      
+      appState.loadBackendData().then((_) {
+        if (mounted) {
+          setState(() {
+            _hasLoadedBackendData = true;
+          });
+        }
+      });
+    } else {
+      // If no user history, set isInitialLoad to false immediately
+      appState.setInitialLoadState(false);
+      
+      if (kDebugMode) {
+        print('✅ Initialization complete - isInitialLoad set to false (no user history)');
+      }
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Consumer<AppStateService>(
+      builder: (context, appState, child) {
+        // Show a smoother loading transition while backend data loads
+        if (appState.isInitialLoad) {
+          return const BravoLoginLoadingIndicator(
+            message: 'Getting everything ready...',
+          );
+        }
+        
+        return const MainTabView();
       },
     );
   }
 }
 
-/// Auth Loading Screen
-/// Shows while checking authentication status on app start
+/// Unauthenticated App - Handles onboarding and login flow
+class UnauthenticatedApp extends StatelessWidget {
+  const UnauthenticatedApp({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return const OnboardingFlow();
+  }
+}
+
+/// Auth Loading Screen - Shows while checking authentication status on app start
+/// Now using the enhanced BravoLoadingIndicator
 class AuthLoadingScreen extends StatelessWidget {
   const AuthLoadingScreen({super.key});
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
+    return const BravoLoadingIndicator(
+      message: 'Welcome to BravoBall',
       backgroundColor: AppTheme.primaryPurple,
-      body: Center(
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            // Logo/Animation placeholder
-            Container(
-              width: 120,
-              height: 120,
-              decoration: BoxDecoration(
-                color: Colors.white.withOpacity(0.2),
-                borderRadius: BorderRadius.circular(AppTheme.radiusLarge),
-              ),
-              child: const Icon(
-                Icons.sports_soccer,
-                size: 60,
-                color: Colors.white,
-              ),
-            ),
-            
-            const SizedBox(height: AppTheme.spacingLarge),
-            
-            // App Name
-            Text(
-              'BravoBall',
-              style: AppTheme.headlineLarge.copyWith(
-                color: Colors.white,
-                fontSize: 36,
-              ),
-            ),
-            
-            const SizedBox(height: AppTheme.spacingMedium),
-            
-            // Loading indicator
-            const CircularProgressIndicator(
-              valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
-              strokeWidth: 3,
-            ),
-            
-            const SizedBox(height: AppTheme.spacingMedium),
-            
-            Text(
-              'Checking authentication...',
-              style: AppTheme.bodyMedium.copyWith(
-                color: Colors.white.withOpacity(0.8),
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-}
-
-/// Intro Animation Screen
-/// Shows app intro animation (you can replace with Rive animation)
-class IntroAnimationScreen extends StatefulWidget {
-  final VoidCallback onComplete;
-
-  const IntroAnimationScreen({
-    Key? key,
-    required this.onComplete,
-  }) : super(key: key);
-
-  @override
-  State<IntroAnimationScreen> createState() => _IntroAnimationScreenState();
-}
-
-class _IntroAnimationScreenState extends State<IntroAnimationScreen>
-    with SingleTickerProviderStateMixin {
-  late AnimationController _controller;
-  late Animation<double> _fadeAnimation;
-  late Animation<double> _scaleAnimation;
-
-  @override
-  void initState() {
-    super.initState();
-    
-    _controller = AnimationController(
-      duration: const Duration(seconds: 2),
-      vsync: this,
-    );
-    
-    _fadeAnimation = Tween<double>(
-      begin: 0.0,
-      end: 1.0,
-    ).animate(CurvedAnimation(
-      parent: _controller,
-      curve: Curves.easeIn,
-    ));
-    
-    _scaleAnimation = Tween<double>(
-      begin: 0.5,
-      end: 1.0,
-    ).animate(CurvedAnimation(
-      parent: _controller,
-      curve: Curves.elasticOut,
-    ));
-    
-    _controller.forward();
-    
-    // Auto-complete after animation
-    Future.delayed(const Duration(seconds: 3), () {
-      if (mounted) {
-        widget.onComplete();
-      }
-    });
-  }
-
-  @override
-  void dispose() {
-    _controller.dispose();
-    super.dispose();
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: Colors.white,
-      body: Center(
-        child: AnimatedBuilder(
-          animation: _controller,
-          builder: (context, child) {
-            return FadeTransition(
-              opacity: _fadeAnimation,
-              child: ScaleTransition(
-                scale: _scaleAnimation,
-                child: SizedBox(
-                  width: MediaQuery.of(context).size.width,
-                  height: MediaQuery.of(context).size.height,
-                  child: const RiveAnimation.asset(
-                    'assets/rive/BravoBall_Intro.riv',
-                    fit: BoxFit.cover,
-                  ),
-                ),
-              ),
-            );
-          },
-        ),
-      ),
     );
   }
 }

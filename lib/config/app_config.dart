@@ -9,13 +9,14 @@ class AppConfig {
 
   // MARK: - Environment Configuration
   /// App Development Cases (mirrors Swift appDevCase)
-  /// 1: Production
+  /// 1: Legacy Production (DEPRECATED)
   /// 2: Computer (localhost)
   /// 3: Phone (Wi-Fi IP)
-  static const int appDevCase = 3; // CHANGE THIS TO SWITCH ENVIRONMENTS
+  /// 4: V2 Backend (App Store Review & Production)
+  static const int appDevCase = 4; // 🆕 V2 BACKEND - For App Store submission & production
 
   /// Debug mode toggle
-  static const bool debug = true; // Set false in production
+  static const bool debug = false; // PRODUCTION - Set to false for testing and store submission
 
   /// Wi-Fi IP address for phone testing - loaded from .env file
   /// You can find this by running `ipconfig getifaddr en0` on macOS
@@ -27,20 +28,32 @@ class AppConfig {
     if (kDebugMode) {
       switch (appDevCase) {
         case 1:
-          // Production (simulated during debug)
+          // DEPRECATED: Production (simulated during debug)
           return 'https://bravoball-backend.onrender.com';
         case 2:
           // Localhost for simulator or computer
-          return 'http://127.0.0.1:8000';
+          // Use 10.0.2.2 for Android emulator, 127.0.0.1 for iOS simulator
+          if (defaultTargetPlatform == TargetPlatform.android) {
+            return 'http://10.0.2.2:8000';
+          } else {
+            return 'http://127.0.0.1:8000';
+          }
         case 3:
           // Wi-Fi IP for phone testing
           return 'http://$phoneWifiIP:8000';
+        case 4:
+          // 🆕 V2 Backend for App Store review
+          return 'https://bravoball-v2-backend.onrender.com';
         default:
-          return 'http://127.0.0.1:8000';
+          if (defaultTargetPlatform == TargetPlatform.android) {
+            return 'http://10.0.2.2:8000';
+          } else {
+            return 'http://127.0.0.1:8000';
+          }
       }
     } else {
-      // Always use production in release builds
-      return 'https://bravoball-backend.onrender.com';
+      // V2 Backend for new v2 production
+      return 'https://bravoball-v2-backend.onrender.com';
     }
   }
 
@@ -49,11 +62,13 @@ class AppConfig {
   static String get environmentName {
     switch (appDevCase) {
       case 1:
-        return 'Production';
+        return 'Legacy Production (Deprecated)';
       case 2:
         return 'Localhost';
       case 3:
         return 'Wi-Fi IP';
+      case 4:
+        return 'V2 Backend';
       default:
         return 'Unknown';
     }
@@ -67,6 +82,7 @@ class AppConfig {
   static bool get enableDebugMenu => kDebugMode && debug;
   static bool get logApiCalls => kDebugMode && debug;
   static bool get showPerformanceOverlay => kDebugMode && false;
+  static bool get fastMentalTrainingTimers => kDebugMode && debug; // Speed up mental training timers for testing
 
   // MARK: - Test Data Settings (when useTestData is true)
   static const int testDrillCount = 5;

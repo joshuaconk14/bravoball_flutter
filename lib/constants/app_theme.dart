@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../utils/skill_utils.dart'; // ✅ ADDED: Import skill utilities
 
 /// Global app theme and color definitions
 /// Centralizes all design tokens for consistent styling across the app
@@ -31,13 +32,31 @@ class AppTheme {
   static const Color success = Color(0xFF34C759);
   static const Color warning = Color(0xFFFF9500);
   static const Color error = Color(0xFFFF3B30);
+  static const Color errorDark = Color(0xFFd62d24);
   static const Color info = Color(0xFF007AFF);
   
-  // MARK: - Button Colors
+  // MARK: - Bravo Button Colors
   static const Color buttonPrimary = primaryYellow;
   static const Color buttonPrimaryDark = primaryDarkYellow;
   static const Color buttonSecondary = lightGray;
-  static const Color buttonDisabled = Color(0xFFE5E5EA);
+  static const Color buttonDisabledGray = Color(0xFFE5E5EA);
+  static const Color buttonDisabledDarkGray = Color(0xFFBEBEC2);
+
+  // MARK: - Skill Category Colors
+  static const Color buttonLime = Color(0xFFAEED39);
+  static const Color buttonDarkLime = Color(0xFF90c234);
+  static const Color buttonCyan = Color(0xFF30ffb0);
+  static const Color buttonDarkCyan = Color(0xFF29cf8f);
+  static const Color buttonOrange = Color(0xFFfa8211);
+  static const Color buttonDarkOrange = Color(0xFFcc6d14);
+  static const Color buttonPurple = Color(0xFFd751fc);
+  static const Color buttonDarkPurple = Color(0xFFa53ec2);
+  static const Color buttonBrown = Color(0xFFb07d3a);
+  static const Color buttonDarkBrown = Color(0xFF8a612b);
+  static const Color buttonBlue = Color(0xFF437be0);
+  static const Color buttonDarkBlue = Color(0xFF3a66b5);
+  static const Color buttonBiege = Color(0xFFe3d76b);
+  static const Color buttonDarkBeige = Color(0xFFb8ae58);
   
   // MARK: - Text Colors
   static const Color textPrimary = primaryDark;
@@ -55,16 +74,20 @@ class AppTheme {
   static const Color speechBubbleText = white;
   
   // MARK: - Skill Colors (for drill categories)
-  static const Color skillPassing = Color(0xFF007AFF);
-  static const Color skillShooting = Color(0xFFFF3B30);
-  static const Color skillDribbling = Color(0xFF34C759);
-  static const Color skillFirstTouch = Color(0xFF8E4EC6);
-  static const Color skillDefending = Color(0xFFFF9500);
-  static const Color skillFitness = Color(0xFF32ADE6);
+  static const Color skillPassing = buttonCyan;
+  static const Color skillShooting = buttonPurple;
+  static const Color skillDribbling = buttonOrange;
+  static const Color skillFirstTouch = buttonLime;
+  static const Color skillDefending = buttonBrown;
+  static const Color skillGoalkeeping = buttonBiege;
+  static const Color skillFitness = buttonBlue;
   
   /// Get skill color by skill name
   static Color getSkillColor(String skill) {
-    switch (skill.toLowerCase()) {
+    // ✅ UPDATED: Use centralized skill normalization
+    final normalizedSkill = SkillUtils.normalizeSkill(skill);
+    
+    switch (normalizedSkill) {
       case 'passing':
         return skillPassing;
       case 'shooting':
@@ -75,10 +98,37 @@ class AppTheme {
         return skillFirstTouch;
       case 'defending':
         return skillDefending;
+      case 'goalkeeping':
+        return skillGoalkeeping;
       case 'fitness':
         return skillFitness;
       default:
         return primaryGray;
+    }
+  }
+  
+  /// Get dark version of skill color for back circles
+  static Color getSkillDarkColor(String skill) {
+    // ✅ UPDATED: Use centralized skill normalization
+    final normalizedSkill = SkillUtils.normalizeSkill(skill);
+    
+    switch (normalizedSkill) {
+      case 'passing':
+        return buttonDarkCyan;
+      case 'shooting':
+        return buttonDarkPurple;
+      case 'dribbling':
+        return buttonDarkOrange;
+      case 'first touch':
+        return buttonDarkLime;
+      case 'defending':
+        return skillDefending.withOpacity(0.8);
+      case 'goalkeeping':
+        return skillGoalkeeping.withOpacity(0.8);
+      case 'fitness':
+        return skillFitness.withOpacity(0.8);
+      default:
+        return primaryGray.withOpacity(0.8);
     }
   }
   

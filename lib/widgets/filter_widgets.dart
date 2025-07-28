@@ -1,68 +1,84 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import '../constants/app_theme.dart';
 import '../models/filter_models.dart';
 import '../services/app_state_service.dart';
+import '../utils/haptic_utils.dart';
+import '../utils/skill_utils.dart'; // ✅ ADDED: Import centralized skill utilities
+import '../utils/preference_utils.dart'; // ✅ ADDED: Import centralized preference utilities
+import 'package:flutter/foundation.dart';
 
 class FilterChipWidget extends StatelessWidget {
   final FilterType filterType;
   final String displayText;
-  final VoidCallback onTap;
+  final VoidCallback? onTap;
   final bool isSelected;
 
   const FilterChipWidget({
     Key? key,
     required this.filterType,
     required this.displayText,
-    required this.onTap,
+    this.onTap,
     this.isSelected = false,
   }) : super(key: key);
 
   @override
   Widget build(BuildContext context) {
-    return GestureDetector(
-      onTap: onTap,
-      child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-        decoration: BoxDecoration(
-          color: isSelected ? const Color(0xFFF9CC53) : Colors.grey.shade100,
-          borderRadius: BorderRadius.circular(20),
-          border: Border.all(
-            color: isSelected ? Colors.orange : Colors.grey.shade300,
-            width: 1,
-          ),
-        ),
-        child: Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            _getFilterIcon(),
-            const SizedBox(width: 8),
-            Text(
-              displayText,
-              style: TextStyle(
-                fontFamily: 'Poppins',
-                fontWeight: FontWeight.w500,
-                fontSize: 14,
-                color: isSelected ? Colors.black87 : Colors.grey.shade700,
-              ),
+    final bool isDisabled = onTap == null;
+    
+    return Opacity(
+      opacity: isDisabled ? 0.5 : 1.0,
+      child: GestureDetector(
+        onTap: () {
+          if (onTap != null) {
+            HapticUtils.lightImpact(); // Light haptic for filter interaction
+            onTap!();
+          }
+        },
+        child: Container(
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+          decoration: BoxDecoration(
+            color: isSelected ? AppTheme.primaryLightBlue : Colors.grey.shade100,
+            borderRadius: BorderRadius.circular(20),
+            border: Border.all(
+              color: isSelected ? AppTheme.primaryLightBlue : Colors.grey.shade300,
+              width: 1,
             ),
-          ],
+          ),
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              _getFilterIcon(),
+              const SizedBox(width: 8),
+              Text(
+                displayText,
+                style: TextStyle(
+                  fontFamily: 'Poppins',
+                  fontWeight: FontWeight.w500,
+                  fontSize: 14,
+                  color: isSelected ? Colors.white : Colors.grey.shade700,
+                ),
+              ),
+            ],
+          ),
         ),
       ),
     );
   }
 
   Widget _getFilterIcon() {
+    final iconColor = isSelected ? Colors.white : Colors.grey.shade700;
     switch (filterType) {
       case FilterType.time:
-        return const Icon(Icons.timer, size: 18);
+        return Icon(Icons.timer, size: 18, color: iconColor);
       case FilterType.equipment:
-        return const Icon(Icons.sports_soccer, size: 18);
+        return Icon(Icons.sports_soccer, size: 18, color: iconColor);
       case FilterType.trainingStyle:
-        return const Icon(Icons.fitness_center, size: 18);
+        return Icon(Icons.sports, size: 18, color: iconColor);
       case FilterType.location:
-        return const Icon(Icons.location_on, size: 18);
+        return Icon(Icons.location_on, size: 18, color: iconColor);
       case FilterType.difficulty:
-        return const Icon(Icons.trending_up, size: 18);
+        return Icon(Icons.trending_up, size: 18, color: iconColor);
     }
   }
 }
@@ -85,6 +101,25 @@ class FilterDropdown extends StatelessWidget {
       builder: (context, appState, child) {
         final selectedValue = _getSelectedValue(filterType, appState);
         
+        // Validate that the selected value exists in the options
+        final validatedValue = (selectedValue != null && options.contains(selectedValue)) 
+            ? selectedValue 
+            : null;
+        
+        // Debug logging and cleanup for invalid values
+        if (selectedValue != null && !options.contains(selectedValue)) {
+          if (kDebugMode) {
+            print('🔧 FilterDropdown: Invalid value "$selectedValue" for $title');
+            print('   Available options: $options');
+            print('   Clearing invalid value from app state');
+          }
+          
+          // Clear the invalid value from app state
+          WidgetsBinding.instance.addPostFrameCallback((_) {
+            _updateFilter(filterType, null, appState);
+          });
+        }
+        
         return Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
@@ -105,7 +140,7 @@ class FilterDropdown extends StatelessWidget {
                 borderRadius: BorderRadius.circular(8),
               ),
               child: DropdownButton<String>(
-                value: selectedValue,
+                value: validatedValue,
                 hint: Text('Select $title'),
                 isExpanded: true,
                 underline: Container(),
@@ -114,7 +149,7 @@ class FilterDropdown extends StatelessWidget {
                   return DropdownMenuItem<String>(
                     value: option,
                     child: Text(
-                      option,
+                      PreferenceUtils.formatPreferenceForDisplay(option), // ✅ UPDATED: Use centralized preference formatting
                       style: const TextStyle(
                         fontFamily: 'Poppins',
                         fontSize: 14,
@@ -191,6 +226,7 @@ class EquipmentMultiSelect extends StatelessWidget {
                 final isSelected = appState.preferences.selectedEquipment.contains(equipment);
                 return GestureDetector(
                   onTap: () {
+                    HapticUtils.lightImpact(); // Light haptic for skill selection
                     final newSelection = Set<String>.from(appState.preferences.selectedEquipment);
                     if (isSelected) {
                       newSelection.remove(equipment);
@@ -202,10 +238,10 @@ class EquipmentMultiSelect extends StatelessWidget {
                   child: Container(
                     padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
                     decoration: BoxDecoration(
-                      color: isSelected ? const Color(0xFFF9CC53) : Colors.grey.shade100,
+                      color: isSelected ? AppTheme.primaryLightBlue : Colors.grey.shade100,
                       borderRadius: BorderRadius.circular(20),
                       border: Border.all(
-                        color: isSelected ? Colors.orange : Colors.grey.shade300,
+                        color: isSelected ? AppTheme.primaryLightBlue : Colors.grey.shade300,
                         width: 2,
                       ),
                     ),
@@ -220,7 +256,7 @@ class EquipmentMultiSelect extends StatelessWidget {
                           ),
                         if (isSelected) const SizedBox(width: 6),
                         Text(
-                          equipment,
+                          PreferenceUtils.formatEquipmentForDisplay(equipment), // ✅ UPDATED: Use centralized equipment formatting
                           style: TextStyle(
                             fontFamily: 'Poppins',
                             fontSize: 14,
@@ -290,7 +326,7 @@ class SkillSelector extends StatelessWidget {
       ),
       leading: Icon(
         _getSkillIcon(category.name),
-        color: _getSkillColor(category.name),
+        color: AppTheme.getSkillColor(category.name),
       ),
       children: [
         Padding(
@@ -302,6 +338,7 @@ class SkillSelector extends StatelessWidget {
               final isSelected = selectedSkills.contains(subSkill);
               return GestureDetector(
                 onTap: () {
+                  HapticUtils.lightImpact(); // Light haptic for sub-skill selection
                   final newSelection = Set<String>.from(selectedSkills);
                   if (isSelected) {
                     newSelection.remove(subSkill);
@@ -313,10 +350,10 @@ class SkillSelector extends StatelessWidget {
                 child: Container(
                   padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
                   decoration: BoxDecoration(
-                    color: isSelected ? const Color(0xFFF9CC53) : Colors.grey.shade100,
+                    color: isSelected ? AppTheme.primaryLightBlue : Colors.grey.shade100,
                     borderRadius: BorderRadius.circular(16),
                     border: Border.all(
-                      color: isSelected ? Colors.orange : Colors.grey.shade300,
+                      color: isSelected ? AppTheme.primaryLightBlue : Colors.grey.shade300,
                       width: 2,
                     ),
                   ),
@@ -331,7 +368,7 @@ class SkillSelector extends StatelessWidget {
                         ),
                       if (isSelected) const SizedBox(width: 4),
                       Text(
-                        subSkill,
+                        SkillUtils.formatSkillForDisplay(subSkill), // ✅ UPDATED: Use centralized skill formatting
                         style: TextStyle(
                           fontFamily: 'Poppins',
                           fontSize: 12,
@@ -350,21 +387,6 @@ class SkillSelector extends StatelessWidget {
     );
   }
 
-  Color _getSkillColor(String skillName) {
-    switch (skillName.toLowerCase()) {
-      case 'passing':
-        return Colors.blue;
-      case 'shooting':
-        return Colors.red;
-      case 'dribbling':
-        return Colors.green;
-      case 'first touch':
-        return Colors.purple;
-      default:
-        return Colors.grey;
-    }
-  }
-
   IconData _getSkillIcon(String skillName) {
     switch (skillName.toLowerCase()) {
       case 'passing':
@@ -375,6 +397,10 @@ class SkillSelector extends StatelessWidget {
         return Icons.directions_run;
       case 'first touch':
         return Icons.touch_app;
+      case 'defending':
+        return Icons.shield;
+      case 'goalkeeping':
+        return Icons.sports_handball;
       default:
         return Icons.sports;
     }
@@ -415,7 +441,10 @@ class FilterBottomSheet extends StatelessWidget {
             children: [
               Expanded(
                 child: TextButton(
-                  onPressed: () => Navigator.pop(context),
+                  onPressed: () {
+                    HapticUtils.lightImpact(); // Light haptic for cancel
+                    Navigator.pop(context);
+                  },
                   child: const Text(
                     'Cancel',
                     style: TextStyle(
@@ -428,7 +457,10 @@ class FilterBottomSheet extends StatelessWidget {
               const SizedBox(width: 16),
               Expanded(
                 child: ElevatedButton(
-                  onPressed: () => Navigator.pop(context),
+                  onPressed: () {
+                    HapticUtils.lightImpact(); // Light haptic for apply
+                    Navigator.pop(context);
+                  },
                   style: ElevatedButton.styleFrom(
                     backgroundColor: const Color(0xFFF9CC53),
                     foregroundColor: Colors.white,

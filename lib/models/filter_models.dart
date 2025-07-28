@@ -10,7 +10,7 @@ class FilterOptions {
   ];
   
   static const List<String> trainingStyleOptions = [
-    "medium intensity", "high intensity", "game prep", "game recovery", "rest day"
+    "low intensity", "medium intensity", "high intensity"
   ];
   
   static const List<String> locationOptions = [
@@ -80,6 +80,39 @@ class SkillCategories {
         "Juggling"
       ],
       icon: "first_touch_icon",
+    ),
+    SkillCategory(
+      name: "Defending",
+      subSkills: [
+        "Tackling",
+        "Marking",
+        "Intercepting",
+        "Positioning",
+        "Agility",
+        "Aerial defending"
+      ],
+      icon: "defending_icon",
+    ),
+    SkillCategory(
+      name: "Goalkeeping",
+      subSkills: [
+        "Hand eye coordination",
+        "Diving",
+        "Reflexes",
+        "Shot stopping",
+        "Positioning",
+        "Catching"
+      ],
+      icon: "goalkeeping_icon",
+    ),
+    SkillCategory(
+      name: "Fitness",
+      subSkills: [
+        "Speed",
+        "Endurance",
+        "Agility"
+      ],
+      icon: "fitness_icon",
     ),
   ];
 }

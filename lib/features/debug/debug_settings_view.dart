@@ -5,6 +5,7 @@ import '../../constants/app_theme.dart';
 import '../../config/app_config.dart';
 import '../../services/test_data_service.dart';
 import '../../services/app_state_service.dart';
+import '../../utils/skill_utils.dart'; // ✅ ADDED: Import centralized skill utilities
 
 class DebugSettingsView extends StatefulWidget {
   const DebugSettingsView({Key? key}) : super(key: key);
@@ -62,6 +63,11 @@ class _DebugSettingsViewState extends State<DebugSettingsView> {
             
             // Developer Actions
             _buildDeveloperActionsSection(),
+            
+            const SizedBox(height: 24),
+            
+            // Streak Testing Section (always show for debugging)
+            _buildStreakTestingSection(),
           ],
         ),
       ),
@@ -85,7 +91,7 @@ class _DebugSettingsViewState extends State<DebugSettingsView> {
         borderRadius: BorderRadius.circular(16),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.1),
+            color: Colors.black.withValues(alpha: 0.1),
             blurRadius: 8,
             offset: const Offset(0, 4),
           ),
@@ -99,7 +105,7 @@ class _DebugSettingsViewState extends State<DebugSettingsView> {
               Container(
                 padding: const EdgeInsets.all(8),
                 decoration: BoxDecoration(
-                  color: Colors.white.withOpacity(0.2),
+                  color: Colors.white.withValues(alpha: 0.2),
                   borderRadius: BorderRadius.circular(8),
                 ),
                 child: Icon(
@@ -128,7 +134,7 @@ class _DebugSettingsViewState extends State<DebugSettingsView> {
                         fontFamily: 'Poppins',
                         fontWeight: FontWeight.w500,
                         fontSize: 14,
-                        color: Colors.white.withOpacity(0.9),
+                        color: Colors.white.withValues(alpha: 0.9),
                       ),
                     ),
                   ],
@@ -147,7 +153,7 @@ class _DebugSettingsViewState extends State<DebugSettingsView> {
               fontFamily: 'Poppins',
               fontWeight: FontWeight.w400,
               fontSize: 12,
-              color: Colors.white.withOpacity(0.8),
+              color: Colors.white.withValues(alpha: 0.8),
             ),
           ),
         ],
@@ -370,6 +376,54 @@ class _DebugSettingsViewState extends State<DebugSettingsView> {
     );
   }
 
+  Widget _buildStreakTestingSection() {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        const Text(
+          'Streak Testing',
+          style: TextStyle(
+            fontFamily: 'Poppins',
+            fontWeight: FontWeight.bold,
+            fontSize: 18,
+            color: Colors.black,
+          ),
+        ),
+        
+        const SizedBox(height: 12),
+        
+        Column(
+          children: [
+            _buildActionButton(
+              title: 'Reset Streak',
+              subtitle: 'Set current streak to 0',
+              icon: Icons.refresh,
+              onTap: () => _resetStreak(),
+            ),
+            
+            const SizedBox(height: 8),
+            
+            _buildActionButton(
+              title: 'Add Days to Streak',
+              subtitle: 'Increment current streak by 1',
+              icon: Icons.add_circle,
+              onTap: () => _addDaysToStreak(),
+            ),
+            
+            const SizedBox(height: 8),
+            
+            _buildActionButton(
+              title: 'Add Completed Sessions',
+              subtitle: 'Simulate adding completed sessions',
+              icon: Icons.check_circle,
+              onTap: () => _addCompletedSessions(),
+            ),
+          ],
+        ),
+      ],
+    );
+  }
+
   Widget _buildInfoRow(String label, String value) {
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 4),
@@ -419,7 +473,7 @@ class _DebugSettingsViewState extends State<DebugSettingsView> {
           border: Border.all(color: Colors.grey.shade200),
           boxShadow: [
             BoxShadow(
-              color: Colors.black.withOpacity(0.05),
+              color: Colors.black.withValues(alpha: 0.05),
               blurRadius: 4,
               offset: const Offset(0, 2),
             ),
@@ -430,7 +484,7 @@ class _DebugSettingsViewState extends State<DebugSettingsView> {
             Container(
               padding: const EdgeInsets.all(8),
               decoration: BoxDecoration(
-                color: (color ?? AppTheme.primaryYellow).withOpacity(0.1),
+                color: (color ?? AppTheme.primaryYellow).withValues(alpha: 0.1),
                 borderRadius: BorderRadius.circular(8),
               ),
               child: Icon(
@@ -495,7 +549,7 @@ class _DebugSettingsViewState extends State<DebugSettingsView> {
 
   void _clearSessionData() {
     final appState = Provider.of<AppStateService>(context, listen: false);
-    appState.clearAllSessionData();
+    appState.clearAllData();
     
     TestDataService.debugLog('Clearing all session data');
     ScaffoldMessenger.of(context).showSnackBar(
@@ -593,7 +647,7 @@ class _DebugSettingsViewState extends State<DebugSettingsView> {
               final drill = testDrills[index];
               return ListTile(
                 title: Text(drill.title),
-                subtitle: Text('${drill.skill} - ${drill.duration}min'),
+                subtitle: Text('${SkillUtils.formatSkillForDisplay(drill.skill)} - ${drill.duration}min'), // ✅ UPDATED: Use centralized skill formatting
               );
             },
           ),
@@ -627,6 +681,42 @@ class _DebugSettingsViewState extends State<DebugSettingsView> {
             child: const Text('Crash', style: TextStyle(color: Colors.red)),
           ),
         ],
+      ),
+    );
+  }
+
+  void _resetStreak() {
+    final appState = Provider.of<AppStateService>(context, listen: false);
+    appState.resetStreak();
+    TestDataService.debugLog('Streak reset to 0');
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(
+        content: Text('Streak reset to 0'),
+        backgroundColor: Colors.orange,
+      ),
+    );
+  }
+
+  void _addDaysToStreak() {
+    final appState = Provider.of<AppStateService>(context, listen: false);
+    appState.incrementStreak();
+    TestDataService.debugLog('Streak incremented by 1');
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(
+        content: Text('Streak incremented by 1'),
+        backgroundColor: Colors.green,
+      ),
+    );
+  }
+
+  void _addCompletedSessions() {
+    final appState = Provider.of<AppStateService>(context, listen: false);
+    appState.addCompletedSessions(5); // Simulate adding 5 completed sessions
+    TestDataService.debugLog('Simulated adding 5 completed sessions');
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(
+        content: Text('Simulated adding 5 completed sessions'),
+        backgroundColor: Colors.purple,
       ),
     );
   }

@@ -3,9 +3,10 @@ import 'package:provider/provider.dart';
 import 'package:rive/rive.dart';
 import '../../constants/app_theme.dart';
 import '../../services/login_service.dart';
-import '../../services/user_manager_service.dart';
 import 'forgot_password_view.dart';
 import '../../models/login_state_model.dart';
+import '../../widgets/bravo_button.dart';
+import '../../utils/haptic_utils.dart';
 
 /// Login View
 /// Mirrors Swift LoginView for user authentication UI
@@ -56,24 +57,21 @@ class _LoginViewState extends State<LoginView> {
                 // Welcome Back Title
                 Text(
                   'Welcome Back!',
-                  style: AppTheme.headlineLarge.copyWith(
+                  style: TextStyle(
+                    fontFamily: AppTheme.fontPottaOne,
                     fontSize: 32,
-                    color: AppTheme.primaryDark,
+                    color: AppTheme.primaryYellow,
                   ),
                   textAlign: TextAlign.center,
                 ),
                 
                 const SizedBox(height: AppTheme.spacingXLarge),
                 
-                // Logo/Animation with Bravo character
+                // Logo/Animation with Bravo character - no background
                 Container(
                   height: 200,
                   width: 200,
                   margin: const EdgeInsets.symmetric(horizontal: AppTheme.spacingLarge),
-                  decoration: BoxDecoration(
-                    color: AppTheme.primaryYellow.withOpacity(0.1),
-                    borderRadius: BorderRadius.circular(AppTheme.radiusLarge),
-                  ),
                   child: const RiveAnimation.asset(
                     'assets/rive/Bravo_Animation.riv',
                     fit: BoxFit.contain,
@@ -158,6 +156,10 @@ class _LoginViewState extends State<LoginView> {
               textInputAction: TextInputAction.next,
               autocorrect: false,
               textCapitalization: TextCapitalization.none,
+              onSubmitted: (_) {
+                // Move focus to password field
+                FocusScope.of(context).nextFocus();
+              },
               decoration: InputDecoration(
                 labelText: 'Email',
                 hintText: 'Enter your email',
@@ -182,13 +184,22 @@ class _LoginViewState extends State<LoginView> {
               onChanged: model.setPassword,
               obscureText: !model.isPasswordVisible,
               textInputAction: TextInputAction.done,
-              onSubmitted: (_) => _handleLogin(),
+              onSubmitted: (_) {
+                // ✅ IMPROVED: Dismiss keyboard and attempt login
+                FocusScope.of(context).unfocus();
+                if (model.isFormValid && !model.isLoading) {
+                  _handleLogin();
+                }
+              },
               decoration: InputDecoration(
                 labelText: 'Password',
                 hintText: 'Enter your password',
                 prefixIcon: const Icon(Icons.lock_outline),
                 suffixIcon: IconButton(
-                  onPressed: model.togglePasswordVisibility,
+                  onPressed: () {
+                    HapticUtils.lightImpact(); // Light haptic for password toggle
+                    model.togglePasswordVisibility();
+                  },
                   icon: Icon(
                     model.isPasswordVisible
                         ? Icons.visibility_off
@@ -213,7 +224,10 @@ class _LoginViewState extends State<LoginView> {
     return Align(
       alignment: Alignment.centerRight,
       child: TextButton(
-        onPressed: _handleForgotPassword,
+        onPressed: () {
+          HapticUtils.lightImpact(); // Light haptic for forgot password
+          _handleForgotPassword();
+        },
         child: Text(
           'Forgot Password?',
           style: AppTheme.bodyMedium.copyWith(
@@ -231,33 +245,19 @@ class _LoginViewState extends State<LoginView> {
         return SizedBox(
           width: double.infinity,
           height: 50,
-          child: ElevatedButton(
-            onPressed: model.isLoading || !model.isFormValid 
-                ? null 
-                : _handleLogin,
-            style: ElevatedButton.styleFrom(
-              backgroundColor: AppTheme.primaryYellow,
-              foregroundColor: Colors.white,
-              disabledBackgroundColor: AppTheme.buttonDisabled,
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(AppTheme.radiusLarge),
-              ),
-              elevation: AppTheme.elevationMedium,
-            ),
-            child: model.isLoading
-                ? const SizedBox(
-                    height: 20,
-                    width: 20,
-                    child: CircularProgressIndicator(
-                      strokeWidth: 2,
-                      valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
-                    ),
-                  )
-                : Text(
-                    'Login',
-                    style: AppTheme.buttonTextMedium,
-                  ),
-          ),
+          child: BravoButton(
+              text: 'Login',
+              onPressed: model.isLoading || !model.isFormValid ? null : () {
+                HapticUtils.mediumImpact(); // Medium haptic for login
+                _handleLogin();
+              },
+              color: AppTheme.primaryYellow,
+              backColor: AppTheme.primaryDarkYellow,
+              textColor: Colors.white,
+              disabled: model.isLoading || !model.isFormValid,
+              textSize: 18,
+              height: 50,
+            )
         );
       },
     );
@@ -267,22 +267,20 @@ class _LoginViewState extends State<LoginView> {
     return SizedBox(
       width: double.infinity,
       height: 50,
-      child: OutlinedButton(
-        onPressed: _handleCancel,
-        style: OutlinedButton.styleFrom(
-          foregroundColor: AppTheme.primaryYellow,
-          side: const BorderSide(color: AppTheme.primaryYellow),
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(AppTheme.radiusLarge),
-          ),
-        ),
-        child: Text(
-          'Cancel',
-          style: AppTheme.buttonTextMedium.copyWith(
-            color: AppTheme.primaryYellow,
-          ),
-        ),
-      ),
+      child: BravoButton(
+        text: 'Cancel',
+        onPressed: () {
+          HapticUtils.mediumImpact(); // Medium haptic for cancel
+          _handleCancel();
+        },
+        color: Colors.white,
+        backColor: AppTheme.lightGray,
+        textColor: AppTheme.primaryYellow,
+        disabled: false,
+        textSize: 18,
+        height: 50,
+        borderSide: BorderSide(color: AppTheme.lightGray, width: 2),
+      )
     );
   }
 

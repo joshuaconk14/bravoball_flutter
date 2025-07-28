@@ -1,14 +1,19 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
-import '../../models/drill_model.dart';
+import '../../models/editable_drill_model.dart';
 import '../../models/filter_models.dart';
 import '../../services/app_state_service.dart';
 import '../../widgets/filter_widgets.dart';
 import '../../widgets/drill_card_widget.dart';
+import '../../widgets/reusable_drill_search_view.dart';
+import '../../widgets/info_popup_widget.dart';
+import '../../utils/haptic_utils.dart';
+import '../../utils/skill_utils.dart'; // ✅ ADDED: Import centralized skill utilities
+import '../../utils/preference_utils.dart'; // ✅ ADDED: Import centralized preference utilities
 import 'drill_detail_view.dart';
-import 'drill_search_view.dart';
 import 'edit_drill_view.dart';
 import '../../constants/app_theme.dart';
+import 'package:flutter/foundation.dart'; // Added for kDebugMode
 
 class SessionGeneratorEditorPage extends StatefulWidget {
   const SessionGeneratorEditorPage({Key? key}) : super(key: key);
@@ -54,13 +59,16 @@ class _SessionGeneratorEditorPageState extends State<SessionGeneratorEditorPage>
     return Consumer<AppStateService>(
       builder: (context, appState, child) {
     return Scaffold(
-      backgroundColor: AppTheme.primaryLightBlue,
+      backgroundColor: Colors.white,
       appBar: AppBar(
         backgroundColor: AppTheme.primaryLightBlue,
         elevation: 0.5,
         leading: IconButton(
-          icon: const Icon(Icons.info_outline, color: Colors.white, size: 28),
-          onPressed: () => _showInfoDialog(context),
+          icon: const Icon(Icons.arrow_back, color: Colors.white, size: 28),
+          onPressed: () {
+            HapticUtils.lightImpact(); // Light haptic for navigation
+            Navigator.of(context).pop();
+          },
         ),
         title: const Text(
           'Edit Session',
@@ -71,68 +79,115 @@ class _SessionGeneratorEditorPageState extends State<SessionGeneratorEditorPage>
           ),
         ),
         centerTitle: true,
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.of(context).pop(),
-            child: const Text(
-              'Done',
-              style: TextStyle(
-                fontFamily: 'Poppins',
-                fontWeight: FontWeight.bold,
-                color: Colors.white,
-                fontSize: 16,
-              ),
-            ),
-          ),
-        ],
       ),
       body: Column(
         children: [
-          // Filter/search area on blue background
-          Padding(
-            padding: const EdgeInsets.fromLTRB(16, 16, 16, 0),
+          // Filter section with shadow (fixed)
+          Container(
+            padding: const EdgeInsets.all(16),
+            decoration: BoxDecoration(
+              color: Colors.white,
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.black.withValues(alpha: 0.10),
+                  blurRadius: 12,
+                  offset: Offset(0, 6),
+                ),
+              ],
+            ),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
+                // Selected skills display
                 if (appState.preferences.selectedSkills.isNotEmpty)
                   _buildSelectedSkillsSection(appState),
                 if (appState.preferences.selectedSkills.isNotEmpty)
                   const SizedBox(height: 12),
+                // Filter chips
                 _buildFilterChips(appState),
               ],
             ),
           ),
-          // White card with rounded top border for session drills and below
+          // Drills section (scrollable)
           Expanded(
-            child: Container(
-              width: double.infinity,
-              margin: const EdgeInsets.only(top: 24),
-              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 20),
-              decoration: const BoxDecoration(
-                color: Colors.white,
-                borderRadius: BorderRadius.only(
-                  topLeft: Radius.circular(32),
-                  topRight: Radius.circular(32),
-                ),
-              ),
-              child: SingleChildScrollView(
-                physics: const AlwaysScrollableScrollPhysics(),
-                child: Column(
-                  children: [
-                    _buildSessionDrillsSection(appState),
-                    const SizedBox(height: 20),
-                    _buildAddMoreDrillsButton(appState),
-                    const SizedBox(height: 20),
-                  ],
-                ),
-              ),
+            child: ListView(
+              padding: const EdgeInsets.only(top: 20, left: 16, right: 16, bottom: 32),
+              children: [
+                _buildSessionDrillsSection(appState),
+                if (appState.sessionDrills.isNotEmpty)
+                  const SizedBox(height: 20),
+                if (appState.sessionDrills.isNotEmpty)
+                  _buildAddMoreDrillsButton(appState),
+              ],
             ),
           ),
         ],
       ),
+      floatingActionButton: appState.sessionDrills.isEmpty
+          ? FloatingActionButton(
+              backgroundColor: appState.editableSessionDrills.length >= 10 
+                  ? Colors.grey.shade400 
+                  : AppTheme.primaryLightBlue,
+              foregroundColor: Colors.white,
+              onPressed: appState.editableSessionDrills.length >= 10 ? null : () {
+                HapticUtils.mediumImpact(); // Medium haptic for major action
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (context) => ReusableDrillSearchView(
+                      title: 'Add to Session',
+                      actionButtonText: 'Add to Session',
+                      themeColor: AppTheme.primaryLightBlue,
+                      onDrillsSelected: (selectedDrills) {
+                        int addedCount = 0;
+                        for (final drill in selectedDrills) {
+                          if (appState.addDrillToSession(drill)) {
+                            addedCount++;
+                          }
+                        }
+                        
+                        if (addedCount > 0) {
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            SnackBar(
+                              content: Text('$addedCount drill${addedCount == 1 ? '' : 's'} added to session'),
+                              duration: const Duration(seconds: 2),
+                              backgroundColor: Colors.green,
+                            ),
+                          );
+                        }
+                        
+                        if (addedCount < selectedDrills.length) {
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            SnackBar(
+                              content: const Text('Session limit reached! You can only add up to 10 drills to a session.'),
+                              duration: const Duration(seconds: 3),
+                              backgroundColor: Colors.orange,
+                              action: SnackBarAction(
+                                label: 'OK',
+                                textColor: Colors.white,
+                                onPressed: () {},
+                              ),
+                            ),
+                          );
+                        }
+                      },
+                      isSelected: (drill) => appState.isDrillInSession(drill),
+                    ),
+                  ),
+                );
+              },
+              child: Icon(
+                appState.editableSessionDrills.length >= 10 ? Icons.check : Icons.add, 
+                size: 32
+              ),
+              tooltip: appState.editableSessionDrills.length >= 10 
+                  ? 'Session limit reached (10 drills)' 
+                  : 'Add Drills',
+            )
+          : null,
     );
-      },
-    );
+  },
+);
   }
 
   // Build the selected skills section
@@ -146,7 +201,7 @@ class _SessionGeneratorEditorPageState extends State<SessionGeneratorEditorPage>
             fontFamily: 'Poppins',
             fontWeight: FontWeight.bold,
             fontSize: 16,
-            color: Colors.white,
+            color: Colors.black87,
           ),
         ),
         const SizedBox(height: 8),
@@ -154,9 +209,11 @@ class _SessionGeneratorEditorPageState extends State<SessionGeneratorEditorPage>
                 spacing: 8,
                 runSpacing: 4,
           children: appState.preferences.selectedSkills.map((skill) {
+            // ✅ Strip underscores and replace with spaces
+            final displaySkill = SkillUtils.formatSkillForDisplay(skill); // ✅ UPDATED: Use centralized skill formatting
             return Chip(
               label: Text(
-                skill,
+                displaySkill,
                 style: const TextStyle(
                   fontFamily: 'Poppins',
                   fontWeight: FontWeight.w500,
@@ -164,7 +221,7 @@ class _SessionGeneratorEditorPageState extends State<SessionGeneratorEditorPage>
                 ),
               ),
               backgroundColor: Colors.blue.shade50,
-                  deleteIcon: const Icon(Icons.close, size: 18),
+              deleteIcon: const Icon(Icons.close, size: 18),
               onDeleted: () {
                 final newSkills = Set<String>.from(appState.preferences.selectedSkills);
                 newSkills.remove(skill);
@@ -188,7 +245,7 @@ class _SessionGeneratorEditorPageState extends State<SessionGeneratorEditorPage>
             fontFamily: 'Poppins',
             fontWeight: FontWeight.bold,
             fontSize: 16,
-            color: Colors.white,
+            color: Colors.black87,
           ),
         ),
         const SizedBox(height: 8),
@@ -207,44 +264,70 @@ class _SessionGeneratorEditorPageState extends State<SessionGeneratorEditorPage>
                         ? 'Skills'
                         : 'Skills (${appState.preferences.selectedSkills.length})',
                     isSelected: appState.preferences.selectedSkills.isNotEmpty,
-                    onTap: () => _showSkillsSheet(context, appState),
+                    onTap: () {
+                      HapticUtils.lightImpact(); // Light haptic for filter selection
+                      _showSkillsSheet(context, appState);
+                    },
                   ),
                   const SizedBox(width: 8),
                   FilterChipWidget(
                     filterType: FilterType.time,
-                    displayText: appState.preferences.selectedTime ?? 'Time',
+                    displayText: appState.preferences.selectedTime != null 
+                        ? PreferenceUtils.formatTimeForDisplay(appState.preferences.selectedTime!) 
+                        : 'Time', // ✅ UPDATED: Use centralized time formatting
                     isSelected: appState.preferences.selectedTime != null,
-                    onTap: () => _showFilterSheet(context, FilterType.time, appState),
+                    onTap: () {
+                      HapticUtils.lightImpact(); // Light haptic for filter selection
+                      _showFilterSheet(context, FilterType.time, appState);
+                    },
                   ),
                   const SizedBox(width: 8),
                   FilterChipWidget(
                     filterType: FilterType.equipment,
                     displayText: appState.preferences.selectedEquipment.isEmpty
                         ? 'Equipment'
-                        : 'Equipment (${appState.preferences.selectedEquipment.length})',
-                    isSelected: appState.preferences.selectedEquipment.isNotEmpty,
-                    onTap: () => _showFilterSheet(context, FilterType.equipment, appState),
+                        : 'Equipment (${_getValidEquipmentCount(appState.preferences.selectedEquipment)})',
+                    isSelected: _getValidEquipmentCount(appState.preferences.selectedEquipment) > 0, // ✅ Fixed: Only selected if valid equipment count > 0
+                    onTap: () {
+                      HapticUtils.lightImpact(); // Light haptic for filter selection
+                      _showFilterSheet(context, FilterType.equipment, appState);
+                    },
                   ),
                   const SizedBox(width: 8),
                   FilterChipWidget(
                     filterType: FilterType.trainingStyle,
-                    displayText: appState.preferences.selectedTrainingStyle ?? 'Style',
+                    displayText: appState.preferences.selectedTrainingStyle != null 
+                        ? PreferenceUtils.formatTrainingStyleForDisplay(appState.preferences.selectedTrainingStyle!) 
+                        : 'Style', // ✅ UPDATED: Use centralized training style formatting
                     isSelected: appState.preferences.selectedTrainingStyle != null,
-                    onTap: () => _showFilterSheet(context, FilterType.trainingStyle, appState),
+                    onTap: () {
+                      HapticUtils.lightImpact(); // Light haptic for filter selection
+                      _showFilterSheet(context, FilterType.trainingStyle, appState);
+                    },
                   ),
                   const SizedBox(width: 8),
                   FilterChipWidget(
                     filterType: FilterType.location,
-                    displayText: appState.preferences.selectedLocation ?? 'Location',
+                    displayText: appState.preferences.selectedLocation != null 
+                        ? PreferenceUtils.formatLocationForDisplay(appState.preferences.selectedLocation!) 
+                        : 'Location', // ✅ UPDATED: Use centralized location formatting
                     isSelected: appState.preferences.selectedLocation != null,
-                    onTap: () => _showFilterSheet(context, FilterType.location, appState),
+                    onTap: () {
+                      HapticUtils.lightImpact(); // Light haptic for filter selection
+                      _showFilterSheet(context, FilterType.location, appState);
+                    },
                   ),
                   const SizedBox(width: 8),
                   FilterChipWidget(
                     filterType: FilterType.difficulty,
-                    displayText: appState.preferences.selectedDifficulty ?? 'Difficulty',
+                    displayText: appState.preferences.selectedDifficulty != null 
+                        ? PreferenceUtils.formatDifficultyForDisplay(appState.preferences.selectedDifficulty!) 
+                        : 'Difficulty', // ✅ UPDATED: Use centralized difficulty formatting
                     isSelected: appState.preferences.selectedDifficulty != null,
-                    onTap: () => _showFilterSheet(context, FilterType.difficulty, appState),
+                    onTap: () {
+                      HapticUtils.lightImpact(); // Light haptic for filter selection
+                      _showFilterSheet(context, FilterType.difficulty, appState);
+                    },
                   ),
                   const SizedBox(width: 60), // Extra space for scroll indicator
                 ],
@@ -263,10 +346,10 @@ class _SessionGeneratorEditorPageState extends State<SessionGeneratorEditorPage>
                       begin: Alignment.centerLeft,
                       end: Alignment.centerRight,
                       colors: [
-                        AppTheme.primaryLightBlue.withOpacity(0.0),
-                        AppTheme.primaryLightBlue.withOpacity(0.3),
-                        AppTheme.primaryLightBlue.withOpacity(0.8),
-                        AppTheme.primaryLightBlue,
+                        Colors.white.withValues(alpha: 0.0),
+                        Colors.white.withValues(alpha: 0.3),
+                        Colors.white.withValues(alpha: 0.8),
+                        Colors.white,
                       ],
                       stops: const [0.0, 0.2, 0.6, 1.0],
                     ),
@@ -275,28 +358,40 @@ class _SessionGeneratorEditorPageState extends State<SessionGeneratorEditorPage>
                     alignment: Alignment.centerRight,
                     child: Padding(
                       padding: const EdgeInsets.only(right: 8),
-                      child: Container(
-                        width: 28,
-                        height: 28,
-                        decoration: BoxDecoration(
-                          color: Colors.white,
-                          borderRadius: BorderRadius.circular(14),
-                          boxShadow: [
-                            BoxShadow(
-                              color: Colors.black.withOpacity(0.15),
-                              blurRadius: 6,
-                              offset: const Offset(0, 2),
+                      child: GestureDetector(
+                        onTap: () {
+                          HapticUtils.lightImpact(); // Light haptic for scroll action
+                          if (_filterScrollController.hasClients) {
+                            _filterScrollController.animateTo(
+                              _filterScrollController.position.maxScrollExtent,
+                              duration: const Duration(milliseconds: 300),
+                              curve: Curves.easeInOut,
+                            );
+                          }
+                        },
+                        child: Container(
+                          width: 28,
+                          height: 28,
+                          decoration: BoxDecoration(
+                            color: Colors.white,
+                            borderRadius: BorderRadius.circular(14),
+                            boxShadow: [
+                              BoxShadow(
+                                color: Colors.black.withValues(alpha: 0.15),
+                                blurRadius: 6,
+                                offset: const Offset(0, 2),
+                              ),
+                            ],
+                            border: Border.all(
+                              color: Colors.grey.shade300,
+                              width: 1,
                             ),
-                          ],
-                          border: Border.all(
-                            color: Colors.grey.shade300,
-                            width: 1,
                           ),
-                        ),
-                        child: Icon(
-                          Icons.keyboard_arrow_right,
-                          color: Colors.grey.shade600,
-                          size: 18,
+                          child: Icon(
+                            Icons.keyboard_arrow_right,
+                            color: Colors.grey.shade600,
+                            size: 18,
+                          ),
                         ),
                       ),
                     ),
@@ -311,12 +406,217 @@ class _SessionGeneratorEditorPageState extends State<SessionGeneratorEditorPage>
 
   // Build the session drills section
   Widget _buildSessionDrillsSection(AppStateService appState) {
+    if (appState.sessionDrills.isEmpty && !appState.isLoadingPreferences) {
+      return Column(
+        children: [
+          const SizedBox(height: 32),
+          Container(
+            width: 80,
+            height: 80,
+            decoration: BoxDecoration(
+              color: AppTheme.primaryLightBlue.withValues(alpha: 0.15),
+              borderRadius: BorderRadius.circular(20),
+            ),
+            child: const Icon(Icons.fitness_center, size: 48, color: AppTheme.primaryLightBlue),
+          ),
+          const SizedBox(height: 18),
+          const Text(
+            'No drills in this session',
+            style: TextStyle(
+              fontFamily: 'Poppins',
+              fontWeight: FontWeight.bold,
+              fontSize: 20,
+              color: Colors.black87,
+            ),
+          ),
+          const SizedBox(height: 8),
+          const Text(
+            'Add drills to this session to get started',
+            style: TextStyle(
+              fontFamily: 'Poppins',
+              fontWeight: FontWeight.w400,
+              fontSize: 15,
+              color: Colors.grey,
+            ),
+            textAlign: TextAlign.center,
+          ),
+          const SizedBox(height: 28),
+          SizedBox(
+            width: 200,
+            height: 56,
+            child: ElevatedButton.icon(
+              icon: const Icon(Icons.add, size: 22),
+              label: const Text(
+                'Add Drills',
+                style: TextStyle(
+                  fontFamily: 'Poppins',
+                  fontWeight: FontWeight.w600,
+                  fontSize: 16,
+                  overflow: TextOverflow.visible,
+                ),
+              ),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: AppTheme.primaryLightBlue,
+                foregroundColor: Colors.white,
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(14),
+                ),
+                elevation: 2,
+                padding: const EdgeInsets.symmetric(vertical: 16),
+              ),
+              onPressed: () {
+                HapticUtils.mediumImpact(); // Medium haptic for major action
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (context) => ReusableDrillSearchView(
+                      title: 'Add to Session',
+                      actionButtonText: 'Add to Session',
+                      themeColor: AppTheme.primaryLightBlue,
+                      onDrillsSelected: (selectedDrills) {
+                        int addedCount = 0;
+                        for (final drill in selectedDrills) {
+                          if (appState.addDrillToSession(drill)) {
+                            addedCount++;
+                          }
+                        }
+                        
+                        if (addedCount > 0) {
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            SnackBar(
+                              content: Text('$addedCount drill${addedCount == 1 ? '' : 's'} added to session'),
+                              duration: const Duration(seconds: 2),
+                              backgroundColor: Colors.green,
+                            ),
+                          );
+                        }
+                        
+                        if (addedCount < selectedDrills.length) {
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            SnackBar(
+                              content: const Text('Session limit reached! You can only add up to 10 drills to a session.'),
+                              duration: const Duration(seconds: 3),
+                              backgroundColor: Colors.orange,
+                              action: SnackBarAction(
+                                label: 'OK',
+                                textColor: Colors.white,
+                                onPressed: () {},
+                              ),
+                            ),
+                          );
+                        }
+                      },
+                      isSelected: (drill) => appState.isDrillInSession(drill),
+                    ),
+                  ),
+                );
+              },
+            ),
+          ),
+          const SizedBox(height: 32),
+        ],
+      );
+    }
+    
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        
-        // If no drills in session, show a message
-        if (appState.sessionDrills.isEmpty)
+        // Header row with drill count and clear button - always shown
+        Row(
+          children: [
+            // Info icon on the left
+            GestureDetector(
+              onTap: () {
+                HapticUtils.lightImpact(); // Light haptic for info
+                _showInfoDialog(context);
+              },
+              child: Container(
+                padding: const EdgeInsets.all(8),
+                child: Icon(
+                  Icons.info_outline,
+                  color: AppTheme.primaryGray,
+                  size: 24,
+                ),
+              ),
+            ),
+            const Spacer(),
+            if (appState.editableSessionDrills.isNotEmpty || appState.isLoadingPreferences) ...[
+              Text(
+                appState.isLoadingPreferences 
+                  ? 'Updating...' 
+                  : '${appState.editableSessionDrills.length} drill${appState.editableSessionDrills.length == 1 ? '' : 's'}',
+                style: TextStyle(
+                  fontFamily: 'Poppins',
+                  fontSize: 14,
+                  color: Colors.grey.shade600,
+                ),
+              ),
+              const SizedBox(width: 12),
+              GestureDetector(
+                onTap: () {
+                  HapticUtils.lightImpact(); // Light haptic for clear action
+                  showDialog(
+                    context: context,
+                    builder: (context) => AlertDialog(
+                      title: const Text('Clear Session'),
+                      content: const Text('Are you sure you want to remove all drills from your session?'),
+                      actions: [
+                        TextButton(
+                          onPressed: () {
+                            HapticUtils.lightImpact(); // Light haptic for cancel
+                            Navigator.pop(context);
+                          },
+                          child: const Text('Cancel'),
+                        ),
+                        TextButton(
+                          onPressed: () {
+                            HapticUtils.mediumImpact(); // Medium haptic for clear confirmation
+                            appState.clearSession();
+                            Navigator.pop(context);
+                          },
+                          child: const Text('Clear'),
+                        ),
+                      ],
+                    ),
+                  );
+                },
+                child: Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                  decoration: BoxDecoration(
+                    color: Colors.red.shade50,
+                    borderRadius: BorderRadius.circular(12),
+                    border: Border.all(color: Colors.red.shade200),
+                  ),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Icon(
+                        Icons.clear_all, 
+                        size: 14, 
+                        color: Colors.red.shade600,
+                      ),
+                      const SizedBox(width: 4),
+                      Text(
+                        'Clear',
+                        style: TextStyle(
+                          fontFamily: 'Poppins',
+                          fontSize: 12,
+                          fontWeight: FontWeight.w500,
+                          color: Colors.red.shade600,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            ],
+          ],
+        ),
+        const SizedBox(height: 12),
+        // Content area - either loading or drill list
+        if (appState.isLoadingPreferences)
+          _buildDrillsLoadingSection()
+        else if (appState.editableSessionDrills.isEmpty)
           Container(
             height: 120,
             decoration: BoxDecoration(
@@ -347,20 +647,29 @@ class _SessionGeneratorEditorPageState extends State<SessionGeneratorEditorPage>
           ReorderableListView.builder(
             shrinkWrap: true,
             physics: const NeverScrollableScrollPhysics(),
-            itemCount: appState.sessionDrills.length,
+            itemCount: appState.editableSessionDrills.length,
             onReorder: (oldIndex, newIndex) {
-              appState.reorderSessionDrills(oldIndex, newIndex);
+              if (!appState.isLoadingPreferences) {
+                appState.reorderSessionDrills(oldIndex, newIndex);
+              }
             },
             itemBuilder: (context, index) {
-              final drill = appState.sessionDrills[index];
+              final editableDrill = appState.editableSessionDrills[index];
               return Padding(
-                key: Key(drill.id),
+                key: Key(editableDrill.drill.id),
                 padding: const EdgeInsets.only(bottom: 8),
                 child: DraggableDrillCard(
-                  drill: drill,
-                  isDraggable: true,
-                  onTap: () => _navigateToDrillDetail(context, drill, appState),
-                  onDelete: () => appState.removeDrillFromSession(drill),
+                  drill: editableDrill.drill,
+                  sets: editableDrill.totalSets,
+                  reps: editableDrill.totalReps,
+                  duration: editableDrill.totalDuration,
+                  isDraggable: !appState.isLoadingPreferences,
+                  onTap: () {
+                    HapticUtils.lightImpact(); // Light haptic for drill interaction
+                    _navigateToDrillDetail(context, editableDrill, appState);
+                  },
+                  onDelete: () => appState.removeDrillFromSession(editableDrill.drill),
+                  showOverlayIcons: false,
                 ),
               );
             },
@@ -369,82 +678,178 @@ class _SessionGeneratorEditorPageState extends State<SessionGeneratorEditorPage>
     );
   }
 
+  // ✅ NEW: Build loading section for drills
+  Widget _buildDrillsLoadingSection() {
+    return Container(
+      height: 160,
+      decoration: BoxDecoration(
+        color: Colors.grey.shade50,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: Colors.grey.shade200),
+      ),
+      child: Center(
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            SizedBox(
+              width: 36,
+              height: 36,
+              child: CircularProgressIndicator(
+                strokeWidth: 3,
+                valueColor: AlwaysStoppedAnimation<Color>(AppTheme.primaryLightBlue),
+              ),
+            ),
+            const SizedBox(height: 14),
+            const Text(
+              'Updating your session...',
+              style: TextStyle(
+                fontFamily: 'Poppins',
+                fontWeight: FontWeight.w600,
+                fontSize: 15,
+                color: Colors.black87,
+              ),
+            ),
+            const SizedBox(height: 4),
+            const Text(
+              'Finding the best drills for your preferences',
+              style: TextStyle(
+                fontFamily: 'Poppins',
+                fontWeight: FontWeight.w400,
+                fontSize: 12,
+                color: Colors.grey,
+              ),
+              textAlign: TextAlign.center,
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
   // Build the add more drills button
   Widget _buildAddMoreDrillsButton(AppStateService appState) {
-    final availableDrillsCount = appState.drillsNotInSession.length;
+    final isLimitReached = appState.editableSessionDrills.length >= 10;
     
     return Container(
       width: double.infinity,
       decoration: BoxDecoration(
         gradient: LinearGradient(
-          colors: [Colors.blue.shade50, Colors.purple.shade50],
+          colors: isLimitReached 
+              ? [Colors.grey.shade50, Colors.grey.shade100]
+              : [Colors.blue.shade50, Colors.purple.shade50],
           begin: Alignment.centerLeft,
           end: Alignment.centerRight,
         ),
         borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: Colors.blue.shade200),
+        border: Border.all(color: isLimitReached ? Colors.grey.shade300 : Colors.blue.shade200),
       ),
       child: Material(
         color: Colors.transparent,
         child: InkWell(
           borderRadius: BorderRadius.circular(16),
-          onTap: () {
+          onTap: isLimitReached ? null : () {
+            HapticUtils.mediumImpact(); // Medium haptic for major action
             Navigator.push(
               context,
               MaterialPageRoute(
-                builder: (context) => const DrillSearchView(),
+                builder: (context) => ReusableDrillSearchView(
+                  title: 'Add to Session',
+                  actionButtonText: 'Add to Session',
+                  themeColor: AppTheme.primaryLightBlue,
+                  onDrillsSelected: (selectedDrills) {
+                    int addedCount = 0;
+                    for (final drill in selectedDrills) {
+                      if (appState.addDrillToSession(drill)) {
+                        addedCount++;
+                      }
+                    }
+                    
+                    if (addedCount > 0) {
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        SnackBar(
+                          content: Text('$addedCount drill${addedCount == 1 ? '' : 's'} added to session'),
+                          duration: const Duration(seconds: 2),
+                          backgroundColor: Colors.green,
+                        ),
+                      );
+                    }
+                    
+                    if (addedCount < selectedDrills.length) {
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        SnackBar(
+                          content: const Text('Session limit reached! You can only add up to 10 drills to a session.'),
+                          duration: const Duration(seconds: 3),
+                          backgroundColor: Colors.orange,
+                          action: SnackBarAction(
+                            label: 'OK',
+                            textColor: Colors.white,
+                            onPressed: () {},
+                          ),
+                        ),
+                      );
+                    }
+                  },
+                  isSelected: (drill) => appState.isDrillInSession(drill),
+                ),
               ),
             );
           },
-          child: Padding(
-            padding: const EdgeInsets.all(20),
-            child: Row(
-              children: [
-                Container(
-                  width: 48,
-                  height: 48,
-                  decoration: BoxDecoration(
-                    color: Colors.blue.shade100,
-                    borderRadius: BorderRadius.circular(12),
+          child: Opacity(
+            opacity: isLimitReached ? 0.5 : 1.0,
+            child: Padding(
+              padding: const EdgeInsets.all(20),
+              child: Row(
+                children: [
+                  Container(
+                    width: 48,
+                    height: 48,
+                    decoration: BoxDecoration(
+                      color: isLimitReached ? Colors.grey.shade200 : Colors.blue.shade100,
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    child: Icon(
+                      isLimitReached ? Icons.check_circle : Icons.add_circle_outline,
+                      color: isLimitReached ? Colors.grey.shade600 : Colors.blue.shade700,
+                      size: 28,
+                    ),
                   ),
-                  child: Icon(
-                    Icons.add_circle_outline,
-                    color: Colors.blue.shade700,
-                    size: 28,
-                  ),
-                ),
-                const SizedBox(width: 16),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        'Add More Drills',
-                        style: TextStyle(
-                          fontFamily: 'Poppins',
-                          fontWeight: FontWeight.bold,
-                          fontSize: 16,
-                          color: Colors.blue.shade800,
+                  const SizedBox(width: 16),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          isLimitReached ? 'Session Complete' : 'Add More Drills',
+                          style: TextStyle(
+                            fontFamily: 'Poppins',
+                            fontWeight: FontWeight.bold,
+                            fontSize: 16,
+                            color: isLimitReached ? Colors.grey.shade700 : Colors.blue.shade800,
+                          ),
                         ),
-                      ),
-                      const SizedBox(height: 2),
-                      Text(
-                        'Browse $availableDrillsCount more drills to customize your session',
-                        style: TextStyle(
-                          fontFamily: 'Poppins',
-                          fontSize: 13,
-                          color: Colors.blue.shade600,
+                        const SizedBox(height: 2),
+                        Text(
+                          isLimitReached
+                              ? 'You have reached the maximum of 10 drills'
+                              : (appState.isGuestMode 
+                                  ? 'Browse our limited guest drills for your session'
+                                  : 'Browse 100+ more drills to customize your session'),
+                          style: TextStyle(
+                            fontFamily: 'Poppins',
+                            fontSize: 13,
+                            color: isLimitReached ? Colors.grey.shade600 : Colors.blue.shade600,
+                          ),
                         ),
-                      ),
-                    ],
+                      ],
+                    ),
                   ),
-                ),
-                Icon(
-                  Icons.arrow_forward_ios,
-                  color: Colors.blue.shade600,
-                  size: 20,
-                ),
-              ],
+                  Icon(
+                    isLimitReached ? Icons.check : Icons.arrow_forward_ios,
+                    color: isLimitReached ? Colors.grey.shade600 : Colors.blue.shade600,
+                    size: 20,
+                  ),
+                ],
+              ),
             ),
           ),
         ),
@@ -453,20 +858,33 @@ class _SessionGeneratorEditorPageState extends State<SessionGeneratorEditorPage>
   }
 
   // Navigate to the drill detail view
-  void _navigateToDrillDetail(BuildContext context, DrillModel drill, AppStateService appState) {
-    final isInSession = appState.isDrillInSession(drill);
+  void _navigateToDrillDetail(BuildContext context, EditableDrillModel drill, AppStateService appState) {
+    final isInSession = appState.isDrillInSession(drill.drill);
     
     if (isInSession) {
+      // Find the EditableDrillModel for this drill
+      final editableDrill = appState.editableSessionDrills.firstWhere(
+        (ed) => ed.drill.id == drill.drill.id,
+        orElse: () => EditableDrillModel(
+          drill: drill.drill,
+          setsDone: 0,
+          totalSets: drill.totalSets,
+          totalReps: drill.totalReps,
+          totalDuration: drill.totalDuration,
+          isCompleted: false,
+        ),
+      );
+      
       // Navigate to EditDrillView for session drills
       Navigator.push(
         context,
         MaterialPageRoute(
           builder: (context) => EditDrillView(
-            drill: drill,
+            editableDrill: editableDrill,
             onSave: () {
               // Optional: Add any additional logic when drill is saved
               ScaffoldMessenger.of(context).showSnackBar(
-                SnackBar(content: Text('${drill.title} updated in session')),
+                SnackBar(content: Text('${drill.drill.title} updated in session')),
               );
             },
           ),
@@ -478,12 +896,12 @@ class _SessionGeneratorEditorPageState extends State<SessionGeneratorEditorPage>
         context,
         MaterialPageRoute(
           builder: (context) => DrillDetailView(
-            drill: drill,
+            drill: drill.drill,
             isInSession: isInSession,
             onAddToSession: () {
-              appState.addDrillToSession(drill);
+              appState.addDrillToSession(drill.drill);
               ScaffoldMessenger.of(context).showSnackBar(
-                SnackBar(content: Text('${drill.title} added to session')),
+                SnackBar(content: Text('${drill.drill.title} added to session')),
               );
               Navigator.pop(context);
             },
@@ -549,14 +967,20 @@ class _SessionGeneratorEditorPageState extends State<SessionGeneratorEditorPage>
               children: [
                 Expanded(
                   child: TextButton(
-                    onPressed: () => Navigator.pop(context),
+                    onPressed: () {
+                      HapticUtils.lightImpact(); // Light haptic for cancel
+                      Navigator.pop(context);
+                    },
                     child: const Text('Cancel'),
                   ),
                 ),
                 const SizedBox(width: 16),
                 Expanded(
                   child: ElevatedButton(
-                    onPressed: () => Navigator.pop(context),
+                    onPressed: () {
+                      HapticUtils.lightImpact(); // Light haptic for apply
+                      Navigator.pop(context);
+                    },
                     style: ElevatedButton.styleFrom(
                       backgroundColor: const Color(0xFFF9CC53),
                       foregroundColor: Colors.white,
@@ -574,22 +998,41 @@ class _SessionGeneratorEditorPageState extends State<SessionGeneratorEditorPage>
 
   // Show the info dialog
   void _showInfoDialog(BuildContext context) {
-    showDialog(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('Session Generator'),
-        content: const Text(
-          'Set your training preferences and we\'ll automatically generate '
-          'a personalized session for you. You can then add more drills '
-          'from our full catalog to customize your workout.',
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: const Text('Got it'),
-          ),
-        ],
-      ),
+    InfoPopupWidget.show(
+      context,
+      title: 'How to Edit Your Session',
+      description: 'Set your training preferences above to automatically generate drills based on your time, equipment, and skill focus.\n\nYou can then add more drills from our full catalog to customize your workout further. \n\n Keep in mind that changing training preferences always generates a new session, so keep that in mind when adding in drills manually. \n\n The maximum amount of drills you can add to a session is 10 drills.',
+      riveFileName: 'Bravo_Animation.riv',
     );
+  }
+
+  // Helper to get the count of valid equipment
+  int _getValidEquipmentCount(Set<String> equipment) {
+    final validEquipment = equipment.where((e) => FilterOptions.equipmentOptions.contains(e));
+    
+    // Add debug logging to see what's in the equipment set
+    if (kDebugMode && equipment.isNotEmpty) {
+      print('🔧 Equipment Debug:');
+      print('   Full equipment set: $equipment');
+      print('   Valid equipment: $validEquipment');
+      print('   FilterOptions.equipmentOptions: ${FilterOptions.equipmentOptions}');
+      print('   Full count: ${equipment.length}');
+      print('   Valid count: ${validEquipment.length}');
+      
+      // Clean up invalid equipment if any
+      if (validEquipment.length != equipment.length) {
+        final invalidEquipment = equipment.where((e) => !FilterOptions.equipmentOptions.contains(e));
+        print('   Invalid equipment found: $invalidEquipment');
+        print('   Cleaning up invalid equipment...');
+        
+        // Clean up the invalid equipment
+        Future.delayed(Duration.zero, () {
+          final appState = Provider.of<AppStateService>(context, listen: false);
+          appState.updateEquipmentFilter(validEquipment.toSet());
+        });
+      }
+    }
+    
+    return validEquipment.length;
   }
 } 
