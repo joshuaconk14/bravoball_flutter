@@ -31,11 +31,20 @@ android {
         versionName = flutter.versionName
     }
 
+    signingConfigs {
+        create("release") {
+            keyAlias = findProperty("keyAlias") as String? ?: System.getenv("KEY_ALIAS")
+            keyPassword = findProperty("keyPassword") as String? ?: System.getenv("KEY_PASSWORD")
+            storeFile = findProperty("storeFile")?.let { file(it) } ?: System.getenv("STORE_FILE")?.let { file(it) }
+            storePassword = findProperty("storePassword") as String? ?: System.getenv("STORE_PASSWORD")
+        }
+    }
+
     buildTypes {
         release {
-            // TODO: Add your own signing config for the release build.
-            // Signing with the debug keys for now, so `flutter run --release` works.
-            // signingConfig = signingConfigs.getByName("debug") // COMMENTED OUT for store submission
+            signingConfig = signingConfigs.getByName("release")
+            isMinifyEnabled = true
+            proguardFiles(getDefaultProguardFile("proguard-android-optimize.txt"), "proguard-rules.pro")
         }
     }
 }

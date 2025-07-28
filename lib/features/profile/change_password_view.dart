@@ -156,7 +156,7 @@ class _ChangePasswordViewState extends State<ChangePasswordView> {
                           if (value == null || value.isEmpty) {
                             return 'Please enter a new password';
                           }
-                          if (value.length < 8) {
+                          if (value.length < 6) {
                             return 'Password must be at least 8 characters long';
                           }
                           return null;
