@@ -73,45 +73,84 @@ class DraggableDrillCard extends StatelessWidget {
             padding: const EdgeInsets.all(16),
             child: Row(
               children: [
-                // Drag handle (only show if draggable)
+                // ✅ IMPROVED: Drag area includes both handle and soccer player image
                 if (isDraggable)
+                  ReorderableDragStartListener(
+                    index: 0, // This will be overridden by the ReorderableListView
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        // Drag handle
+                        Container(
+                          padding: const EdgeInsets.all(8),
+                          margin: const EdgeInsets.only(right: 8),
+                          child: Icon(
+                            Icons.drag_handle,
+                            color: Colors.grey.shade400,
+                            size: 20,
+                          ),
+                        ),
+                        // Skill indicator - now also draggable
+                        Container(
+                          width: 48,
+                          height: 48,
+                          padding: const EdgeInsets.all(4),
+                          decoration: BoxDecoration(
+                            color: AppTheme.getSkillColor(currentDrill.skill).withOpacity(0.1),
+                            borderRadius: BorderRadius.circular(8),
+                            border: Border.all(
+                              color: AppTheme.getSkillColor(currentDrill.skill).withOpacity(0.3),
+                              width: 1,
+                            ),
+                          ),
+                          child: Image.asset(
+                            _getSkillIconPath(currentDrill.skill),
+                            width: 40,
+                            height: 40,
+                            fit: BoxFit.contain,
+                            errorBuilder: (context, error, stackTrace) {
+                              // Fallback to generic icon if image fails to load
+                              return Icon(
+                                _getSkillIconFallback(currentDrill.skill),
+                                color: AppTheme.getSkillColor(currentDrill.skill),
+                                size: 24,
+                              );
+                            },
+                          ),
+                        ),
+                      ],
+                    ),
+                  )
+                else
+                  // Non-draggable version - just show the skill indicator
                   Container(
+                    width: 48,
+                    height: 48,
                     padding: const EdgeInsets.all(4),
-                    margin: const EdgeInsets.only(right: 12),
-                    child: Icon(
-                      Icons.drag_handle,
-                      color: Colors.grey.shade400,
-                      size: 20,
+                    margin: const EdgeInsets.only(left: 8), // Match spacing when not draggable
+                    decoration: BoxDecoration(
+                      color: AppTheme.getSkillColor(currentDrill.skill).withOpacity(0.1),
+                      borderRadius: BorderRadius.circular(8),
+                      border: Border.all(
+                        color: AppTheme.getSkillColor(currentDrill.skill).withOpacity(0.3),
+                        width: 1,
+                      ),
+                    ),
+                    child: Image.asset(
+                      _getSkillIconPath(currentDrill.skill),
+                      width: 40,
+                      height: 40,
+                      fit: BoxFit.contain,
+                      errorBuilder: (context, error, stackTrace) {
+                        // Fallback to generic icon if image fails to load
+                        return Icon(
+                          _getSkillIconFallback(currentDrill.skill),
+                          color: AppTheme.getSkillColor(currentDrill.skill),
+                          size: 24,
+                        );
+                      },
                     ),
                   ),
-                // Skill indicator - replaced with custom icon
-                Container(
-                  width: 48,
-                  height: 48,
-                  padding: const EdgeInsets.all(4),
-                  decoration: BoxDecoration(
-                    color: AppTheme.getSkillColor(currentDrill.skill).withOpacity(0.1),
-                    borderRadius: BorderRadius.circular(8),
-                    border: Border.all(
-                      color: AppTheme.getSkillColor(currentDrill.skill).withOpacity(0.3),
-                      width: 1,
-                    ),
-                  ),
-                  child: Image.asset(
-                    _getSkillIconPath(currentDrill.skill),
-                    width: 40,
-                    height: 40,
-                    fit: BoxFit.contain,
-                    errorBuilder: (context, error, stackTrace) {
-                      // Fallback to generic icon if image fails to load
-                      return Icon(
-                        _getSkillIconFallback(currentDrill.skill),
-                        color: AppTheme.getSkillColor(currentDrill.skill),
-                        size: 24,
-                      );
-                    },
-                  ),
-                ),
                 const SizedBox(width: 12),
                 // Drill content
                 Expanded(
@@ -375,14 +414,7 @@ class DraggableDrillCard extends StatelessWidget {
           )
         : cardContent;
 
-    // If draggable, wrap with ReorderableDragStartListener
-    if (isDraggable) {
-      return ReorderableDragStartListener(
-        index: 0, // This will be overridden by the ReorderableListView
-        child: cardWithIcons,
-      );
-    }
-
+    // ✅ IMPROVED: No longer wrap entire card - only drag handle is draggable
     return cardWithIcons;
   }
 
