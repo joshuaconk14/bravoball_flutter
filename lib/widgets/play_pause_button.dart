@@ -196,7 +196,7 @@ class _PlayPauseButtonState extends State<PlayPauseButton>
                   shape: BoxShape.circle,
                   boxShadow: [
                     BoxShadow(
-                      color: backgroundColor.withOpacity(0.3),
+                      color: backgroundColor.withValues(alpha: 0.3),
                       blurRadius: 8,
                       offset: const Offset(0, 3),
                     ),

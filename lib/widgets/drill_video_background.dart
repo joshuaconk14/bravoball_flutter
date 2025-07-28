@@ -16,7 +16,7 @@ class DrillVideoBackground extends StatefulWidget {
     required this.videoUrl,
     required this.child,
     this.onTap,
-  }) : super(key: key);
+  });
 
   @override
   State<DrillVideoBackground> createState() => _DrillVideoBackgroundState();
@@ -49,7 +49,7 @@ class _DrillVideoBackgroundState extends State<DrillVideoBackground> {
     // Check if the video URL has changed
     if (widget.videoUrl != oldWidget.videoUrl) {
       if (kDebugMode) {
-        print('🔄 Video URL changed from "${oldWidget.videoUrl}" to "${widget.videoUrl}"');
+        if (kDebugMode) print('🔄 Video URL changed from "${oldWidget.videoUrl}" to "${widget.videoUrl}"');
       }
       
       // Dispose old controller and reinitialize with new URL
@@ -89,11 +89,11 @@ class _DrillVideoBackgroundState extends State<DrillVideoBackground> {
         if (await file.exists()) {
           _videoController = VideoPlayerController.file(file);
           if (kDebugMode) {
-            print('🎬 Loading local video file: ${widget.videoUrl}');
+            if (kDebugMode) print('🎬 Loading local video file: ${widget.videoUrl}');
           }
         } else {
           if (kDebugMode) {
-            print('🎬 Local video file does not exist: ${widget.videoUrl}');
+            if (kDebugMode) print('🎬 Local video file does not exist: ${widget.videoUrl}');
           }
           setState(() {
             _hasVideo = false;
@@ -124,11 +124,11 @@ class _DrillVideoBackgroundState extends State<DrillVideoBackground> {
       });
       
       if (kDebugMode) {
-        print('✅ Video background initialized successfully');
+        if (kDebugMode) print('✅ Video background initialized successfully');
       }
     } catch (e) {
       if (kDebugMode) {
-        print('❌ Video background initialization error: $e');
+        if (kDebugMode) print('❌ Video background initialization error: $e');
       }
       setState(() {
         _hasVideo = false;
@@ -253,7 +253,7 @@ class _DrillVideoBackgroundState extends State<DrillVideoBackground> {
                 borderRadius: BorderRadius.circular(20),
                 boxShadow: [
                   BoxShadow(
-                    color: Colors.black.withOpacity(0.1),
+                    color: Colors.black.withValues(alpha: 0.1),
                     blurRadius: 8,
                     offset: const Offset(0, 2),
                   ),

@@ -110,7 +110,7 @@ class _DrillGroupDetailViewState extends State<DrillGroupDetailView> {
               // Back button
               Container(
                 decoration: BoxDecoration(
-                  color: Colors.white.withOpacity(0.2),
+                  color: Colors.white.withValues(alpha: 0.2),
                   borderRadius: BorderRadius.circular(12),
                 ),
                 child: IconButton(
@@ -127,7 +127,7 @@ class _DrillGroupDetailViewState extends State<DrillGroupDetailView> {
               // Edit mode toggle - now available for both liked groups and custom groups
               Container(
                 decoration: BoxDecoration(
-                  color: Colors.white.withOpacity(0.2),
+                  color: Colors.white.withValues(alpha: 0.2),
                   borderRadius: BorderRadius.circular(12),
                 ),
                 child: IconButton(
@@ -173,7 +173,7 @@ class _DrillGroupDetailViewState extends State<DrillGroupDetailView> {
               Container(
                 padding: const EdgeInsets.all(16),
                 decoration: BoxDecoration(
-                  color: Colors.white.withOpacity(0.2),
+                  color: Colors.white.withValues(alpha: 0.2),
                   borderRadius: BorderRadius.circular(16),
                 ),
                 child: Icon(
@@ -199,11 +199,11 @@ class _DrillGroupDetailViewState extends State<DrillGroupDetailView> {
                         decoration: InputDecoration(
                           border: OutlineInputBorder(
                             borderRadius: BorderRadius.circular(8),
-                            borderSide: BorderSide(color: Colors.white.withOpacity(0.3)),
+                            borderSide: BorderSide(color: Colors.white.withValues(alpha: 0.3)),
                           ),
                           enabledBorder: OutlineInputBorder(
                             borderRadius: BorderRadius.circular(8),
-                            borderSide: BorderSide(color: Colors.white.withOpacity(0.3)),
+                            borderSide: BorderSide(color: Colors.white.withValues(alpha: 0.3)),
                           ),
                           focusedBorder: OutlineInputBorder(
                             borderRadius: BorderRadius.circular(8),
@@ -212,7 +212,7 @@ class _DrillGroupDetailViewState extends State<DrillGroupDetailView> {
                           contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
                           isDense: true,
                           filled: true,
-                          fillColor: Colors.white.withOpacity(0.1),
+                          fillColor: Colors.white.withValues(alpha: 0.1),
                         ),
                         maxLines: 1,
                       )
@@ -227,7 +227,7 @@ class _DrillGroupDetailViewState extends State<DrillGroupDetailView> {
                     Text(
                       '${group.drills.length} drill${group.drills.length == 1 ? '' : 's'}',
                       style: AppTheme.bodyMedium.copyWith(
-                        color: Colors.white.withOpacity(0.9),
+                        color: Colors.white.withValues(alpha: 0.9),
                       ),
                     ),
                   ],
@@ -263,11 +263,11 @@ class _DrillGroupDetailViewState extends State<DrillGroupDetailView> {
                       decoration: InputDecoration(
                         border: OutlineInputBorder(
                           borderRadius: BorderRadius.circular(8),
-                          borderSide: BorderSide(color: AppTheme.primaryPurple.withOpacity(0.3)),
+                          borderSide: BorderSide(color: AppTheme.primaryPurple.withValues(alpha: 0.3)),
                         ),
                         enabledBorder: OutlineInputBorder(
                           borderRadius: BorderRadius.circular(8),
-                          borderSide: BorderSide(color: AppTheme.primaryPurple.withOpacity(0.3)),
+                          borderSide: BorderSide(color: AppTheme.primaryPurple.withValues(alpha: 0.3)),
                         ),
                         focusedBorder: OutlineInputBorder(
                           borderRadius: BorderRadius.circular(8),
@@ -279,7 +279,7 @@ class _DrillGroupDetailViewState extends State<DrillGroupDetailView> {
                         fillColor: Colors.white,
                         hintText: 'Enter description...',
                         hintStyle: AppTheme.bodyMedium.copyWith(
-                          color: AppTheme.primaryGray.withOpacity(0.6),
+                          color: AppTheme.primaryGray.withValues(alpha: 0.6),
                         ),
                       ),
                       maxLines: 3,
@@ -315,10 +315,10 @@ class _DrillGroupDetailViewState extends State<DrillGroupDetailView> {
                         .map((skill) => Container(
                               padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                               decoration: BoxDecoration(
-                                color: AppTheme.getSkillColor(skill).withOpacity(0.1),
+                                color: AppTheme.getSkillColor(skill).withValues(alpha: 0.1),
                                 borderRadius: BorderRadius.circular(12),
                                 border: Border.all(
-                                  color: AppTheme.getSkillColor(skill).withOpacity(0.3),
+                                  color: AppTheme.getSkillColor(skill).withValues(alpha: 0.3),
                                 ),
                               ),
                               child: Text(
@@ -415,7 +415,7 @@ class _DrillGroupDetailViewState extends State<DrillGroupDetailView> {
             Container(
               padding: const EdgeInsets.all(24),
               decoration: BoxDecoration(
-                color: AppTheme.primaryPurple.withOpacity(0.1),
+                color: AppTheme.primaryPurple.withValues(alpha: 0.1),
                 borderRadius: BorderRadius.circular(24),
               ),
               child: Icon(

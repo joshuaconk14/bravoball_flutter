@@ -1,28 +1,19 @@
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 import 'package:flutter/foundation.dart';
 import 'package:provider/provider.dart';
-import 'package:video_player/video_player.dart';
 import 'dart:async';
-import 'dart:ui';
-import 'dart:io'; // ✅ ADDED: Import for File support
 import '../../models/editable_drill_model.dart';
 import '../../services/app_state_service.dart';
-import '../../services/audio_service.dart';
 import '../../services/background_timer_service.dart';
 import '../../services/wake_lock_service.dart';
 import '../../constants/app_theme.dart';
 import '../../config/app_config.dart';
-import '../../widgets/bravo_button.dart';
 import '../../widgets/info_popup_widget.dart';
 import '../../widgets/warning_dialog.dart';
 import '../../widgets/drill_video_background.dart'; // ✅ ADDED: Import new reusable widget
 import '../../utils/haptic_utils.dart';
 import '../../utils/skill_utils.dart';
 import 'drill_detail_view.dart';
-import 'session_completion_view.dart';
-import '../../widgets/circular_drill_button.dart';
-import 'package:rive/rive.dart' as rive;
 import '../../widgets/play_pause_button.dart';
 import '../../widgets/circular_control_button.dart';
 
@@ -36,7 +27,7 @@ class DrillFollowAlongView extends StatefulWidget {
     required this.editableDrill,
     this.onDrillCompleted,
     this.onSessionCompleted,
-  }) : super(key: key);
+  });
 
   @override
   State<DrillFollowAlongView> createState() => _DrillFollowAlongViewState();
@@ -57,11 +48,7 @@ class _DrillFollowAlongViewState extends State<DrillFollowAlongView>
   late double _setDuration;
   
   // UI state
-  bool _showInfoSheet = false;
   bool _hideUI = false; // For tap to hide UI functionality
-  
-  // Audio state
-  bool _finalCountdownPlayed = false;
   
   // ✅ ADDED: Animation controllers for UI overlay containers
   late AnimationController _uiAnimationController;
@@ -141,7 +128,7 @@ class _DrillFollowAlongViewState extends State<DrillFollowAlongView>
     await _backgroundTimer.initializeBackgroundSession();
     
     if (kDebugMode) {
-      print('🎯 Background timer initialized for drill: ${_editableDrill.drill.title}');
+      if (kDebugMode) print('🎯 Background timer initialized for drill: ${_editableDrill.drill.title}');
     }
   }
 
@@ -256,11 +243,11 @@ class _DrillFollowAlongViewState extends State<DrillFollowAlongView>
       margin: const EdgeInsets.all(16),
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: Colors.white.withOpacity(0.9), // ✅ UPDATED: Increased opacity from 0.7 to 0.9
+        color: Colors.white.withValues(alpha: 0.9), // ✅ UPDATED: Increased opacity from 0.7 to 0.9
         borderRadius: BorderRadius.circular(16),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.1),
+            color: Colors.black.withValues(alpha: 0.1),
             blurRadius: 8,
             offset: const Offset(0, 2),
           ),
@@ -323,10 +310,10 @@ class _DrillFollowAlongViewState extends State<DrillFollowAlongView>
               Container(
                 padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
                 decoration: BoxDecoration(
-                  color: AppTheme.getSkillColor(_editableDrill.drill.skill).withOpacity(0.1),
+                  color: AppTheme.getSkillColor(_editableDrill.drill.skill).withValues(alpha: 0.1),
                   borderRadius: BorderRadius.circular(10),
                   border: Border.all(
-                    color: AppTheme.getSkillColor(_editableDrill.drill.skill).withOpacity(0.3),
+                    color: AppTheme.getSkillColor(_editableDrill.drill.skill).withValues(alpha: 0.3),
                   ),
                 ),
                 child: Text(
@@ -432,11 +419,11 @@ class _DrillFollowAlongViewState extends State<DrillFollowAlongView>
       margin: const EdgeInsets.all(16),
       padding: const EdgeInsets.all(12), // Reduced from 16
       decoration: BoxDecoration(
-        color: Colors.white.withOpacity(0.9), // ✅ UPDATED: Increased opacity from 0.7 to 0.9
+        color: Colors.white.withValues(alpha: 0.9), // ✅ UPDATED: Increased opacity from 0.7 to 0.9
         borderRadius: BorderRadius.circular(20),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.1),
+            color: Colors.black.withValues(alpha: 0.1),
             blurRadius: 12,
             offset: const Offset(0, 4),
           ),
@@ -568,7 +555,7 @@ class _DrillFollowAlongViewState extends State<DrillFollowAlongView>
           foregroundColor: Colors.white,
           elevation: _editableDrill.setsDone >= _editableDrill.totalSets ? 2 : 0,
           shadowColor: _editableDrill.setsDone >= _editableDrill.totalSets 
-              ? AppTheme.success.withOpacity(0.3) 
+              ? AppTheme.success.withValues(alpha: 0.3) 
               : Colors.transparent,
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(16),
@@ -603,7 +590,7 @@ class _DrillFollowAlongViewState extends State<DrillFollowAlongView>
     // In debug mode, allow skipping countdown by pressing button during countdown
     if (_showCountdown && AppConfig.debug) {
       if (kDebugMode) {
-        print('🐛 DEBUG: Skipping countdown');
+        if (kDebugMode) print('🐛 DEBUG: Skipping countdown');
       }
       setState(() {
         _showCountdown = false;
@@ -705,7 +692,7 @@ class _DrillFollowAlongViewState extends State<DrillFollowAlongView>
     _updateDrillInSession();
     
     if (kDebugMode) {
-      print('✅ Set ${_editableDrill.setsDone}/${_editableDrill.totalSets} completed');
+      if (kDebugMode) print('✅ Set ${_editableDrill.setsDone}/${_editableDrill.totalSets} completed');
     }
   }
 

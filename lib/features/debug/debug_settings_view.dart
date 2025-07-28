@@ -91,7 +91,7 @@ class _DebugSettingsViewState extends State<DebugSettingsView> {
         borderRadius: BorderRadius.circular(16),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.1),
+            color: Colors.black.withValues(alpha: 0.1),
             blurRadius: 8,
             offset: const Offset(0, 4),
           ),
@@ -105,7 +105,7 @@ class _DebugSettingsViewState extends State<DebugSettingsView> {
               Container(
                 padding: const EdgeInsets.all(8),
                 decoration: BoxDecoration(
-                  color: Colors.white.withOpacity(0.2),
+                  color: Colors.white.withValues(alpha: 0.2),
                   borderRadius: BorderRadius.circular(8),
                 ),
                 child: Icon(
@@ -134,7 +134,7 @@ class _DebugSettingsViewState extends State<DebugSettingsView> {
                         fontFamily: 'Poppins',
                         fontWeight: FontWeight.w500,
                         fontSize: 14,
-                        color: Colors.white.withOpacity(0.9),
+                        color: Colors.white.withValues(alpha: 0.9),
                       ),
                     ),
                   ],
@@ -153,7 +153,7 @@ class _DebugSettingsViewState extends State<DebugSettingsView> {
               fontFamily: 'Poppins',
               fontWeight: FontWeight.w400,
               fontSize: 12,
-              color: Colors.white.withOpacity(0.8),
+              color: Colors.white.withValues(alpha: 0.8),
             ),
           ),
         ],
@@ -473,7 +473,7 @@ class _DebugSettingsViewState extends State<DebugSettingsView> {
           border: Border.all(color: Colors.grey.shade200),
           boxShadow: [
             BoxShadow(
-              color: Colors.black.withOpacity(0.05),
+              color: Colors.black.withValues(alpha: 0.05),
               blurRadius: 4,
               offset: const Offset(0, 2),
             ),
@@ -484,7 +484,7 @@ class _DebugSettingsViewState extends State<DebugSettingsView> {
             Container(
               padding: const EdgeInsets.all(8),
               decoration: BoxDecoration(
-                color: (color ?? AppTheme.primaryYellow).withOpacity(0.1),
+                color: (color ?? AppTheme.primaryYellow).withValues(alpha: 0.1),
                 borderRadius: BorderRadius.circular(8),
               ),
               child: Icon(

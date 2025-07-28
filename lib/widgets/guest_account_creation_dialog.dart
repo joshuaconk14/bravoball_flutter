@@ -40,7 +40,7 @@ class GuestAccountCreationDialog extends StatelessWidget {
               width: 80,
               height: 80,
               decoration: BoxDecoration(
-                color: themeColor.withOpacity(0.1),
+                color: themeColor.withValues(alpha: 0.1),
                 shape: BoxShape.circle,
               ),
               child: Icon(

@@ -16,12 +16,12 @@ class GuestAccountOverlay extends StatelessWidget {
     this.description = 'Unlock all features by creating an account.',
     this.themeColor = AppTheme.primaryYellow,
     this.showDismissButton = true,
-  }) : super(key: key);
+  });
 
   @override
   Widget build(BuildContext context) {
     return Container(
-      color: Colors.black.withOpacity(0.5),
+      color: Colors.black.withValues(alpha: 0.5),
       child: Center(
         child: Container(
           margin: const EdgeInsets.symmetric(horizontal: 20),

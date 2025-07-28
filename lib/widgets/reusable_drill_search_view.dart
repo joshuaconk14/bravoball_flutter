@@ -27,7 +27,7 @@ class ReusableDrillSearchView extends StatefulWidget {
     this.isSelected,
     this.allowMultipleSelection = true,
     required this.themeColor,
-  }) : super(key: key);
+  });
 
   @override
   State<ReusableDrillSearchView> createState() => _ReusableDrillSearchViewState();
@@ -267,7 +267,7 @@ class _ReusableDrillSearchViewState extends State<ReusableDrillSearchView> {
           Container(
             width: double.infinity,
             padding: const EdgeInsets.symmetric(vertical: 8),
-            color: widget.themeColor.withOpacity(0.1),
+            color: widget.themeColor.withValues(alpha: 0.1),
             child: Row(
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
@@ -431,7 +431,7 @@ class _ReusableDrillSearchViewState extends State<ReusableDrillSearchView> {
                   color: Colors.white,
                   boxShadow: [
                     BoxShadow(
-                      color: Colors.black.withOpacity(0.05),
+                      color: Colors.black.withValues(alpha: 0.05),
                       blurRadius: 4,
                       offset: const Offset(0, 2),
                     ),
@@ -483,7 +483,7 @@ class _ReusableDrillSearchViewState extends State<ReusableDrillSearchView> {
                 Container(
                   width: double.infinity,
                   padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-                  color: widget.themeColor.withOpacity(0.1),
+                  color: widget.themeColor.withValues(alpha: 0.1),
                   child: Text(
                     '${_selectedDrills.length} drill${_selectedDrills.length == 1 ? '' : 's'} selected',
                     style: const TextStyle(
@@ -563,7 +563,7 @@ class SelectableDrillCard extends StatelessWidget {
     this.onTap,
     required this.onSelectionChanged,
     required this.themeColor,
-  }) : super(key: key);
+  });
 
   String _getSkillIconPath(String skill) {
     // Normalize the skill name for better matching
@@ -616,7 +616,7 @@ class SelectableDrillCard extends StatelessWidget {
     return Container(
       margin: const EdgeInsets.symmetric(vertical: 4, horizontal: 8),
       decoration: BoxDecoration(
-        color: isSelected ? themeColor.withOpacity(0.1) : Colors.white,
+        color: isSelected ? themeColor.withValues(alpha: 0.1) : Colors.white,
         borderRadius: BorderRadius.circular(12),
         border: Border.all(
           color: isSelected 
@@ -628,7 +628,7 @@ class SelectableDrillCard extends StatelessWidget {
         ),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.05),
+            color: Colors.black.withValues(alpha: 0.05),
             blurRadius: 4,
             offset: const Offset(0, 2),
           ),
@@ -688,10 +688,10 @@ class SelectableDrillCard extends StatelessWidget {
                   height: 48,
                   padding: const EdgeInsets.all(4),
                   decoration: BoxDecoration(
-                    color: AppTheme.getSkillColor(drill.skill).withOpacity(0.1),
+                    color: AppTheme.getSkillColor(drill.skill).withValues(alpha: 0.1),
                     borderRadius: BorderRadius.circular(8),
                     border: Border.all(
-                      color: AppTheme.getSkillColor(drill.skill).withOpacity(0.3),
+                      color: AppTheme.getSkillColor(drill.skill).withValues(alpha: 0.3),
                       width: 1,
                     ),
                   ),

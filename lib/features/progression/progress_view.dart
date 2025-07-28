@@ -521,7 +521,7 @@ class _ProgressViewState extends State<ProgressView> {
         border: Border.all(color: borderColor, width: 2),
         boxShadow: [
           BoxShadow(
-            color: color.withOpacity(0.10),
+            color: color.withValues(alpha: 0.10),
             blurRadius: 16,
             offset: const Offset(0, 4),
           ),
@@ -538,7 +538,7 @@ class _ProgressViewState extends State<ProgressView> {
               shape: BoxShape.circle,
               boxShadow: [
                 BoxShadow(
-                  color: color.withOpacity(0.18),
+                  color: color.withValues(alpha: 0.18),
                   blurRadius: 8,
                   offset: const Offset(0, 2),
                 ),
@@ -612,7 +612,7 @@ class _ProgressViewState extends State<ProgressView> {
         border: Border.all(color: Colors.grey.shade300),
         boxShadow: [
           BoxShadow(
-            color: Colors.grey.withOpacity(0.1),
+            color: Colors.grey.withValues(alpha: 0.1),
             blurRadius: 8,
             offset: const Offset(0, 2),
           ),
@@ -740,7 +740,7 @@ class _ProgressViewState extends State<ProgressView> {
         border: Border.all(color: Colors.grey.shade300),
         boxShadow: [
           BoxShadow(
-            color: Colors.grey.withOpacity(0.1),
+            color: Colors.grey.withValues(alpha: 0.1),
             blurRadius: 8,
             offset: const Offset(0, 2),
           ),
@@ -824,7 +824,7 @@ class _ProgressViewState extends State<ProgressView> {
         border: Border.all(color: Colors.grey.shade300),
         boxShadow: [
           BoxShadow(
-            color: Colors.grey.withOpacity(0.1),
+            color: Colors.grey.withValues(alpha: 0.1),
             blurRadius: 8,
             offset: const Offset(0, 2),
           ),
@@ -930,7 +930,7 @@ class _ProgressViewState extends State<ProgressView> {
         border: Border.all(color: Colors.grey.shade300),
         boxShadow: [
           BoxShadow(
-            color: Colors.grey.withOpacity(0.1),
+            color: Colors.grey.withValues(alpha: 0.1),
             blurRadius: 8,
             offset: const Offset(0, 2),
           ),
@@ -996,10 +996,10 @@ class _ProgressViewState extends State<ProgressView> {
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: color.withOpacity(0.3)),
+        border: Border.all(color: color.withValues(alpha: 0.3)),
         boxShadow: [
           BoxShadow(
-            color: color.withOpacity(0.1),
+            color: color.withValues(alpha: 0.1),
             blurRadius: 4,
             offset: const Offset(0, 2),
           ),
@@ -1046,10 +1046,10 @@ class _ProgressViewState extends State<ProgressView> {
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: color.withOpacity(0.3)),
+        border: Border.all(color: color.withValues(alpha: 0.3)),
         boxShadow: [
           BoxShadow(
-            color: color.withOpacity(0.1),
+            color: color.withValues(alpha: 0.1),
             blurRadius: 4,
             offset: const Offset(0, 2),
           ),
@@ -1098,10 +1098,10 @@ class _ProgressViewState extends State<ProgressView> {
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: color.withOpacity(0.3)),
+        border: Border.all(color: color.withValues(alpha: 0.3)),
         boxShadow: [
           BoxShadow(
-            color: color.withOpacity(0.1),
+            color: color.withValues(alpha: 0.1),
             blurRadius: 4,
             offset: const Offset(0, 2),
           ),
@@ -1169,7 +1169,7 @@ class _ProgressViewState extends State<ProgressView> {
         border: Border.all(color: Colors.pink.shade200),
         boxShadow: [
           BoxShadow(
-            color: Colors.pink.withOpacity(0.1),
+            color: Colors.pink.withValues(alpha: 0.1),
             blurRadius: 8,
             offset: const Offset(0, 2),
           ),
@@ -1370,7 +1370,7 @@ class _DrillResultsViewState extends State<DrillResultsView> with SingleTickerPr
                   borderRadius: BorderRadius.circular(18),
                   boxShadow: [
                     BoxShadow(
-                      color: Colors.black.withOpacity(0.08),
+                      color: Colors.black.withValues(alpha: 0.08),
                       blurRadius: 8,
                       offset: const Offset(0, 4),
                     ),
@@ -1444,7 +1444,7 @@ class AnimatedProgressCircle extends StatelessWidget {
             child: CircularProgressIndicator(
               value: percent,
               strokeWidth: 8,
-              backgroundColor: color.withOpacity(0.15),
+              backgroundColor: color.withValues(alpha: 0.15),
               valueColor: AlwaysStoppedAnimation<Color>(color),
             ),
           ),

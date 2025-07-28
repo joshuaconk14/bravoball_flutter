@@ -573,7 +573,7 @@ class _DrillSearchViewState extends State<DrillSearchView> {
                             vertical: 4,
                           ),
                           decoration: BoxDecoration(
-                            color: AppTheme.getSkillColor(drill.skill).withOpacity(0.1),
+                            color: AppTheme.getSkillColor(drill.skill).withValues(alpha: 0.1),
                             borderRadius: BorderRadius.circular(4),
                           ),
                           child: Text(

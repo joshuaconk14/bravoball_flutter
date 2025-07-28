@@ -1,8 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:rive/rive.dart' hide LinearGradient;
 import '../../constants/app_theme.dart';
-import '../../widgets/bravo_button.dart';
-import '../../views/main_tab_view.dart';
 import '../../services/audio_service.dart';
 import '../../utils/haptic_utils.dart';
 
@@ -24,7 +22,7 @@ class SessionCompletionView extends StatefulWidget {
     required this.sessionsCompletedToday,
     this.onViewProgress,
     this.onBackToHome,
-  }) : super(key: key);
+  });
 
   @override
   State<SessionCompletionView> createState() => _SessionCompletionViewState();
@@ -291,7 +289,7 @@ class _SessionCompletionViewState extends State<SessionCompletionView>
             shape: BoxShape.circle,
             boxShadow: [
               BoxShadow(
-                color: Colors.orange.withOpacity(0.3),
+                color: Colors.orange.withValues(alpha: 0.3),
                 blurRadius: 10,
                 offset: const Offset(0, 4),
               ),
@@ -330,7 +328,7 @@ class _SessionCompletionViewState extends State<SessionCompletionView>
               shape: BoxShape.circle,
               boxShadow: [
                 BoxShadow(
-                  color: AppTheme.primaryGreen.withOpacity(0.3),
+                  color: AppTheme.primaryGreen.withValues(alpha: 0.3),
                   blurRadius: 10,
                   offset: const Offset(0, 4),
                 ),
@@ -358,7 +356,7 @@ class _SessionCompletionViewState extends State<SessionCompletionView>
               shape: BoxShape.circle,
               boxShadow: [
                 BoxShadow(
-                  color: AppTheme.primaryGreen.withOpacity(0.3),
+                  color: AppTheme.primaryGreen.withValues(alpha: 0.3),
                   blurRadius: 10,
                   offset: const Offset(0, 4),
                 ),
@@ -381,15 +379,15 @@ class _SessionCompletionViewState extends State<SessionCompletionView>
       padding: const EdgeInsets.all(16), // Reduced from 20
       margin: const EdgeInsets.symmetric(horizontal: 5), // Reduced from 10
       decoration: BoxDecoration(
-        color: Colors.white.withOpacity(0.2),
+        color: Colors.white.withValues(alpha: 0.2),
         borderRadius: BorderRadius.circular(16),
         border: Border.all(
-          color: Colors.white.withOpacity(0.4),
+          color: Colors.white.withValues(alpha: 0.4),
           width: 1,
         ),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.1),
+            color: Colors.black.withValues(alpha: 0.1),
             blurRadius: 8,
             offset: const Offset(0, 4),
           ),
@@ -417,7 +415,7 @@ class _SessionCompletionViewState extends State<SessionCompletionView>
                 fontFamily: 'Poppins',
                 fontSize: 14,
                 fontWeight: FontWeight.w500,
-                color: Colors.white.withOpacity(0.9),
+                color: Colors.white.withValues(alpha: 0.9),
               ),
             ),
           ],
@@ -435,7 +433,7 @@ class _SessionCompletionViewState extends State<SessionCompletionView>
               Container(
                 width: 1,
                 height: 32, // Reduced from 40
-                color: Colors.white.withOpacity(0.3),
+                color: Colors.white.withValues(alpha: 0.3),
               ),
               _buildSummaryItem(
                 'Current Streak',
@@ -455,7 +453,7 @@ class _SessionCompletionViewState extends State<SessionCompletionView>
         Container(
           padding: const EdgeInsets.all(6), // Reduced from 8
           decoration: BoxDecoration(
-            color: Colors.white.withOpacity(0.2),
+            color: Colors.white.withValues(alpha: 0.2),
             shape: BoxShape.circle,
           ),
           child: Icon(
@@ -480,7 +478,7 @@ class _SessionCompletionViewState extends State<SessionCompletionView>
             fontFamily: 'Poppins',
             fontSize: 10, // Reduced from 11
             fontWeight: FontWeight.w500,
-            color: Colors.white.withOpacity(0.8),
+            color: Colors.white.withValues(alpha: 0.8),
           ),
           textAlign: TextAlign.center,
         ),

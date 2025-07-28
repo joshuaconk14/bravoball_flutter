@@ -89,7 +89,7 @@ class _SessionGeneratorEditorPageState extends State<SessionGeneratorEditorPage>
               color: Colors.white,
               boxShadow: [
                 BoxShadow(
-                  color: Colors.black.withOpacity(0.10),
+                  color: Colors.black.withValues(alpha: 0.10),
                   blurRadius: 12,
                   offset: Offset(0, 6),
                 ),
@@ -346,9 +346,9 @@ class _SessionGeneratorEditorPageState extends State<SessionGeneratorEditorPage>
                       begin: Alignment.centerLeft,
                       end: Alignment.centerRight,
                       colors: [
-                        Colors.white.withOpacity(0.0),
-                        Colors.white.withOpacity(0.3),
-                        Colors.white.withOpacity(0.8),
+                        Colors.white.withValues(alpha: 0.0),
+                        Colors.white.withValues(alpha: 0.3),
+                        Colors.white.withValues(alpha: 0.8),
                         Colors.white,
                       ],
                       stops: const [0.0, 0.2, 0.6, 1.0],
@@ -377,7 +377,7 @@ class _SessionGeneratorEditorPageState extends State<SessionGeneratorEditorPage>
                             borderRadius: BorderRadius.circular(14),
                             boxShadow: [
                               BoxShadow(
-                                color: Colors.black.withOpacity(0.15),
+                                color: Colors.black.withValues(alpha: 0.15),
                                 blurRadius: 6,
                                 offset: const Offset(0, 2),
                               ),
@@ -414,7 +414,7 @@ class _SessionGeneratorEditorPageState extends State<SessionGeneratorEditorPage>
             width: 80,
             height: 80,
             decoration: BoxDecoration(
-              color: AppTheme.primaryLightBlue.withOpacity(0.15),
+              color: AppTheme.primaryLightBlue.withValues(alpha: 0.15),
               borderRadius: BorderRadius.circular(20),
             ),
             child: const Icon(Icons.fitness_center, size: 48, color: AppTheme.primaryLightBlue),

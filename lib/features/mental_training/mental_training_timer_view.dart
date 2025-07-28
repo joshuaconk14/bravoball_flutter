@@ -603,9 +603,9 @@ class _MentalTrainingTimerViewState extends State<MentalTrainingTimerView>
             begin: Alignment.topCenter,
             end: Alignment.bottomCenter,
             colors: [
-              AppTheme.primaryYellow.withOpacity(0.15),
+              AppTheme.primaryYellow.withValues(alpha: 0.15),
               AppTheme.backgroundPrimary,
-              AppTheme.primaryYellow.withOpacity(0.05),
+              AppTheme.primaryYellow.withValues(alpha: 0.05),
             ],
           ),
         ),
@@ -746,8 +746,8 @@ class _MentalTrainingTimerViewState extends State<MentalTrainingTimerView>
                     shape: BoxShape.circle,
                     gradient: RadialGradient(
                       colors: [
-                        AppTheme.primaryYellow.withOpacity(0.1),
-                        AppTheme.primaryYellow.withOpacity(0.05),
+                        AppTheme.primaryYellow.withValues(alpha: 0.1),
+                        AppTheme.primaryYellow.withValues(alpha: 0.05),
                         Colors.transparent,
                       ],
                     ),
@@ -777,7 +777,7 @@ class _MentalTrainingTimerViewState extends State<MentalTrainingTimerView>
                           color: AppTheme.backgroundSecondary,
                           boxShadow: [
                             BoxShadow(
-                              color: Colors.black.withOpacity(0.1),
+                              color: Colors.black.withValues(alpha: 0.1),
                               blurRadius: 20,
                               offset: const Offset(0, 10),
                             ),
@@ -792,7 +792,7 @@ class _MentalTrainingTimerViewState extends State<MentalTrainingTimerView>
                         child: CircularProgressIndicator(
                           value: _isCountdownPhase ? _countdownProgress : _mainTimerProgress,
                           strokeWidth: 6,
-                          backgroundColor: AppTheme.primaryGray.withOpacity(0.2),
+                          backgroundColor: AppTheme.primaryGray.withValues(alpha: 0.2),
                           valueColor: AlwaysStoppedAnimation<Color>(
                             _isCompleted ? AppTheme.success : 
                             _isCountdownPhase ? AppTheme.primaryYellow : AppTheme.primaryYellow,
@@ -840,7 +840,7 @@ class _MentalTrainingTimerViewState extends State<MentalTrainingTimerView>
                               Container(
                                 padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                                 decoration: BoxDecoration(
-                                  color: AppTheme.primaryYellow.withOpacity(0.2),
+                                  color: AppTheme.primaryYellow.withValues(alpha: 0.2),
                                   borderRadius: BorderRadius.circular(12),
                                 ),
                                 child: Text(
@@ -873,7 +873,7 @@ class _MentalTrainingTimerViewState extends State<MentalTrainingTimerView>
                                 Container(
                                   padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
                                   decoration: BoxDecoration(
-                                    color: AppTheme.warning.withOpacity(0.2),
+                                    color: AppTheme.warning.withValues(alpha: 0.2),
                                     borderRadius: BorderRadius.circular(12),
                                   ),
                                   child: Text(
@@ -933,7 +933,7 @@ class _MentalTrainingTimerViewState extends State<MentalTrainingTimerView>
                   borderRadius: BorderRadius.circular(20),
                   boxShadow: [
                     BoxShadow(
-                      color: Colors.black.withOpacity(0.08),
+                      color: Colors.black.withValues(alpha: 0.08),
                       blurRadius: 20,
                       offset: const Offset(0, 8),
                     ),
@@ -1048,7 +1048,7 @@ class _MentalTrainingTimerViewState extends State<MentalTrainingTimerView>
               onPressed: _showCountdown ? null : _stopTimer, // ✅ DISABLED during countdown
               color: _showCountdown ? AppTheme.buttonDisabledGray : AppTheme.error,
               backColor: _showCountdown ? AppTheme.buttonDisabledDarkGray : 
-                        AppTheme.error.withOpacity(0.8),
+                        AppTheme.error.withValues(alpha: 0.8),
               textColor: AppTheme.white,
             ),
           ),

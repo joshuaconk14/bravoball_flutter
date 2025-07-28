@@ -85,7 +85,7 @@ class _EditDetailsViewState extends State<EditDetailsView> {
                     borderRadius: BorderRadius.circular(12),
                     boxShadow: [
                       BoxShadow(
-                        color: Colors.black.withOpacity(0.05),
+                        color: Colors.black.withValues(alpha: 0.05),
                         blurRadius: 10,
                         offset: const Offset(0, 2),
                       ),
@@ -173,18 +173,18 @@ class _EditDetailsViewState extends State<EditDetailsView> {
                 prefixIcon: const Icon(Icons.email_outlined),
                 border: OutlineInputBorder(
                   borderRadius: BorderRadius.circular(12),
-                  borderSide: BorderSide(color: AppTheme.primaryYellow.withOpacity(0.3)),
+                  borderSide: BorderSide(color: AppTheme.primaryYellow.withValues(alpha: 0.3)),
                 ),
                 enabledBorder: OutlineInputBorder(
                   borderRadius: BorderRadius.circular(12),
-                  borderSide: BorderSide(color: AppTheme.primaryYellow.withOpacity(0.3)),
+                  borderSide: BorderSide(color: AppTheme.primaryYellow.withValues(alpha: 0.3)),
                 ),
                 focusedBorder: OutlineInputBorder(
                   borderRadius: BorderRadius.circular(12),
                   borderSide: BorderSide(color: AppTheme.primaryYellow, width: 2),
                 ),
                 filled: true,
-                fillColor: AppTheme.lightGray.withOpacity(0.1),
+                fillColor: AppTheme.lightGray.withValues(alpha: 0.1),
                 contentPadding: const EdgeInsets.all(16),
               ),
             );
@@ -204,9 +204,9 @@ class _EditDetailsViewState extends State<EditDetailsView> {
               padding: const EdgeInsets.all(12),
               margin: const EdgeInsets.only(bottom: 16),
               decoration: BoxDecoration(
-                color: _getMessageColor(model.emailVerificationMessage).withOpacity(0.1),
+                color: _getMessageColor(model.emailVerificationMessage).withValues(alpha: 0.1),
                 borderRadius: BorderRadius.circular(12),
-                border: Border.all(color: _getMessageColor(model.emailVerificationMessage).withOpacity(0.3)),
+                border: Border.all(color: _getMessageColor(model.emailVerificationMessage).withValues(alpha: 0.3)),
               ),
               child: Row(
                 children: [
@@ -312,18 +312,18 @@ class _EditDetailsViewState extends State<EditDetailsView> {
                 prefixIcon: const Icon(Icons.security),
                 border: OutlineInputBorder(
                   borderRadius: BorderRadius.circular(12),
-                  borderSide: BorderSide(color: AppTheme.primaryYellow.withOpacity(0.3)),
+                  borderSide: BorderSide(color: AppTheme.primaryYellow.withValues(alpha: 0.3)),
                 ),
                 enabledBorder: OutlineInputBorder(
                   borderRadius: BorderRadius.circular(12),
-                  borderSide: BorderSide(color: AppTheme.primaryYellow.withOpacity(0.3)),
+                  borderSide: BorderSide(color: AppTheme.primaryYellow.withValues(alpha: 0.3)),
                 ),
                 focusedBorder: OutlineInputBorder(
                   borderRadius: BorderRadius.circular(12),
                   borderSide: BorderSide(color: AppTheme.primaryYellow, width: 2),
                 ),
                 filled: true,
-                fillColor: AppTheme.lightGray.withOpacity(0.1),
+                fillColor: AppTheme.lightGray.withValues(alpha: 0.1),
                 contentPadding: const EdgeInsets.all(16),
                 counterText: '', // Hide character counter
               ),
@@ -344,9 +344,9 @@ class _EditDetailsViewState extends State<EditDetailsView> {
               padding: const EdgeInsets.all(12),
               margin: const EdgeInsets.only(bottom: 16),
               decoration: BoxDecoration(
-                color: _getMessageColor(model.emailVerificationMessage).withOpacity(0.1),
+                color: _getMessageColor(model.emailVerificationMessage).withValues(alpha: 0.1),
                 borderRadius: BorderRadius.circular(12),
-                border: Border.all(color: _getMessageColor(model.emailVerificationMessage).withOpacity(0.3)),
+                border: Border.all(color: _getMessageColor(model.emailVerificationMessage).withValues(alpha: 0.3)),
               ),
               child: Row(
                 children: [

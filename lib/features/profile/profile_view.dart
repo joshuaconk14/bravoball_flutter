@@ -209,7 +209,7 @@ class _ProfileViewState extends State<ProfileView> {
             Container(
               padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
               decoration: BoxDecoration(
-                color: AppTheme.success.withOpacity(0.1),
+                color: AppTheme.success.withValues(alpha: 0.1),
                 borderRadius: BorderRadius.circular(12),
               ),
               child: Text(
@@ -254,7 +254,7 @@ class _ProfileViewState extends State<ProfileView> {
               borderRadius: BorderRadius.circular(12),
               boxShadow: [
                 BoxShadow(
-                  color: Colors.black.withOpacity(0.05),
+                  color: Colors.black.withValues(alpha: 0.05),
                   blurRadius: 10,
                   offset: const Offset(0, 2),
                 ),
@@ -305,7 +305,7 @@ class _ProfileViewState extends State<ProfileView> {
               Container(
                 padding: const EdgeInsets.all(6), // Reduced from 8
                 decoration: BoxDecoration(
-                  color: AppTheme.primaryYellow.withOpacity(0.1),
+                  color: AppTheme.primaryYellow.withValues(alpha: 0.1),
                   borderRadius: BorderRadius.circular(8),
                 ),
                 child: Icon(
@@ -359,7 +359,7 @@ class _ProfileViewState extends State<ProfileView> {
               Container(
                 padding: const EdgeInsets.all(6), // Reduced from 8
                 decoration: BoxDecoration(
-                  color: Colors.orange.withOpacity(0.1),
+                  color: Colors.orange.withValues(alpha: 0.1),
                   borderRadius: BorderRadius.circular(8),
                 ),
                 child: Icon(

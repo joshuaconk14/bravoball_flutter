@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'dart:async';
-import '../../models/drill_model.dart';
 import '../../models/editable_drill_model.dart';
 import '../../services/app_state_service.dart';
 import '../../constants/app_theme.dart';
@@ -18,7 +17,7 @@ class EditDrillView extends StatefulWidget {
     Key? key,
     required this.editableDrill,
     this.onSave,
-  }) : super(key: key);
+  });
 
   @override
   State<EditDrillView> createState() => _EditDrillViewState();
@@ -207,11 +206,11 @@ class _EditDrillViewState extends State<EditDrillView>
         margin: const EdgeInsets.all(16),
         padding: const EdgeInsets.all(16),
         decoration: BoxDecoration(
-          color: Colors.white.withOpacity(0.9), // ✅ UPDATED: Increased opacity from 0.7 to 0.9
+          color: Colors.white.withValues(alpha: 0.9), // ✅ UPDATED: Increased opacity from 0.7 to 0.9
           borderRadius: BorderRadius.circular(16),
           boxShadow: [
             BoxShadow(
-              color: Colors.black.withOpacity(0.1),
+              color: Colors.black.withValues(alpha: 0.1),
               blurRadius: 8,
               offset: const Offset(0, 2),
             ),
@@ -287,10 +286,10 @@ class _EditDrillViewState extends State<EditDrillView>
             Container(
               padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
               decoration: BoxDecoration(
-                color: AppTheme.getSkillColor(widget.editableDrill.drill.skill).withOpacity(0.1),
+                color: AppTheme.getSkillColor(widget.editableDrill.drill.skill).withValues(alpha: 0.1),
                 borderRadius: BorderRadius.circular(16),
                 border: Border.all(
-                  color: AppTheme.getSkillColor(widget.editableDrill.drill.skill).withOpacity(0.3),
+                  color: AppTheme.getSkillColor(widget.editableDrill.drill.skill).withValues(alpha: 0.3),
                 ),
               ),
               child: Text(
@@ -318,11 +317,11 @@ class _EditDrillViewState extends State<EditDrillView>
         margin: const EdgeInsets.all(16),
         padding: const EdgeInsets.all(12), // ✅ REDUCED: From 16 to 12
         decoration: BoxDecoration(
-          color: Colors.white.withOpacity(0.9), // ✅ UPDATED: Increased opacity from 0.7 to 0.9
+          color: Colors.white.withValues(alpha: 0.9), // ✅ UPDATED: Increased opacity from 0.7 to 0.9
           borderRadius: BorderRadius.circular(20),
           boxShadow: [
             BoxShadow(
-              color: Colors.black.withOpacity(0.1),
+              color: Colors.black.withValues(alpha: 0.1),
               blurRadius: 12,
               offset: const Offset(0, 4),
             ),

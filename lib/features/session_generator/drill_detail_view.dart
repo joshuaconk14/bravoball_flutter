@@ -20,7 +20,7 @@ class DrillDetailView extends StatefulWidget {
     required this.drill,
     this.onAddToSession,
     this.isInSession = false,
-  }) : super(key: key);
+  });
 
   @override
   State<DrillDetailView> createState() => _DrillDetailViewState();
@@ -203,7 +203,7 @@ class _DrillDetailViewState extends State<DrillDetailView>
         leading: Container(
           margin: const EdgeInsets.all(8),
           decoration: BoxDecoration(
-            color: Colors.black.withOpacity(0.3),
+            color: Colors.black.withValues(alpha: 0.3),
             shape: BoxShape.circle,
           ),
           child: IconButton(
@@ -218,7 +218,7 @@ class _DrillDetailViewState extends State<DrillDetailView>
           Container(
             margin: const EdgeInsets.all(8),
             decoration: BoxDecoration(
-              color: Colors.black.withOpacity(0.3),
+              color: Colors.black.withValues(alpha: 0.3),
               shape: BoxShape.circle,
             ),
             child: PopupMenuButton<String>(
@@ -627,10 +627,10 @@ class _DrillDetailViewState extends State<DrillDetailView>
             Container(
               padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
               decoration: BoxDecoration(
-                color: AppTheme.getSkillColor(currentDrill.skill).withOpacity(0.1),
+                color: AppTheme.getSkillColor(currentDrill.skill).withValues(alpha: 0.1),
                 borderRadius: BorderRadius.circular(16),
                 border: Border.all(
-                  color: AppTheme.getSkillColor(currentDrill.skill).withOpacity(0.3),
+                  color: AppTheme.getSkillColor(currentDrill.skill).withValues(alpha: 0.3),
                 ),
               ),
               child: Text(

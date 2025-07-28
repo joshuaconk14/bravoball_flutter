@@ -12,7 +12,7 @@ class DrillVideoPlayer extends StatefulWidget {
     required this.videoUrl,
     this.aspectRatio = 16 / 9,
     this.showControls = true,
-  }) : super(key: key);
+  });
 
   @override
   State<DrillVideoPlayer> createState() => _DrillVideoPlayerState();
@@ -102,7 +102,7 @@ class _DrillVideoPlayerState extends State<DrillVideoPlayer> {
           borderRadius: BorderRadius.circular(16),
           boxShadow: [
             BoxShadow(
-              color: Colors.black.withOpacity(0.1),
+              color: Colors.black.withValues(alpha: 0.1),
               blurRadius: 12,
               offset: const Offset(0, 4),
             ),
@@ -182,7 +182,7 @@ class _DrillVideoPlayerState extends State<DrillVideoPlayer> {
             begin: Alignment.bottomCenter,
             end: Alignment.topCenter,
             colors: [
-              Colors.black.withOpacity(0.7),
+              Colors.black.withValues(alpha: 0.7),
               Colors.transparent,
             ],
           ),
@@ -204,7 +204,7 @@ class _DrillVideoPlayerState extends State<DrillVideoPlayer> {
                 child: Container(
                   padding: const EdgeInsets.all(8),
                   decoration: BoxDecoration(
-                    color: Colors.black.withOpacity(0.5),
+                    color: Colors.black.withValues(alpha: 0.5),
                     shape: BoxShape.circle,
                   ),
                   child: Icon(
@@ -230,7 +230,7 @@ class _DrillVideoPlayerState extends State<DrillVideoPlayer> {
               Container(
                 padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                 decoration: BoxDecoration(
-                  color: Colors.black.withOpacity(0.5),
+                  color: Colors.black.withValues(alpha: 0.5),
                   borderRadius: BorderRadius.circular(4),
                 ),
                 child: Text(

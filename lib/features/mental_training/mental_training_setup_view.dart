@@ -92,7 +92,7 @@ class _MentalTrainingSetupViewState extends State<MentalTrainingSetupView>
             begin: Alignment.topCenter,
             end: Alignment.bottomCenter,
             colors: [
-              AppTheme.primaryYellow.withOpacity(0.1),
+              AppTheme.primaryYellow.withValues(alpha: 0.1),
               AppTheme.backgroundPrimary,
               AppTheme.backgroundPrimary,
             ],
@@ -195,7 +195,7 @@ class _MentalTrainingSetupViewState extends State<MentalTrainingSetupView>
                   gradient: LinearGradient(
                     colors: [
                       AppTheme.primaryYellow,
-                      AppTheme.primaryYellow.withOpacity(0.8),
+                      AppTheme.primaryYellow.withValues(alpha: 0.8),
                     ],
                     begin: Alignment.topLeft,
                     end: Alignment.bottomRight,
@@ -203,7 +203,7 @@ class _MentalTrainingSetupViewState extends State<MentalTrainingSetupView>
                   shape: BoxShape.circle,
                   boxShadow: [
                     BoxShadow(
-                      color: AppTheme.primaryYellow.withOpacity(0.3),
+                      color: AppTheme.primaryYellow.withValues(alpha: 0.3),
                       blurRadius: 20,
                       offset: const Offset(0, 8),
                     ),
@@ -313,7 +313,7 @@ class _MentalTrainingSetupViewState extends State<MentalTrainingSetupView>
                 ? LinearGradient(
                     colors: [
                       AppTheme.primaryYellow,
-                      AppTheme.primaryYellow.withOpacity(0.8),
+                      AppTheme.primaryYellow.withValues(alpha: 0.8),
                     ],
                     begin: Alignment.topLeft,
                     end: Alignment.bottomRight,
@@ -330,14 +330,14 @@ class _MentalTrainingSetupViewState extends State<MentalTrainingSetupView>
             boxShadow: isSelected
                 ? [
                     BoxShadow(
-                      color: AppTheme.primaryYellow.withOpacity(0.4),
+                      color: AppTheme.primaryYellow.withValues(alpha: 0.4),
                       blurRadius: 15,
                       offset: const Offset(0, 6),
                     ),
                   ]
                 : [
                     BoxShadow(
-                      color: Colors.black.withOpacity(0.05),
+                      color: Colors.black.withValues(alpha: 0.05),
                       blurRadius: 8,
                       offset: const Offset(0, 2),
                     ),
@@ -358,7 +358,7 @@ class _MentalTrainingSetupViewState extends State<MentalTrainingSetupView>
                 'minutes',
                 style: AppTheme.bodyLarge.copyWith(
                   color: isSelected 
-                      ? AppTheme.white.withOpacity(0.9) 
+                      ? AppTheme.white.withValues(alpha: 0.9) 
                       : AppTheme.primaryGray,
                   fontWeight: FontWeight.w500,
                 ),

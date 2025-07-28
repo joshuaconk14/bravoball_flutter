@@ -15,7 +15,7 @@ class InfoPopupWidget extends StatelessWidget {
     required this.description,
     this.onClose,
     this.riveFileName = 'Bravo_Animation.riv',
-  }) : super(key: key);
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -29,7 +29,7 @@ class InfoPopupWidget extends StatelessWidget {
           borderRadius: BorderRadius.circular(20),
           boxShadow: [
             BoxShadow(
-              color: Colors.black.withOpacity(0.15),
+              color: Colors.black.withValues(alpha: 0.15),
               blurRadius: 20,
               offset: const Offset(0, 10),
             ),
@@ -102,7 +102,7 @@ class InfoPopupWidget extends StatelessWidget {
                     backgroundColor: AppTheme.primaryYellow,
                     foregroundColor: Colors.white,
                     elevation: 3,
-                    shadowColor: AppTheme.primaryYellow.withOpacity(0.3),
+                    shadowColor: AppTheme.primaryYellow.withValues(alpha: 0.3),
                     shape: RoundedRectangleBorder(
                       borderRadius: BorderRadius.circular(20),
                     ),

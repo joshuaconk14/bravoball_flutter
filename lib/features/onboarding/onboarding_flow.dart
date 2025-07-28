@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/foundation.dart';
 import 'package:rive/rive.dart';
 import '../../utils/haptic_utils.dart';
 import '../../widgets/typewriter_text.dart'; // ✅ NEW: Import reusable typewriter text
@@ -10,7 +11,6 @@ import '../../services/onboarding_service.dart';
 import '../../models/onboarding_model.dart';
 import '../../services/user_manager_service.dart'; // ✅ NEW: Import user manager
 import '../../main.dart'; // Import for MyApp
-import 'package:flutter/foundation.dart'; // Import for kDebugMode
 
 /// ✅ NEW: Staggered Animation for Elements
 class StaggeredFadeInUp extends StatefulWidget {
@@ -23,7 +23,7 @@ class StaggeredFadeInUp extends StatefulWidget {
     required this.child,
     this.delay = 0,
     this.duration = const Duration(milliseconds: 400),
-  }) : super(key: key);
+  });
 
   @override
   State<StaggeredFadeInUp> createState() => _StaggeredFadeInUpState();
@@ -94,7 +94,7 @@ class BouncyButton extends StatefulWidget {
     Key? key,
     required this.child,
     this.onTap,
-  }) : super(key: key);
+  });
 
   @override
   State<BouncyButton> createState() => _BouncyButtonState();
@@ -146,7 +146,7 @@ class _BouncyButtonState extends State<BouncyButton>
 }
 
 class OnboardingFlow extends StatefulWidget {
-  const OnboardingFlow({Key? key}) : super(key: key);
+  const OnboardingFlow({Key? key});
 
   @override
   State<OnboardingFlow> createState() => _OnboardingFlowState();
@@ -201,14 +201,14 @@ class _OnboardingFlowState extends State<OnboardingFlow> {
     // ✅ SAFETY: Never allow step to go beyond registration
     if (_step >= stepRegistration) {
       if (kDebugMode) {
-        print('🛑 OnboardingFlow: Attempted to go beyond registration step. Current: $_step, Max: $stepRegistration');
+        if (kDebugMode) print('🛑 OnboardingFlow: Attempted to go beyond registration step. Current: $_step, Max: $stepRegistration');
       }
       return;
     }
 
     // ✅ NEW: Handle smooth transition from preview to first question
     if (_step == stepPreview) {
-      print('🎬 Starting Bravo transition animation');
+      if (kDebugMode) print('🎬 Starting Bravo transition animation');
       // Start Bravo transition animation
       setState(() {
         _isBravoTransitioning = true;
@@ -217,7 +217,7 @@ class _OnboardingFlowState extends State<OnboardingFlow> {
       // After a short delay, advance to the next step and show question content
       Future.delayed(const Duration(milliseconds: 600), () {
         if (mounted) {
-          print('🎬 Advancing to question step and showing content');
+          if (kDebugMode) print('🎬 Advancing to question step and showing content');
           setState(() {
             _previousStep = _step;
             _step++;
@@ -317,32 +317,32 @@ class _OnboardingFlowState extends State<OnboardingFlow> {
 
   /// ✅ NEW: Build the current screen based on step
   Widget _buildCurrentScreen() {
-    print('🖥️ Building screen for step: $_step, _isBravoTransitioning: $_isBravoTransitioning, _showQuestionContent: $_showQuestionContent');
+    if (kDebugMode) print('🖥️ Building screen for step: $_step, _isBravoTransitioning: $_isBravoTransitioning, _showQuestionContent: $_showQuestionContent');
     
     if (_step == stepInitial) {
-      print('🖥️ Showing initial screen');
+      if (kDebugMode) print('🖥️ Showing initial screen');
       return _buildInitialScreen();
     }
 
     if (_step == stepPreview || (_step >= stepFirstQuestion && _step < stepRegistration && _isBravoTransitioning)) {
-      print('🖥️ Showing unified preview/question screen');
+      if (kDebugMode) print('🖥️ Showing unified preview/question screen');
       return _buildPreviewScreen();
     }
 
     // Question screens (only when not transitioning)
     if (_step >= stepFirstQuestion && _step < stepRegistration && !_isBravoTransitioning) {
-      print('🖥️ Showing standalone question screen');
+      if (kDebugMode) print('🖥️ Showing standalone question screen');
       return _buildQuestionScreen();
     }
 
     if (_step == stepRegistration) {
-      print('🖥️ Showing registration screen');
+      if (kDebugMode) print('🖥️ Showing registration screen');
       return _buildRegistrationScreen();
     }
 
     // ✅ SAFETY: If step goes beyond registration, clamp it back and show registration
     if (_step > stepRegistration) {
-      print('🛑 OnboardingFlow: Step $_step beyond registration ($stepRegistration), clamping back');
+      if (kDebugMode) print('🛑 OnboardingFlow: Step $_step beyond registration ($stepRegistration), clamping back');
       // Reset step to registration
       WidgetsBinding.instance.addPostFrameCallback((_) {
         if (mounted) {
@@ -352,12 +352,12 @@ class _OnboardingFlowState extends State<OnboardingFlow> {
           });
         }
       });
-      print('🖥️ Showing registration screen (fallback)');
+      if (kDebugMode) print('🖥️ Showing registration screen (fallback)');
       return _buildRegistrationScreen();
     }
 
     // Final fallback (should never hit now)
-    print('🖥️ Showing fallback screen - this should not happen');
+    if (kDebugMode) print('🖥️ Showing fallback screen - this should not happen');
     return const SizedBox.shrink();
   }
 
@@ -623,7 +623,7 @@ class _OnboardingFlowState extends State<OnboardingFlow> {
                                     });
                                   } else {
                                     // Second click: start onboarding
-                                    print('🎬 Let\'s Go button clicked - triggering transition');
+                                    if (kDebugMode) print('🎬 Let\'s Go button clicked - triggering transition');
                                     _next();
                                   }
                                 } : null,
@@ -790,7 +790,7 @@ class _OnboardingFlowState extends State<OnboardingFlow> {
     // ✅ NEW: Show question content with delay if transitioning from preview
     final isTransitioningFromPreview = _previousStep == stepPreview && _step == stepFirstQuestion;
     
-    print('🎬 Question screen - isTransitioningFromPreview: $isTransitioningFromPreview, _isBravoTransitioning: $_isBravoTransitioning, _showQuestionContent: $_showQuestionContent');
+    if (kDebugMode) print('🎬 Question screen - isTransitioningFromPreview: $isTransitioningFromPreview, _isBravoTransitioning: $_isBravoTransitioning, _showQuestionContent: $_showQuestionContent');
 
     return SafeArea(
       child: Stack(
@@ -1218,7 +1218,7 @@ class _OnboardingFlowState extends State<OnboardingFlow> {
     // ✅ IMMEDIATE: Prevent any action if already on or past registration
     if (_step >= stepRegistration) {
       if (kDebugMode) {
-        print('🛑 OnboardingFlow: Skip blocked - already at/past registration step: $_step');
+        if (kDebugMode) print('🛑 OnboardingFlow: Skip blocked - already at/past registration step: $_step');
       }
       return;
     }
@@ -1226,7 +1226,7 @@ class _OnboardingFlowState extends State<OnboardingFlow> {
     // ✅ IMMEDIATE: Prevent spam clicking
     if (_isSkipButtonDisabled) {
       if (kDebugMode) {
-        print('🛑 OnboardingFlow: Skip blocked - button already disabled');
+        if (kDebugMode) print('🛑 OnboardingFlow: Skip blocked - button already disabled');
       }
       return;
     }
@@ -1237,7 +1237,7 @@ class _OnboardingFlowState extends State<OnboardingFlow> {
     });
     
     if (kDebugMode) {
-      print('⏭️ OnboardingFlow: Skip pressed - disabling button and advancing');
+      if (kDebugMode) print('⏭️ OnboardingFlow: Skip pressed - disabling button and advancing');
     }
     
     // Re-enable skip button after delay (only if not at registration)
@@ -1279,7 +1279,7 @@ class _OnboardingFlowState extends State<OnboardingFlow> {
 
   void _enterGuestMode() async {
     if (kDebugMode) {
-      print('🚀 OnboardingFlow: Entering guest mode...');
+      if (kDebugMode) print('🚀 OnboardingFlow: Entering guest mode...');
     }
     
     try {
@@ -1287,7 +1287,7 @@ class _OnboardingFlowState extends State<OnboardingFlow> {
       await UserManagerService.instance.enterGuestMode();
       
       if (kDebugMode) {
-        print('✅ OnboardingFlow: Guest mode activated, navigating to main app');
+        if (kDebugMode) print('✅ OnboardingFlow: Guest mode activated, navigating to main app');
       }
       
       // Navigate to main app
@@ -1299,7 +1299,7 @@ class _OnboardingFlowState extends State<OnboardingFlow> {
       }
     } catch (e) {
       if (kDebugMode) {
-        print('❌ OnboardingFlow: Error entering guest mode: $e');
+        if (kDebugMode) print('❌ OnboardingFlow: Error entering guest mode: $e');
       }
       
       // Show error to user
@@ -1415,7 +1415,7 @@ class _MessageBubble extends StatefulWidget {
     Key? key,
     required this.message,
     this.isMovingForward = true,
-  }) : super(key: key);
+  });
 
   @override
   State<_MessageBubble> createState() => _MessageBubbleState();
@@ -1447,6 +1447,20 @@ class _MessageBubbleState extends State<_MessageBubble>
 
     // Start the animation sequence
     _startBubbleSequence();
+  }
+
+  @override
+  void didUpdateWidget(_MessageBubble oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    // Restart animation if message changed (ensures consistent bubble pop-out for all questions)
+    if (oldWidget.message != widget.message) {
+      _controller.reset();
+      setState(() {
+        _showBubble = false;
+        _showTypewriter = false;
+      });
+      _startBubbleSequence();
+    }
   }
 
   void _startBubbleSequence() async {
@@ -1489,7 +1503,7 @@ class _MessageBubbleState extends State<_MessageBubble>
   Widget build(BuildContext context) {
     if (!_showBubble) {
       return Container(
-        height: 70, // Increased from 55 to 70
+        height: 85, // Increased from 70 to 85 to prevent text cropping
         alignment: Alignment.centerLeft,
       );
     }
@@ -1510,11 +1524,12 @@ class _MessageBubbleState extends State<_MessageBubble>
                   painter: _BubbleTailPainter(),
                 ),
               ),
-              // Main speech bubble with fixed size
+              // Main speech bubble with flexible height
               Expanded(
                 child: Container(
-                  height: 70, // Increased from 55 to 70
-                  padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 14), // Increased padding
+                  // Remove fixed height to allow text to determine height
+                  constraints: const BoxConstraints(minHeight: 70), // Minimum height instead of fixed
+                  padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16), // Increased vertical padding
                   decoration: BoxDecoration(
                     color: const Color(0xFFF5F5F5), // Lighter gray, no shadow
                     borderRadius: BorderRadius.circular(20), // Slightly larger radius
@@ -1614,7 +1629,7 @@ class _SimplifiedSlidingOptions extends StatefulWidget {
     required this.selected,
     required this.isMovingForward,
     required this.onOptionSelected,
-  }) : super(key: key);
+  });
 
   @override
   State<_SimplifiedSlidingOptions> createState() => _SimplifiedSlidingOptionsState();
@@ -1651,10 +1666,41 @@ class _SimplifiedSlidingOptionsState extends State<_SimplifiedSlidingOptions>
     _startOptionsTimer();
   }
 
+  @override
+  void didUpdateWidget(_SimplifiedSlidingOptions oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    // Restart animation if question changed (ensures consistent slide-in for all questions)
+    if (oldWidget.question != widget.question) {
+      _controller.reset();
+      setState(() {
+        _showOptions = false;
+      });
+      
+      // Update slide direction for new question
+      final startOffset = widget.isMovingForward 
+          ? const Offset(1.0, 0.0)  // Slide in from right when moving forward
+          : const Offset(-1.0, 0.0); // Slide in from left when moving backward
+
+      _slideAnimation = Tween<Offset>(
+        begin: startOffset,
+        end: Offset.zero,
+      ).animate(CurvedAnimation(
+        parent: _controller,
+        curve: Curves.easeOutQuart,
+      ));
+      
+      _startOptionsTimer();
+    }
+  }
+
   void _startOptionsTimer() {
     if (widget.isMovingForward) {
-      // Wait for question to type out (approximate timing)
-      Future.delayed(const Duration(milliseconds: 1500), () {
+      // Calculate dynamic delay based on message length (roughly 15ms per character + base delay)
+      final messageLength = widget.question.question.length;
+      final typingDuration = messageLength * 15; // 15ms per character (matching TypewriterText)
+      final totalDelay = typingDuration + 800; // Add 800ms buffer after typing completes
+      
+      Future.delayed(Duration(milliseconds: totalDelay), () {
         if (mounted) {
           setState(() {
             _showOptions = true;
@@ -1716,7 +1762,7 @@ class _SimplifiedSlidingOptionsState extends State<_SimplifiedSlidingOptions>
                         boxShadow: [
                           if (isSelected)
                             BoxShadow(
-                              color: yellow.withOpacity(0.3),
+                              color: yellow.withValues(alpha: 0.3),
                               blurRadius: 8,
                               offset: const Offset(0, 4),
                             ),
@@ -1767,7 +1813,7 @@ class _SimplifiedSlidingOptionsState extends State<_SimplifiedSlidingOptions>
                         boxShadow: [
                           if (isSelected)
                             BoxShadow(
-                              color: yellow.withOpacity(0.3),
+                              color: yellow.withValues(alpha: 0.3),
                               blurRadius: 8,
                               offset: const Offset(0, 4),
                             ),
@@ -1813,7 +1859,7 @@ class _PasswordValidationWidget extends StatelessWidget {
     required this.confirmPassword,
     required this.email,
     Key? key,
-  }) : super(key: key);
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -1949,7 +1995,7 @@ class _BravoTextField extends StatelessWidget {
     this.controller,
     this.onSubmitted, // ✅ NEW: Add onSubmitted parameter
     Key? key,
-  }) : super(key: key);
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -1977,7 +2023,7 @@ class _BravoTextField extends StatelessWidget {
         fillColor: Colors.grey.shade50,
         enabledBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(14),
-          borderSide: BorderSide(color: yellow.withOpacity(0.3), width: 2),
+          borderSide: BorderSide(color: yellow.withValues(alpha: 0.3), width: 2),
         ),
         focusedBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(14),

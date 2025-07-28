@@ -76,7 +76,7 @@ class _SavedDrillsViewState extends State<SavedDrillsView> with SingleTickerProv
                               // Add button on the right
                               Container(
                                 decoration: BoxDecoration(
-                                  color: Colors.white.withOpacity(0.2),
+                                  color: Colors.white.withValues(alpha: 0.2),
                                   borderRadius: BorderRadius.circular(12),
                                 ),
                                 child: IconButton(
@@ -260,7 +260,7 @@ class _SavedDrillsViewState extends State<SavedDrillsView> with SingleTickerProv
             Container(
               padding: const EdgeInsets.all(24),
               decoration: BoxDecoration(
-                color: AppTheme.primaryPurple.withOpacity(0.1),
+                color: AppTheme.primaryPurple.withValues(alpha: 0.1),
                 borderRadius: BorderRadius.circular(24),
               ),
               child: const Icon(
@@ -387,7 +387,7 @@ class _SavedDrillsViewState extends State<SavedDrillsView> with SingleTickerProv
           border: Border.all(color: Colors.grey.shade200),
           boxShadow: [
             BoxShadow(
-              color: Colors.black.withOpacity(0.08),
+              color: Colors.black.withValues(alpha: 0.08),
               blurRadius: 8,
               offset: const Offset(0, 2),
             ),
@@ -404,8 +404,8 @@ class _SavedDrillsViewState extends State<SavedDrillsView> with SingleTickerProv
                     padding: const EdgeInsets.all(12),
                     decoration: BoxDecoration(
                       color: group.isLikedDrillsGroup 
-                          ? AppTheme.secondaryRed.withOpacity(0.1)
-                          : AppTheme.primaryPurple.withOpacity(0.1),
+                          ? AppTheme.secondaryRed.withValues(alpha: 0.1)
+                          : AppTheme.primaryPurple.withValues(alpha: 0.1),
                       borderRadius: BorderRadius.circular(12),
                     ),
                     child: Icon(
@@ -472,7 +472,7 @@ class _SavedDrillsViewState extends State<SavedDrillsView> with SingleTickerProv
                       .map((skill) => Container(
                             padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
                             decoration: BoxDecoration(
-                              color: AppTheme.getSkillColor(skill).withOpacity(0.1),
+                              color: AppTheme.getSkillColor(skill).withValues(alpha: 0.1),
                               borderRadius: BorderRadius.circular(8),
                             ),
                             child: Text(
@@ -503,7 +503,7 @@ class _SavedDrillsViewState extends State<SavedDrillsView> with SingleTickerProv
             Container(
               padding: const EdgeInsets.all(24),
               decoration: BoxDecoration(
-                color: AppTheme.primaryPurple.withOpacity(0.1),
+                color: AppTheme.primaryPurple.withValues(alpha: 0.1),
                 borderRadius: BorderRadius.circular(24),
               ),
               child: const Icon(

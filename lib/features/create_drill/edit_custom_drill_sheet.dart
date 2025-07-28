@@ -17,7 +17,7 @@ class EditCustomDrillSheet extends StatefulWidget {
   const EditCustomDrillSheet({
     Key? key,
     required this.drill,
-  }) : super(key: key);
+  });
 
   @override
   State<EditCustomDrillSheet> createState() => _EditCustomDrillSheetState();
