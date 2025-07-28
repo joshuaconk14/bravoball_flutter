@@ -6,6 +6,8 @@ import '../../services/login_service.dart';
 import '../../widgets/bravo_button.dart';
 import '../onboarding/onboarding_flow.dart';
 import '../../utils/haptic_utils.dart';
+import 'edit_details_view.dart';
+import 'change_password_view.dart';
 
 class AccountSettingsView extends StatelessWidget {
   const AccountSettingsView({Key? key}) : super(key: key);
@@ -34,6 +36,33 @@ class AccountSettingsView extends StatelessWidget {
           child: Column(
             children: [
               const SizedBox(height: 20),
+              
+              // Profile Settings Section
+              _buildSection(
+                title: 'Profile Settings',
+                items: [
+                  _buildMenuItem(
+                    icon: Icons.edit_outlined,
+                    title: 'Edit your details',
+                    subtitle: 'Update your personal information',
+                    onTap: () {
+                      HapticUtils.lightImpact();
+                      _handleEditDetails(context);
+                    },
+                  ),
+                  _buildMenuItem(
+                    icon: Icons.lock_outline,
+                    title: 'Change Password',
+                    subtitle: 'Update your account password',
+                    onTap: () {
+                      HapticUtils.lightImpact();
+                      _handleChangePassword(context);
+                    },
+                  ),
+                ],
+              ),
+              
+              const SizedBox(height: 24),
               
               // Account Management Section
               _buildSection(
@@ -233,6 +262,22 @@ class AccountSettingsView extends StatelessWidget {
 
   void _handleDeleteAccount(BuildContext context) {
     _showDeleteAccountConfirmationDialog(context);
+  }
+
+  void _handleEditDetails(BuildContext context) {
+    Navigator.of(context).push(
+      MaterialPageRoute(
+        builder: (context) => const EditDetailsView(),
+      ),
+    );
+  }
+
+  void _handleChangePassword(BuildContext context) {
+    Navigator.of(context).push(
+      MaterialPageRoute(
+        builder: (context) => const ChangePasswordView(),
+      ),
+    );
   }
 
   void _showLogoutConfirmationDialog(BuildContext context) {

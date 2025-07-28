@@ -7,8 +7,6 @@ import '../../config/app_config.dart';
 import '../../services/user_manager_service.dart';
 import '../debug/debug_settings_view.dart';
 import '../onboarding/onboarding_flow.dart';
-import 'edit_details_view.dart';
-import 'change_password_view.dart';
 import 'privacy_policy_view.dart';
 import 'terms_of_service_view.dart';
 import 'account_settings_view.dart'; // ✅ ADDED: Import AccountSettingsView
@@ -43,22 +41,14 @@ class _ProfileViewState extends State<ProfileView> {
                   _buildSection(
                     title: 'Account',
                     items: [
-                      // ✅ NEW: Conditional items based on guest mode
+                      // ✅ UPDATED: Simplified account section - everything consolidated under Manage Account
                       if (!context.read<UserManagerService>().isGuestMode) ...[
                         _buildMenuItem(
-                          icon: Icons.edit_outlined,
-                          title: 'Edit your details',
+                          icon: Icons.settings_outlined,
+                          title: 'Manage Account',
                           onTap: () {
-                            HapticUtils.lightImpact(); // Light haptic for profile edit
-                            _handleEditDetails();
-                          },
-                        ),
-                        _buildMenuItem(
-                          icon: Icons.lock_outline,
-                          title: 'Change Password',
-                          onTap: () {
-                            HapticUtils.lightImpact(); // Light haptic for password change
-                            _handleChangePassword();
+                            HapticUtils.lightImpact(); // Light haptic for account settings
+                            _handleAccountSettings();
                           },
                         ),
                       ] else ...[
@@ -71,16 +61,6 @@ class _ProfileViewState extends State<ProfileView> {
                           },
                         ),
                       ],
-                      // ✅ ADDED: Account Settings menu item for logout/delete options (only for logged-in users)
-                      if (!context.read<UserManagerService>().isGuestMode)
-                        _buildMenuItem(
-                          icon: Icons.settings_outlined,
-                          title: 'Manage Account',
-                          onTap: () {
-                            HapticUtils.lightImpact(); // Light haptic for account settings
-                            _handleAccountSettings();
-                          },
-                        ),
                     ],
                   ),
                   
@@ -425,21 +405,6 @@ class _ProfileViewState extends State<ProfileView> {
   }
 
   // Action Handlers
-  void _handleEditDetails() {
-    Navigator.of(context).push(
-      MaterialPageRoute(
-        builder: (context) => const EditDetailsView(),
-      ),
-    );
-  }
-
-  void _handleChangePassword() {
-    Navigator.of(context).push(
-      MaterialPageRoute(
-        builder: (context) => const ChangePasswordView(),
-      ),
-    );
-  }
 
   void _handleShareApp() {
     const shareText = 'Check out BravoBall - Your personal soccer training companion!\n\nDownload it here: https://apps.apple.com/app/bravoball';

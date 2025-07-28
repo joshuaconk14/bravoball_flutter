@@ -20,6 +20,17 @@ class OnboardingService {
     try {
       if (kDebugMode) {
         print('📤 OnboardingService: Sending onboarding data: ${data.toJson()}');
+        if (_userManager.isGuestMode) {
+          print('👤 OnboardingService: User is in guest mode, will exit guest mode before registration');
+        }
+      }
+      
+      // ✅ CRITICAL FIX: Exit guest mode before registration attempt
+      if (_userManager.isGuestMode) {
+        await _userManager.exitGuestMode();
+        if (kDebugMode) {
+          print('✅ OnboardingService: Exited guest mode before registration attempt');
+        }
       }
       
       final response = await _apiService.post(
@@ -58,6 +69,12 @@ class OnboardingService {
               print('⚠️ OnboardingService: No initial session returned from backend.');
             }
           }
+          
+          // ✅ CRITICAL FIX: Handle authentication state transition
+          if (kDebugMode) {
+            print('🔄 OnboardingService: Handling authentication state transition...');
+          }
+          await AppStateService.instance.handleAuthenticationTransition();
           
           return true;
         } else {

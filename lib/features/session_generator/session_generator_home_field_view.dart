@@ -433,10 +433,10 @@ class _SessionGeneratorHomeFieldViewState extends State<SessionGeneratorHomeFiel
                 _showSessionComplete();
               } else if (appState.isSessionComplete) {
                 HapticUtils.mediumImpact();
-                // ✅ Play success sound for first-time session completion
-                AudioService.playSuccess();
-                await appState.completeSession();
+                // ✅ IMPROVED: Show completion immediately, handle backend sync in background
                 _showSessionComplete();
+                // Do completion work in background (non-blocking)
+                appState.completeSession();
               } else {
                 HapticUtils.lightImpact();
                 ScaffoldMessenger.of(context).showSnackBar(
@@ -559,9 +559,10 @@ class _SessionGeneratorHomeFieldViewState extends State<SessionGeneratorHomeFiel
             onDrillCompleted: () {
             },
             onSessionCompleted: () async {
-              // Handle session completion
-              await appState.completeSession();
+              // ✅ IMPROVED: Show completion immediately, handle backend sync in background
               _showSessionComplete();
+              // Do completion work in background (non-blocking)
+              appState.completeSession();
             },
           ),
         ),

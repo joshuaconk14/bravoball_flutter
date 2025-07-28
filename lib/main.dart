@@ -148,6 +148,24 @@ class AuthenticationChecker extends StatelessWidget {
           );
         }
 
+        // ✅ NEW: State validation and recovery on app startup
+        if (!userManager.isInValidState) {
+          if (kDebugMode) {
+            print('🚨 DETECTED INVALID STATE ON APP STARTUP');
+            print(userManager.debugInfo);
+            print('Attempting state recovery...');
+          }
+          
+          // Attempt to recover from invalid state
+          WidgetsBinding.instance.addPostFrameCallback((_) async {
+            await _recoverFromInvalidState(userManager);
+          });
+          
+          return const BravoLoginLoadingIndicator(
+            message: 'Fixing account state...',
+          );
+        }
+
         // Return appropriate content based on authentication state
         // ✅ UPDATED: Check for both logged in users AND guest users
         if (userManager.isLoggedIn || userManager.isGuestMode) {
@@ -157,6 +175,51 @@ class AuthenticationChecker extends StatelessWidget {
         }
       },
     );
+  }
+  
+  /// ✅ NEW: Recover from invalid authentication state
+  Future<void> _recoverFromInvalidState(UserManagerService userManager) async {
+    if (kDebugMode) {
+      print('🔧 Starting state recovery...');
+    }
+    
+    try {
+      // If user appears to be in guest mode but has tokens, clear the tokens
+      if (userManager.isGuestMode && (userManager.accessToken.isNotEmpty || userManager.refreshToken.isNotEmpty)) {
+        if (kDebugMode) {
+          print('🔧 Guest mode with tokens detected - clearing tokens');
+        }
+        await userManager.logout(skipNotification: true);
+        await userManager.enterGuestMode();
+      }
+      // If user appears authenticated but missing tokens, log them out
+      else if (userManager.isLoggedIn && userManager.accessToken.isEmpty) {
+        if (kDebugMode) {
+          print('🔧 Logged in without tokens detected - logging out');
+        }
+        await userManager.logout();
+      }
+      // If user has tokens but not marked as logged in, attempt to restore login state
+      else if (!userManager.isLoggedIn && userManager.accessToken.isNotEmpty && !userManager.isGuestMode) {
+        if (kDebugMode) {
+          print('🔧 Has tokens but not logged in - attempting to restore login state');
+        }
+        // This is a tricky case - we have tokens but user isn't marked as logged in
+        // We should validate the tokens with the backend or clear them
+        await userManager.logout(); // Clear potentially invalid tokens
+      }
+      
+      if (kDebugMode) {
+        print('✅ State recovery complete');
+        print(userManager.debugInfo);
+      }
+    } catch (e) {
+      if (kDebugMode) {
+        print('❌ Error during state recovery: $e');
+      }
+      // If recovery fails, force logout to ensure clean state
+      await userManager.logout();
+    }
   }
 }
 

@@ -188,7 +188,7 @@ class AppStateService extends ChangeNotifier {
   static const Duration _sessionDrillsSyncDebounce = Duration(milliseconds: 500);
   static const Duration _progressSyncDebounce = Duration(milliseconds: 1000);
   static const Duration _drillGroupsSyncDebounce = Duration(milliseconds: 1000);
-  static const Duration _preferencesSyncDebounce = Duration(milliseconds: 1000);
+  static const Duration _preferencesSyncDebounce = Duration(milliseconds: 1500); // ✅ IMPROVED: Increased from 1000ms for better debouncing
   static const Duration _searchDebounceDelay = Duration(milliseconds: 300);
   
   // ===== USER PREFERENCES SECTION =====
@@ -1376,7 +1376,7 @@ class AppStateService extends ChangeNotifier {
   // ===== USER PREFERENCES SECTION =====
   // Update user preferences and trigger session regeneration
   void updateTimeFilter(String? time) {
-    _setPreferencesSyncState(SyncState.syncing);
+    // ✅ IMPROVED: Don't set loading immediately - let debounced sync handle it
     _preferences.selectedTime = time;
     if (_autoGenerateSession) {
       _autoGenerateSessionDrills();
@@ -1386,7 +1386,7 @@ class AppStateService extends ChangeNotifier {
   }
   
   void updateEquipmentFilter(Set<String> equipment) {
-    _setPreferencesSyncState(SyncState.syncing);
+    // ✅ IMPROVED: Don't set loading immediately - let debounced sync handle it
     _preferences.selectedEquipment = equipment;
     if (_autoGenerateSession) {
       _autoGenerateSessionDrills();
@@ -1396,7 +1396,7 @@ class AppStateService extends ChangeNotifier {
   }
   
   void updateTrainingStyleFilter(String? style) {
-    _setPreferencesSyncState(SyncState.syncing);
+    // ✅ IMPROVED: Don't set loading immediately - let debounced sync handle it
     _preferences.selectedTrainingStyle = style;
     if (_autoGenerateSession) {
       _autoGenerateSessionDrills();
@@ -1406,7 +1406,7 @@ class AppStateService extends ChangeNotifier {
   }
   
   void updateLocationFilter(String? location) {
-    _setPreferencesSyncState(SyncState.syncing);
+    // ✅ IMPROVED: Don't set loading immediately - let debounced sync handle it
     _preferences.selectedLocation = location;
     if (_autoGenerateSession) {
       _autoGenerateSessionDrills();
@@ -1416,7 +1416,7 @@ class AppStateService extends ChangeNotifier {
   }
   
   void updateDifficultyFilter(String? difficulty) {
-    _setPreferencesSyncState(SyncState.syncing);
+    // ✅ IMPROVED: Don't set loading immediately - let debounced sync handle it
     _preferences.selectedDifficulty = difficulty;
     if (_autoGenerateSession) {
       _autoGenerateSessionDrills();
@@ -1426,7 +1426,7 @@ class AppStateService extends ChangeNotifier {
   }
   
   void updateSkillsFilter(Set<String> skills) {
-    _setPreferencesSyncState(SyncState.syncing);
+    // ✅ IMPROVED: Don't set loading immediately - let debounced sync handle it
     _preferences.selectedSkills = skills;
     notifyListeners();
     _schedulePreferencesSync();
@@ -1464,18 +1464,25 @@ class AppStateService extends ChangeNotifier {
   // Schedule preferences sync with backend
   void _schedulePreferencesSync() {
     _syncCoordinator.scheduleSync('preferences_sync', _preferencesSyncDebounce, () async {
-      if (isGuestMode) {
-        if (kDebugMode) print('👤 Guest mode detected - using public session generation');
-        await _generateGuestSession();
-      } else {
-        await _preferencesSyncService.syncPreferencesWithBackend(
-          time: _preferences.selectedTime,
-          equipment: _preferences.selectedEquipment,
-          trainingStyle: _preferences.selectedTrainingStyle,
-          location: _preferences.selectedLocation,
-          difficulty: _preferences.selectedDifficulty,
-          skills: _preferences.selectedSkills,
-        );
+      // ✅ IMPROVED: Set loading state only when actual sync starts (after debounce)
+      _setPreferencesSyncState(SyncState.syncing);
+      
+      try {
+        if (isGuestMode) {
+          if (kDebugMode) print('👤 Guest mode detected - using public session generation');
+          await _generateGuestSession();
+        } else {
+          await _preferencesSyncService.syncPreferencesWithBackend(
+            time: _preferences.selectedTime,
+            equipment: _preferences.selectedEquipment,
+            trainingStyle: _preferences.selectedTrainingStyle,
+            location: _preferences.selectedLocation,
+            difficulty: _preferences.selectedDifficulty,
+            skills: _preferences.selectedSkills,
+          );
+        }
+      } finally {
+        // ✅ IMPROVED: Always clear loading state when sync completes/fails
         _setPreferencesSyncState(SyncState.idle);
       }
     });
@@ -1552,7 +1559,7 @@ class AppStateService extends ChangeNotifier {
     } catch (e) {
       if (kDebugMode) print('❌ Error generating guest session: $e');
     } finally {
-      _setPreferencesSyncState(SyncState.idle);
+      // ✅ REMOVED: Loading state now handled by parent sync method
       notifyListeners();
     }
   }
@@ -2339,6 +2346,62 @@ class AppStateService extends ChangeNotifier {
       isCustom: false, // ✅ ADDED: Set isCustom to false for mock drills
     ),
   ];
+
+  // ✅ NEW: Handle transition from guest mode to authenticated mode
+  Future<void> handleAuthenticationTransition() async {
+    if (kDebugMode) {
+      print('\n🔄 ===== HANDLING AUTHENTICATION TRANSITION =====');
+      print('📅 Timestamp: ${DateTime.now()}');
+      print('   Previous state: Guest Mode');
+      print('   New state: Authenticated User');
+    }
+
+    try {
+      // Step 1: Clear guest-specific data
+      if (kDebugMode) print('🧹 Clearing guest-specific data...');
+      _guestDrills.clear();
+      _guestDrillsLoaded = false;
+      
+      // Step 2: Clear any test session data that was loaded for guest
+      if (kDebugMode) print('🔄 Clearing guest session data...');
+      _editableSessionDrills.clear();
+      _sessionDrills.clear();
+      _setSessionState(SessionState.idle);
+      
+      // Step 3: Reset to initial load state
+      _isInitialLoad = true;
+      notifyListeners();
+      
+      // Step 4: Load authenticated user data if they have account history
+      final userManager = UserManagerService.instance;
+      if (userManager.userHasAccountHistory) {
+        if (kDebugMode) print('📥 Loading authenticated user data...');
+        await loadBackendData();
+      } else {
+        if (kDebugMode) print('🆕 New user - skipping backend data load');
+        _isInitialLoad = false;
+      }
+      
+      // Step 5: Trigger UI refresh
+      notifyListeners();
+      
+      if (kDebugMode) {
+        print('✅ Authentication transition complete');
+        print('   User is now: ${userManager.isAuthenticated ? 'Authenticated' : 'Not Authenticated'}');
+        print('   Guest mode: ${userManager.isGuestMode}');
+        print('   Has session drills: ${_editableSessionDrills.isNotEmpty}');
+        print('🔄 ===== AUTHENTICATION TRANSITION FINISHED =====\n');
+      }
+      
+    } catch (e) {
+      if (kDebugMode) {
+        print('❌ Error during authentication transition: $e');
+      }
+      // Ensure we don't get stuck in loading state
+      _isInitialLoad = false;
+      notifyListeners();
+    }
+  }
 
   // Cleanup sync coordinator on dispose
   @override

@@ -38,6 +38,9 @@ class LoginService {
 
     if (kDebugMode) {
       print('🔐 LoginService: Attempting login for ${loginModel.email}');
+      if (_userManager.isGuestMode) {
+        print('👤 LoginService: User is in guest mode, will exit guest mode before login');
+      }
     }
 
     loginModel.setLoading(true);
@@ -50,6 +53,14 @@ class LoginService {
     );
 
     try {
+      // ✅ CRITICAL FIX: Exit guest mode before authentication attempt
+      if (_userManager.isGuestMode) {
+        await _userManager.exitGuestMode();
+        if (kDebugMode) {
+          print('✅ LoginService: Exited guest mode before login attempt');
+        }
+      }
+      
       // Create login request
       final loginRequest = LoginRequest(
         email: loginModel.email,
@@ -87,6 +98,10 @@ class LoginService {
           accessToken: loginResponse.accessToken,
           refreshToken: loginResponse.refreshToken,
         );
+
+        // ✅ CRITICAL FIX: Handle authentication state transition 
+        _loadingService.updateProgress(0.95, message: 'Setting up your account...');
+        await AppStateService.instance.handleAuthenticationTransition();
 
         // Complete loading
         _loadingService.completeLoading();

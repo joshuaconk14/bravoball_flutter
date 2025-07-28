@@ -4,6 +4,7 @@ import '../../constants/app_theme.dart';
 import '../../widgets/bravo_button.dart';
 import '../../views/main_tab_view.dart';
 import '../../services/audio_service.dart';
+import '../../utils/haptic_utils.dart';
 
 class SessionCompletionView extends StatefulWidget {
   final int currentStreak;
@@ -104,6 +105,10 @@ class _SessionCompletionViewState extends State<SessionCompletionView>
   }
 
   void _startAnimations() async {
+    // ✅ IMPROVED: Play success sound right when completion view appears
+    AudioService.playSuccess();
+    HapticUtils.heavyImpact(); // Add celebration haptic too
+    
     await Future.delayed(const Duration(milliseconds: 200));
     _fadeController.forward();
     

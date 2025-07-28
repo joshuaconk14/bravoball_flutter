@@ -181,6 +181,8 @@ class _DrillFollowAlongViewState extends State<DrillFollowAlongView>
     return DrillVideoBackground(
       videoUrl: videoUrlToUse,
       onTap: () {
+        // ✅ ADDED: Light haptic feedback when tapping to toggle UI
+        HapticUtils.lightImpact();
         // Toggle UI visibility when tapping on video
         setState(() {
           _hideUI = !_hideUI;

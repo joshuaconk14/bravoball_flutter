@@ -131,12 +131,18 @@ class UserManagerService extends ChangeNotifier {
     required String accessToken,
     String? refreshToken,
   }) async {
+    if (kDebugMode) {
+      print('🔐 UserManager: Updating user data for $email');
+      print('   Previous state - isLoggedIn: $_isLoggedIn, isGuestMode: $_isGuestMode');
+    }
+    
     _email = email;
     _accessToken = accessToken;
     _refreshToken = refreshToken ?? '';
     _isLoggedIn = true;
     _userHasAccountHistory = true;
     _showLoginPage = false;
+    _isGuestMode = false; // ✅ CRITICAL FIX: Clear guest mode on successful authentication
     _tokenCreatedAt = DateTime.now(); // Record when token was created
     
     await _saveUserDataToStorage();
@@ -144,11 +150,15 @@ class UserManagerService extends ChangeNotifier {
     // Start proactive token refresh
     _scheduleProactiveTokenRefresh();
     
+    // ✅ Validate state after authentication update
+    validateState();
+    
     notifyListeners();
     
     if (kDebugMode) {
       print('✅ UserManager: Updated user data for $_email');
       print('🔑 Access token: ${_accessToken.isEmpty ? 'empty' : '${_accessToken.substring(0, 20)}...'}');
+      print('🎯 New state - isLoggedIn: $_isLoggedIn, isGuestMode: $_isGuestMode, isAuthenticated: $isAuthenticated');
     }
   }
 
@@ -174,6 +184,9 @@ class UserManagerService extends ChangeNotifier {
       
       // Clear storage
       await _clearUserDataFromStorage();
+      
+      // ✅ Validate state after logout
+      validateState();
       
       // Notify listeners unless explicitly skipped
       if (!skipNotification) {
@@ -357,6 +370,9 @@ class UserManagerService extends ChangeNotifier {
     // Don't persist guest mode to SharedPreferences
     // Guest mode is always temporary and memory-only
     
+    // ✅ Validate state after entering guest mode
+    validateState();
+    
     if (kDebugMode) {
       print('✅ UserManagerService: Guest mode activated');
     }
@@ -372,6 +388,9 @@ class UserManagerService extends ChangeNotifier {
     
     _isGuestMode = false;
     
+    // ✅ Validate state after exiting guest mode
+    validateState();
+    
     if (kDebugMode) {
       print('✅ UserManagerService: Guest mode deactivated');
     }
@@ -381,6 +400,38 @@ class UserManagerService extends ChangeNotifier {
 
   // ✅ NEW: Check if user can access premium features
   bool get canAccessPremiumFeatures => _isLoggedIn && !_isGuestMode;
+  
+  // ✅ NEW: Check if user should see upgrade prompts  
+  bool get shouldShowUpgradePrompts => _isGuestMode;
+  
+  // ✅ NEW: State validation helpers
+  bool get isInValidState {
+    // Valid states:
+    // 1. Guest mode: isGuestMode=true, isLoggedIn=false, no tokens
+    // 2. Authenticated: isGuestMode=false, isLoggedIn=true, has tokens
+    // 3. Unauthenticated: isGuestMode=false, isLoggedIn=false, no tokens
+    
+    if (_isGuestMode) {
+      // Guest mode should have no authentication data
+      return !_isLoggedIn && _accessToken.isEmpty && _refreshToken.isEmpty;
+    } else if (_isLoggedIn) {
+      // Authenticated users should have tokens and not be in guest mode
+      return _accessToken.isNotEmpty && !_isGuestMode;
+    } else {
+      // Unauthenticated users should have no tokens and not be in guest mode
+      return _accessToken.isEmpty && !_isGuestMode;
+    }
+  }
+  
+  void validateState() {
+    if (!isInValidState) {
+      if (kDebugMode) {
+        print('❌ INVALID USER STATE DETECTED!');
+        print(debugInfo);
+        print('This indicates a bug in state management.');
+      }
+    }
+  }
 
   @override
   void dispose() {
@@ -388,19 +439,24 @@ class UserManagerService extends ChangeNotifier {
     super.dispose();
   }
 
-  /// Debug info
+  /// Enhanced debug info with validation
   String get debugInfo {
     return '''
 User Manager Debug Info:
 - Email: $_email
 - IsLoggedIn: $_isLoggedIn
+- IsGuestMode: $_isGuestMode
+- IsAuthenticated: $isAuthenticated
+- HasValidToken: $hasValidToken
+- CanAccessPremium: $canAccessPremiumFeatures
+- ShouldShowUpgrade: $shouldShowUpgradePrompts
+- StateIsValid: $isInValidState
 - HasAccountHistory: $_userHasAccountHistory
 - HasToken: ${_accessToken.isNotEmpty}
 - TokenLength: ${_accessToken.length}
 - ShowLoginPage: $_showLoginPage
 - TokenCreatedAt: $_tokenCreatedAt
 - ProactiveRefreshActive: ${_proactiveRefreshTimer != null}
-- Is Guest Mode: $_isGuestMode
 - Is Authenticated: $isAuthenticated
 - Has Valid Token: $hasValidToken
 - Can Access Premium: $canAccessPremiumFeatures
