@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'dart:async';
-import 'dart:math';
+import 'dart:math' as math;
 import '../../models/drill_model.dart'; // Added for DrillModel
 import '../../models/editable_drill_model.dart'; // Added for EditableDrillModel
 import '../../services/mental_training_service.dart';
@@ -346,15 +346,33 @@ class _MentalTrainingTimerViewState extends State<MentalTrainingTimerView>
   void _scheduleNextQuote() {
     if (_quotes.isEmpty || _currentQuote == null) return;
     
-    // Get the display duration for the current quote
+    // ✅ UPDATED: Use longer quote display duration for better readability
     final quoteDuration = AppConfig.fastMentalTrainingTimers 
-        ? const Duration(milliseconds: 800) // Fast rotation in debug mode
-        : Duration(seconds: _currentQuote!.displayDuration); // Use quote's specific duration
+        ? const Duration(seconds: 3) // Increased from 800ms to 3 seconds in debug mode
+        : Duration(seconds: _getQuoteDisplayDuration(_currentQuote!)); // Use enhanced duration calculation
     
     _quoteTimer?.cancel(); // Cancel any existing timer
     _quoteTimer = Timer(quoteDuration, () {
       _showNextQuote();
     });
+  }
+
+  // ✅ NEW: Enhanced quote duration calculation
+  int _getQuoteDisplayDuration(MentalTrainingQuote quote) {
+    // Base duration: minimum 8 seconds for any quote
+    int baseDuration = 8;
+    
+    // Add extra time based on quote length for readability
+    if (quote.text.length > 200) {
+      baseDuration = 15; // Very long quotes get 15 seconds
+    } else if (quote.text.length > 100) {
+      baseDuration = 12; // Long quotes get 12 seconds
+    } else if (quote.text.length > 50) {
+      baseDuration = 10; // Medium quotes get 10 seconds
+    }
+    
+    // Use the longer of: base duration or quote's own displayDuration
+    return math.max(baseDuration, quote.displayDuration);
   }
 
   void _showNextQuote() {
@@ -1072,7 +1090,8 @@ class _MentalTrainingTimerViewState extends State<MentalTrainingTimerView>
   }
 
   void _showExitConfirmation() {
-    if (!_isRunning && !_isPaused) {
+    // ✅ UPDATED: Allow direct navigation if session is completed or not started
+    if (_isCompleted || (!_isRunning && !_isPaused)) {
       Navigator.of(context).pushAndRemoveUntil(
         MaterialPageRoute(
           builder: (_) => const MainTabView(initialIndex: 0),
@@ -1082,6 +1101,7 @@ class _MentalTrainingTimerViewState extends State<MentalTrainingTimerView>
       return;
     }
     
+    // Only show warning if session is in progress (running or paused)
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
