@@ -23,10 +23,9 @@ android {
     defaultConfig {
         // TODO: Specify your own unique Application ID (https://developer.android.com/studio/build/application-id.html).
         applicationId = "com.bravoball.app.bravoball_flutter"
-        // You can update the following values to match your application needs.
-        // For more information, see: https://flutter.dev/to/review-gradle-config.
-        minSdk = flutter.minSdkVersion
-        targetSdk = flutter.targetSdkVersion
+        // Optimized for maximum compatibility and Play Store compliance
+        minSdk = 23  // Android 6.0 (API 23) - Covers ~98% of active Android devices
+        targetSdk = 35  // Required for Google Play Store submission (Android 14)
         versionCode = flutter.versionCode
         versionName = flutter.versionName
     }
