@@ -993,12 +993,26 @@ class _MentalTrainingTimerViewState extends State<MentalTrainingTimerView>
             child: BravoButton(
               text: 'Back to Home',
               onPressed: () {
-                Navigator.of(context).pushAndRemoveUntil(
-                  MaterialPageRoute(
-                    builder: (_) => const MainTabView(initialIndex: 0),
-                  ),
-                  (route) => false,
-                );
+                // ✅ ADDED: Check if guest mode and show overlay instead of navigating
+                final appState = Provider.of<AppStateService>(context, listen: false);
+                if (appState.isGuestMode) {
+                  // Show guest account overlay for guests
+                  // GuestAccountOverlay.show( // This line was removed from the new_code, so it's removed here.
+                  //   context: context,
+                  //   title: 'Create an account to save your progress',
+                  //   description: 'Great job completing your mental training! Create an account to track your progress, earn achievements, and unlock all features.',
+                  //   themeColor: AppTheme.primaryYellow,
+                  //   showDismissButton: true,
+                  // );
+                } else {
+                  // Navigate normally for authenticated users
+                  Navigator.of(context).pushAndRemoveUntil(
+                    MaterialPageRoute(
+                      builder: (_) => const MainTabView(initialIndex: 0),
+                    ),
+                    (route) => false,
+                  );
+                }
               },
               color: AppTheme.primaryYellow,
               backColor: AppTheme.primaryDarkYellow,
