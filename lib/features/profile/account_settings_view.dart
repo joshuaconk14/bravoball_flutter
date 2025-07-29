@@ -309,9 +309,9 @@ class AccountSettingsView extends StatelessWidget {
               Navigator.pop(context);
               
               // Perform logout and navigate immediately
-              await LoginService.shared.logoutUser();
+              final success = await LoginService.shared.logoutUser();
               
-              if (context.mounted) {
+              if (success && context.mounted) {
                 Navigator.of(context).pushAndRemoveUntil(
                   MaterialPageRoute(builder: (context) => const OnboardingFlow()),
                   (route) => false,
@@ -357,15 +357,24 @@ class AccountSettingsView extends StatelessWidget {
           TextButton(
             onPressed: () async {
               HapticUtils.heavyImpact();
-              Navigator.pop(context);
+              Navigator.pop(context); // Close confirmation dialog
               
-              // Perform account deletion and navigate immediately
-              await LoginService.shared.deleteAccount();
+              // Perform account deletion without loading popup
+              final success = await LoginService.shared.deleteAccount();
               
-              if (context.mounted) {
+              if (success && context.mounted) {
+                // Navigate directly to onboarding flow
                 Navigator.of(context).pushAndRemoveUntil(
                   MaterialPageRoute(builder: (context) => const OnboardingFlow()),
                   (route) => false,
+                );
+              } else if (context.mounted) {
+                // Show error message if deletion failed
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(
+                    content: Text('Failed to delete account. Please try again.'),
+                    backgroundColor: Colors.red,
+                  ),
                 );
               }
             },

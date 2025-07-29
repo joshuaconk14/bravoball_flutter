@@ -242,23 +242,32 @@ class LoginService {
   }
 
   /// Logout user and clear all auth data
-  Future<void> logoutUser() async {
+  Future<bool> logoutUser() async {
     if (kDebugMode) {
       print('🚪 LoginService: Logging out user');
     }
 
-    // ✅ FORCE RESET: Clear any lingering session state that might interfere with navigation
-    final appState = AppStateService.instance;
-    appState.clearUserData();
-    
-    // Clear user data
-    await _userManager.logout();
-    
-    // Clear any cached auth state
-    await AuthenticationService.shared.clearInvalidTokens();
-    
-    if (kDebugMode) {
-      print('✅ LoginService: User logged out successfully');
+    try {
+      // ✅ FORCE RESET: Clear any lingering session state that might interfere with navigation
+      final appState = AppStateService.instance;
+      appState.clearUserData();
+      
+      // Clear user data
+      await _userManager.logout();
+      
+      // Clear any cached auth state
+      await AuthenticationService.shared.clearInvalidTokens();
+      
+      if (kDebugMode) {
+        print('✅ LoginService: User logged out successfully');
+      }
+      
+      return true;
+    } catch (e) {
+      if (kDebugMode) {
+        print('❌ LoginService: Error during logout: $e');
+      }
+      return false;
     }
   }
 
@@ -314,8 +323,26 @@ class LoginService {
           print('  ✓ Cleared shared preferences data');
         }
 
+        // ✅ NEW: Force clear any potential guest mode state
+        // This ensures the user goes to onboarding flow, not guest mode
+        if (_userManager.isGuestMode) {
+          await _userManager.exitGuestMode();
+          if (kDebugMode) {
+            print('  ✓ Exited guest mode');
+          }
+        }
+
+        // ✅ NEW: Force a clean state by ensuring no tokens or login state remains
+        if (_userManager.isLoggedIn || _userManager.accessToken.isNotEmpty) {
+          await _userManager.logout();
+          if (kDebugMode) {
+            print('  ✓ Forced logout to ensure clean state');
+          }
+        }
+
         if (kDebugMode) {
           print('✅ Account deleted and all data cleared successfully');
+          print('📱 User should now be directed to onboarding flow');
         }
         
         return true;

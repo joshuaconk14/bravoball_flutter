@@ -398,7 +398,14 @@ class _SessionGeneratorHomeFieldViewState extends State<SessionGeneratorHomeFiel
             isAlreadyCompleted: appState.currentSessionCompleted,
             isLarge: sessionComplete && !appState.currentSessionCompleted,
             isGlowing: sessionComplete && !appState.currentSessionCompleted,
+            isLoading: appState.isCompletingSession, // Pass loading state
             onTap: () async {
+              // ✅ ADDED: Prevent multiple taps while completing
+              if (appState.isCompletingSession) {
+                if (kDebugMode) print('⚠️ Session already completing, ignoring tap');
+                return;
+              }
+              
               if (kDebugMode) {
                 print('🏆 Trophy tapped!');
                 print('  - isSessionComplete:  [38;5;10m${appState.isSessionComplete} [0m');
@@ -433,10 +440,9 @@ class _SessionGeneratorHomeFieldViewState extends State<SessionGeneratorHomeFiel
                 _showSessionComplete();
               } else if (appState.isSessionComplete) {
                 HapticUtils.mediumImpact();
-                // ✅ IMPROVED: Show completion immediately, handle backend sync in background
+                // ✅ FIXED: Complete session and refresh progress before showing completion view
+                await appState.completeSession();
                 _showSessionComplete();
-                // Do completion work in background (non-blocking)
-                appState.completeSession();
               } else {
                 HapticUtils.lightImpact();
                 ScaffoldMessenger.of(context).showSnackBar(
@@ -557,6 +563,7 @@ class _SessionGeneratorHomeFieldViewState extends State<SessionGeneratorHomeFiel
           builder: (_) => DrillFollowAlongView(
             editableDrill: editableDrill,
             onDrillCompleted: () {
+              print("Drill completed!");
             },
             onSessionCompleted: () async {
               // ✅ IMPROVED: Show completion immediately, handle backend sync in background
@@ -731,6 +738,7 @@ class _TrophyWidget extends StatelessWidget {
   final bool isAlreadyCompleted;
   final bool isLarge;
   final bool isGlowing;
+  final bool isLoading; // ✅ ADDED: Loading state parameter
   final VoidCallback onTap;
 
   const _TrophyWidget({
@@ -738,6 +746,7 @@ class _TrophyWidget extends StatelessWidget {
     required this.isAlreadyCompleted,
     this.isLarge = false,
     this.isGlowing = false,
+    this.isLoading = false, // ✅ ADDED: Default to false
     required this.onTap,
   });
 
@@ -798,11 +807,20 @@ class _TrophyWidget extends StatelessWidget {
                 ),
               ],
             ),
-            child: Icon(
-              Icons.emoji_events,
-              size: iconSize,
-              color: iconColor,
-            ),
+            child: isLoading 
+                ? SizedBox(
+                    width: iconSize * 0.6,
+                    height: iconSize * 0.6,
+                    child: CircularProgressIndicator(
+                      strokeWidth: 3,
+                      valueColor: AlwaysStoppedAnimation<Color>(iconColor),
+                    ),
+                  )
+                : Icon(
+                    Icons.emoji_events,
+                    size: iconSize,
+                    color: iconColor,
+                  ),
           ),
         ],
       ),
