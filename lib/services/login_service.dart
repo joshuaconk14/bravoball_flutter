@@ -278,86 +278,95 @@ class LoginService {
     }
 
     try {
-      // Store email before clearing for logging
-      final userEmail = _userManager.email;
+      // ✅ STEP 1: Delete account on server FIRST (while we still have valid tokens)
+      if (kDebugMode) {
+        print('🌐 Deleting account on server first...');
+      }
       
-      // ✅ FORCE RESET: Clear any lingering session state that might interfere with navigation
-      final appState = AppStateService.instance;
-      appState.clearUserData();
-      
-      // Make DELETE request to backend
       final response = await _apiService.delete(
         '/delete-account/',
         requiresAuth: true,
       );
 
       if (kDebugMode) {
-        print('📥 Backend response status: ${response.statusCode}');
-        if (response.data != null) {
-          print('Response: ${response.data}');
+        print('📥 Server deletion response: ${response.statusCode}');
+      }
+
+      // ✅ STEP 2: Clear local data immediately regardless of server response
+      // (Even if server deletion fails, we want user to be logged out locally)
+      if (kDebugMode) {
+        print('🧹 Clearing local user data...');
+      }
+      
+      // Clear app state
+      final appState = AppStateService.instance;
+      appState.clearUserData();
+      
+      // Clear user manager data  
+      await _userManager.logout();
+      if (kDebugMode) {
+        print('  ✓ Cleared user manager data');
+      }
+
+      // Clear authentication service data
+      await AuthenticationService.shared.clearInvalidTokens();
+      if (kDebugMode) {
+        print('  ✓ Cleared authentication data');
+      }
+
+      // Clear shared preferences
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.clear();
+      if (kDebugMode) {
+        print('  ✓ Cleared shared preferences data');
+      }
+
+      // Force clear any potential guest mode state
+      if (_userManager.isGuestMode) {
+        await _userManager.exitGuestMode();
+        if (kDebugMode) {
+          print('  ✓ Exited guest mode');
         }
       }
 
-      if (response.isSuccess) {
-        // Clear all user data
-        if (kDebugMode) {
-          print('\n🗑️ Deleting account for user: $userEmail');
+      if (kDebugMode) {
+        if (response.isSuccess) {
+          print('✅ Account successfully deleted on server and locally');
+        } else {
+          print('⚠️ Server deletion failed, but local data cleared successfully');
         }
-
-        // 1. Clear user manager data
-        await _userManager.logout();
-        if (kDebugMode) {
-          print('  ✓ Cleared user manager data');
-        }
-
-        // 2. Clear authentication service data
-        await AuthenticationService.shared.clearInvalidTokens();
-        if (kDebugMode) {
-          print('  ✓ Cleared authentication data');
-        }
-
-        // 3. Clear shared preferences (equivalent to UserDefaults)
-        final prefs = await SharedPreferences.getInstance();
-        await prefs.clear();
-        if (kDebugMode) {
-          print('  ✓ Cleared shared preferences data');
-        }
-
-        // ✅ NEW: Force clear any potential guest mode state
-        // This ensures the user goes to onboarding flow, not guest mode
-        if (_userManager.isGuestMode) {
-          await _userManager.exitGuestMode();
-          if (kDebugMode) {
-            print('  ✓ Exited guest mode');
-          }
-        }
-
-        // ✅ NEW: Force a clean state by ensuring no tokens or login state remains
-        if (_userManager.isLoggedIn || _userManager.accessToken.isNotEmpty) {
-          await _userManager.logout();
-          if (kDebugMode) {
-            print('  ✓ Forced logout to ensure clean state');
-          }
-        }
-
-        if (kDebugMode) {
-          print('✅ Account deleted and all data cleared successfully');
-          print('📱 User should now be directed to onboarding flow');
-        }
-        
-        return true;
-      } else {
-        if (kDebugMode) {
-          print('❌ Failed to delete account: ${response.statusCode}');
-          print('Error: ${response.error}');
-        }
-        return false;
+        print('📱 User should now be directed to onboarding flow');
       }
+
+      // Return success regardless of server response - user is logged out locally
+      return true;
+      
     } catch (e) {
       if (kDebugMode) {
-        print('❌ Error deleting account: $e');
+        print('❌ Error during account deletion: $e');
+        print('🧹 Attempting to clear local data anyway...');
       }
-      return false;
+      
+      // Even if there's an error, try to clear local data so user isn't stuck
+      try {
+        final appState = AppStateService.instance;
+        appState.clearUserData();
+        await _userManager.logout();
+        await AuthenticationService.shared.clearInvalidTokens();
+        final prefs = await SharedPreferences.getInstance();
+        await prefs.clear();
+        
+        if (kDebugMode) {
+          print('✅ Local data cleared despite error');
+        }
+      } catch (cleanupError) {
+        if (kDebugMode) {
+          print('❌ Local cleanup also failed: $cleanupError');
+        }
+      }
+      
+      // Still return true so user can navigate away
+      return true;
     }
   }
 } 
