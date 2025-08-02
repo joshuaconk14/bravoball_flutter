@@ -78,7 +78,7 @@ class EmailVerificationService {
   }
 
   /// Verify the email verification code and update email
-  Future<void> verifyEmailAndUpdate(String code, EmailVerificationModel emailVerificationModel, {VoidCallback? onSuccess}) async {
+  Future<void> verifyEmailAndUpdate(String code, EmailVerificationModel emailVerificationModel, {VoidCallback? onSuccess, VoidCallback? onNavigateToLogin}) async {
     emailVerificationModel.emailVerificationMessage = '';
 
     try {
@@ -111,8 +111,31 @@ class EmailVerificationService {
           print('✅ EmailVerificationService: User email updated successfully in UserManager');
         }
         
+        // ✅ NEW: Log the user out after email update to force re-login with new email
+        // This prevents refresh token issues since the token is tied to the old email
+        if (kDebugMode) {
+          print('🚪 EmailVerificationService: Logging out user to force re-login with new email');
+        }
+        
+        // Log the user out to force re-authentication with new email
+        await _userManager.logout();
+        
+        if (kDebugMode) {
+          print('✅ EmailVerificationService: User logged out successfully');
+        }
+        
         emailVerificationModel.resetEmailVerificationState();
+        
+        // Call success callback first
         onSuccess?.call();
+        
+        // Then navigate to login page
+        if (onNavigateToLogin != null) {
+          if (kDebugMode) {
+            print('🔄 EmailVerificationService: Navigating to login page');
+          }
+          onNavigateToLogin();
+        }
       } else {
         emailVerificationModel.emailVerificationMessage = "Invalid or expired code. Please try again.";
       }
