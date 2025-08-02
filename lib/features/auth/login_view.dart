@@ -246,7 +246,7 @@ class _LoginViewState extends State<LoginView> {
           width: double.infinity,
           height: 50,
           child: BravoButton(
-              text: 'Login',
+              text: model.isLoading ? '' : 'Login',
               onPressed: model.isLoading || !model.isFormValid ? null : () {
                 HapticUtils.mediumImpact(); // Medium haptic for login
                 _handleLogin();
@@ -257,6 +257,16 @@ class _LoginViewState extends State<LoginView> {
               disabled: model.isLoading || !model.isFormValid,
               textSize: 18,
               height: 50,
+              child: model.isLoading 
+                ? const SizedBox(
+                    width: 24,
+                    height: 24,
+                    child: CircularProgressIndicator(
+                      strokeWidth: 2.5,
+                      valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
+                    ),
+                  )
+                : null,
             )
         );
       },
@@ -264,23 +274,27 @@ class _LoginViewState extends State<LoginView> {
   }
 
   Widget _buildCancelButton() {
-    return SizedBox(
-      width: double.infinity,
-      height: 50,
-      child: BravoButton(
-        text: 'Cancel',
-        onPressed: () {
-          HapticUtils.mediumImpact(); // Medium haptic for cancel
-          _handleCancel();
-        },
-        color: Colors.white,
-        backColor: AppTheme.lightGray,
-        textColor: AppTheme.primaryYellow,
-        disabled: false,
-        textSize: 18,
-        height: 50,
-        borderSide: BorderSide(color: AppTheme.lightGray, width: 2),
-      )
+    return Consumer<LoginStateModel>(
+      builder: (context, model, child) {
+        return SizedBox(
+          width: double.infinity,
+          height: 50,
+          child: BravoButton(
+            text: 'Cancel',
+            onPressed: model.isLoading ? null : () {
+              HapticUtils.mediumImpact(); // Medium haptic for cancel
+              _handleCancel();
+            },
+            color: Colors.white,
+            backColor: AppTheme.lightGray,
+            textColor: AppTheme.primaryYellow,
+            disabled: false,
+            textSize: 18,
+            height: 50,
+            borderSide: BorderSide(color: AppTheme.lightGray, width: 2),
+          )
+        );
+      },
     );
   }
 
