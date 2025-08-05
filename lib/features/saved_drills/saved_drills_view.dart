@@ -419,30 +419,30 @@ class _SavedDrillsViewState extends State<SavedDrillsView> with SingleTickerProv
                   const Spacer(),
                   // ✅ Only show ellipses button for non-liked drill groups
                   if (!group.isLikedDrillsGroup)
-                    PopupMenuButton<String>(
-                      onSelected: (value) {
-                        if (value == 'delete') {
-                          HapticUtils.lightImpact(); // Light haptic for delete initiation
-                          _showDeleteConfirmation(group, appState);
-                        }
-                      },
-                      itemBuilder: (context) => [
-                        const PopupMenuItem(
-                          value: 'delete',
-                          child: Row(
-                            children: [
-                              Icon(Icons.delete, color: Colors.red),
-                              SizedBox(width: 8),
-                              Text('Delete'),
-                            ],
-                          ),
+                  PopupMenuButton<String>(
+                    onSelected: (value) {
+                      if (value == 'delete') {
+                        HapticUtils.lightImpact(); // Light haptic for delete initiation
+                        _showDeleteConfirmation(group, appState);
+                      }
+                    },
+                    itemBuilder: (context) => [
+                      const PopupMenuItem(
+                        value: 'delete',
+                        child: Row(
+                          children: [
+                            Icon(Icons.delete, color: Colors.red),
+                            SizedBox(width: 8),
+                            Text('Delete'),
+                          ],
                         ),
-                      ],
-                      child: Icon(
-                        Icons.more_vert,
-                        color: Colors.grey.shade600,
                       ),
+                    ],
+                    child: Icon(
+                      Icons.more_vert,
+                      color: Colors.grey.shade600,
                     ),
+                  ),
                 ],
               ),
               const SizedBox(height: 16),

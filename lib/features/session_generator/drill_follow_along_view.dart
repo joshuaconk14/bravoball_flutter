@@ -255,22 +255,47 @@ class _DrillFollowAlongViewState extends State<DrillFollowAlongView>
       ),
       child: Column(
         children: [
-          // Row with drill title (removed close button)
-          Row(
+          // Row with drill title and close button
+          Stack(
             children: [
-              // Drill title (expanded to take full space)
-              Expanded(
-                child: Text(
-                  _editableDrill.drill.title,
-                  style: const TextStyle(
-                    fontFamily: 'Poppins',
-                    fontWeight: FontWeight.bold,
-                    fontSize: 18,
-                    color: Colors.black,
+              // Drill title (centered with proper padding)
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 40), // Add horizontal padding to avoid X button
+                child: Center(
+                  child: Text(
+                    _editableDrill.drill.title,
+                    style: const TextStyle(
+                      fontFamily: 'Poppins',
+                      fontWeight: FontWeight.bold,
+                      fontSize: 18,
+                      color: Colors.black,
+                    ),
+                    textAlign: TextAlign.center,
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis,
                   ),
-                  textAlign: TextAlign.center,
-                  maxLines: 2,
-                  overflow: TextOverflow.ellipsis,
+                ),
+              ),
+              
+              // ✅ UPDATED: Close button (X) on the left with better positioning
+              Positioned(
+                left: -8,
+                top: -8,
+                child: IconButton(
+                  onPressed: () {
+                    HapticUtils.lightImpact();
+                    _handleExitAttempt();
+                  },
+                  icon: const Icon(
+                    Icons.close,
+                    color: Colors.grey,
+                    size: 24,
+                  ),
+                  padding: EdgeInsets.zero,
+                  constraints: const BoxConstraints(
+                    minWidth: 32,
+                    minHeight: 32,
+                  ),
                 ),
               ),
             ],
@@ -521,7 +546,7 @@ class _DrillFollowAlongViewState extends State<DrillFollowAlongView>
       child: ElevatedButton(
         onPressed: () {
           HapticUtils.mediumImpact();
-          _exitDrill();
+          _handleExitAttempt();
         },
         style: ElevatedButton.styleFrom(
           backgroundColor: _editableDrill.isCompleted 
@@ -708,6 +733,15 @@ class _DrillFollowAlongViewState extends State<DrillFollowAlongView>
     }
   }
 
+  void _handleExitAttempt() {
+    // ✅ NEW: Check if timer is running and show warning if needed
+    if (_isPlaying || _showCountdown) {
+      _showExitWarning();
+    } else {
+      _exitDrill();
+    }
+  }
+
   void _updateDrillInSession() {
     final appState = Provider.of<AppStateService>(context, listen: false);
     
@@ -757,13 +791,19 @@ class _DrillFollowAlongViewState extends State<DrillFollowAlongView>
     WarningDialog.show(
       context: context,
       title: 'Exit Drill?',
-      content: 'Are you sure you want to exit this drill? This will reset your timer for the current set.',
+      content: _isPlaying 
+          ? 'You\'re currently in the middle of a set. Are you sure you want to exit? This will reset your timer for the current set.'
+          : 'Are you sure you want to exit this drill?',
       cancelText: 'Stay',
       continueText: 'Exit',
+      warningColor: Colors.orange,
+      warningIcon: Icons.warning_amber_rounded,
       onCancel: () {
+        HapticUtils.lightImpact();
         // User cancelled - do nothing, stay in drill
       },
       onContinue: () async {
+        HapticUtils.mediumImpact();
         // User confirmed - stop timers and exit
         await _stopAllTimers();
         if (mounted) {

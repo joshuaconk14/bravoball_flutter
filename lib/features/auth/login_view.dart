@@ -7,16 +7,16 @@ import 'forgot_password_view.dart';
 import '../../models/login_state_model.dart';
 import '../../widgets/bravo_button.dart';
 import '../../utils/haptic_utils.dart';
+import 'package:flutter/foundation.dart';
+import '../../main.dart'; // Import MyApp
 
 /// Login View
 /// Mirrors Swift LoginView for user authentication UI
 class LoginView extends StatefulWidget {
-  final VoidCallback? onLoginSuccess;
   final VoidCallback? onCancel;
 
   const LoginView({
     Key? key,
-    this.onLoginSuccess,
     this.onCancel,
   }) : super(key: key);
 
@@ -185,11 +185,8 @@ class _LoginViewState extends State<LoginView> {
               obscureText: !model.isPasswordVisible,
               textInputAction: TextInputAction.done,
               onSubmitted: (_) {
-                // ✅ IMPROVED: Dismiss keyboard and attempt login
+                // ✅ UPDATED: Just dismiss keyboard, don't auto-login
                 FocusScope.of(context).unfocus();
-                if (model.isFormValid && !model.isLoading) {
-                  _handleLogin();
-                }
               },
               decoration: InputDecoration(
                 labelText: 'Password',
@@ -300,23 +297,40 @@ class _LoginViewState extends State<LoginView> {
 
   // Action Handlers
   Future<void> _handleLogin() async {
+    // ✅ IMPROVED: Add better error handling for hot restart scenarios
+    
     // Hide keyboard
-    FocusScope.of(context).unfocus();
+    if (mounted) {
+      FocusScope.of(context).unfocus();
+    }
     
-    final success = await _loginService.loginUser(loginModel: _loginModel);
-    
-    if (success && mounted) {
-      // Login successful - call callback
-      widget.onLoginSuccess?.call();
+    try {
+      final success = await _loginService.loginUser(loginModel: _loginModel);
       
-      // Show success message
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: const Text('Login successful!'),
-          backgroundColor: AppTheme.success,
-          behavior: SnackBarBehavior.floating,
-        ),
-      );
+      if (success && mounted) {
+
+        
+        // ✅ Navigate to main app after successful login
+        Navigator.of(context).pushAndRemoveUntil(
+          MaterialPageRoute(builder: (_) => const MyApp()),
+          (route) => false,
+        );
+      }
+    } catch (e) {
+      if (kDebugMode) {
+        print('❌ LoginView: Error during login: $e');
+      }
+      
+      // Show error message if widget is still mounted
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: const Text('Login failed. Please try again.'),
+            backgroundColor: AppTheme.error,
+            behavior: SnackBarBehavior.floating,
+          ),
+        );
+      }
     }
     // Error handling is done in the LoginService and displayed via the error message
   }
