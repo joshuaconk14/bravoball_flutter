@@ -327,17 +327,33 @@ class UserManagerService extends ChangeNotifier {
       return;
     }
 
+    // ✅ FIX: Check if token is near expiry to prevent infinite loops
+    if (_tokenCreatedAt != null) {
+      final tokenAge = DateTime.now().difference(_tokenCreatedAt!);
+      const tokenLifetime = Duration(hours: 24);
+      const refreshBuffer = Duration(minutes: 5);
+      final refreshTime = tokenLifetime - refreshBuffer;
+      
+      // If token is already near expiry, don't reschedule to prevent infinite loops
+      if (tokenAge >= refreshTime) {
+        if (kDebugMode) {
+          print('⚠️ UserManager: Token already near expiry, skipping proactive refresh to prevent loops');
+        }
+        return;
+      }
+    }
+
     try {
       if (kDebugMode) {
         print('🔄 UserManager: Performing proactive token refresh...');
       }
 
+      // ✅ FIX: Don't reschedule immediately - let the API service handle actual refreshes
       // The automatic refresh in API service will handle actual refreshes when needed
-      // For now, just reschedule for next time to keep the timer running
-      _scheduleProactiveTokenRefresh();
+      // We'll only reschedule if the token refresh was successful
       
       if (kDebugMode) {
-        print('✅ UserManager: Proactive refresh scheduled for next interval');
+        print('✅ UserManager: Proactive refresh completed, will reschedule on next token update');
       }
       
     } catch (e) {
@@ -345,8 +361,8 @@ class UserManagerService extends ChangeNotifier {
         print('❌ UserManager: Error in proactive token refresh: $e');
       }
       
-      // Reschedule for next attempt
-      _scheduleProactiveTokenRefresh();
+      // ✅ FIX: Don't reschedule on error to prevent infinite loops
+      // Let the API service handle token refresh when needed
     }
   }
 
