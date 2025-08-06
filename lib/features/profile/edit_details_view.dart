@@ -412,13 +412,6 @@ class _EditDetailsViewState extends State<EditDetailsView> {
                               navigator.pushAndRemoveUntil(
                                 MaterialPageRoute(
                                   builder: (context) => LoginView(
-                                    onLoginSuccess: () {
-                                      // Login successful - navigate to main app
-                                      Navigator.of(context).pushAndRemoveUntil(
-                                        MaterialPageRoute(builder: (context) => const MyApp()),
-                                        (route) => false,
-                                      );
-                                    },
                                     onCancel: () {
                                       // Go back to onboarding flow
                                       Navigator.of(context).pushAndRemoveUntil(
@@ -436,12 +429,6 @@ class _EditDetailsViewState extends State<EditDetailsView> {
                                 Navigator.of(context).pushAndRemoveUntil(
                                   MaterialPageRoute(
                                     builder: (context) => LoginView(
-                                      onLoginSuccess: () {
-                                        Navigator.of(context).pushAndRemoveUntil(
-                                          MaterialPageRoute(builder: (context) => const MyApp()),
-                                          (route) => false,
-                                        );
-                                      },
                                       onCancel: () {
                                         Navigator.of(context).pushAndRemoveUntil(
                                           MaterialPageRoute(builder: (context) => const MyApp()),

@@ -138,18 +138,18 @@ class _BravoButtonState extends State<BravoButton> with SingleTickerProviderStat
                     child: widget.child != null 
                       ? widget.child! 
                       : FittedBox(
-                          fit: BoxFit.scaleDown,
-                          child: Text(
-                            widget.text,
-                            overflow: TextOverflow.ellipsis,
-                            style: TextStyle(
-                              fontFamily: 'Poppins',
-                              fontWeight: widget.fontWeight,
-                              fontSize: widget.textSize,
-                              color: widget.textColor,
-                            ),
-                          ),
+          fit: BoxFit.scaleDown,
+          child: Text(
+                        widget.text,
+            overflow: TextOverflow.ellipsis,
+                        style: TextStyle(
+                          fontFamily: 'Poppins',
+                          fontWeight: widget.fontWeight,
+                          fontSize: widget.textSize,
+                          color: widget.textColor,
                         ),
+                      ),
+                    ),
                   ),
                 );
               },
