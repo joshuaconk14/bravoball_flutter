@@ -417,6 +417,8 @@ class _SavedDrillsViewState extends State<SavedDrillsView> with SingleTickerProv
                     ),
                   ),
                   const Spacer(),
+                  // ✅ Only show ellipses button for non-liked drill groups
+                  if (!group.isLikedDrillsGroup)
                   PopupMenuButton<String>(
                     onSelected: (value) {
                       if (value == 'delete') {

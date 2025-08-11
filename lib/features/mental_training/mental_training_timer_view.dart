@@ -1,23 +1,27 @@
+import 'dart:async'; // ✅ ADDED: Import for Timer class
+import 'dart:math' as math; // ✅ ADDED: Import for math functions
 import 'package:flutter/material.dart';
+import 'package:flutter/foundation.dart';
 import 'package:provider/provider.dart';
-import 'dart:async';
-import 'dart:math';
+import 'package:rive/rive.dart' hide LinearGradient, RadialGradient;
+import 'package:rive/rive.dart' as rive;
+import '../../constants/app_theme.dart';
+import '../../services/app_state_service.dart';
+import '../../services/audio_service.dart';
+import '../../services/background_timer_service.dart';
+import '../../services/wake_lock_service.dart';
+import '../../services/ad_service.dart'; // ✅ ADDED: Import AdService
+import '../../utils/haptic_utils.dart';
+import '../../widgets/guest_account_creation_dialog.dart';
+import '../../widgets/bravo_button.dart'; // ✅ ADDED: Import for BravoButton
+import '../../models/mental_training_models.dart';
+import '../../models/auth_models.dart';
 import '../../models/drill_model.dart'; // Added for DrillModel
 import '../../models/editable_drill_model.dart'; // Added for EditableDrillModel
 import '../../services/mental_training_service.dart';
-import '../../models/mental_training_models.dart';
-import '../../services/app_state_service.dart';
-import '../../services/audio_service.dart';
-import '../../services/background_timer_service.dart'; // ✅ ADDED: Background timer service
-import '../../services/wake_lock_service.dart'; // ✅ ADDED: Wake lock service
-import '../../constants/app_theme.dart';
-import '../../utils/haptic_utils.dart';
-import '../../widgets/bravo_button.dart';
-import '../../views/main_tab_view.dart';
 import '../../config/app_config.dart'; // Added for debug mode
-import 'package:flutter/foundation.dart'; // Added for kDebugMode
 import 'package:uuid/uuid.dart'; // Added for UUID generation
-import '../../widgets/guest_account_creation_dialog.dart'; // ✅ ADDED: Import reusable dialog
+import '../../views/main_tab_view.dart';
 
 class MentalTrainingTimerView extends StatefulWidget {
   final int durationMinutes;
@@ -346,15 +350,33 @@ class _MentalTrainingTimerViewState extends State<MentalTrainingTimerView>
   void _scheduleNextQuote() {
     if (_quotes.isEmpty || _currentQuote == null) return;
     
-    // Get the display duration for the current quote
+    // ✅ UPDATED: Use longer quote display duration for better readability
     final quoteDuration = AppConfig.fastMentalTrainingTimers 
-        ? const Duration(milliseconds: 800) // Fast rotation in debug mode
-        : Duration(seconds: _currentQuote!.displayDuration); // Use quote's specific duration
+        ? const Duration(seconds: 3) // Increased from 800ms to 3 seconds in debug mode
+        : Duration(seconds: _getQuoteDisplayDuration(_currentQuote!)); // Use enhanced duration calculation
     
     _quoteTimer?.cancel(); // Cancel any existing timer
     _quoteTimer = Timer(quoteDuration, () {
       _showNextQuote();
     });
+  }
+
+  // ✅ NEW: Enhanced quote duration calculation
+  int _getQuoteDisplayDuration(MentalTrainingQuote quote) {
+    // Base duration: minimum 8 seconds for any quote
+    int baseDuration = 8;
+    
+    // Add extra time based on quote length for readability
+    if (quote.text.length > 200) {
+      baseDuration = 15; // Very long quotes get 15 seconds
+    } else if (quote.text.length > 100) {
+      baseDuration = 12; // Long quotes get 12 seconds
+    } else if (quote.text.length > 50) {
+      baseDuration = 10; // Medium quotes get 10 seconds
+    }
+    
+    // Use the longer of: base duration or quote's own displayDuration
+    return math.max(baseDuration, quote.displayDuration);
   }
 
   void _showNextQuote() {
@@ -992,13 +1014,30 @@ class _MentalTrainingTimerViewState extends State<MentalTrainingTimerView>
             height: 56,
             child: BravoButton(
               text: 'Back to Home',
-              onPressed: () {
-                Navigator.of(context).pushAndRemoveUntil(
-                  MaterialPageRoute(
-                    builder: (_) => const MainTabView(initialIndex: 0),
-                  ),
-                  (route) => false,
-                );
+              onPressed: () async {
+                // ✅ ADDED: Check if guest mode and show overlay instead of navigating
+                final appState = Provider.of<AppStateService>(context, listen: false);
+                if (appState.isGuestMode) {
+                  // Show guest account overlay for guests
+                  // GuestAccountOverlay.show( // This line was removed from the new_code, so it's removed here.
+                  //   context: context,
+                  //   title: 'Create an account to save your progress',
+                  //   description: 'Great job completing your mental training! Create an account to track your progress, earn achievements, and unlock all features.',
+                  //   themeColor: AppTheme.primaryYellow,
+                  //   showDismissButton: true,
+                  // );
+                } else {
+                  // ✅ ADDED: Show ad after mental training completion
+                  await AdService.instance.showAdAfterMentalTraining();
+                  
+                  // Navigate normally for authenticated users
+                  Navigator.of(context).pushAndRemoveUntil(
+                    MaterialPageRoute(
+                      builder: (_) => const MainTabView(initialIndex: 0),
+                    ),
+                    (route) => false,
+                  );
+                }
               },
               color: AppTheme.primaryYellow,
               backColor: AppTheme.primaryDarkYellow,
@@ -1058,7 +1097,8 @@ class _MentalTrainingTimerViewState extends State<MentalTrainingTimerView>
   }
 
   void _showExitConfirmation() {
-    if (!_isRunning && !_isPaused) {
+    // ✅ UPDATED: Allow direct navigation if session is completed or not started
+    if (_isCompleted || (!_isRunning && !_isPaused)) {
       Navigator.of(context).pushAndRemoveUntil(
         MaterialPageRoute(
           builder: (_) => const MainTabView(initialIndex: 0),
@@ -1068,6 +1108,7 @@ class _MentalTrainingTimerViewState extends State<MentalTrainingTimerView>
       return;
     }
     
+    // Only show warning if session is in progress (running or paused)
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
@@ -1085,6 +1126,10 @@ class _MentalTrainingTimerViewState extends State<MentalTrainingTimerView>
               await WakeLockService.disableWakeLock();
               
               Navigator.of(context).pop(); // Close dialog
+              
+              // ✅ ADDED: Show ad when exiting mental training
+              await AdService.instance.showAdAfterMentalTraining();
+              
               Navigator.of(context).pushAndRemoveUntil(
                 MaterialPageRoute(
                   builder: (_) => const MainTabView(initialIndex: 0),

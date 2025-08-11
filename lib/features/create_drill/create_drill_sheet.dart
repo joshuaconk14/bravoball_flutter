@@ -49,6 +49,7 @@ class _CreateDrillSheetState extends State<CreateDrillSheet> {
   
   bool _isLoading = false;
   DrillModel? _createdDrill;
+  bool _hasAttemptedValidation = false; // ✅ ADDED: Track validation attempts
 
   // Video picking functionality
   final ImagePicker _picker = ImagePicker();
@@ -102,6 +103,7 @@ class _CreateDrillSheetState extends State<CreateDrillSheet> {
       setState(() {
         _instructions.add(instruction);
         _instructionsController.clear();
+        _hasAttemptedValidation = false; // ✅ ADDED: Reset validation flag when instruction is added
       });
       HapticUtils.lightImpact();
     }
@@ -110,6 +112,7 @@ class _CreateDrillSheetState extends State<CreateDrillSheet> {
   void _removeInstruction(int index) {
     setState(() {
       _instructions.removeAt(index);
+      _hasAttemptedValidation = false; // ✅ ADDED: Reset validation flag when instruction is removed
     });
     HapticUtils.lightImpact();
   }
@@ -655,6 +658,9 @@ class _CreateDrillSheetState extends State<CreateDrillSheet> {
     bool hasInstructions = _instructions.isNotEmpty;
     
     if (!_formKey.currentState!.validate() || !hasInstructions) {
+      setState(() {
+        _hasAttemptedValidation = true; // ✅ ADDED: Mark that validation was attempted
+      });
       _formKey.currentState!.validate();
       HapticUtils.mediumImpact();
       return;
@@ -1201,7 +1207,7 @@ Custom drills are personalized training exercises that you create specifically f
                               labelText: 'Add instruction step',
                               hintText: 'Enter instruction step',
                               border: const OutlineInputBorder(),
-                              errorText: _instructions.isEmpty && _formKey.currentState?.validate() == false 
+                              errorText: _instructions.isEmpty && _hasAttemptedValidation 
                                   ? 'Please add at least one instruction' 
                                   : null,
                             ),

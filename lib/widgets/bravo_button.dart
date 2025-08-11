@@ -16,6 +16,7 @@ class BravoButton extends StatefulWidget {
   final double borderRadius;
   final FontWeight fontWeight;
   final BorderSide? borderSide;
+  final Widget? child; // Add child parameter for custom widgets
 
   const BravoButton({
     Key? key,
@@ -31,6 +32,7 @@ class BravoButton extends StatefulWidget {
     this.borderRadius = 16,
     this.fontWeight = FontWeight.bold,
     this.borderSide,
+    this.child, // Add child parameter
   }) : super(key: key);
 
   @override
@@ -133,7 +135,9 @@ class _BravoButtonState extends State<BravoButton> with SingleTickerProviderStat
                     ),
                     alignment: Alignment.center,
                     padding: const EdgeInsets.symmetric(vertical: 0),
-        child: FittedBox(
+                    child: widget.child != null 
+                      ? widget.child! 
+                      : FittedBox(
           fit: BoxFit.scaleDown,
           child: Text(
                         widget.text,

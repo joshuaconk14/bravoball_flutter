@@ -476,7 +476,7 @@
 				MTL_ENABLE_DEBUG_INFO = NO;
 				SDKROOT = iphoneos;
 				SUPPORTED_PLATFORMS = iphoneos;
-				TARGETED_DEVICE_FAMILY = "1,2";
+				TARGETED_DEVICE_FAMILY = 1;
 				VALIDATE_PRODUCT = YES;
 			};
 			name = Profile;
@@ -487,16 +487,16 @@
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				CLANG_ENABLE_MODULES = YES;
-				CURRENT_PROJECT_VERSION = "$(FLUTTER_BUILD_NUMBER)";
+				CURRENT_PROJECT_VERSION = 21;
 				DEVELOPMENT_TEAM = J36CXA7LCG;
 				ENABLE_BITCODE = NO;
-				MARKETING_VERSION = "$(FLUTTER_BUILD_NAME)";
 				INFOPLIST_FILE = Runner/Info.plist;
 				INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.sports";
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
 					"@executable_path/Frameworks",
 				);
+				MARKETING_VERSION = "$(FLUTTER_BUILD_NAME)";
 				PRODUCT_BUNDLE_IDENTIFIER = ConklinOfficial.BravoBall;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator";
@@ -613,7 +613,7 @@
 				MTL_ENABLE_DEBUG_INFO = YES;
 				ONLY_ACTIVE_ARCH = YES;
 				SDKROOT = iphoneos;
-				TARGETED_DEVICE_FAMILY = "1,2";
+				TARGETED_DEVICE_FAMILY = 1;
 			};
 			name = Debug;
 		};
@@ -666,7 +666,7 @@
 				SUPPORTED_PLATFORMS = iphoneos;
 				SWIFT_COMPILATION_MODE = wholemodule;
 				SWIFT_OPTIMIZATION_LEVEL = "-O";
-				TARGETED_DEVICE_FAMILY = "1,2";
+				TARGETED_DEVICE_FAMILY = 1;
 				VALIDATE_PRODUCT = YES;
 			};
 			name = Release;
@@ -677,16 +677,16 @@
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				CLANG_ENABLE_MODULES = YES;
-				CURRENT_PROJECT_VERSION = "$(FLUTTER_BUILD_NUMBER)";
+				CURRENT_PROJECT_VERSION = 21;
 				DEVELOPMENT_TEAM = J36CXA7LCG;
 				ENABLE_BITCODE = NO;
-				MARKETING_VERSION = "$(FLUTTER_BUILD_NAME)";
 				INFOPLIST_FILE = Runner/Info.plist;
 				INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.sports";
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
 					"@executable_path/Frameworks",
 				);
+				MARKETING_VERSION = "$(FLUTTER_BUILD_NAME)";
 				PRODUCT_BUNDLE_IDENTIFIER = ConklinOfficial.BravoBall;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator";
@@ -707,16 +707,16 @@
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				CLANG_ENABLE_MODULES = YES;
-				CURRENT_PROJECT_VERSION = "$(FLUTTER_BUILD_NUMBER)";
+				CURRENT_PROJECT_VERSION = 21;
 				DEVELOPMENT_TEAM = J36CXA7LCG;
 				ENABLE_BITCODE = NO;
-				MARKETING_VERSION = "$(FLUTTER_BUILD_NAME)";
 				INFOPLIST_FILE = Runner/Info.plist;
 				INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.sports";
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
 					"@executable_path/Frameworks",
 				);
+				MARKETING_VERSION = "$(FLUTTER_BUILD_NAME)";
 				PRODUCT_BUNDLE_IDENTIFIER = ConklinOfficial.BravoBall;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator";

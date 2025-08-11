@@ -309,9 +309,9 @@ class AccountSettingsView extends StatelessWidget {
               Navigator.pop(context);
               
               // Perform logout and navigate immediately
-              await LoginService.shared.logoutUser();
+              final success = await LoginService.shared.logoutUser();
               
-              if (context.mounted) {
+              if (success && context.mounted) {
                 Navigator.of(context).pushAndRemoveUntil(
                   MaterialPageRoute(builder: (context) => const OnboardingFlow()),
                   (route) => false,
@@ -357,15 +357,54 @@ class AccountSettingsView extends StatelessWidget {
           TextButton(
             onPressed: () async {
               HapticUtils.heavyImpact();
-              Navigator.pop(context);
+              Navigator.pop(context); // Close confirmation dialog
               
-              // Perform account deletion and navigate immediately
-              await LoginService.shared.deleteAccount();
+              // Store the navigator context before async operation
+              final navigator = Navigator.of(context);
               
+              // Show loading dialog
+              showDialog(
+                context: context,
+                barrierDismissible: false,
+                builder: (BuildContext context) {
+                  return const _DeletingAccountDialog();
+                },
+              );
+              
+              // Perform account deletion
+              final success = await LoginService.shared.deleteAccount();
+              
+              // Close loading dialog
               if (context.mounted) {
-                Navigator.of(context).pushAndRemoveUntil(
-                  MaterialPageRoute(builder: (context) => const OnboardingFlow()),
-                  (route) => false,
+                Navigator.of(context).pop();
+              }
+              
+              if (success) {
+                // ✅ FORCE NAVIGATION - Use stored navigator and add delay to ensure cleanup completes
+                await Future.delayed(const Duration(milliseconds: 100));
+                
+                // Force navigation using multiple approaches to ensure it works
+                try {
+                  navigator.pushAndRemoveUntil(
+                    MaterialPageRoute(builder: (context) => const OnboardingFlow()),
+                    (route) => false,
+                  );
+                } catch (e) {
+                  // If first approach fails, try with current context
+                  if (context.mounted) {
+                    Navigator.of(context).pushAndRemoveUntil(
+                      MaterialPageRoute(builder: (context) => const OnboardingFlow()),
+                      (route) => false,
+                    );
+                  }
+                }
+              } else if (context.mounted) {
+                // Show error message if deletion failed
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(
+                    content: Text('Failed to delete account. Please try again.'),
+                    backgroundColor: Colors.red,
+                  ),
                 );
               }
             },
@@ -378,6 +417,66 @@ class AccountSettingsView extends StatelessWidget {
             ),
           ),
         ],
+      ),
+    );
+  }
+}
+
+/// Loading dialog for account deletion - matches GuestAccountCreationDialog design
+class _DeletingAccountDialog extends StatelessWidget {
+  const _DeletingAccountDialog();
+
+  @override
+  Widget build(BuildContext context) {
+    return PopScope(
+      canPop: false, // Prevent dismissing with back button
+      child: AlertDialog(
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(20),
+        ),
+        content: Container(
+          width: 300,
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              // Loading spinner in circular container (matches icon design)
+              Container(
+                width: 80,
+                height: 80,
+                decoration: BoxDecoration(
+                  color: AppTheme.error.withValues(alpha: 0.1),
+                  shape: BoxShape.circle,
+                ),
+                child: const Center(
+                  child: CircularProgressIndicator(
+                    valueColor: AlwaysStoppedAnimation<Color>(AppTheme.error),
+                    strokeWidth: 3.0,
+                  ),
+                ),
+              ),
+              const SizedBox(height: 20),
+              // Title (matches guest dialog title style)
+              Text(
+                'Deleting Account...',
+                style: AppTheme.headlineSmall.copyWith(
+                  color: AppTheme.primaryDark,
+                  fontWeight: FontWeight.bold,
+                ),
+                textAlign: TextAlign.center,
+              ),
+              const SizedBox(height: 16),
+              // Description (matches guest dialog description style)
+              Text(
+                'Please wait while we securely remove your account and all associated data.',
+                style: AppTheme.bodyMedium.copyWith(
+                  color: AppTheme.primaryGray,
+                  height: 1.4,
+                ),
+                textAlign: TextAlign.center,
+              ),
+            ],
+          ),
+        ),
       ),
     );
   }

@@ -17,9 +17,14 @@
     
     <!-- ✅ ADDED: Android battery optimization and background execution -->
     <uses-permission android:name="android.permission.REQUEST_IGNORE_BATTERY_OPTIMIZATIONS" />
-    <uses-permission android:name="android.permission.SCHEDULE_EXACT_ALARM" />
-    <uses-permission android:name="android.permission.USE_EXACT_ALARM" />
     <uses-permission android:name="android.permission.VIBRATE" />
+    
+    <!-- ✅ ADDED: Restrict to phones only (no tablets) -->
+    <supports-screens
+        android:smallScreens="true"
+        android:normalScreens="true"
+        android:largeScreens="false"
+        android:xlargeScreens="false" />
     
     <application
         android:label="BravoBall"
@@ -27,6 +32,13 @@
         android:icon="@mipmap/ic_launcher"
         android:enableOnBackInvokedCallback="true"
         android:requestLegacyExternalStorage="false">
+        
+        <!-- ✅ ADDED: Google Mobile Ads meta-data -->
+        <!-- Replace the value below with your actual Google Mobile Ads app ID -->
+        <meta-data
+            android:name="com.google.android.gms.ads.APPLICATION_ID"
+            android:value="ca-app-pub-3940256099942544~3347511713" />
+        
         <activity
             android:name=".MainActivity"
             android:exported="true"

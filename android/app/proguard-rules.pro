@@ -6,6 +6,10 @@
 -keep class io.flutter.plugins.** { *; }
 -keep class io.flutter.embedding.** { *; }
 
+# Keep Google Play Core classes (fixes R8 error)
+-keep class com.google.android.play.core.** { *; }
+-dontwarn com.google.android.play.core.**
+
 # Keep RiveAsset and Rive related classes
 -keep class app.rive.runtime.kotlin.** { *; }
 

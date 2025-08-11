@@ -255,47 +255,47 @@ class _DrillFollowAlongViewState extends State<DrillFollowAlongView>
       ),
       child: Column(
         children: [
-          // Row with close button and drill title
-          Row(
+          // Row with drill title and close button
+          Stack(
             children: [
-              // Close button
-              GestureDetector(
-                onTap: () {
-                  HapticUtils.lightImpact();
-                  if (_elapsedTime < _setDuration) {
-                    _showExitWarning();
-                  } else {
-                    Navigator.pop(context);
-                  }
-                },
-                child: Container(
-                  padding: const EdgeInsets.all(8),
-                  decoration: BoxDecoration(
-                    color: Colors.grey.shade100,
-                    shape: BoxShape.circle,
-                  ),
-                  child: const Icon(
-                    Icons.close,
-                    color: Colors.black,
-                    size: 20,
+              // Drill title (centered with proper padding)
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 40), // Add horizontal padding to avoid X button
+                child: Center(
+                  child: Text(
+                    _editableDrill.drill.title,
+                    style: const TextStyle(
+                      fontFamily: 'Poppins',
+                      fontWeight: FontWeight.bold,
+                      fontSize: 18,
+                      color: Colors.black,
+                    ),
+                    textAlign: TextAlign.center,
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis,
                   ),
                 ),
               ),
               
-              const SizedBox(width: 12),
-              
-              // Drill title (expanded to take remaining space)
-              Expanded(
-                child: Text(
-                  _editableDrill.drill.title,
-                  style: const TextStyle(
-                    fontFamily: 'Poppins',
-                    fontWeight: FontWeight.bold,
-                    fontSize: 18,
-                    color: Colors.black,
+              // ✅ UPDATED: Close button (X) on the left with better positioning
+              Positioned(
+                left: -8,
+                top: -8,
+                child: IconButton(
+                  onPressed: () {
+                    HapticUtils.lightImpact();
+                    _handleExitAttempt();
+                  },
+                  icon: const Icon(
+                    Icons.close,
+                    color: Colors.grey,
+                    size: 24,
                   ),
-                  maxLines: 2,
-                  overflow: TextOverflow.ellipsis,
+                  padding: EdgeInsets.zero,
+                  constraints: const BoxConstraints(
+                    minWidth: 32,
+                    minHeight: 32,
+                  ),
                 ),
               ),
             ],
@@ -358,7 +358,7 @@ class _DrillFollowAlongViewState extends State<DrillFollowAlongView>
                   borderRadius: BorderRadius.circular(20),
                 ),
                 child: Text(
-                  _editableDrill.setsDone >= _editableDrill.totalSets 
+                  _editableDrill.isCompleted 
                       ? 'All Sets Complete! 🎉' 
                       : 'Set ${_editableDrill.setsDone + 1} of ${_editableDrill.totalSets}',
                   style: const TextStyle(
@@ -519,10 +519,10 @@ class _DrillFollowAlongViewState extends State<DrillFollowAlongView>
           onCompletePressed: () {
             _completeDrill();
           },
-          isComplete: _editableDrill.setsDone >= _editableDrill.totalSets,
+          isComplete: _editableDrill.isCompleted,
           countdownValue: _showCountdown ? _countdownValue : null,
           debugMode: AppConfig.debug,
-          disabled: _editableDrill.setsDone >= _editableDrill.totalSets,
+          disabled: _editableDrill.isCompleted,
           size: 70, // Reduced from 90
         ),
         
@@ -544,37 +544,40 @@ class _DrillFollowAlongViewState extends State<DrillFollowAlongView>
     return SizedBox(
       width: double.infinity,
       child: ElevatedButton(
-        onPressed: _editableDrill.setsDone >= _editableDrill.totalSets ? () {
+        onPressed: () {
           HapticUtils.mediumImpact();
-          _completeDrill();
-        } : null,
+          _handleExitAttempt();
+        },
         style: ElevatedButton.styleFrom(
-          backgroundColor: _editableDrill.setsDone >= _editableDrill.totalSets 
+          backgroundColor: _editableDrill.isCompleted 
               ? AppTheme.success
-              : Colors.grey.shade400,
+              : AppTheme.primaryLightBlue,
           foregroundColor: Colors.white,
-          elevation: _editableDrill.setsDone >= _editableDrill.totalSets ? 2 : 0,
-          shadowColor: _editableDrill.setsDone >= _editableDrill.totalSets 
+          elevation: 2,
+          shadowColor: _editableDrill.isCompleted 
               ? AppTheme.success.withValues(alpha: 0.3) 
-              : Colors.transparent,
+              : AppTheme.primaryLightBlue.withValues(alpha: 0.3),
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(16),
           ),
-          padding: const EdgeInsets.symmetric(vertical: 12), // Reduced from 16
+          padding: const EdgeInsets.symmetric(vertical: 12),
         ),
         child: Row(
           mainAxisSize: MainAxisSize.min,
           children: [
-            if (_editableDrill.setsDone >= _editableDrill.totalSets) ...[
-              const Icon(Icons.check_circle, size: 18, color: Colors.white), // Reduced from 20
-              const SizedBox(width: 6), // Reduced from 8
+            if (_editableDrill.isCompleted) ...[
+              const Icon(Icons.check_circle, size: 18, color: Colors.white),
+              const SizedBox(width: 6),
+            ] else ...[
+              const Icon(Icons.exit_to_app, size: 18, color: Colors.white),
+              const SizedBox(width: 6),
             ],
-            const Text(
-              'Done',
-              style: TextStyle(
+            Text(
+              _editableDrill.isCompleted ? 'Completed!' : 'Exit Drill',
+              style: const TextStyle(
                 fontFamily: 'Poppins',
                 fontWeight: FontWeight.bold,
-                fontSize: 16, // Reduced from 18
+                fontSize: 16,
                 color: Colors.white,
               ),
             ),
@@ -585,7 +588,7 @@ class _DrillFollowAlongViewState extends State<DrillFollowAlongView>
   }
 
   void _togglePlayPause() {
-    if (_editableDrill.setsDone >= _editableDrill.totalSets) return;
+    if (_editableDrill.isCompleted) return;
     
     // In debug mode, allow skipping countdown by pressing button during countdown
     if (_showCountdown && AppConfig.debug) {
@@ -686,13 +689,21 @@ class _DrillFollowAlongViewState extends State<DrillFollowAlongView>
       _editableDrill.setsDone++;
       _elapsedTime = _setDuration; // Reset for next set
       _isPlaying = false;
+      
+      // ✅ NEW: Automatically mark drill as completed when all sets are done
+      if (_editableDrill.setsDone >= _editableDrill.totalSets) {
+        _editableDrill.isCompleted = true;
+        if (kDebugMode) {
+          print('✅ Auto-completed drill: ${_editableDrill.drill.title} - all sets finished');
+        }
+      }
     });
     
     // Update the drill in the session
     _updateDrillInSession();
     
     if (kDebugMode) {
-      if (kDebugMode) print('✅ Set ${_editableDrill.setsDone}/${_editableDrill.totalSets} completed');
+      print('✅ Set ${_editableDrill.setsDone}/${_editableDrill.totalSets} completed');
     }
   }
 
@@ -715,6 +726,22 @@ class _DrillFollowAlongViewState extends State<DrillFollowAlongView>
     }
   }
 
+  void _exitDrill() async {
+    await _stopAllTimers();
+    if (mounted) {
+      Navigator.pop(context);
+    }
+  }
+
+  void _handleExitAttempt() {
+    // ✅ NEW: Check if timer is running and show warning if needed
+    if (_isPlaying || _showCountdown) {
+      _showExitWarning();
+    } else {
+      _exitDrill();
+    }
+  }
+
   void _updateDrillInSession() {
     final appState = Provider.of<AppStateService>(context, listen: false);
     
@@ -732,6 +759,11 @@ class _DrillFollowAlongViewState extends State<DrillFollowAlongView>
       setsDone: _editableDrill.setsDone,
       isCompleted: _editableDrill.isCompleted,
     );
+    
+    // ✅ NEW: Call completion callback when drill is automatically completed
+    if (_editableDrill.isCompleted && widget.onDrillCompleted != null) {
+      widget.onDrillCompleted!.call();
+    }
   }
 
   void _showDrillDetails(BuildContext context) {
@@ -759,13 +791,19 @@ class _DrillFollowAlongViewState extends State<DrillFollowAlongView>
     WarningDialog.show(
       context: context,
       title: 'Exit Drill?',
-      content: 'Are you sure you want to exit this drill? This will reset your timer for the current set.',
+      content: _isPlaying 
+          ? 'You\'re currently in the middle of a set. Are you sure you want to exit? This will reset your timer for the current set.'
+          : 'Are you sure you want to exit this drill?',
       cancelText: 'Stay',
       continueText: 'Exit',
+      warningColor: Colors.orange,
+      warningIcon: Icons.warning_amber_rounded,
       onCancel: () {
+        HapticUtils.lightImpact();
         // User cancelled - do nothing, stay in drill
       },
       onContinue: () async {
+        HapticUtils.mediumImpact();
         // User confirmed - stop timers and exit
         await _stopAllTimers();
         if (mounted) {

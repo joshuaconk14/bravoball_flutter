@@ -14,6 +14,7 @@ import 'services/authentication_service.dart';
 import 'services/user_manager_service.dart';
 import 'services/android_compatibility_service.dart'; // ✅ ADDED: Import Android compatibility service
 import 'services/loading_state_service.dart';
+import 'services/ad_service.dart'; // ✅ ADDED: Import AdService
 import 'constants/app_theme.dart';
 import 'config/app_config.dart';
 import 'widgets/bravo_loading_indicator.dart';
@@ -44,6 +45,9 @@ void main() async {
   
   // Initialize services
   ApiService.shared.initialize();
+  
+  // ✅ ADDED: Initialize AdService
+  await AdService.instance.initialize();
   
   // Initialize the app state service
   await AppStateService.instance.initialize();
@@ -231,13 +235,48 @@ class AuthenticatedApp extends StatefulWidget {
   State<AuthenticatedApp> createState() => _AuthenticatedAppState();
 }
 
-class _AuthenticatedAppState extends State<AuthenticatedApp> {
+class _AuthenticatedAppState extends State<AuthenticatedApp> with WidgetsBindingObserver {
   bool _hasLoadedBackendData = false;
 
   @override
   void initState() {
     super.initState();
+    WidgetsBinding.instance.addObserver(this);
     _loadBackendDataIfNeeded();
+    
+    // ✅ ADDED: Show ad on app open if appropriate
+    WidgetsBinding.instance.addPostFrameCallback((_) async {
+      await AdService.instance.showAdOnAppOpenIfAppropriate();
+    });
+  }
+
+  @override
+  void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
+    super.dispose();
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    super.didChangeAppLifecycleState(state);
+    
+    // ✅ ADDED: Track app lifecycle for ad management
+    if (state == AppLifecycleState.resumed) {
+      // App came to foreground - check for ads
+      if (kDebugMode) {
+        print('📱 App resumed - checking for ads');
+      }
+      
+      // ✅ ADDED: Actually check for ads when app resumes
+      WidgetsBinding.instance.addPostFrameCallback((_) async {
+        await AdService.instance.showAdOnAppOpenIfAppropriate();
+      });
+    } else if (state == AppLifecycleState.paused) {
+      // App went to background
+      if (kDebugMode) {
+        print('📱 App paused');
+      }
+    }
   }
 
   void _loadBackendDataIfNeeded() {

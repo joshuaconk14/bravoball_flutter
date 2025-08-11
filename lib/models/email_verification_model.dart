@@ -53,7 +53,6 @@ class EmailVerificationModel extends ChangeNotifier {
 
   /// Reset the email verification state
   void resetEmailVerificationState() {
-    _emailVerificationStep = 1;
     _newEmail = '';
     _emailVerificationCode = '';
     _emailVerificationMessage = '';

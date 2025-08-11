@@ -1258,19 +1258,11 @@ class _OnboardingFlowState extends State<OnboardingFlow> {
     Navigator.of(context).push(
       MaterialPageRoute(
         builder: (_) => LoginView(
-          onLoginSuccess: () {
-            // Login successful - pop the login view and let AuthenticationWrapper handle navigation
-            Navigator.of(context).pop(); // Pop the login view
-            
-            // Navigate back to the root and let AuthenticationWrapper detect the login state
-            Navigator.of(context).pushAndRemoveUntil(
-              MaterialPageRoute(builder: (_) => const MyApp()),
-              (route) => false,
-            );
-          },
           onCancel: () {
             // Go back to welcome page
-            Navigator.of(context).pop();
+            if (mounted) {
+              Navigator.of(context).pop();
+            }
           },
         ),
       ),

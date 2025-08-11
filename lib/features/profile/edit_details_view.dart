@@ -6,6 +6,8 @@ import '../../services/email_verification_service.dart';
 import '../../models/email_verification_model.dart';
 import '../../widgets/bravo_button.dart'; // ✅ ADDED: Import BravoButton
 import '../../utils/haptic_utils.dart'; // ✅ ADDED: Import HapticUtils
+import '../auth/login_view.dart'; // ✅ ADDED: Import LoginView
+import '../../main.dart'; // ✅ ADDED: Import MyApp for navigation
 
 class EditDetailsView extends StatefulWidget {
   const EditDetailsView({Key? key}) : super(key: key);
@@ -387,17 +389,59 @@ class _EditDetailsViewState extends State<EditDetailsView> {
                         model.emailVerificationCode,
                         model,
                         onSuccess: () {
-                          // Show success message
+                          // Show success message with logout notification
                           ScaffoldMessenger.of(context).showSnackBar(
                             const SnackBar(
-                              content: Text('Email updated successfully!'),
+                              content: Text('Email updated successfully! Please log in with your new email.'),
                               backgroundColor: AppTheme.success,
-                              duration: Duration(seconds: 2),
+                              duration: Duration(seconds: 4),
                             ),
                           );
                           
-                          // Close the view
-                          Navigator.of(context).pop();
+
+                        },
+                        onNavigateToLogin: () {
+                          // ✅ NEW: Navigate directly to login page like delete account
+                          // Store the navigator context before async operation
+                          final navigator = Navigator.of(context);
+                          
+                          // Add delay to ensure cleanup completes
+                          Future.delayed(const Duration(milliseconds: 100), () {
+                            // Force navigation to login page
+                            try {
+                              navigator.pushAndRemoveUntil(
+                                MaterialPageRoute(
+                                  builder: (context) => LoginView(
+                                    onCancel: () {
+                                      // Go back to onboarding flow
+                                      Navigator.of(context).pushAndRemoveUntil(
+                                        MaterialPageRoute(builder: (context) => const MyApp()),
+                                        (route) => false,
+                                      );
+                                    },
+                                  ),
+                                ),
+                                (route) => false,
+                              );
+                            } catch (e) {
+                              // If first approach fails, try with current context
+                              if (context.mounted) {
+                                Navigator.of(context).pushAndRemoveUntil(
+                                  MaterialPageRoute(
+                                    builder: (context) => LoginView(
+                                      onCancel: () {
+                                        Navigator.of(context).pushAndRemoveUntil(
+                                          MaterialPageRoute(builder: (context) => const MyApp()),
+                                          (route) => false,
+                                        );
+                                      },
+                                    ),
+                                  ),
+                                  (route) => false,
+                                );
+                              }
+                            }
+                          });
                         },
                       );
                       setState(() => _isSending = false);
