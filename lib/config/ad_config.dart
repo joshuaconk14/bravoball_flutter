@@ -3,7 +3,7 @@ import 'package:flutter/foundation.dart';
 class AdConfig {
   // Ad frequency settings
   static const int adsAfterEveryNOpens = 3; // Show ad every 3 app opens
-  static const int minTimeBetweenAds = 300; // 5 minutes between ads (seconds)
+  static const int minTimeBetweenAds = 180; // 5 minutes between ads (seconds)
   
   // Test ad unit IDs (Google's official test IDs)
   static const String androidTestAdUnitId = 'ca-app-pub-3940256099942544/1033173712';

@@ -17,9 +17,9 @@ This document describes the Duolingo-style ad system implemented in BravoBall. T
 ## ⏰ Frequency Controls
 
 ### Minimum Time Between Ads
-- **Setting**: 5 minutes (300 seconds)
+- **Setting**: 3 minutes (180 seconds)
 - **Purpose**: Prevents overwhelming users with too many ads
-- **Logic**: Even if multiple sessions are completed rapidly, ads won't show more frequently than every 5 minutes
+- **Logic**: Even if multiple sessions are completed rapidly, ads won't show more frequently than every 3 minutes
 
 ### App Open Counter
 - **Setting**: Every 3 app opens
@@ -65,7 +65,7 @@ App Resume → didChangeAppLifecycleState → showAdOnAppOpenIfAppropriate() →
 class AdConfig {
   // Frequency settings
   static const int adsAfterEveryNOpens = 3;        // Show ad every 3 app opens
-  static const int minTimeBetweenAds = 300;        // 5 minutes between ads (seconds)
+  static const int minTimeBetweenAds = 180;        // 3 minutes between ads (seconds)
   
   // Enable/disable flags
   static bool get adsEnabled => true;              // Master switch for ads
@@ -113,8 +113,8 @@ class AdConfig {
 
 ### Testing Frequency Controls
 1. Complete session → Ad shows ✅
-2. Complete another session immediately → No ad (5-minute rule) ❌
-3. Wait 5+ minutes → Complete session → Ad shows ✅
+2. Complete another session immediately → No ad (3-minute rule) ❌
+3. Wait 3+ minutes → Complete session → Ad shows ✅
 
 ## 📊 Debug Logging
 
@@ -131,7 +131,7 @@ The system provides comprehensive logging in debug mode:
    • Last ad shown: [timestamp]
    • Current time: [timestamp]
    • Time since last ad: X seconds
-   • Min time required: 300 seconds
+   • Min time required: 180 seconds
    • Can show ad? YES
 📱 Showing interstitial ad (trigger: app_open)
 ```
@@ -149,7 +149,7 @@ The system provides comprehensive logging in debug mode:
 #### App Open Ads Not Working
 1. **Verify lifecycle detection** - Check if `didChangeAppLifecycleState` is firing
 2. **Check app open counter** - Look for "App open count" logs
-3. **Verify timing** - Check if 5-minute rule is blocking ads
+3. **Verify timing** - Check if 3-minute rule is blocking ads
 
 #### Test Ads Not Loading
 1. **Check internet connection** - Test ads require network access
@@ -235,7 +235,7 @@ flutter run --verbose
 ## 📝 Change Log
 
 - **Initial Implementation** - Duolingo-style ad system with session completion and app open triggers
-- **Frequency Controls** - 5-minute minimum between ads, every 3 app opens
+- **Frequency Controls** - 3-minute minimum between ads, every 3 app opens
 - **Debug Logging** - Comprehensive logging for troubleshooting
 - **Documentation** - Complete implementation guide for team reference
 
