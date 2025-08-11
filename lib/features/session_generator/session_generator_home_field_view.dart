@@ -19,6 +19,7 @@ import '../../views/main_tab_view.dart';
 import 'package:flutter/foundation.dart'; // Added for kDebugMode
 import '../mental_training/mental_training_setup_view.dart'; // Added for MentalTrainingSetupView
 import '../../widgets/guest_account_creation_dialog.dart'; // ✅ ADDED: Import reusable dialog
+import '../../services/ad_service.dart'; // Added for AdService
 
 class SessionGeneratorHomeFieldView extends StatefulWidget {
   const SessionGeneratorHomeFieldView({Key? key}) : super(key: key);
@@ -607,8 +608,12 @@ class _SessionGeneratorHomeFieldViewState extends State<SessionGeneratorHomeFiel
           totalDrills: appState.editableSessionDrills.length,
           isFirstSessionOfDay: isFirstSessionOfDay,
           sessionsCompletedToday: sessionsToday, // ✅ Use actual count, not incremented
-          onViewProgress: () {
+          onViewProgress: () async {
             appState.resetDrillProgressForNewSession();
+            
+            // ✅ ADDED: Show ad after session completion
+            await AdService.instance.showAdAfterSession();
+            
             // Navigate to progress tab (index 1)
             Navigator.of(context).pushAndRemoveUntil(
               MaterialPageRoute(
@@ -617,8 +622,12 @@ class _SessionGeneratorHomeFieldViewState extends State<SessionGeneratorHomeFiel
               (route) => false,
             );
           },
-          onBackToHome: () {
+          onBackToHome: () async {
             appState.resetDrillProgressForNewSession();
+            
+            // ✅ ADDED: Show ad after session completion
+            await AdService.instance.showAdAfterSession();
+            
             // Navigate back to home tab (index 0)
             Navigator.of(context).pushAndRemoveUntil(
               MaterialPageRoute(

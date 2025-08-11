@@ -1,23 +1,27 @@
+import 'dart:async'; // ✅ ADDED: Import for Timer class
+import 'dart:math' as math; // ✅ ADDED: Import for math functions
 import 'package:flutter/material.dart';
+import 'package:flutter/foundation.dart';
 import 'package:provider/provider.dart';
-import 'dart:async';
-import 'dart:math' as math;
+import 'package:rive/rive.dart' hide LinearGradient, RadialGradient;
+import 'package:rive/rive.dart' as rive;
+import '../../constants/app_theme.dart';
+import '../../services/app_state_service.dart';
+import '../../services/audio_service.dart';
+import '../../services/background_timer_service.dart';
+import '../../services/wake_lock_service.dart';
+import '../../services/ad_service.dart'; // ✅ ADDED: Import AdService
+import '../../utils/haptic_utils.dart';
+import '../../widgets/guest_account_creation_dialog.dart';
+import '../../widgets/bravo_button.dart'; // ✅ ADDED: Import for BravoButton
+import '../../models/mental_training_models.dart';
+import '../../models/auth_models.dart';
 import '../../models/drill_model.dart'; // Added for DrillModel
 import '../../models/editable_drill_model.dart'; // Added for EditableDrillModel
 import '../../services/mental_training_service.dart';
-import '../../models/mental_training_models.dart';
-import '../../services/app_state_service.dart';
-import '../../services/audio_service.dart';
-import '../../services/background_timer_service.dart'; // ✅ ADDED: Background timer service
-import '../../services/wake_lock_service.dart'; // ✅ ADDED: Wake lock service
-import '../../constants/app_theme.dart';
-import '../../utils/haptic_utils.dart';
-import '../../widgets/bravo_button.dart';
-import '../../views/main_tab_view.dart';
 import '../../config/app_config.dart'; // Added for debug mode
-import 'package:flutter/foundation.dart'; // Added for kDebugMode
 import 'package:uuid/uuid.dart'; // Added for UUID generation
-import '../../widgets/guest_account_creation_dialog.dart'; // ✅ ADDED: Import reusable dialog
+import '../../views/main_tab_view.dart';
 
 class MentalTrainingTimerView extends StatefulWidget {
   final int durationMinutes;
@@ -1010,7 +1014,7 @@ class _MentalTrainingTimerViewState extends State<MentalTrainingTimerView>
             height: 56,
             child: BravoButton(
               text: 'Back to Home',
-              onPressed: () {
+              onPressed: () async {
                 // ✅ ADDED: Check if guest mode and show overlay instead of navigating
                 final appState = Provider.of<AppStateService>(context, listen: false);
                 if (appState.isGuestMode) {
@@ -1023,6 +1027,9 @@ class _MentalTrainingTimerViewState extends State<MentalTrainingTimerView>
                   //   showDismissButton: true,
                   // );
                 } else {
+                  // ✅ ADDED: Show ad after mental training completion
+                  await AdService.instance.showAdAfterMentalTraining();
+                  
                   // Navigate normally for authenticated users
                   Navigator.of(context).pushAndRemoveUntil(
                     MaterialPageRoute(
@@ -1119,6 +1126,10 @@ class _MentalTrainingTimerViewState extends State<MentalTrainingTimerView>
               await WakeLockService.disableWakeLock();
               
               Navigator.of(context).pop(); // Close dialog
+              
+              // ✅ ADDED: Show ad when exiting mental training
+              await AdService.instance.showAdAfterMentalTraining();
+              
               Navigator.of(context).pushAndRemoveUntil(
                 MaterialPageRoute(
                   builder: (_) => const MainTabView(initialIndex: 0),

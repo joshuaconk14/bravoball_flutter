@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:rive/rive.dart' hide LinearGradient;
 import '../../constants/app_theme.dart';
 import '../../services/audio_service.dart';
+import '../../services/ad_service.dart'; // ✅ ADDED: Import AdService
 import '../../utils/haptic_utils.dart';
 
 class SessionCompletionView extends StatefulWidget {
