@@ -224,6 +224,11 @@ class AdService {
     await showAdIfAppropriate(trigger: 'mental_training_completion');
   }
   
+  // Show ad after drill completion
+  Future<void> showAdAfterDrillCompletion() async {
+    await showAdIfAppropriate(trigger: 'drill_completion');
+  }
+  
     // Check if we should show ad on app open
   Future<bool> shouldShowAdOnAppOpen() async {
     try {

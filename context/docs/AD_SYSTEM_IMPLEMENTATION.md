@@ -10,7 +10,13 @@ This document describes the Duolingo-style ad system implemented in BravoBall. T
 - **Training Sessions**: Ad shows after user completes a training session and taps "Back to Home"
 - **Mental Training Sessions**: Ad shows after user completes a mental training session and taps "Back to Home"
 
-### 2. App Open Ads
+### 2. Drill Completion Ads (NEW)
+- **Individual Drills**: Ad shows when user exits a completed drill via any exit button
+- **Trigger**: User clicks "Exit Drill" (blue), "Completed!" (green), or close button (X) on a completed drill
+- **NOT Triggered**: When drills auto-complete from finishing all sets
+- **Frequency**: Subject to 3-minute minimum interval between ads
+
+### 3. App Open Ads
 - **Frequency**: Ad shows every 3rd app open (3rd, 6th, 9th, 12th, etc.)
 - **Trigger**: App lifecycle changes (background → foreground)
 
@@ -54,6 +60,7 @@ This document describes the Duolingo-style ad system implemented in BravoBall. T
 User Action → Integration Point → AdService → Frequency Check → Ad Display
      ↓              ↓              ↓           ↓           ↓
 Complete Session → onBackToHome → showAdAfterSession() → _canShowAdNow() → InterstitialAd.show()
+Exit Completed Drill → onDrillCompleted → showAdAfterDrillCompletion() → _canShowAdNow() → InterstitialAd.show()
 App Resume → didChangeAppLifecycleState → showAdOnAppOpenIfAppropriate() → shouldShowAdOnAppOpen() → Ad Display
 ```
 
@@ -97,6 +104,14 @@ class AdConfig {
 ### Testing Session Completion Ads
 1. Complete a training session → Tap "Back to Home" → Ad should show
 2. Complete a mental training session → Tap "Back to Home" → Ad should show
+
+### Testing Drill Completion Ads (NEW)
+1. **Manual Completion Button**: Tap the complete button on play/pause button → Ad should show immediately
+2. **Exit Button (Green)**: When drill is completed, tap "Completed!" button → Ad should show immediately
+3. **Exit Button (Blue)**: When drill is NOT completed, tap "Exit Drill" button → NO ad should show
+4. **Close Button (X)**: When drill is completed, tap X button → Ad should show immediately
+5. **Auto-Completion**: Complete all sets of a drill → NO ad should show (auto-completion doesn't trigger ads)
+6. **Frequency Check**: Manually exit multiple completed drills rapidly → Only first ad should show (3-minute rule)
 
 ### Testing App Open Ads
 1. **Hot Restart Method** (Fastest for development):
@@ -179,6 +194,8 @@ flutter run --verbose
    await AdService.instance.showAdAfterSession();
    // or
    await AdService.instance.showAdAfterMentalTraining();
+   // or
+   await AdService.instance.showAdAfterDrillCompletion(); // NEW
    ```
 3. **Test thoroughly** - Ensure ads show at the right time
 
@@ -236,6 +253,7 @@ flutter run --verbose
 
 - **Initial Implementation** - Duolingo-style ad system with session completion and app open triggers
 - **Frequency Controls** - 3-minute minimum between ads, every 3 app opens
+- **Drill Completion Ads** - NEW: Ads now show after completing individual drills
 - **Debug Logging** - Comprehensive logging for troubleshooting
 - **Documentation** - Complete implementation guide for team reference
 

@@ -31,6 +31,7 @@ This directory contains focused documentation designed for AI assistants. Instea
 - `python_database.md` - SQLAlchemy patterns & optimization
 - `design_patterns_core.md` - SOLID, Clean Architecture
 - `security_patterns.md` - Authentication & data protection
+- `PREMIUM_FEATURES_SYSTEM.md` - Subscription management & feature gating
 
 ## 🛠️ Usage Examples
 
@@ -50,6 +51,12 @@ This directory contains focused documentation designed for AI assistants. Instea
 ```
 📂 Provide: design_patterns_core.md + state_coordination.md
 🎯 Perfect for: System design, refactoring, scalability
+```
+
+### For Premium Features Development
+```
+📂 Provide: PREMIUM_FEATURES_SYSTEM.md + flutter_quick_ref.md
+🎯 Perfect for: Subscription flows, feature gating, upgrade dialogs
 ```
 
 ## 📋 Context Selection Workflow
@@ -87,11 +94,13 @@ Instead of dumping all context at once:
 - `flutter_quick_ref.md` - Common patterns you'll use daily
 - `python_quick_ref.md` - Essential backend patterns
 - `state_coordination.md` - Critical for race condition prevention
+- `PREMIUM_FEATURES_SYSTEM.md` - Essential for subscription features
 
 ### Specialized Context (Task-specific)
 - Architecture patterns for planning/refactoring
 - Security patterns for authentication/validation
 - Performance patterns for optimization tasks
+- Premium features for subscription management
 
 ## 🎓 Context Training
 

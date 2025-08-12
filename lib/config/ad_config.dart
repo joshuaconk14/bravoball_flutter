@@ -3,7 +3,13 @@ import 'package:flutter/foundation.dart';
 class AdConfig {
   // Ad frequency settings
   static const int adsAfterEveryNOpens = 3; // Show ad every 3 app opens
-  static const int minTimeBetweenAds = 180; // 5 minutes between ads (seconds)
+  static const int minTimeBetweenAds = 180; // 3 minutes between ads (seconds)
+  
+  // Ad triggers
+  // - Session completion: After completing a full training session
+  // - Mental training completion: After completing mental training
+  // - Drill completion: After completing individual drills (NEW)
+  // - App open: Every 3rd app open
   
   // Test ad unit IDs (Google's official test IDs)
   static const String androidTestAdUnitId = 'ca-app-pub-3940256099942544/1033173712';
@@ -35,7 +41,7 @@ class AdConfig {
       return androidAppId; // For now, just return Android test ID
     } else {
       // Use production app IDs in release mode
-      return androidAppId; // For now, just return Android production ID
+      return androidAppId; // For now, just return Android test ID
     }
   }
   
