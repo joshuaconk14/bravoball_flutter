@@ -563,8 +563,10 @@ class _SessionGeneratorHomeFieldViewState extends State<SessionGeneratorHomeFiel
         MaterialPageRoute(
           builder: (_) => DrillFollowAlongView(
             editableDrill: editableDrill,
-            onDrillCompleted: () {
+            onDrillCompleted: () async {
               print("Drill completed!");
+              // ✅ ADDED: Show ad after drill completion
+              await AdService.instance.showAdAfterDrillCompletion();
             },
             onSessionCompleted: () async {
               // ✅ IMPROVED: Show completion immediately, handle backend sync in background

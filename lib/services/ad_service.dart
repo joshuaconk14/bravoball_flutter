@@ -3,6 +3,7 @@ import 'package:flutter/foundation.dart';
 import 'package:google_mobile_ads/google_mobile_ads.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../config/ad_config.dart'; // ✅ ADDED: Import AdConfig
+import 'premium_service.dart'; // ✅ ADDED: Import PremiumService
 
 class AdService {
   static final AdService _instance = AdService._internal();
@@ -124,6 +125,14 @@ class AdService {
   }
   
   Future<bool> showAdIfAppropriate({required String trigger}) async {
+    // ✅ ADDED: Check premium status first
+    if (await PremiumService.instance.isPremium()) {
+      if (kDebugMode) {
+        print('👑 Premium user - no ads shown');
+      }
+      return false;
+    }
+
     if (!AdConfig.adsEnabled) {
       if (kDebugMode) {
         print('⚠️ Ads are disabled, skipping ad display');
@@ -213,6 +222,11 @@ class AdService {
   // Show ad after mental training completion
   Future<void> showAdAfterMentalTraining() async {
     await showAdIfAppropriate(trigger: 'mental_training_completion');
+  }
+  
+  // Show ad after drill completion
+  Future<void> showAdAfterDrillCompletion() async {
+    await showAdIfAppropriate(trigger: 'drill_completion');
   }
   
     // Check if we should show ad on app open

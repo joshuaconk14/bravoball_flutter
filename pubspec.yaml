@@ -47,6 +47,9 @@ dependencies:
   path_provider: ^2.1.4  # For accessing device storage directories
   permission_handler: ^11.3.1  # For handling runtime permissions on Android
   google_mobile_ads: ^4.0.0  # For interstitial ads
+  crypto: ^3.0.3  # For security hashing
+  package_info_plus: ^4.2.0  # For app package information
+  device_info_plus: ^9.1.1  # For device information and security
 
 dev_dependencies:
   flutter_test:

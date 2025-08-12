@@ -15,6 +15,7 @@ import 'services/user_manager_service.dart';
 import 'services/android_compatibility_service.dart'; // ✅ ADDED: Import Android compatibility service
 import 'services/loading_state_service.dart';
 import 'services/ad_service.dart'; // ✅ ADDED: Import AdService
+import 'services/premium_service.dart'; // ✅ ADDED: Import PremiumService
 import 'constants/app_theme.dart';
 import 'config/app_config.dart';
 import 'widgets/bravo_loading_indicator.dart';
@@ -244,8 +245,9 @@ class _AuthenticatedAppState extends State<AuthenticatedApp> with WidgetsBinding
     WidgetsBinding.instance.addObserver(this);
     _loadBackendDataIfNeeded();
     
-    // ✅ ADDED: Show ad on app open if appropriate
+    // ✅ ADDED: Initialize premium service
     WidgetsBinding.instance.addPostFrameCallback((_) async {
+      await PremiumService.instance.initialize();
       await AdService.instance.showAdOnAppOpenIfAppropriate();
     });
   }
