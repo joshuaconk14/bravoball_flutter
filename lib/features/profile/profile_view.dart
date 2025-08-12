@@ -1,9 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:flutter/foundation.dart'; // ✅ ADDED: Import for kDebugMode
 import 'package:url_launcher/url_launcher.dart';
 import 'package:provider/provider.dart';
 import '../../constants/app_theme.dart';
 import '../../config/app_config.dart';
+import '../../config/premium_config.dart'; // ✅ ADDED: Import PremiumConfig
 import '../../services/user_manager_service.dart';
 import '../debug/debug_settings_view.dart';
 import '../onboarding/onboarding_flow.dart';
@@ -11,6 +13,8 @@ import 'privacy_policy_view.dart';
 import 'terms_of_service_view.dart';
 import 'account_settings_view.dart'; // ✅ ADDED: Import AccountSettingsView
 import '../../utils/haptic_utils.dart';
+import '../../services/premium_service.dart'; // ✅ ADDED: Import PremiumService
+import '../../widgets/premium_upgrade_dialog.dart' show showPremiumUpgradeDialog; // ✅ ADDED: Import showPremiumUpgradeDialog function
 
 class ProfileView extends StatefulWidget {
   const ProfileView({Key? key}) : super(key: key);
@@ -58,6 +62,25 @@ class _ProfileViewState extends State<ProfileView> {
                           onTap: () {
                             HapticUtils.mediumImpact(); // Medium haptic for major action
                             _handleCreateAccount();
+                          },
+                        ),
+                      ],
+                      
+                      // ✅ ADDED: Premium upgrade button (only show for non-premium users)
+                      if (!context.read<UserManagerService>().isGuestMode) ...[
+                        FutureBuilder<bool>(
+                          future: PremiumService.instance.isPremium(),
+                          builder: (context, snapshot) {
+                            if (snapshot.hasData && !snapshot.data!) {
+                              // User is not premium, show upgrade button
+                              return _buildPremiumMenuItem();
+                            } else if (snapshot.hasData && snapshot.data!) {
+                              // User is premium, show premium status
+                              return _buildPremiumStatusItem();
+                            } else {
+                              // Loading state
+                              return const SizedBox.shrink();
+                            }
                           },
                         ),
                       ],
@@ -144,6 +167,15 @@ class _ProfileViewState extends State<ProfileView> {
                           onTap: () {
                             HapticUtils.lightImpact(); // Light haptic for debug info
                             _showAuthDebugInfo(userManager);
+                          },
+                        ),
+                        _buildDebugMenuItem(
+                          icon: Icons.star,
+                          title: 'Premium Debug Info',
+                          subtitle: 'Check premium status & features',
+                          onTap: () {
+                            HapticUtils.lightImpact(); // Light haptic for debug info
+                            _showPremiumDebugInfo();
                           },
                         ),
                       ],
@@ -404,6 +436,160 @@ class _ProfileViewState extends State<ProfileView> {
     );
   }
 
+  // ✅ ADDED: Premium upgrade menu item
+  Widget _buildPremiumMenuItem() {
+    return Material(
+      color: Colors.transparent,
+      child: InkWell(
+        onTap: () {
+          HapticUtils.mediumImpact(); // Medium haptic for premium upgrade
+          _handlePremiumUpgrade();
+        },
+        borderRadius: BorderRadius.circular(12),
+        child: Container(
+          padding: const EdgeInsets.all(12),
+          child: Row(
+            children: [
+              // Premium icon with gradient background
+              Container(
+                padding: const EdgeInsets.all(6),
+                decoration: BoxDecoration(
+                  gradient: LinearGradient(
+                    colors: [
+                      AppTheme.primaryYellow,
+                      AppTheme.primaryDarkYellow,
+                    ],
+                    begin: Alignment.topLeft,
+                    end: Alignment.bottomRight,
+                  ),
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: const Icon(
+                  Icons.star,
+                  color: Colors.white,
+                  size: 18,
+                ),
+              ),
+              
+              const SizedBox(width: 12),
+              
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'Try BravoBall Premium',
+                      style: AppTheme.bodyLarge.copyWith(
+                        color: AppTheme.primaryDark,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                    Text(
+                      'Unlock unlimited features & remove ads',
+                      style: AppTheme.bodySmall.copyWith(
+                        color: AppTheme.primaryYellow,
+                        fontWeight: FontWeight.w500,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              
+              // Premium badge
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                decoration: BoxDecoration(
+                  color: AppTheme.primaryYellow.withOpacity(0.1),
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: Text(
+                  'UPGRADE',
+                  style: AppTheme.bodySmall.copyWith(
+                    color: AppTheme.primaryYellow,
+                    fontWeight: FontWeight.bold,
+                    fontSize: 10,
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  // ✅ ADDED: Premium status item for premium users
+  Widget _buildPremiumStatusItem() {
+    return Container(
+      padding: const EdgeInsets.all(12),
+      child: Row(
+        children: [
+          // Premium icon with gradient background
+          Container(
+            padding: const EdgeInsets.all(6),
+            decoration: BoxDecoration(
+              gradient: LinearGradient(
+                colors: [
+                  AppTheme.primaryYellow,
+                  AppTheme.primaryDarkYellow,
+                ],
+                begin: Alignment.topLeft,
+                end: Alignment.bottomRight,
+              ),
+              borderRadius: BorderRadius.circular(8),
+            ),
+            child: const Icon(
+              Icons.star,
+              color: Colors.white,
+              size: 18,
+            ),
+          ),
+          
+          const SizedBox(width: 12),
+          
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  'BravoBall Premium',
+                  style: AppTheme.bodyLarge.copyWith(
+                    color: AppTheme.primaryDark,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+                Text(
+                  'You have access to all premium features',
+                  style: AppTheme.bodySmall.copyWith(
+                    color: AppTheme.primaryYellow,
+                    fontWeight: FontWeight.w500,
+                  ),
+                ),
+              ],
+            ),
+          ),
+          
+          // Premium badge
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+            decoration: BoxDecoration(
+              color: AppTheme.primaryYellow,
+              borderRadius: BorderRadius.circular(12),
+            ),
+            child: const Text(
+              'PREMIUM',
+              style: TextStyle(
+                color: Colors.white,
+                fontWeight: FontWeight.bold,
+                fontSize: 10,
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
   // Action Handlers
 
   void _handleShareApp() {
@@ -452,6 +638,47 @@ class _ProfileViewState extends State<ProfileView> {
     );
   }
 
+  // ✅ ADDED: Handle premium upgrade
+  void _handlePremiumUpgrade() async {
+    // Check current premium status
+    final isPremium = await PremiumService.instance.isPremium();
+    
+    if (isPremium) {
+      // User is already premium
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('You already have Premium! 🎉'),
+          backgroundColor: Colors.green,
+          duration: Duration(seconds: 2),
+        ),
+      );
+      return;
+    }
+    
+    // Show premium upgrade dialog
+    if (mounted) {
+      await showPremiumUpgradeDialog(
+        context,
+        trigger: 'profile_upgrade',
+        onUpgrade: () {
+          // TODO: Implement in-app purchase flow
+          if (kDebugMode) {
+            print('🚀 Premium upgrade initiated from profile');
+          }
+          
+          // For now, show a placeholder message
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: const Text('Premium upgrade flow coming soon! 🚀'),
+              backgroundColor: AppTheme.primaryYellow,
+              duration: const Duration(seconds: 3),
+            ),
+          );
+        },
+      );
+    }
+  }
+
   void _handleAccountSettings() {
     Navigator.of(context).push(
       MaterialPageRoute(
@@ -489,6 +716,79 @@ class _ProfileViewState extends State<ProfileView> {
               Navigator.pop(context);
             },
             child: const Text('Close'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  // ✅ ADDED: Show premium debug info
+  void _showPremiumDebugInfo() async {
+    final premiumService = PremiumService.instance;
+    final isPremium = await premiumService.isPremium();
+    final usage = await premiumService.getFreeFeatureUsage();
+    final canCreateDrill = await premiumService.canCreateCustomDrill();
+    final canDoSession = await premiumService.canDoSessionToday();
+    
+    if (!mounted) return;
+    
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Premium Debug Info'),
+        content: SingleChildScrollView(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Text(
+                'Premium Status: ${isPremium ? "PREMIUM" : "FREE"}',
+                style: TextStyle(
+                  fontFamily: 'Courier',
+                  fontSize: 12,
+                  fontWeight: FontWeight.bold,
+                  color: isPremium ? Colors.green : Colors.orange,
+                ),
+              ),
+              const SizedBox(height: 8),
+              Text(
+                'Custom Drills: ${usage.customDrillsUsed}/${PremiumConfig.freeCustomDrillsPerMonth}',
+                style: const TextStyle(fontFamily: 'Courier', fontSize: 12),
+              ),
+              Text(
+                'Sessions Today: ${usage.sessionsUsed}/${PremiumConfig.freeSessionsPerDay}',
+                style: const TextStyle(fontFamily: 'Courier', fontSize: 12),
+              ),
+              const SizedBox(height: 8),
+              Text(
+                'Can Create Drill: $canCreateDrill',
+                style: const TextStyle(fontFamily: 'Courier', fontSize: 12),
+              ),
+              Text(
+                'Can Do Session: $canDoSession',
+                style: const TextStyle(fontFamily: 'Courier', fontSize: 12),
+              ),
+            ],
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () {
+              HapticUtils.lightImpact(); // Light haptic for close
+              Navigator.pop(context);
+            },
+            child: const Text('Close'),
+          ),
+          TextButton(
+            onPressed: () async {
+              HapticUtils.mediumImpact(); // Medium haptic for refresh
+              await premiumService.forceRefresh();
+              if (mounted) {
+                Navigator.pop(context);
+                _showPremiumDebugInfo(); // Show updated info
+              }
+            },
+            child: const Text('Refresh'),
           ),
         ],
       ),
