@@ -7,6 +7,7 @@ import 'package:http/http.dart' as http;
 import '../config/premium_config.dart';
 import '../models/premium_models.dart';
 import '../utils/device_security_utils.dart';
+import 'api_service.dart';
 
 class PremiumService {
   static final PremiumService _instance = PremiumService._internal();
@@ -74,8 +75,186 @@ class PremiumService {
     return status == PremiumStatus.premium;
   }
 
-  /// Check if user can access a specific feature
+  /// Check if user can access a specific feature using backend
   Future<bool> canAccessFeature(PremiumFeature feature) async {
+    try {
+      // Map frontend feature enum to backend feature string
+      final backendFeature = _mapFeatureToBackend(feature);
+      
+      final response = await ApiService.shared.post(
+        '/api/premium/check-feature',
+        body: {
+          'feature': backendFeature,
+        },
+        requiresAuth: true,
+      );
+
+      if (response.isSuccess && response.data != null) {
+        final canAccess = response.data!['canAccess'] as bool? ?? false;
+        
+        if (kDebugMode) {
+          print('🔒 Feature access check: $feature -> $canAccess');
+          print('   Backend response: ${response.data}');
+        }
+        
+        return canAccess;
+      } else {
+        if (kDebugMode) {
+          print('❌ Feature access check failed: ${response.error}');
+        }
+        // Fallback to local check on error
+        return await _fallbackFeatureCheck(feature);
+      }
+    } catch (e) {
+      if (kDebugMode) {
+        print('❌ Error checking feature access: $e');
+      }
+      // Fallback to local check on error
+      return await _fallbackFeatureCheck(feature);
+    }
+  }
+
+  /// Check if user can create custom drills (free: 3/month, premium: unlimited)
+  Future<bool> canCreateCustomDrill() async {
+    return await canAccessFeature(PremiumFeature.unlimitedCustomDrills);
+  }
+
+  /// Record custom drill creation using backend
+  Future<void> recordCustomDrillCreation() async {
+    try {
+      final response = await ApiService.shared.post(
+        '/api/premium/track-usage',
+        body: {
+          'featureType': 'custom_drill',
+          'usageDate': DateTime.now().toIso8601String(),
+          'metadata': {
+            'action': 'drill_created',
+            'timestamp': DateTime.now().millisecondsSinceEpoch,
+          },
+        },
+        requiresAuth: true,
+      );
+
+      if (response.isSuccess) {
+        if (kDebugMode) {
+          print('📝 Custom drill creation tracked on backend');
+        }
+      } else {
+        if (kDebugMode) {
+          print('⚠️ Failed to track custom drill creation: ${response.error}');
+        }
+      }
+    } catch (e) {
+      if (kDebugMode) {
+        print('❌ Error tracking custom drill creation: $e');
+      }
+    }
+  }
+
+  /// Check if user can do another session today (free: 1/day, premium: unlimited)
+  Future<bool> canDoSessionToday() async {
+    return await canAccessFeature(PremiumFeature.unlimitedSessions);
+  }
+
+  /// Record session completion using backend
+  Future<void> recordSessionCompletion() async {
+    try {
+      final response = await ApiService.shared.post(
+        '/api/premium/track-usage',
+        body: {
+          'featureType': 'session',
+          'usageDate': DateTime.now().toIso8601String(),
+          'metadata': {
+            'action': 'session_completed',
+            'timestamp': DateTime.now().millisecondsSinceEpoch,
+          },
+        },
+        requiresAuth: true,
+      );
+
+      if (response.isSuccess) {
+        if (kDebugMode) {
+          print('📝 Session completion tracked on backend');
+        }
+      } else {
+        if (kDebugMode) {
+          print('⚠️ Failed to track session completion: ${response.error}');
+        }
+      }
+    } catch (e) {
+      if (kDebugMode) {
+        print('❌ Error tracking session completion: $e');
+      }
+    }
+  }
+
+  /// Get remaining free features for today from backend
+  Future<FreeFeatureUsage> getFreeFeatureUsage() async {
+    try {
+      final response = await ApiService.shared.get(
+        '/api/premium/usage-stats',
+        requiresAuth: true,
+      );
+
+      if (response.isSuccess && response.data != null) {
+        final data = response.data!;
+        
+        return FreeFeatureUsage(
+          customDrillsRemaining: data['customDrillsRemaining'] ?? 0,
+          sessionsRemaining: data['sessionsRemaining'] ?? 0,
+          customDrillsUsed: data['customDrillsUsed'] ?? 0,
+          sessionsUsed: data['sessionsUsed'] ?? 0,
+        );
+      } else {
+        if (kDebugMode) {
+          print('⚠️ Failed to get usage stats: ${response.error}');
+        }
+        // Return fallback data
+        return const FreeFeatureUsage(
+          customDrillsRemaining: 3,
+          sessionsRemaining: 1,
+          customDrillsUsed: 0,
+          sessionsUsed: 0,
+        );
+      }
+    } catch (e) {
+      if (kDebugMode) {
+        print('❌ Error getting usage stats: $e');
+      }
+      // Return fallback data
+      return const FreeFeatureUsage(
+        customDrillsRemaining: 3,
+        sessionsRemaining: 1,
+        customDrillsUsed: 0,
+        sessionsUsed: 0,
+      );
+    }
+  }
+
+  /// Map frontend feature enum to backend feature string
+  String _mapFeatureToBackend(PremiumFeature feature) {
+    switch (feature) {
+      case PremiumFeature.noAds:
+        return 'noAds';
+      case PremiumFeature.unlimitedDrills:
+        return 'unlimitedDrills';
+      case PremiumFeature.unlimitedCustomDrills:
+        return 'unlimitedCustomDrills';
+      case PremiumFeature.unlimitedSessions:
+        return 'unlimitedSessions';
+      case PremiumFeature.advancedAnalytics:
+        return 'advancedAnalytics';
+      case PremiumFeature.basicDrills:
+        return 'basicDrills';
+      case PremiumFeature.weeklySummaries:
+        return 'weeklySummaries';
+      case PremiumFeature.monthlySummaries:
+        return 'monthlySummaries';
+    }
+  }
+
+  /// Fallback feature check when backend is unavailable
+  Future<bool> _fallbackFeatureCheck(PremiumFeature feature) async {
     final status = await getPremiumStatus();
     
     switch (feature) {
@@ -103,86 +282,6 @@ class PremiumService {
       case PremiumFeature.monthlySummaries:
         return true; // Free users get basic summaries
     }
-  }
-
-  /// Check if user can create custom drills (free: 3/month, premium: unlimited)
-  Future<bool> canCreateCustomDrill() async {
-    if (await isPremium()) {
-      return true; // Premium users can create unlimited drills
-    }
-
-    // Free users: check monthly limit
-    final prefs = await SharedPreferences.getInstance();
-    final currentMonth = DateTime.now().month;
-    final currentYear = DateTime.now().year;
-    final monthKey = 'custom_drills_${currentYear}_${currentMonth}';
-    
-    final drillsThisMonth = prefs.getInt(monthKey) ?? 0;
-    return drillsThisMonth < PremiumConfig.freeCustomDrillsPerMonth;
-  }
-
-  /// Record custom drill creation
-  Future<void> recordCustomDrillCreation() async {
-    final prefs = await SharedPreferences.getInstance();
-    final currentMonth = DateTime.now().month;
-    final currentYear = DateTime.now().year;
-    final monthKey = 'custom_drills_${currentYear}_${currentMonth}';
-    
-    final drillsThisMonth = prefs.getInt(monthKey) ?? 0;
-    await prefs.setInt(monthKey, drillsThisMonth + 1);
-    
-    if (kDebugMode) {
-      print('📝 Custom drill created - Month: $currentMonth/$currentYear, Count: ${drillsThisMonth + 1}');
-    }
-  }
-
-  /// Check if user can do another session today (free: 1/day, premium: unlimited)
-  Future<bool> canDoSessionToday() async {
-    if (await isPremium()) {
-      return true; // Premium users can do unlimited sessions
-    }
-
-    // Free users: check daily limit
-    final prefs = await SharedPreferences.getInstance();
-    final today = DateTime.now().toIso8601String().split('T')[0]; // YYYY-MM-DD
-    final sessionsToday = prefs.getInt('sessions_$today') ?? 0;
-    
-    return sessionsToday < PremiumConfig.freeSessionsPerDay;
-  }
-
-  /// Record session completion
-  Future<void> recordSessionCompletion() async {
-    final prefs = await SharedPreferences.getInstance();
-    final today = DateTime.now().toIso8601String().split('T')[0]; // YYYY-MM-DD
-    final sessionsToday = prefs.getInt('sessions_$today') ?? 0;
-    
-    await prefs.setInt('sessions_$today', sessionsToday + 1);
-    
-    if (kDebugMode) {
-      print('📝 Session completed - Date: $today, Count: ${sessionsToday + 1}');
-    }
-  }
-
-  /// Get remaining free features for today
-  Future<FreeFeatureUsage> getFreeFeatureUsage() async {
-    final prefs = await SharedPreferences.getInstance();
-    
-    // Custom drills this month
-    final currentMonth = DateTime.now().month;
-    final currentYear = DateTime.now().year;
-    final monthKey = 'custom_drills_${currentYear}_${currentMonth}';
-    final drillsThisMonth = prefs.getInt(monthKey) ?? 0;
-    
-    // Sessions today
-    final today = DateTime.now().toIso8601String().split('T')[0];
-    final sessionsToday = prefs.getInt('sessions_$today') ?? 0;
-    
-    return FreeFeatureUsage(
-      customDrillsRemaining: PremiumConfig.freeCustomDrillsPerMonth - drillsThisMonth,
-      sessionsRemaining: PremiumConfig.freeSessionsPerDay - sessionsToday,
-      customDrillsUsed: drillsThisMonth,
-      sessionsUsed: sessionsToday,
-    );
   }
 
   /// Validate premium status with server
