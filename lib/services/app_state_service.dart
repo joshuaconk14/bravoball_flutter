@@ -180,6 +180,8 @@ class AppStateService extends ChangeNotifier {
   // ✅ ADDED: Custom drill service for fetching user's custom drills
   final CustomDrillService _customDrillService = CustomDrillService.shared;
   
+
+  
   // ===== SYNC COORDINATION =====
   // Prevents race conditions and manages debounced operations
   final SyncCoordinator _syncCoordinator = SyncCoordinator();
@@ -1130,6 +1132,32 @@ class AppStateService extends ChangeNotifier {
     }
     
     _completedSessions.add(session);
+    
+    // ✅ ADDED: Track session completion for premium feature limits
+    try {
+      // Track usage directly with backend
+      await _apiService.post(
+        '/api/premium/track-usage',
+        body: {
+          'featureType': 'session',
+          'usageDate': DateTime.now().toIso8601String(),
+          'metadata': {
+            'action': 'session_completed',
+            'timestamp': DateTime.now().millisecondsSinceEpoch,
+          },
+        },
+        requiresAuth: true,
+      );
+      
+      if (kDebugMode) {
+        print('📝 Session completion tracked for premium limits');
+      }
+    } catch (e) {
+      if (kDebugMode) {
+        print('⚠️ Failed to track session completion: $e');
+      }
+    }
+    
     await _syncCompletedSessionImmediate(session);
   }
 
@@ -1137,6 +1165,45 @@ class AppStateService extends ChangeNotifier {
   void startSession() {
     _setSessionState(SessionState.inProgress);
   }
+
+  /// Check if user can start a new session today
+  /// Returns true if user has sessions remaining or is premium
+  Future<bool> canStartNewSession() async {
+    try {
+      // Check with backend if user can start session
+      final response = await _apiService.post(
+        '/api/premium/check-feature',
+        body: {'feature': 'unlimitedSessions'},
+        requiresAuth: true,
+      );
+      
+      if (response.isSuccess && response.data != null) {
+        final canAccess = response.data!['canAccess'] as bool? ?? false;
+        
+        if (kDebugMode) {
+          print('🔒 Session access check: $canAccess');
+        }
+        
+        return canAccess;
+      } else {
+        if (kDebugMode) {
+          print('⚠️ Session access check failed: ${response.error}');
+        }
+        // On error, allow session to proceed (fail-safe)
+        return true;
+      }
+    } catch (e) {
+      if (kDebugMode) {
+        print('❌ Error checking session access: $e');
+      }
+      // On error, allow session to proceed (fail-safe)
+      return true;
+    }
+  }
+
+
+
+
 
   // Get next drill that hasn't been completed
   EditableDrillModel? getNextIncompleteDrill() {
