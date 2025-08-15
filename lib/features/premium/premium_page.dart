@@ -3,6 +3,8 @@ import 'package:flutter/foundation.dart';
 import '../../constants/app_theme.dart';
 import '../../config/premium_config.dart';
 import '../../models/premium_models.dart';
+import 'purchase_flow_widget.dart';
+import '../../services/purchase_service.dart';
 
 
 class PremiumPage extends StatefulWidget {
@@ -20,6 +22,130 @@ class _PremiumPageState extends State<PremiumPage> {
     super.initState();
     // Auto-select the popular plan (yearly) by default
     _selectedPlan = PremiumConfig.popularPlan;
+    
+    // Initialize purchase service
+    _initializePurchaseService();
+  }
+
+  Future<void> _initializePurchaseService() async {
+    try {
+      await PurchaseService.instance.initialize();
+      if (kDebugMode) {
+        print('✅ Purchase service initialized');
+      }
+    } catch (e) {
+      if (kDebugMode) {
+        print('❌ Error initializing purchase service: $e');
+      }
+    }
+  }
+
+  void _showPurchaseFlow() {
+    if (_selectedPlan == null) return;
+
+    if (kDebugMode) {
+      print('🛒 Showing purchase flow for: ${_selectedPlan!.name}');
+    }
+
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (context) => Dialog(
+        backgroundColor: Colors.transparent,
+        child: PurchaseFlowWidget(
+          selectedPlan: _selectedPlan!,
+          onPurchaseSuccess: () {
+            if (kDebugMode) {
+              print('✅ Purchase successful - closing dialog');
+            }
+            Navigator.of(context).pop();
+            // TODO: Update user's premium status and show success message
+            _showSuccessMessage();
+          },
+          onPurchaseCancelled: () {
+            if (kDebugMode) {
+              print('🚫 Purchase cancelled - closing dialog');
+            }
+            Navigator.of(context).pop();
+          },
+        ),
+      ),
+    );
+  }
+
+  void _showSuccessMessage() {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(
+          '🎉 Welcome to Premium! Your subscription is now active.',
+          style: const TextStyle(
+            fontSize: 16,
+            fontWeight: FontWeight.w600,
+          ),
+        ),
+        backgroundColor: Colors.green,
+        duration: const Duration(seconds: 4),
+        behavior: SnackBarBehavior.floating,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(12),
+        ),
+      ),
+    );
+  }
+
+  Future<void> _restorePurchases() async {
+    if (kDebugMode) {
+      print('🔄 Restoring previous purchases...');
+    }
+
+    try {
+      final result = await PurchaseService.instance.restorePurchases();
+      
+      if (result.success) {
+        if (result.hasRestoredPurchases) {
+          _showSuccessMessage();
+          if (kDebugMode) {
+            print('✅ Restored ${result.restoredPurchaseCount} purchases');
+          }
+        } else {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text(
+                'No previous purchases found to restore.',
+                style: TextStyle(fontSize: 16),
+              ),
+              backgroundColor: Colors.orange,
+              duration: Duration(seconds: 3),
+            ),
+          );
+        }
+      } else {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(
+              'Failed to restore purchases: ${result.errorMessage}',
+              style: const TextStyle(fontSize: 16),
+            ),
+            backgroundColor: Colors.red,
+            duration: const Duration(seconds: 4),
+          ),
+        );
+      }
+    } catch (e) {
+      if (kDebugMode) {
+        print('❌ Error restoring purchases: $e');
+      }
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            'Error restoring purchases: $e',
+            style: const TextStyle(fontSize: 16),
+          ),
+          backgroundColor: Colors.red,
+          duration: const Duration(seconds: 4),
+        ),
+      );
+    }
   }
 
   @override
@@ -410,17 +536,12 @@ class _PremiumPageState extends State<PremiumPage> {
           height: 56,
           child: ElevatedButton(
             onPressed: _selectedPlan != null 
-                ? () {
-                    // TODO: Implement in-app purchase flow
-                    if (kDebugMode) {
-                      print('🚀 Upgrade button pressed for ${_selectedPlan!.name} - implement purchase flow');
-                    }
-                  }
+                ? () => _showPurchaseFlow()
                 : null,
             style: ElevatedButton.styleFrom(
               backgroundColor: _selectedPlan != null 
                   ? AppTheme.primaryYellow 
-                  : Colors.grey.shade300,
+                  : AppTheme.primaryYellow.withOpacity(0.3),
               foregroundColor: Colors.white,
               shape: RoundedRectangleBorder(
                 borderRadius: BorderRadius.circular(12),
@@ -435,6 +556,20 @@ class _PremiumPageState extends State<PremiumPage> {
                 fontSize: 18,
                 fontWeight: FontWeight.bold,
               ),
+            ),
+          ),
+        ),
+        
+        // Restore purchases button
+        const SizedBox(height: 16),
+        TextButton(
+          onPressed: () => _restorePurchases(),
+          child: Text(
+            'Restore Previous Purchases',
+            style: TextStyle(
+              fontSize: 14,
+              color: AppTheme.primaryGray,
+              decoration: TextDecoration.underline,
             ),
           ),
         ),
