@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/foundation.dart'; // ✅ ADDED: Import for kDebugMode
 import 'package:flutter/services.dart';
 import 'package:rive/rive.dart';
 import '../features/session_generator/session_generator_home_field_view.dart';
@@ -9,7 +10,10 @@ import '../features/create_drill/create_drill_sheet.dart';
 import '../constants/app_theme.dart';
 import '../utils/haptic_utils.dart';
 import '../services/app_state_service.dart'; // ✅ ADDED: Import for loading state checking
+import '../services/premium_service.dart'; // ✅ ADDED: Import premium service
 import '../widgets/guest_account_creation_dialog.dart'; // ✅ ADDED: Import reusable dialog
+import '../features/premium/premium_page.dart'; // ✅ ADDED: Import premium page
+import '../models/premium_models.dart'; // ✅ ADDED: Import premium models for PremiumFeature enum
 import 'package:provider/provider.dart'; // ✅ ADDED: Import for Provider
 
 class MainTabView extends StatefulWidget {
@@ -44,7 +48,7 @@ class _MainTabViewState extends State<MainTabView> {
     HapticUtils.heavyImpact(); // Heavy haptic for major navigation
   }
 
-  void _showCreateDrillSheet() {
+  void _showCreateDrillSheet() async {
     HapticUtils.mediumImpact();
     
     // ✅ ADDED: Check for guest mode and show account creation dialog
@@ -62,7 +66,19 @@ class _MainTabViewState extends State<MainTabView> {
       return;
     }
     
-    // Show create drill sheet for authenticated users
+    // ✅ ADDED: Check custom drill creation limit
+    final premiumService = PremiumService.instance;
+    final canCreate = await premiumService.canAccessFeature(PremiumFeature.unlimitedCustomDrills);
+    
+    if (!canCreate) {
+      if (kDebugMode) {
+        print('🔒 Custom drill creation limit reached - showing upgrade prompt');
+      }
+      _showCustomDrillLimitUpgradePrompt();
+      return;
+    }
+    
+    // Show create drill sheet for authenticated users with remaining custom drill quota
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
@@ -271,5 +287,23 @@ class _MainTabViewState extends State<MainTabView> {
       default:
         return Icons.circle;
     }
+  }
+
+  /// Show custom drill limit upgrade prompt
+  void _showCustomDrillLimitUpgradePrompt() {
+    // Check if widget is still mounted before navigating
+    if (!mounted) {
+      if (kDebugMode) {
+        print('⚠️ Widget unmounted, cannot navigate to premium page');
+      }
+      return;
+    }
+    
+    // Navigate to premium page instead of showing dialog
+    Navigator.of(context).push(
+      MaterialPageRoute(
+        builder: (context) => const PremiumPage(),
+      ),
+    );
   }
 } 

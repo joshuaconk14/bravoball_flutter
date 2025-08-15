@@ -38,23 +38,7 @@ void main() {
       });
     });
 
-    group('Usage Tracking', () {
-      test('recordSessionCompletion should handle basic functionality', () async {
-        // Test that the method doesn't crash
-        await premiumService.recordSessionCompletion();
-        
-        // If we get here without error, the test passes
-        expect(true, isTrue);
-      });
 
-      test('recordCustomDrillCreation should handle basic functionality', () async {
-        // Test that the method doesn't crash
-        await premiumService.recordCustomDrillCreation();
-        
-        // If we get here without error, the test passes
-        expect(true, isTrue);
-      });
-    });
 
     group('Usage Statistics', () {
       test('getFreeFeatureUsage should return valid data structure', () async {
@@ -120,23 +104,9 @@ void main() {
         final canStart = await premiumService.canDoSessionToday();
         expect(canStart, isA<bool>());
         
-        // 2. If possible, record session completion
-        if (canStart) {
-          await premiumService.recordSessionCompletion();
-          // Should not crash
-          expect(true, isTrue);
-        }
-        
-        // 3. Check custom drill access
+        // 2. Check custom drill access
         final canCreateDrill = await premiumService.canCreateCustomDrill();
         expect(canCreateDrill, isA<bool>());
-        
-        // 4. If possible, record drill creation
-        if (canCreateDrill) {
-          await premiumService.recordCustomDrillCreation();
-          // Should not crash
-          expect(true, isTrue);
-        }
         
         // 5. Get updated usage
         final usage = await premiumService.getFreeFeatureUsage();

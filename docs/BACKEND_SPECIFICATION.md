@@ -191,7 +191,7 @@ Content-Type: application/json
 {
   "featureType": "custom_drill", // or "session", "premium_feature"
   "usageDate": "2024-01-15",
-  "metadata": {
+  "usageMetadata": {
     "drillType": "passing",
     "difficulty": "intermediate"
   }

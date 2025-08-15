@@ -14,7 +14,7 @@ import 'terms_of_service_view.dart';
 import 'account_settings_view.dart'; // ✅ ADDED: Import AccountSettingsView
 import '../../utils/haptic_utils.dart';
 import '../../services/premium_service.dart'; // ✅ ADDED: Import PremiumService
-import '../../widgets/premium_upgrade_dialog.dart' show showPremiumUpgradeDialog; // ✅ ADDED: Import showPremiumUpgradeDialog function
+import '../../features/premium/premium_page.dart'; // ✅ ADDED: Import premium page
 
 class ProfileView extends StatefulWidget {
   const ProfileView({Key? key}) : super(key: key);
@@ -655,26 +655,12 @@ class _ProfileViewState extends State<ProfileView> {
       return;
     }
     
-    // Show premium upgrade dialog
+    // Navigate to premium page instead of showing dialog
     if (mounted) {
-      await showPremiumUpgradeDialog(
-        context,
-        trigger: 'profile_upgrade',
-        onUpgrade: () {
-          // TODO: Implement in-app purchase flow
-          if (kDebugMode) {
-            print('🚀 Premium upgrade initiated from profile');
-          }
-          
-          // For now, show a placeholder message
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: const Text('Premium upgrade flow coming soon! 🚀'),
-              backgroundColor: AppTheme.primaryYellow,
-              duration: const Duration(seconds: 3),
-            ),
-          );
-        },
+      Navigator.of(context).push(
+        MaterialPageRoute(
+          builder: (context) => const PremiumPage(),
+        ),
       );
     }
   }
