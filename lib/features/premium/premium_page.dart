@@ -1,31 +1,18 @@
 import 'package:flutter/material.dart';
-import 'package:flutter/foundation.dart'; // ✅ ADDED: Import for kDebugMode
-import '../config/premium_config.dart';
-import '../models/premium_models.dart';
-import '../constants/app_theme.dart';
-import '../utils/haptic_utils.dart'; // ✅ ADDED: Import for haptic feedback
+import 'package:flutter/foundation.dart';
+import '../../constants/app_theme.dart';
+import '../../config/premium_config.dart';
+import '../../models/premium_models.dart';
 
-class PremiumUpgradeDialog extends StatefulWidget {
-  final String? title;
-  final String? description;
-  final String? trigger;
-  final VoidCallback? onUpgrade;
-  final VoidCallback? onDismiss;
 
-  const PremiumUpgradeDialog({
-    Key? key,
-    this.title,
-    this.description,
-    this.trigger,
-    this.onUpgrade,
-    this.onDismiss,
-  }) : super(key: key);
+class PremiumPage extends StatefulWidget {
+  const PremiumPage({Key? key}) : super(key: key);
 
   @override
-  State<PremiumUpgradeDialog> createState() => _PremiumUpgradeDialogState();
+  State<PremiumPage> createState() => _PremiumPageState();
 }
 
-class _PremiumUpgradeDialogState extends State<PremiumUpgradeDialog> {
+class _PremiumPageState extends State<PremiumPage> {
   SubscriptionPlanDetails? _selectedPlan;
 
   @override
@@ -37,62 +24,46 @@ class _PremiumUpgradeDialogState extends State<PremiumUpgradeDialog> {
 
   @override
   Widget build(BuildContext context) {
-    final upgradePrompt = widget.trigger != null 
-        ? PremiumConfig.getUpgradePromptForTrigger(widget.trigger!)
-        : PremiumConfig.upgradePrompts.first;
-
-    if (upgradePrompt == null) {
-      return const SizedBox.shrink(); // Fallback if no prompt found
-    }
-
-    return Dialog.fullscreen(
-      child: Container(
-        width: double.infinity,
-        height: double.infinity,
-        decoration: const BoxDecoration(
-          color: Colors.white,
+    return Scaffold(
+      backgroundColor: Colors.white,
+      appBar: AppBar(
+        title: const Text('Upgrade to Premium'),
+        backgroundColor: Colors.white,
+        foregroundColor: AppTheme.primaryDark,
+        elevation: 0,
+        leading: IconButton(
+          icon: const Icon(Icons.arrow_back),
+          onPressed: () => Navigator.of(context).pop(),
         ),
-        child: SafeArea(
-          child: Column(
-            children: [
-              // Header with close button
-              _buildFullscreenHeader(context, upgradePrompt),
-              
-              // Scrollable content
-              Expanded(
-                child: SingleChildScrollView(
-                  padding: const EdgeInsets.symmetric(horizontal: 24),
-                  child: Column(
-                    children: [
-                      // Header content (star icon, title, description)
-                      _buildHeader(upgradePrompt),
-                      const SizedBox(height: 32),
-                      
-                      // Features list
-                      _buildFeaturesList(upgradePrompt.features),
-                      const SizedBox(height: 32),
-                      
-                      // Subscription plans
-                      _buildSubscriptionPlans(),
-                      const SizedBox(height: 32),
-                      
-                      // Action buttons
-                      _buildActionButtons(context, upgradePrompt),
-                      
-                      // Bottom padding
-                      const SizedBox(height: 40),
-                    ],
-                  ),
-                ),
-              ),
-            ],
-          ),
+      ),
+      body: SingleChildScrollView(
+        padding: const EdgeInsets.symmetric(horizontal: 24),
+        child: Column(
+          children: [
+            // Header content (star icon, title, description)
+            _buildHeader(),
+            const SizedBox(height: 32),
+            
+            // Features list
+            _buildFeaturesList(),
+            const SizedBox(height: 32),
+            
+            // Subscription plans
+            _buildSubscriptionPlans(),
+            const SizedBox(height: 32),
+            
+            // Action buttons
+            _buildActionButtons(context),
+            
+            // Bottom padding
+            const SizedBox(height: 40),
+          ],
         ),
       ),
     );
   }
 
-  Widget _buildHeader(PremiumUpgradePrompt prompt) {
+  Widget _buildHeader() {
     return Column(
       children: [
         // Premium icon
@@ -113,7 +84,7 @@ class _PremiumUpgradeDialogState extends State<PremiumUpgradeDialog> {
         
         // Title
         Text(
-          widget.title ?? prompt.title,
+          'Unlock Your Full Potential',
           style: const TextStyle(
             fontSize: 24,
             fontWeight: FontWeight.bold,
@@ -125,7 +96,7 @@ class _PremiumUpgradeDialogState extends State<PremiumUpgradeDialog> {
         
         // Description
         Text(
-          widget.description ?? prompt.description,
+          'Unlock unlimited sessions, custom drills, and premium features to take your training to the next level!',
           style: const TextStyle(
             fontSize: 16,
             color: AppTheme.primaryGray,
@@ -136,54 +107,16 @@ class _PremiumUpgradeDialogState extends State<PremiumUpgradeDialog> {
     );
   }
 
-  // ✅ ADDED: Fullscreen header with close button
-  Widget _buildFullscreenHeader(BuildContext context, PremiumUpgradePrompt prompt) {
-    return Container(
-      padding: const EdgeInsets.all(24),
-      child: Row(
-        children: [
-          // Close button
-          IconButton(
-            onPressed: widget.onDismiss ?? () => Navigator.of(context).pop(),
-            icon: const Icon(
-              Icons.close,
-              color: AppTheme.primaryGray,
-              size: 28,
-            ),
-            style: IconButton.styleFrom(
-              backgroundColor: Colors.grey.shade100,
-              padding: const EdgeInsets.all(8),
-            ),
-          ),
-          
-          const Spacer(),
-          
-          // Premium badge
-          Container(
-            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-            decoration: BoxDecoration(
-              color: AppTheme.primaryYellow.withOpacity(0.1),
-              borderRadius: BorderRadius.circular(20),
-              border: Border.all(
-                color: AppTheme.primaryYellow,
-                width: 1,
-              ),
-            ),
-            child: Text(
-              'PREMIUM',
-              style: TextStyle(
-                color: AppTheme.primaryYellow,
-                fontWeight: FontWeight.bold,
-                fontSize: 12,
-              ),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildFeaturesList(List<String> features) {
+  Widget _buildFeaturesList() {
+    final features = [
+      'Ad-free',
+      'Unlimited daily sessions',
+      'Unlimited custom drill creation',
+      'Advanced analytics and progress tracking',
+      'Priority customer support',
+      'Early access to new features'
+    ];
+    
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -255,7 +188,6 @@ class _PremiumUpgradeDialogState extends State<PremiumUpgradeDialog> {
     
     return GestureDetector(
       onTap: () {
-        HapticUtils.lightImpact(); // Light haptic feedback for plan selection
         if (kDebugMode) {
           print('🎯 Plan selected: ${plan.name} (${plan.plan.name})');
         }
@@ -268,19 +200,19 @@ class _PremiumUpgradeDialogState extends State<PremiumUpgradeDialog> {
         padding: const EdgeInsets.all(16),
         decoration: BoxDecoration(
           color: isSelected 
-              ? AppTheme.primaryYellow.withOpacity(0.2)  // More prominent for selected
-              : Colors.grey.shade50,  // Same gray for all non-selected plans
+              ? AppTheme.primaryYellow.withOpacity(0.2)
+              : Colors.grey.shade50,
           border: Border.all(
             color: isSelected 
                 ? AppTheme.primaryYellow 
-                : Colors.grey.shade300,  // Same gray border for all non-selected plans
-            width: isSelected ? 3 : 1,  // Only selected gets thick border
+                : Colors.grey.shade300,
+            width: isSelected ? 3 : 1,
           ),
           borderRadius: BorderRadius.circular(12),
         ),
         child: Stack(
           children: [
-            // Selection indicator - more prominent
+            // Selection indicator
             if (isSelected)
               Positioned(
                 top: 8,
@@ -315,8 +247,8 @@ class _PremiumUpgradeDialogState extends State<PremiumUpgradeDialog> {
                     padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
                     decoration: BoxDecoration(
                       color: isSelected 
-                          ? AppTheme.primaryYellow  // Keep yellow when selected
-                          : Colors.grey.shade400,  // Gray when not selected
+                          ? AppTheme.primaryYellow
+                          : Colors.grey.shade400,
                       borderRadius: BorderRadius.circular(12),
                     ),
                     child: Text(
@@ -339,7 +271,7 @@ class _PremiumUpgradeDialogState extends State<PremiumUpgradeDialog> {
                     fontWeight: FontWeight.bold,
                     color: isSelected 
                         ? AppTheme.primaryDark 
-                        : AppTheme.primaryGray,  // Gray for non-selected plans
+                        : AppTheme.primaryGray,
                   ),
                 ),
                 const SizedBox(height: 8),
@@ -355,8 +287,8 @@ class _PremiumUpgradeDialogState extends State<PremiumUpgradeDialog> {
                         fontSize: 32,
                         fontWeight: FontWeight.bold,
                         color: isSelected 
-                            ? AppTheme.primaryYellow  // Bright yellow for selected
-                            : AppTheme.primaryDark,  // Dark for non-selected plans
+                            ? AppTheme.primaryYellow
+                            : AppTheme.primaryDark,
                       ),
                     ),
                     const SizedBox(width: 4),
@@ -365,8 +297,8 @@ class _PremiumUpgradeDialogState extends State<PremiumUpgradeDialog> {
                       style: TextStyle(
                         fontSize: 16,
                         color: isSelected 
-                            ? AppTheme.primaryYellow  // Bright yellow for selected
-                            : AppTheme.primaryGray,  // Gray for non-selected plans
+                            ? AppTheme.primaryYellow
+                            : AppTheme.primaryGray,
                       ),
                     ),
                   ],
@@ -380,8 +312,8 @@ class _PremiumUpgradeDialogState extends State<PremiumUpgradeDialog> {
                     style: TextStyle(
                       fontSize: 14,
                       color: isSelected 
-                          ? AppTheme.primaryYellow  // Bright yellow for selected
-                          : AppTheme.primaryGray,  // Gray for non-selected plans
+                          ? AppTheme.primaryYellow
+                          : AppTheme.primaryGray,
                       fontWeight: FontWeight.w600,
                     ),
                   ),
@@ -395,8 +327,8 @@ class _PremiumUpgradeDialogState extends State<PremiumUpgradeDialog> {
                     style: TextStyle(
                       fontSize: 14,
                       color: isSelected 
-                          ? AppTheme.primaryYellow  // Bright yellow for selected
-                          : AppTheme.primaryGray,  // Gray for non-selected plans
+                          ? AppTheme.primaryYellow
+                          : AppTheme.primaryGray,
                     ),
                   ),
                 ],
@@ -408,7 +340,7 @@ class _PremiumUpgradeDialogState extends State<PremiumUpgradeDialog> {
     );
   }
 
-  Widget _buildActionButtons(BuildContext context, PremiumUpgradePrompt prompt) {
+  Widget _buildActionButtons(BuildContext context) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -463,17 +395,6 @@ class _PremiumUpgradeDialogState extends State<PremiumUpgradeDialog> {
                           fontWeight: FontWeight.w600,
                         ),
                       ),
-                      if (kDebugMode) ...[
-                        const SizedBox(height: 4),
-                        Text(
-                          'Debug: ${_selectedPlan!.plan.name} (Popular: ${_selectedPlan!.isPopular})',
-                          style: const TextStyle(
-                            fontSize: 10,
-                            color: Colors.grey,
-                            fontFamily: 'monospace',
-                          ),
-                        ),
-                      ],
                     ],
                   ),
                 ),
@@ -489,13 +410,13 @@ class _PremiumUpgradeDialogState extends State<PremiumUpgradeDialog> {
           height: 56,
           child: ElevatedButton(
             onPressed: _selectedPlan != null 
-                ? (widget.onUpgrade ?? () {
+                ? () {
                     // TODO: Implement in-app purchase flow
                     if (kDebugMode) {
                       print('🚀 Upgrade button pressed for ${_selectedPlan!.name} - implement purchase flow');
                     }
-                  })
-                : null, // Disabled if no plan selected
+                  }
+                : null,
             style: ElevatedButton.styleFrom(
               backgroundColor: _selectedPlan != null 
                   ? AppTheme.primaryYellow 
@@ -517,65 +438,18 @@ class _PremiumUpgradeDialogState extends State<PremiumUpgradeDialog> {
             ),
           ),
         ),
-        const SizedBox(height: 12),
-        
-        // Dismiss button
-        SizedBox(
-          width: double.infinity,
-          height: 48,
-          child: TextButton(
-            onPressed: widget.onDismiss ?? () => Navigator.of(context).pop(),
-            style: TextButton.styleFrom(
-              foregroundColor: AppTheme.primaryGray,
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(12),
-              ),
-            ),
-            child: const Text(
-              'Maybe Later',
-              style: TextStyle(
-                fontSize: 16,
-                fontWeight: FontWeight.w600,
-              ),
-            ),
-          ),
-        ),
         
         // Trial info
-        if (prompt.showTrialOffer && prompt.trialDays != null) ...[
-          const SizedBox(height: 16),
-          Text(
-            '${prompt.trialDays}-day free trial, cancel anytime',
-            style: const TextStyle(
-              fontSize: 12,
-              color: AppTheme.primaryGray,
-            ),
-            textAlign: TextAlign.center,
+        const SizedBox(height: 16),
+        const Text(
+          '7-day free trial, cancel anytime',
+          style: TextStyle(
+            fontSize: 12,
+            color: AppTheme.primaryGray,
           ),
-        ],
+          textAlign: TextAlign.center,
+        ),
       ],
     );
   }
-}
-
-/// Show the premium upgrade dialog
-Future<void> showPremiumUpgradeDialog(
-  BuildContext context, {
-  String? title,
-  String? description,
-  String? trigger,
-  VoidCallback? onUpgrade,
-  VoidCallback? onDismiss,
-}) {
-  return showDialog(
-    context: context,
-    barrierDismissible: true,
-    builder: (context) => PremiumUpgradeDialog(
-      title: title,
-      description: description,
-      trigger: trigger,
-      onUpgrade: onUpgrade,
-      onDismiss: onDismiss,
-    ),
-  );
 }

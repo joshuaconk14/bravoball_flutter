@@ -1133,29 +1133,10 @@ class AppStateService extends ChangeNotifier {
     
     _completedSessions.add(session);
     
-    // ✅ ADDED: Track session completion for premium feature limits
-    try {
-      // Track usage directly with backend
-      await _apiService.post(
-        '/api/premium/track-usage',
-        body: {
-          'featureType': 'session',
-          'usageDate': DateTime.now().toIso8601String(),
-          'metadata': {
-            'action': 'session_completed',
-            'timestamp': DateTime.now().millisecondsSinceEpoch,
-          },
-        },
-        requiresAuth: true,
-      );
-      
-      if (kDebugMode) {
-        print('📝 Session completion tracked for premium limits');
-      }
-    } catch (e) {
-      if (kDebugMode) {
-        print('⚠️ Failed to track session completion: $e');
-      }
+    // ✅ UPDATED: Session completion is now tracked via the completedSession database record
+    // Backend checks completedSession creation dates directly instead of UsageTracking model
+    if (kDebugMode) {
+      print('📝 Session completion recorded - backend will check database for limits');
     }
     
     await _syncCompletedSessionImmediate(session);
@@ -1171,6 +1152,7 @@ class AppStateService extends ChangeNotifier {
   Future<bool> canStartNewSession() async {
     try {
       // Check with backend if user can start session
+      // Backend now checks database directly for completedSession creation dates
       final response = await _apiService.post(
         '/api/premium/check-feature',
         body: {'feature': 'unlimitedSessions'},
@@ -1178,16 +1160,33 @@ class AppStateService extends ChangeNotifier {
       );
       
       if (response.isSuccess && response.data != null) {
-        final canAccess = response.data!['canAccess'] as bool? ?? false;
+        // Backend response structure: {success: true, data: {canAccess: true, ...}}
+        final responseData = response.data!['data'] as Map<String, dynamic>?;
         
-        if (kDebugMode) {
-          print('🔒 Session access check: $canAccess');
+        if (responseData != null) {
+          final canAccess = responseData['canAccess'] as bool? ?? false;
+          final remainingUses = responseData['remainingUses'] as int?;
+          final limit = responseData['limit'] as String?;
+          
+          if (kDebugMode) {
+            print('🔒 Session access check: $canAccess');
+            print('   Remaining uses: $remainingUses');
+            print('   Limit: $limit');
+            print('   Backend response: ${response.data}');
+          }
+          
+          return canAccess;
+        } else {
+          if (kDebugMode) {
+            print('⚠️ Response data structure invalid: ${response.data}');
+          }
+          // On invalid response structure, allow session to proceed (fail-safe)
+          return true;
         }
-        
-        return canAccess;
       } else {
         if (kDebugMode) {
           print('⚠️ Session access check failed: ${response.error}');
+          print('   Response: ${response.data}');
         }
         // On error, allow session to proceed (fail-safe)
         return true;

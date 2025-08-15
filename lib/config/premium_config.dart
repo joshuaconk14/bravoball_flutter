@@ -78,54 +78,6 @@ class PremiumConfig {
     PremiumFeature.monthlySummaries: 'Monthly performance summaries',
   };
   
-  // Upgrade prompt configurations
-  static List<PremiumUpgradePrompt> get upgradePrompts => [
-    PremiumUpgradePrompt(
-      title: 'Unlock Your Full Potential',
-      description: 'Get unlimited access to all features and remove restrictions',
-      features: [
-        'No more ads',
-        'Unlimited custom drills',
-        'Unlimited daily sessions',
-        'Advanced analytics',
-      ],
-      showTrialOffer: true,
-      trialDays: trialDays,
-    ),
-    PremiumUpgradePrompt(
-      title: 'Ready for More?',
-      description: 'Upgrade to premium and take your training to the next level',
-      features: [
-        'Remove daily session limit',
-        'Create unlimited custom drills',
-        'Access premium drill library',
-        'Detailed progress tracking',
-      ],
-      showTrialOffer: false,
-    ),
-    PremiumUpgradePrompt(
-      title: 'Premium Features Await',
-      description: 'Unlock the full BravoBall experience',
-      features: [
-        'Ad-free experience',
-        'Unlimited practice sessions',
-        'Custom drill creation',
-        'Advanced performance insights',
-      ],
-      showTrialOffer: true,
-      trialDays: trialDays,
-    ),
-  ];
-  
-  // Free tier upgrade triggers
-  static List<String> get freeTierUpgradeTriggers => [
-    'daily_session_limit_reached',
-    'monthly_custom_drill_limit_reached',
-    'ad_shown_after_session',
-    'premium_feature_accessed',
-    'performance_summary_viewed',
-  ];
-  
   // Premium feature access levels
   static Map<PremiumFeature, List<PremiumStatus>> get featureAccessLevels => {
     PremiumFeature.noAds: [PremiumStatus.premium, PremiumStatus.trial],
@@ -138,13 +90,13 @@ class PremiumConfig {
     PremiumFeature.monthlySummaries: [PremiumStatus.free, PremiumStatus.premium, PremiumStatus.trial],
   };
   
-  // Subscription validation settings
+  // Subscription validation settings (KEPT FOR FUTURE USE)
   static const int receiptValidationRetryAttempts = 3;
   static const int receiptValidationRetryDelaySeconds = 5;
   static const bool enableReceiptCaching = true;
   static const int receiptCacheExpiryHours = 24;
   
-  // Analytics and tracking
+  // Analytics and tracking (KEPT FOR FUTURE USE)
   static const bool enableUsageAnalytics = true;
   static const bool enableConversionTracking = true;
   static const bool enableABTesting = false;
@@ -181,18 +133,6 @@ class PremiumConfig {
   static bool canAccessFeature(PremiumFeature feature, PremiumStatus status) {
     final allowedStatuses = featureAccessLevels[feature] ?? [];
     return allowedStatuses.contains(status);
-  }
-  
-  // Get upgrade prompt for specific trigger
-  static PremiumUpgradePrompt? getUpgradePromptForTrigger(String trigger) {
-    // Return appropriate upgrade prompt based on trigger
-    if (trigger == 'daily_session_limit_reached') {
-      return upgradePrompts[1]; // "Ready for More?" prompt
-    } else if (trigger == 'monthly_custom_drill_limit_reached') {
-      return upgradePrompts[2]; // "Premium Features Await" prompt
-    } else {
-      return upgradePrompts[0]; // Default "Unlock Your Full Potential" prompt
-    }
   }
   
   // Get subscription plan by type

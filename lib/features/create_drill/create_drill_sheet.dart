@@ -16,7 +16,8 @@ import '../../widgets/bravo_button.dart';
 import '../../widgets/info_popup_widget.dart'; // ✅ ADDED: Import for reusable info popup
 import '../../widgets/drill_video_player.dart'; // Add this import for video preview
 import '../../widgets/guest_account_creation_dialog.dart'; // ✅ ADDED: Import reusable dialog
-import 'package:flutter/foundation.dart'; // Add this import for kDebugMode
+
+
 
 class CreateDrillSheet extends StatefulWidget {
   const CreateDrillSheet({Key? key}) : super(key: key);
@@ -653,6 +654,8 @@ class _CreateDrillSheetState extends State<CreateDrillSheet> {
       _showGuestAccountPrompt();
       return;
     }
+
+
 
     // Custom validation for instructions
     bool hasInstructions = _instructions.isNotEmpty;
@@ -1600,4 +1603,6 @@ Custom drills are personalized training exercises that you create specifically f
       ],
     );
   }
+
+
 } 

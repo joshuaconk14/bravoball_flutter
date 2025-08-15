@@ -90,7 +90,10 @@ class PremiumService {
       );
 
       if (response.isSuccess && response.data != null) {
-        final canAccess = response.data!['canAccess'] as bool? ?? false;
+        // Handle nested data structure from backend
+        final responseData = response.data!;
+        final canAccess = responseData['data']?['canAccess'] as bool? ?? 
+                         responseData['canAccess'] as bool? ?? false;
         
         if (kDebugMode) {
           print('🔒 Feature access check: $feature -> $canAccess');
@@ -119,37 +122,6 @@ class PremiumService {
     return await canAccessFeature(PremiumFeature.unlimitedCustomDrills);
   }
 
-  /// Record custom drill creation using backend
-  Future<void> recordCustomDrillCreation() async {
-    try {
-      final response = await ApiService.shared.post(
-        '/api/premium/track-usage',
-        body: {
-          'featureType': 'custom_drill',
-          'usageDate': DateTime.now().toIso8601String(),
-          'metadata': {
-            'action': 'drill_created',
-            'timestamp': DateTime.now().millisecondsSinceEpoch,
-          },
-        },
-        requiresAuth: true,
-      );
-
-      if (response.isSuccess) {
-        if (kDebugMode) {
-          print('📝 Custom drill creation tracked on backend');
-        }
-      } else {
-        if (kDebugMode) {
-          print('⚠️ Failed to track custom drill creation: ${response.error}');
-        }
-      }
-    } catch (e) {
-      if (kDebugMode) {
-        print('❌ Error tracking custom drill creation: $e');
-      }
-    }
-  }
 
   /// Check if user can do another session today (free: 1/day, premium: unlimited)
   Future<bool> canDoSessionToday() async {
@@ -157,35 +129,13 @@ class PremiumService {
   }
 
   /// Record session completion using backend
+  /// NOTE: This method is deprecated - backend now checks database directly for completedSession creation dates
+  @Deprecated('Backend now checks database directly instead of UsageTracking model')
   Future<void> recordSessionCompletion() async {
-    try {
-      final response = await ApiService.shared.post(
-        '/api/premium/track-usage',
-        body: {
-          'featureType': 'session',
-          'usageDate': DateTime.now().toIso8601String(),
-          'metadata': {
-            'action': 'session_completed',
-            'timestamp': DateTime.now().millisecondsSinceEpoch,
-          },
-        },
-        requiresAuth: true,
-      );
-
-      if (response.isSuccess) {
-        if (kDebugMode) {
-          print('📝 Session completion tracked on backend');
-        }
-      } else {
-        if (kDebugMode) {
-          print('⚠️ Failed to track session completion: ${response.error}');
-        }
-      }
-    } catch (e) {
-      if (kDebugMode) {
-        print('❌ Error tracking session completion: $e');
-      }
+    if (kDebugMode) {
+      print('📝 Session completion - backend will check database for limits');
     }
+    // No longer needed - backend checks completedSession creation dates directly
   }
 
   /// Get remaining free features for today from backend

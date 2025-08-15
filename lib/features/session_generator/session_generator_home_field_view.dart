@@ -19,6 +19,7 @@ import '../../views/main_tab_view.dart';
 import 'package:flutter/foundation.dart'; // Added for kDebugMode
 import '../mental_training/mental_training_setup_view.dart'; // Added for MentalTrainingSetupView
 import '../../widgets/guest_account_creation_dialog.dart'; // ✅ ADDED: Import reusable dialog
+import '../../features/premium/premium_page.dart'; // ✅ ADDED: Import premium page
 import '../../services/ad_service.dart'; // Added for AdService
 
 class SessionGeneratorHomeFieldView extends StatefulWidget {
@@ -250,19 +251,28 @@ class _SessionGeneratorHomeFieldViewState extends State<SessionGeneratorHomeFiel
             top: 200, // Moved up to be closer to goal area
             right: screenWidth * 0.25,
             child: GestureDetector(
-              onTap: () {
+              onTap: () async {
                 // ✅ NEW: Check for session progress before allowing access
                 if (appState.hasSessionProgress && !appState.isSessionComplete) {
                   HapticUtils.mediumImpact();
                   _showSessionProgressWarning(context, appState);
                 } else {
-                  // ✅ REMOVED: Trophy restriction - users can always access backpack
-                  HapticUtils.mediumImpact(); // Medium haptic for drill editor access
-                  Navigator.of(context).push(
-                    MaterialPageRoute(
-                      builder: (_) => const SessionGeneratorEditorPage(),
-                    ),
-                  );
+                  // ✅ ADDED: Check session limit before allowing access
+                  final canStart = await appState.canStartNewSession();
+                  
+                  if (canStart) {
+                    // ✅ REMOVED: Trophy restriction - users can always access backpack
+                    HapticUtils.mediumImpact(); // Medium haptic for drill editor access
+                    Navigator.of(context).push(
+                      MaterialPageRoute(
+                        builder: (_) => const SessionGeneratorEditorPage(),
+                      ),
+                    );
+                  } else {
+                    // Show upgrade prompt
+                    HapticUtils.mediumImpact();
+                    _showSessionLimitUpgradePrompt(context);
+                  }
                 }
               },
               child: SizedBox(
@@ -281,13 +291,22 @@ class _SessionGeneratorHomeFieldViewState extends State<SessionGeneratorHomeFiel
             top: 122, // Positioned directly above the backpack
             right: screenWidth * 0.28, // Same horizontal position as backpack
             child: GestureDetector(
-              onTap: () {
-                HapticUtils.mediumImpact();
-                Navigator.of(context).push(
-                  MaterialPageRoute(
-                    builder: (_) => const MentalTrainingSetupView(),
-                  ),
-                );
+              onTap: () async {
+                // ✅ ADDED: Check session limit before allowing access
+                final canStart = await appState.canStartNewSession();
+                
+                if (canStart) {
+                  HapticUtils.mediumImpact();
+                  Navigator.of(context).push(
+                    MaterialPageRoute(
+                      builder: (_) => const MentalTrainingSetupView(),
+                    ),
+                  );
+                } else {
+                  // Show upgrade prompt
+                  HapticUtils.mediumImpact();
+                  _showSessionLimitUpgradePrompt(context);
+                }
               },
               child: Container(
                 width: 50,
@@ -376,7 +395,18 @@ class _SessionGeneratorHomeFieldViewState extends State<SessionGeneratorHomeFiel
                 iconSize: iconSize,
                 showProgress: editableDrill.progress > 0 || editableDrill.isCompleted,
                 progress: editableDrill.progress,
-                onPressed: () => _openFollowAlong(editableDrill, appState),
+                onPressed: () async {
+                  // ✅ ADDED: Check session limit before allowing access
+                  final canStart = await appState.canStartNewSession();
+                  
+                  if (canStart) {
+                    _openFollowAlong(editableDrill, appState);
+                  } else {
+                    // Show upgrade prompt
+                    HapticUtils.mediumImpact();
+                    _showSessionLimitUpgradePrompt(context);
+                  }
+                },
               ),
               if (index < editableSessionDrills.length - 1)
                 SizedBox(
@@ -639,6 +669,16 @@ class _SessionGeneratorHomeFieldViewState extends State<SessionGeneratorHomeFiel
             );
           },
         ),
+      ),
+    );
+  }
+
+  // ✅ NEW: Show session limit upgrade prompt
+  void _showSessionLimitUpgradePrompt(BuildContext context) {
+    // Navigate to premium page instead of showing dialog
+    Navigator.of(context).push(
+      MaterialPageRoute(
+        builder: (context) => const PremiumPage(),
       ),
     );
   }

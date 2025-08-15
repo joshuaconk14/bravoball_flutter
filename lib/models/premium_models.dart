@@ -1,4 +1,4 @@
-import 'package:flutter/foundation.dart';
+
 
 /// Premium subscription status
 enum PremiumStatus {
@@ -255,34 +255,7 @@ class PremiumSubscription {
   }
 }
 
-/// Premium upgrade prompt data
-class PremiumUpgradePrompt {
-  final String title;
-  final String description;
-  final String? imagePath;
-  final List<String> features;
-  final String? ctaText;
-  final bool showTrialOffer;
-  final int? trialDays;
 
-  const PremiumUpgradePrompt({
-    required this.title,
-    required this.description,
-    this.imagePath,
-    required this.features,
-    this.ctaText,
-    this.showTrialOffer = false,
-    this.trialDays,
-  });
-
-  /// Get CTA text with trial offer
-  String get displayCtaText {
-    if (showTrialOffer && trialDays != null) {
-      return 'Start $trialDays-Day Free Trial';
-    }
-    return ctaText ?? 'Upgrade to Premium';
-  }
-}
 
 /// Premium analytics data
 class PremiumAnalytics {
