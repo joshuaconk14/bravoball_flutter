@@ -3,7 +3,6 @@ import 'dart:io';
 import 'package:flutter/foundation.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:crypto/crypto.dart';
-import 'package:http/http.dart' as http;
 import '../config/premium_config.dart';
 import '../models/premium_models.dart';
 import '../utils/device_security_utils.dart';
@@ -66,13 +65,30 @@ class PremiumService {
     if (_cachedStatus == null) {
       await _loadCachedStatus();
     }
+    
+    // 🔍 DEBUG: Log premium status from cache
+    if (kDebugMode) {
+      print('🔒 PremiumService: getPremiumStatus() called');
+      print('   Cached status: ${_cachedStatus?.name ?? "null"}');
+      print('   Last validation: ${_lastValidationTime?.toIso8601String() ?? "never"}');
+    }
+    
     return _cachedStatus ?? PremiumStatus.free;
   }
 
   /// Check if user has premium access
   Future<bool> isPremium() async {
     final status = await getPremiumStatus();
-    return status == PremiumStatus.premium;
+    final isPremium = status == PremiumStatus.premium;
+    
+    // 🔍 DEBUG: Log premium access check
+    if (kDebugMode) {
+      print('🔒 PremiumService: isPremium() called');
+      print('   Status: ${status.name}');
+      print('   Has premium access: $isPremium');
+    }
+    
+    return isPremium;
   }
 
   /// Check if user can access a specific feature using backend
@@ -239,47 +255,73 @@ class PremiumService {
     try {
       if (kDebugMode) {
         print('🌐 Validating premium status with server...');
+        print('   API endpoint: /api/premium/status');
       }
 
-      // Get device fingerprint for security
-      final deviceFingerprint = await _getDeviceFingerprint();
+      // Make API call using ApiService (same as other endpoints)
+      if (kDebugMode) {
+        print('   Making API call via ApiService...');
+      }
       
-      // Make API call to server
-      final response = await http.post(
-        Uri.parse('${PremiumConfig.apiBaseUrl}/validate-premium'),
+      final response = await ApiService.shared.get(
+        '/api/premium/status',
         headers: {
-          'Content-Type': 'application/json',
-          'Authorization': 'Bearer ${await _getAuthToken()}',
-          'Device-Fingerprint': deviceFingerprint,
           'App-Version': PremiumConfig.appVersion,
         },
-        body: jsonEncode({
-          'timestamp': DateTime.now().millisecondsSinceEpoch,
-          'device_id': deviceFingerprint,
-        }),
-      ).timeout(const Duration(seconds: 10));
+        requiresAuth: true,
+      );
 
-      if (response.statusCode == 200) {
-        final data = jsonDecode(response.body);
-        final newStatus = PremiumStatus.values.firstWhere(
-          (e) => e.name == data['status'],
-          orElse: () => PremiumStatus.free,
-        );
-        
-        await _updatePremiumStatus(newStatus);
+      if (kDebugMode) {
+        print('   Response success: ${response.isSuccess}');
+        print('   Response data: ${response.data}');
+        print('   Response error: ${response.error}');
+      }
+
+      if (response.isSuccess && response.data != null) {
+        final data = response.data!;
         
         if (kDebugMode) {
-          print('✅ Server validation successful - Status: ${newStatus.name}');
+          print('   Raw response data: $data');
+        }
+        
+        // Handle the nested response structure from backend
+        final responseData = data['data'] ?? data;
+        final statusString = responseData['status'] as String?;
+        
+        if (kDebugMode) {
+          print('   Extracted status string: "$statusString"');
+        }
+        
+        if (statusString != null) {
+          final newStatus = PremiumStatus.values.firstWhere(
+            (e) => e.name == statusString,
+            orElse: () => PremiumStatus.free,
+          );
+          
+          if (kDebugMode) {
+            print('   Parsed status from response: ${newStatus.name}');
+          }
+          
+          await _updatePremiumStatus(newStatus);
+          
+          if (kDebugMode) {
+            print('✅ Server validation successful - Status: ${newStatus.name}');
+          }
+        } else {
+          if (kDebugMode) {
+            print('⚠️ No status found in response data');
+          }
         }
       } else {
         if (kDebugMode) {
-          print('⚠️ Server validation failed - Status: ${response.statusCode}');
+          print('⚠️ Server validation failed: ${response.error}');
         }
         // Keep cached status on server error
       }
     } catch (e) {
       if (kDebugMode) {
         print('❌ Server validation error: $e');
+        print('   Error type: ${e.runtimeType}');
       }
       // Keep cached status on error
     }
@@ -292,6 +334,12 @@ class PremiumService {
       final statusString = prefs.getString(_premiumKey);
       final lastValidation = prefs.getInt(_lastValidationKey);
       
+      if (kDebugMode) {
+        print('🔍 DEBUG: _loadCachedStatus() called');
+        print('   Raw status string: "$statusString"');
+        print('   Raw last validation: $lastValidation');
+      }
+      
       if (statusString != null && lastValidation != null) {
         _cachedStatus = PremiumStatus.values.firstWhere(
           (e) => e.name == statusString,
@@ -301,9 +349,14 @@ class PremiumService {
         
         if (kDebugMode) {
           print('📱 Loaded cached premium status: ${_cachedStatus?.name}');
+          print('   Parsed status: ${_cachedStatus?.name}');
+          print('   Parsed validation time: ${_lastValidationTime?.toIso8601String()}');
         }
       } else {
         _cachedStatus = PremiumStatus.free;
+        if (kDebugMode) {
+          print('📱 No cached status found, defaulting to: ${_cachedStatus?.name}');
+        }
       }
     } catch (e) {
       if (kDebugMode) {
@@ -363,21 +416,281 @@ class PremiumService {
     }
   }
 
-  /// Get authentication token (implement based on your auth system)
-  Future<String> _getAuthToken() async {
-    // TODO: Implement based on your authentication system
-    // This should return a valid JWT or similar token
-    return 'placeholder_token';
-  }
+
 
   /// Force refresh premium status (for testing or manual refresh)
   Future<void> forceRefresh() async {
     if (kDebugMode) {
       print('🔄 Forcing premium status refresh...');
+      print('   Current cached status: ${_cachedStatus?.name ?? "null"}');
     }
     
     _lastValidationTime = null;
-    await _validateWithServer();
+    
+    try {
+      await _validateWithServer();
+      
+      if (kDebugMode) {
+        print('✅ Force refresh completed');
+        print('   New cached status: ${_cachedStatus?.name ?? "null"}');
+      }
+    } catch (e) {
+      if (kDebugMode) {
+        print('❌ Force refresh failed: $e');
+        print('   Cached status remains: ${_cachedStatus?.name ?? "null"}');
+      }
+      rethrow; // Re-throw so calling code knows it failed
+    }
+  }
+
+  /// Debug method to manually check and fix premium status
+  Future<void> debugCheckPremiumStatus() async {
+    if (kDebugMode) {
+      print('🔍 DEBUG: Manual premium status check');
+      print('   Current cached status: ${_cachedStatus?.name ?? "null"}');
+      print('   Last validation: ${_lastValidationTime?.toIso8601String() ?? "never"}');
+      print('   About to force refresh...');
+    }
+    
+    try {
+      await forceRefresh();
+      
+      if (kDebugMode) {
+        print('✅ DEBUG: Premium status check completed');
+        print('   Final cached status: ${_cachedStatus?.name ?? "null"}');
+      }
+    } catch (e) {
+      if (kDebugMode) {
+        print('❌ DEBUG: Premium status check failed: $e');
+      }
+    }
+  }
+
+  /// Update premium status after successful purchase
+  Future<bool> updatePremiumStatusAfterPurchase({
+    required String plan,
+    required String productId,
+    required DateTime purchaseDate,
+  }) async {
+    if (kDebugMode) {
+      print('🔍 DEBUG: Starting updatePremiumStatusAfterPurchase');
+      print('   Plan: $plan');
+      print('   ProductId: $productId');
+      print('   PurchaseDate: $purchaseDate');
+    }
+    
+    try {
+      if (kDebugMode) {
+        print('🔓 Updating premium status after purchase: $plan ($productId)');
+      }
+      
+      // Set premium status based on plan
+      PremiumStatus newStatus;
+      DateTime? trialEndDate;
+      DateTime? subscriptionEndDate;
+      
+      switch (plan) {
+        case 'monthly':
+          newStatus = PremiumStatus.premium;
+          subscriptionEndDate = purchaseDate.add(const Duration(days: 30));
+          break;
+        case 'yearly':
+          newStatus = PremiumStatus.premium;
+          subscriptionEndDate = purchaseDate.add(const Duration(days: 365));
+          break;
+        default:
+          newStatus = PremiumStatus.premium;
+          subscriptionEndDate = purchaseDate.add(const Duration(days: 30));
+      }
+      
+      if (kDebugMode) {
+        print('🔍 DEBUG: Plan processed');
+        print('   NewStatus: ${newStatus.name}');
+        print('   SubscriptionEndDate: ${subscriptionEndDate?.toIso8601String()}');
+      }
+      
+      // Create premium subscription object
+      final subscription = PremiumSubscription(
+        id: 'mock_subscription_${DateTime.now().millisecondsSinceEpoch}',
+        status: newStatus,
+        plan: _mapPlanStringToEnum(plan),
+        startDate: purchaseDate,
+        endDate: subscriptionEndDate,
+        trialEndDate: null,
+        isActive: true,
+        isTrial: false,
+        platform: Platform.isIOS ? 'ios' : 'android',
+        receiptData: 'mock_receipt_$productId',
+      );
+      
+      if (kDebugMode) {
+        print('🔍 DEBUG: PremiumSubscription object created');
+        print('   Subscription ID: ${subscription.id}');
+        print('   Subscription Plan: ${subscription.plan.name}');
+      }
+      
+      // Update cached status
+      if (kDebugMode) {
+        print('🔍 DEBUG: About to update cached status to: ${newStatus.name}');
+      }
+      _cachedStatus = newStatus;
+      
+      if (kDebugMode) {
+        print('🔍 DEBUG: Cached status updated to: ${_cachedStatus?.name}');
+      }
+      
+      // Save to local storage
+      if (kDebugMode) {
+        print('🔍 DEBUG: About to save premium subscription to local storage');
+      }
+      await _savePremiumSubscription(subscription);
+      
+      if (kDebugMode) {
+        print('🔍 DEBUG: Local storage save completed');
+      }
+      
+      // Subscribe user to plan via backend
+      if (kDebugMode) {
+        print('🔍 DEBUG: About to call backend subscription');
+      }
+      await _subscribeUserToPlan(subscription);
+      
+      if (kDebugMode) {
+        print('🔍 DEBUG: Backend subscription completed successfully');
+      }
+      
+      // Only print success message if we reach here (backend succeeded)
+      if (kDebugMode) {
+        print('✅ Premium status updated to: ${newStatus.name}');
+        print('   Plan: $plan');
+        print('   Valid until: ${subscriptionEndDate?.toIso8601String()}');
+      }
+      
+      // Return here to indicate success
+      return true;
+    } catch (e) {
+      if (kDebugMode) {
+        print('❌ Error updating premium status: $e');
+        print('🔍 DEBUG: Exception caught in updatePremiumStatusAfterPurchase');
+        print('   Exception type: ${e.runtimeType}');
+        print('   Exception message: $e');
+      }
+      // Revert to free status on error
+      if (kDebugMode) {
+        print('🔍 DEBUG: About to revert cached status to free');
+      }
+      _cachedStatus = PremiumStatus.free;
+      
+      if (kDebugMode) {
+        print('🔍 DEBUG: Cached status reverted to: ${_cachedStatus?.name}');
+      }
+      
+      // Re-throw the exception so the calling method knows it failed
+      return false;
+    }
+  }
+  
+  /// Map plan string to SubscriptionPlan enum
+  SubscriptionPlan _mapPlanStringToEnum(String plan) {
+    switch (plan) {
+      case 'monthly':
+        return SubscriptionPlan.monthly;
+      case 'yearly':
+        return SubscriptionPlan.yearly;
+      default:
+        return SubscriptionPlan.monthly;
+    }
+  }
+  
+  /// Save premium subscription to local storage
+  Future<void> _savePremiumSubscription(PremiumSubscription subscription) async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      
+      // Save subscription details
+      await prefs.setString('premium_subscription', jsonEncode(subscription.toJson()));
+      await prefs.setString(_premiumKey, subscription.status.name);
+      await prefs.setInt(_lastValidationKey, DateTime.now().millisecondsSinceEpoch);
+      
+      if (kDebugMode) {
+        print('💾 Premium subscription saved to local storage');
+      }
+    } catch (e) {
+      if (kDebugMode) {
+        print('❌ Error saving premium subscription: $e');
+      }
+    }
+  }
+  
+  /// Subscribe user to premium plan via backend
+  Future<void> _subscribeUserToPlan(PremiumSubscription subscription) async {
+    if (kDebugMode) {
+      print('🔍 DEBUG: Starting _subscribeUserToPlan');
+      print('   Subscription Plan: ${subscription.plan.name}');
+      print('   Subscription ID: ${subscription.id}');
+    }
+    
+    try {
+      if (kDebugMode) {
+        print('🌐 Subscribing user to plan via backend: ${subscription.plan.name}');
+        print('🔍 DEBUG: About to make API call to /api/premium/subscribe');
+      }
+      
+      // Prepare purchase data matching backend PurchaseCompletedRequest model
+      final purchaseData = {
+        'plan': subscription.plan.name,
+        'productId': subscription.id,
+        'purchaseDate': subscription.startDate.toIso8601String(),
+        'expiryDate': subscription.endDate?.toIso8601String(),
+        'platform': subscription.platform ?? (Platform.isIOS ? 'ios' : 'android'),
+      };
+      
+      if (kDebugMode) {
+        print('🔍 DEBUG: Sending purchase data: $purchaseData');
+      }
+      
+      final response = await ApiService.shared.post(
+        '/api/premium/subscribe',
+        body: purchaseData,
+        requiresAuth: true,
+      );
+      
+      if (kDebugMode) {
+        print('🔍 DEBUG: API response received');
+        print('   Response success: ${response.isSuccess}');
+        print('   Response error: ${response.error}');
+        print('   Response data: ${response.data}');
+      }
+      
+      if (response.isSuccess) {
+        if (kDebugMode) {
+          print('✅ User successfully subscribed to ${subscription.plan.name} plan');
+          print('🔍 DEBUG: Backend subscription succeeded');
+        }
+        
+        // Update local subscription with backend data if needed
+        // The backend will handle all the subscription logic
+      } else {
+        if (kDebugMode) {
+          print('⚠️ Failed to subscribe user: ${response.error}');
+          print('🔍 DEBUG: Backend subscription failed, about to throw exception');
+        }
+        // Fail the purchase if backend subscription fails
+        // This ensures data consistency between frontend and backend
+        throw Exception('Failed to activate subscription: ${response.error}');
+      }
+    } catch (e) {
+      if (kDebugMode) {
+        print('❌ Error subscribing user to plan: $e');
+        print('🔍 DEBUG: Exception caught in _subscribeUserToPlan');
+        print('   Exception type: ${e.runtimeType}');
+        print('   Exception message: $e');
+        print('🔍 DEBUG: About to rethrow exception');
+      }
+      // Re-throw the error to fail the purchase
+      // This ensures premium status is not granted if backend fails
+      rethrow;
+    }
   }
 
   /// Clear cached data (for testing or logout)

@@ -281,7 +281,7 @@ class _AuthenticatedAppState extends State<AuthenticatedApp> with WidgetsBinding
     }
   }
 
-  void _loadBackendDataIfNeeded() {
+  Future<void> _loadBackendDataIfNeeded() async {
     final userManager = UserManagerService.instance;
     final appState = AppStateService.instance;
     
@@ -300,6 +300,20 @@ class _AuthenticatedAppState extends State<AuthenticatedApp> with WidgetsBinding
     if (userManager.userHasAccountHistory && !_hasLoadedBackendData) {
       if (kDebugMode) {
         print('📱 Loading backend data for user: ${userManager.email}');
+      }
+      
+      // ✅ CRITICAL: Refresh premium status from backend for already logged-in users
+      try {
+        final premiumService = PremiumService.instance;
+        await premiumService.forceRefresh();
+        if (kDebugMode) {
+          print('✅ Premium status refreshed from backend on app startup');
+        }
+      } catch (premiumError) {
+        if (kDebugMode) {
+          print('⚠️ Warning - could not refresh premium status on startup: $premiumError');
+        }
+        // Don't fail app startup if premium status refresh fails
       }
       
       appState.loadBackendData().then((_) {

@@ -2,6 +2,7 @@ import 'package:flutter/foundation.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../config/app_config.dart';
 import 'dart:async';
+import 'premium_service.dart';
 
 /// User Manager Service
 /// Mirrors Swift UserManager for managing user state and authentication
@@ -385,6 +386,20 @@ class UserManagerService extends ChangeNotifier {
     
     // Don't persist guest mode to SharedPreferences
     // Guest mode is always temporary and memory-only
+    
+    // ✅ CRITICAL: Clear premium cache when entering guest mode
+    try {
+      final premiumService = PremiumService.instance;
+      premiumService.clearCache();
+      if (kDebugMode) {
+        print('✅ UserManagerService: Premium cache cleared for guest mode');
+      }
+    } catch (premiumError) {
+      if (kDebugMode) {
+        print('⚠️ UserManagerService: Warning - could not clear premium cache: $premiumError');
+      }
+      // Don't fail guest mode entry if premium cache clearing fails
+    }
     
     // ✅ Validate state after entering guest mode
     validateState();

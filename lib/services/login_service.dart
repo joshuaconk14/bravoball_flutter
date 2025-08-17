@@ -8,6 +8,7 @@ import 'authentication_service.dart';
 import 'loading_state_service.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'app_state_service.dart';
+import 'premium_service.dart';
 
 /// Login Service
 /// Mirrors Swift LoginService for handling authentication API calls
@@ -98,6 +99,30 @@ class LoginService {
           accessToken: loginResponse.accessToken,
           refreshToken: loginResponse.refreshToken,
         );
+
+        // ✅ CRITICAL: Check and update premium status from backend
+        _loadingService.updateProgress(0.92, message: 'Checking premium status...');
+        try {
+          if (kDebugMode) {
+            print('🔍 LoginService: Starting premium status refresh...');
+          }
+          
+          final premiumService = PremiumService.instance;
+          await premiumService.forceRefresh(); // Force backend check for fresh user
+          
+          // Verify the refresh worked
+          final newStatus = await premiumService.getPremiumStatus();
+          if (kDebugMode) {
+            print('✅ LoginService: Premium status refreshed from backend');
+            print('   New premium status: ${newStatus.name}');
+          }
+        } catch (premiumError) {
+          if (kDebugMode) {
+            print('❌ LoginService: ERROR - premium status refresh failed: $premiumError');
+            print('   This will cause user to have incorrect premium status!');
+          }
+          // Don't fail login if premium status refresh fails, but log the error
+        }
 
         // ✅ CRITICAL FIX: Handle authentication state transition 
         _loadingService.updateProgress(0.95, message: 'Setting up your account...');
@@ -258,6 +283,20 @@ class LoginService {
       // Clear any cached auth state
       await AuthenticationService.shared.clearInvalidTokens();
       
+      // ✅ CRITICAL: Clear premium status cache to prevent cross-user contamination
+      try {
+        final premiumService = PremiumService.instance;
+        await premiumService.clearCache();
+        if (kDebugMode) {
+          print('✅ LoginService: Premium cache cleared successfully');
+        }
+      } catch (premiumError) {
+        if (kDebugMode) {
+          print('⚠️ LoginService: Warning - could not clear premium cache: $premiumError');
+        }
+        // Don't fail logout if premium cache clearing fails
+      }
+      
       if (kDebugMode) {
         print('✅ LoginService: User logged out successfully');
       }
@@ -312,6 +351,20 @@ class LoginService {
       await AuthenticationService.shared.clearInvalidTokens();
       if (kDebugMode) {
         print('  ✓ Cleared authentication data');
+      }
+
+      // ✅ CRITICAL: Clear premium status cache to prevent cross-user contamination
+      try {
+        final premiumService = PremiumService.instance;
+        await premiumService.clearCache();
+        if (kDebugMode) {
+          print('  ✓ Cleared premium cache data');
+        }
+      } catch (premiumError) {
+        if (kDebugMode) {
+          print('  ⚠️ Warning - could not clear premium cache: $premiumError');
+        }
+        // Don't fail account deletion if premium cache clearing fails
       }
 
       // Clear shared preferences

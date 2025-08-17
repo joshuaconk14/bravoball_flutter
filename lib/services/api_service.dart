@@ -400,8 +400,8 @@ class ApiService {
         // If response is already an object, use it as is
         responseData = jsonData;
       } else {
-        // Fallback for other types
-        responseData = {'data': jsonData};
+        // Fallback for other types - convert to string safely
+        responseData = {'data': jsonData.toString()};
       }
 
       // Check if response is successful
@@ -422,13 +422,31 @@ class ApiService {
   /// Extract error message from response
   String _extractErrorMessage(Map<String, dynamic>? responseData, int statusCode) {
     if (responseData != null) {
-      // Try different error field names
+      // Try different error field names with safe type checking
       if (responseData.containsKey('detail')) {
-        return responseData['detail'] as String;
+        final detail = responseData['detail'];
+        if (detail is String) {
+          return detail;
+        } else if (detail is List) {
+          // Handle list responses safely
+          return detail.isNotEmpty ? detail.first.toString() : 'Bad request';
+        }
       } else if (responseData.containsKey('message')) {
-        return responseData['message'] as String;
+        final message = responseData['message'];
+        if (message is String) {
+          return message;
+        } else if (message is List) {
+          // Handle list responses safely
+          return message.isNotEmpty ? message.first.toString() : 'Bad request';
+        }
       } else if (responseData.containsKey('error')) {
-        return responseData['error'] as String;
+        final error = responseData['error'];
+        if (error is String) {
+          return error;
+        } else if (error is List) {
+          // Handle list responses safely
+          return error.isNotEmpty ? error.first.toString() : 'Bad request';
+        }
       }
     }
 

@@ -134,6 +134,63 @@ if (await premiumService.canAccessFeature(PremiumFeature.unlimitedDrills)) {
 }
 ```
 
+## 🔒 Premium Status Validation
+
+### **Backend-First Validation**
+The system now validates premium status directly from the backend on:
+- **User Login**: Fresh premium status check for each login
+- **App Startup**: Premium status refresh for returning users
+- **Manual Refresh**: Force refresh capability for debugging
+
+### **API Endpoints Used**
+```dart
+// Premium status validation
+GET /api/premium/status
+
+// Feature access checking  
+POST /api/premium/check-feature
+
+// Usage statistics
+GET /api/premium/usage-stats
+
+// Subscription activation
+POST /api/premium/subscribe
+```
+
+### **Response Format**
+```json
+{
+  "success": true,
+  "data": {
+    "status": "premium",
+    "plan": "monthly",
+    "startDate": "2025-08-17T10:30:00.000Z",
+    "endDate": "2025-09-16T10:30:00.000Z",
+    "isActive": true,
+    "features": ["noAds", "unlimitedDrills", "unlimitedCustomDrills"]
+  }
+}
+```
+
+### **Premium Status Check Flow**
+1. **Frontend Request**: `PremiumService.instance.isPremium()`
+2. **Cache Check**: Returns cached status if recent (< 5 minutes)
+3. **Backend Validation**: Calls `/api/premium/status` if cache expired
+4. **Status Update**: Updates local cache with backend response
+5. **Feature Access**: Returns current premium status
+
+### **Login Flow Integration**
+```dart
+// In LoginService.loginUser()
+await premiumService.forceRefresh(); // Force backend check for fresh user
+```
+
+### **App Startup Integration**
+```dart
+// In main.dart AuthenticatedApp
+await premiumService.forceRefresh(); // Refresh for returning users
+```
+
 ### Session Limit Check
 ```dart
 // Check if user can start new session today
@@ -367,7 +424,15 @@ class PremiumPage extends StatefulWidget {
 
 ## 📅 Recent Changes
 
-### January 27, 2025 - Major System Refactor
+### August 17, 2025 - Premium Status Validation System
+- **Backend-First Validation**: Premium status now validated from backend on every login
+- **App Startup Integration**: Premium status refreshed when app starts with logged-in user
+- **Cache Management**: Premium cache cleared on logout, guest mode, and account deletion
+- **API Consistency**: Uses same ApiService pattern as all other endpoints
+- **Enhanced Debugging**: Added comprehensive logging and debug methods
+- **Cross-User Security**: Prevents premium status contamination between users
+
+### August 15, 2025 - Major System Refactor
 - **Eliminated Complex Dialog System**: Replaced with single PremiumPage
 - **Simplified Navigation**: Direct page navigation instead of modal dialogs
 - **Unified Premium Experience**: Consistent content everywhere
@@ -381,7 +446,7 @@ class PremiumPage extends StatefulWidget {
 
 ---
 
-**Last Updated**: January 27, 2025  
+**Last Updated**: August 17, 2025  
 **Maintainer**: Development Team  
-**Version**: 3.0.0 - Simplified Architecture  
+**Version**: 4.0.0 - Premium Status Validation  
 **Status**: Complete ✅
