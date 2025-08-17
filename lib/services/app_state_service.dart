@@ -17,6 +17,7 @@ import '../services/preferences_sync_service.dart';
 import '../services/loading_state_service.dart';
 import './api_service.dart';
 import './custom_drill_service.dart';
+import './premium_service.dart';
 
 // ===== ENUMS FOR STATE MANAGEMENT =====
 // Session lifecycle states - tracks progress through a training session
@@ -2336,6 +2337,16 @@ class AppStateService extends ChangeNotifier {
     _setSearchState(LoadingState.idle);
     
     _syncCoordinator.cancelAll();
+    
+    // ✅ CRITICAL: Clear premium status cache to prevent cross-user contamination
+    try {
+      final premiumService = PremiumService.instance;
+      premiumService.clearCache();
+      if (kDebugMode) print('✅ Premium cache cleared');
+    } catch (premiumError) {
+      if (kDebugMode) print('⚠️ Warning - could not clear premium cache: $premiumError');
+      // Don't fail user data clearing if premium cache clearing fails
+    }
     
     if (kDebugMode) print('✅ User data cleared');
   }

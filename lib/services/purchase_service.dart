@@ -6,7 +6,9 @@ import 'package:in_app_purchase_android/in_app_purchase_android.dart';
 import 'package:in_app_purchase_storekit/in_app_purchase_storekit.dart';
 import '../config/purchase_config.dart';
 import '../models/purchase_models.dart';
+import '../models/premium_models.dart';
 import '../services/api_service.dart';
+import '../services/premium_service.dart';
 import '../utils/haptic_utils.dart';
 
 class PurchaseService {
@@ -53,7 +55,22 @@ class PurchaseService {
     }
 
     try {
-      // Initialize in-app purchase
+      // Check if we should use mock purchases for testing
+      if (PurchaseConfig.shouldEnableMockPurchases) {
+        if (kDebugMode) {
+          print('🧪 Using mock purchases for testing');
+        }
+        _isAvailable = true; // Mock purchases are always available
+        await _loadProducts(); // This will load mock products
+        _isInitialized = true;
+        
+        if (kDebugMode) {
+          print('✅ PurchaseService initialized with mock purchases');
+        }
+        return;
+      }
+
+      // Initialize real in-app purchase
       _inAppPurchase = InAppPurchase.instance;
       
       // Check if in-app purchases are available
@@ -100,6 +117,12 @@ class PurchaseService {
 
   /// Load available products from the store
   Future<void> _loadProducts() async {
+    // Check if we should use mock products for testing
+    if (PurchaseConfig.shouldEnableMockPurchases) {
+      await _loadMockProducts();
+      return;
+    }
+    
     try {
       if (kDebugMode) {
         print('🛍️ Loading products from store...');
@@ -163,7 +186,7 @@ class PurchaseService {
 
   /// Start purchase flow for a specific product
   Future<PurchaseResult> purchaseProduct(String productId) async {
-    if (!_isInitialized || !_isAvailable) {
+    if (!_isInitialized) {
       return PurchaseResult.failure(
         errorMessage: 'Purchase service not available',
       );
@@ -188,6 +211,18 @@ class PurchaseService {
 
     // Update state
     _updatePurchaseState(PurchaseState.purchasing);
+
+    // Check if we should use mock purchases for testing
+    if (PurchaseConfig.shouldEnableMockPurchases) {
+      return await _mockPurchase(productId);
+    }
+
+    // Check if real purchases are available
+    if (!_isAvailable) {
+      return PurchaseResult.failure(
+        errorMessage: 'Real purchases not available on this device',
+      );
+    }
 
     try {
       // Create purchase parameters
@@ -452,7 +487,7 @@ class PurchaseService {
 
   /// Restore previous purchases
   Future<PurchaseRestorationResult> restorePurchases() async {
-    if (!_isInitialized || !_isAvailable) {
+    if (!_isInitialized) {
       return PurchaseRestorationResult.failure(
         errorMessage: 'Purchase service not available',
       );
@@ -468,6 +503,18 @@ class PurchaseService {
       print('🔄 Restoring previous purchases...');
     }
 
+    // Check if we should use mock restoration for testing
+    if (PurchaseConfig.shouldEnableMockPurchases) {
+      return await _mockRestorePurchases();
+    }
+
+    // Check if real purchases are available
+    if (!_isAvailable) {
+      return PurchaseRestorationResult.failure(
+        errorMessage: 'Real purchases not available on this device',
+      );
+    }
+
     try {
       await _inAppPurchase.restorePurchases();
       
@@ -480,9 +527,9 @@ class PurchaseService {
         print('❌ Error restoring purchases: $e');
       }
       
-      return PurchaseRestorationResult.failure(
-        errorMessage: 'Error restoring purchases: $e',
-      );
+              return PurchaseRestorationResult.failure(
+          errorMessage: 'Error restoring purchases: $e',
+        );
     }
   }
 
@@ -522,6 +569,233 @@ class PurchaseService {
   /// Refresh products
   Future<void> refreshProducts() async {
     await _loadProducts();
+  }
+
+  // ===== MOCK PURCHASE METHODS FOR TESTING =====
+  
+  /// Load mock products for testing
+  Future<void> _loadMockProducts() async {
+    if (!PurchaseConfig.shouldEnableMockPurchases) return;
+    
+    if (kDebugMode) {
+      print('🧪 Loading mock products for testing...');
+    }
+    
+    // Create mock products
+    final mockProducts = [
+      StoreProduct(
+        id: PurchaseConfig.monthlyPremiumId,
+        title: 'Monthly Premium (Mock)',
+        description: 'Access to all premium features for 1 month',
+        price: '\$15.00',
+        currencyCode: 'USD',
+        rawPrice: 15.0,
+      ),
+      StoreProduct(
+        id: PurchaseConfig.yearlyPremiumId,
+        title: 'Yearly Premium (Mock)',
+        description: 'Access to all premium features for 1 year',
+        price: '\$95.00',
+        currencyCode: 'USD',
+        rawPrice: 95.0,
+      ),
+    ];
+    
+    _availableProducts = mockProducts;
+    _productsController.add(mockProducts);
+    
+    if (kDebugMode) {
+      print('✅ Mock products loaded: ${mockProducts.length} products');
+    }
+  }
+  
+  /// Mock purchase for testing
+  Future<PurchaseResult> _mockPurchase(String productId) async {
+    if (kDebugMode) {
+      print('🔍 DEBUG: Starting _mockPurchase');
+      print('   ProductId: $productId');
+    }
+    
+    if (!PurchaseConfig.shouldEnableMockPurchases) {
+      if (kDebugMode) {
+        print('🔍 DEBUG: Mock purchases disabled, returning failure');
+      }
+      return PurchaseResult.failure(
+        errorMessage: 'Mock purchases are disabled',
+      );
+    }
+    
+    if (kDebugMode) {
+      print('🧪 Processing mock purchase for: $productId');
+    }
+    
+    // Simulate purchase delay
+    if (kDebugMode) {
+      print('🔍 DEBUG: Simulating purchase delay...');
+    }
+    await Future.delayed(const Duration(seconds: 2));
+    
+    if (kDebugMode) {
+      print('🔍 DEBUG: Purchase delay completed');
+    }
+    
+    // Create mock purchase result using the constructor directly
+    final mockData = PurchaseConfig.mockPurchaseData;
+    
+    if (kDebugMode) {
+      print('🔍 DEBUG: About to update purchase state to purchasing');
+    }
+    
+    // Update state to purchasing while we handle backend
+    _updatePurchaseState(PurchaseState.purchasing);
+    
+    if (kDebugMode) {
+      print('🔍 DEBUG: Purchase state updated to purchasing');
+    }
+    
+    // Update premium status after successful purchase
+    try {
+      if (kDebugMode) {
+        print('🔍 DEBUG: About to call _updatePremiumStatusAfterPurchase');
+      }
+      
+      final success = await _updatePremiumStatusAfterPurchase(productId);
+      
+      if (!success) {
+        if (kDebugMode) {
+          print('🔍 DEBUG: _updatePremiumStatusAfterPurchase returned false');
+        }
+        throw Exception('Premium status update failed');
+      }
+      
+      if (kDebugMode) {
+        print('🔍 DEBUG: _updatePremiumStatusAfterPurchase completed successfully');
+      }
+      
+      // Only now create success result after backend succeeds
+      if (kDebugMode) {
+        print('🔍 DEBUG: Creating success PurchaseResult');
+      }
+      
+      final mockResult = PurchaseResult(
+        success: true,
+        transactionId: mockData['transactionId'],
+        purchaseDate: DateTime.now(),
+      );
+      
+      if (kDebugMode) {
+        print('🔍 DEBUG: About to update purchase state to success');
+      }
+      
+      // Update state to success
+      _updatePurchaseState(PurchaseState.success);
+      
+      if (kDebugMode) {
+        print('🔍 DEBUG: About to add result to purchase result controller');
+      }
+      
+      _purchaseResultController.add(mockResult);
+      
+      if (kDebugMode) {
+        print('✅ Mock purchase completed successfully');
+        print('🔍 DEBUG: Returning success result');
+      }
+      
+      return mockResult;
+    } catch (e) {
+      if (kDebugMode) {
+        print('❌ Premium status update failed: $e');
+        print('🔍 DEBUG: Exception caught in _mockPurchase');
+        print('   Exception type: ${e.runtimeType}');
+        print('   Exception message: $e');
+        print('🔍 DEBUG: About to revert purchase state to failed');
+      }
+      
+      // Revert purchase state and return failure
+      _updatePurchaseState(PurchaseState.failed);
+      
+      if (kDebugMode) {
+        print('🔍 DEBUG: Purchase state reverted to failed');
+        print('🔍 DEBUG: Returning failure result');
+      }
+      
+      return PurchaseResult.failure(
+        errorMessage: 'Purchase completed but premium activation failed: $e',
+      );
+    }
+  }
+  
+  /// Mock restore purchases for testing
+  Future<PurchaseRestorationResult> _mockRestorePurchases() async {
+    if (!PurchaseConfig.shouldEnableMockPurchases) {
+      return PurchaseRestorationResult.failure(
+        errorMessage: 'Mock purchases are disabled',
+      );
+    }
+    
+    if (kDebugMode) {
+      print('🧪 Processing mock purchase restoration...');
+    }
+    
+    // Simulate restore delay
+    await Future.delayed(const Duration(seconds: 1));
+    
+    if (kDebugMode) {
+      print('✅ Mock purchase restoration completed');
+    }
+    
+    // Return success with empty restored purchases list
+    return PurchaseRestorationResult(
+      success: true,
+      restoredPurchases: [], // Empty list since we don't have real PurchaseDetails
+    );
+  }
+
+  // ===== PREMIUM STATUS MANAGEMENT =====
+  
+  /// Update user's premium status after successful purchase
+  Future<bool> _updatePremiumStatusAfterPurchase(String productId) async {
+    try {
+      if (kDebugMode) {
+        print('🔓 Updating premium status after purchase: $productId');
+      }
+      
+      // Determine subscription plan from product ID
+      final plan = PurchaseConfig.getPlanType(productId);
+      if (plan == null) {
+        if (kDebugMode) {
+          print('⚠️ Could not determine plan type for: $productId');
+        }
+        return false;
+      }
+      
+      // Update premium status in PremiumService
+      final success = await PremiumService.instance.updatePremiumStatusAfterPurchase(
+        plan: plan,
+        productId: productId,
+        purchaseDate: DateTime.now(),
+      );
+      
+      if (kDebugMode) {
+        print('✅ Premium status updated successfully for plan: $plan');
+      }
+      return success;
+    } catch (e) {
+      if (kDebugMode) {
+        print('❌ Error updating premium status: $e');
+      }
+      return false;
+    }
+  }
+  
+  /// Check if user has premium access
+  Future<bool> hasPremiumAccess() async {
+    return await PremiumService.instance.isPremium();
+  }
+  
+  /// Get current premium status
+  Future<PremiumStatus> getPremiumStatus() async {
+    return await PremiumService.instance.getPremiumStatus();
   }
 
   /// Dispose resources

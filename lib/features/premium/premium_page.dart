@@ -16,6 +16,8 @@ class PremiumPage extends StatefulWidget {
 
 class _PremiumPageState extends State<PremiumPage> {
   SubscriptionPlanDetails? _selectedPlan;
+  bool _isPremium = false;
+  bool _isLoading = true;
 
   @override
   void initState() {
@@ -23,19 +25,45 @@ class _PremiumPageState extends State<PremiumPage> {
     // Auto-select the popular plan (yearly) by default
     _selectedPlan = PremiumConfig.popularPlan;
     
-    // Initialize purchase service
-    _initializePurchaseService();
+    // Initialize purchase service and check premium status
+    _initializeServices();
   }
 
-  Future<void> _initializePurchaseService() async {
+  Future<void> _initializeServices() async {
     try {
+      // Initialize purchase service
       await PurchaseService.instance.initialize();
+      
+      // Check current premium status
+      await _checkPremiumStatus();
+      
       if (kDebugMode) {
-        print('✅ Purchase service initialized');
+        print('✅ Services initialized');
       }
     } catch (e) {
       if (kDebugMode) {
-        print('❌ Error initializing purchase service: $e');
+        print('❌ Error initializing services: $e');
+      }
+    } finally {
+      setState(() {
+        _isLoading = false;
+      });
+    }
+  }
+
+  Future<void> _checkPremiumStatus() async {
+    try {
+      final isPremium = await PurchaseService.instance.hasPremiumAccess();
+      setState(() {
+        _isPremium = isPremium;
+      });
+      
+      if (kDebugMode) {
+        print('🔒 Premium status checked: ${isPremium ? 'Premium' : 'Free'}');
+      }
+    } catch (e) {
+      if (kDebugMode) {
+        print('❌ Error checking premium status: $e');
       }
     }
   }
@@ -59,8 +87,10 @@ class _PremiumPageState extends State<PremiumPage> {
               print('✅ Purchase successful - closing dialog');
             }
             Navigator.of(context).pop();
-            // TODO: Update user's premium status and show success message
+            // Update user's premium status and show success message
             _showSuccessMessage();
+            // Refresh premium status to show user is now premium
+            _checkPremiumStatus();
           },
           onPurchaseCancelled: () {
             if (kDebugMode) {
@@ -77,17 +107,25 @@ class _PremiumPageState extends State<PremiumPage> {
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
         content: Text(
-          '🎉 Welcome to Premium! Your subscription is now active.',
+          '🎉 Welcome to Premium! Your subscription is now active and all premium features are unlocked.',
           style: const TextStyle(
             fontSize: 16,
             fontWeight: FontWeight.w600,
           ),
         ),
         backgroundColor: Colors.green,
-        duration: const Duration(seconds: 4),
+        duration: const Duration(seconds: 5),
         behavior: SnackBarBehavior.floating,
         shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(12),
+        ),
+        action: SnackBarAction(
+          label: 'View Features',
+          textColor: Colors.white,
+          onPressed: () {
+            // Refresh the page to show premium status
+            setState(() {});
+          },
         ),
       ),
     );
@@ -170,6 +208,10 @@ class _PremiumPageState extends State<PremiumPage> {
             _buildHeader(),
             const SizedBox(height: 32),
             
+            // Premium status indicator
+            if (_isPremium) _buildPremiumStatusIndicator(),
+            if (_isPremium) const SizedBox(height: 32),
+            
             // Features list
             _buildFeaturesList(),
             const SizedBox(height: 32),
@@ -230,6 +272,41 @@ class _PremiumPageState extends State<PremiumPage> {
           textAlign: TextAlign.center,
         ),
       ],
+    );
+  }
+
+  Widget _buildPremiumStatusIndicator() {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: AppTheme.primaryYellow.withOpacity(0.1),
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(
+          color: AppTheme.primaryYellow,
+          width: 1,
+        ),
+      ),
+      child: Row(
+        children: [
+          Icon(
+            Icons.verified,
+            color: AppTheme.primaryYellow,
+            size: 24,
+          ),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Text(
+              'You are currently a Premium user!',
+              style: const TextStyle(
+                fontSize: 16,
+                fontWeight: FontWeight.bold,
+                color: AppTheme.primaryDark,
+              ),
+            ),
+          ),
+        ],
+      ),
     );
   }
 
@@ -467,6 +544,11 @@ class _PremiumPageState extends State<PremiumPage> {
   }
 
   Widget _buildActionButtons(BuildContext context) {
+    // If user is already premium, show different content
+    if (_isPremium) {
+      return _buildPremiumUserContent();
+    }
+    
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -583,6 +665,117 @@ class _PremiumPageState extends State<PremiumPage> {
             color: AppTheme.primaryGray,
           ),
           textAlign: TextAlign.center,
+        ),
+      ],
+    );
+  }
+
+  Widget _buildPremiumUserContent() {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        // Section title
+        Text(
+          'Premium Features Unlocked! 🎉',
+          style: AppTheme.titleMedium.copyWith(
+            color: AppTheme.primaryDark,
+            fontWeight: FontWeight.bold,
+          ),
+        ),
+        const SizedBox(height: 16),
+        
+        // Premium features access info
+        Container(
+          width: double.infinity,
+          padding: const EdgeInsets.all(16),
+          decoration: BoxDecoration(
+            color: Colors.green.withOpacity(0.1),
+            borderRadius: BorderRadius.circular(12),
+            border: Border.all(
+              color: Colors.green,
+              width: 1,
+            ),
+          ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                children: [
+                  Icon(
+                    Icons.check_circle,
+                    color: Colors.green,
+                    size: 24,
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: Text(
+                      'All Premium Features Active',
+                      style: const TextStyle(
+                        fontSize: 16,
+                        fontWeight: FontWeight.bold,
+                        color: Colors.green,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 12),
+              Text(
+                '• Unlimited daily sessions\n• Unlimited custom drill creation\n• Ad-free experience\n• Advanced analytics\n• Priority support',
+                style: const TextStyle(
+                  fontSize: 14,
+                  color: AppTheme.primaryDark,
+                ),
+              ),
+            ],
+          ),
+        ),
+        
+        const SizedBox(height: 16),
+        
+        // Manage subscription button
+        SizedBox(
+          width: double.infinity,
+          height: 56,
+          child: OutlinedButton(
+            onPressed: () {
+              // TODO: Navigate to subscription management
+              ScaffoldMessenger.of(context).showSnackBar(
+                const SnackBar(
+                  content: Text('Subscription management coming soon!'),
+                  duration: Duration(seconds: 2),
+                ),
+              );
+            },
+            style: OutlinedButton.styleFrom(
+              foregroundColor: AppTheme.primaryDark,
+              side: BorderSide(color: AppTheme.primaryDark),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(12),
+              ),
+            ),
+            child: const Text(
+              'Manage Subscription',
+              style: TextStyle(
+                fontSize: 18,
+                fontWeight: FontWeight.bold,
+              ),
+            ),
+          ),
+        ),
+        
+        // Restore purchases button
+        const SizedBox(height: 16),
+        TextButton(
+          onPressed: () => _restorePurchases(),
+          child: Text(
+            'Restore Previous Purchases',
+            style: TextStyle(
+              fontSize: 14,
+              color: AppTheme.primaryGray,
+              decoration: TextDecoration.underline,
+            ),
+          ),
         ),
       ],
     );
