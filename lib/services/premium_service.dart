@@ -6,6 +6,7 @@ import 'package:crypto/crypto.dart';
 import '../config/premium_config.dart';
 import '../models/premium_models.dart';
 import '../utils/device_security_utils.dart';
+import '../utils/encryption_utils.dart';
 import 'api_service.dart';
 
 class PremiumService {
@@ -23,6 +24,12 @@ class PremiumService {
   static const String _premiumKey = 'premium_status';
   static const String _lastValidationKey = 'last_validation_time';
   static const String _deviceFingerprintKey = 'device_fingerprint';
+  
+  // Rate limiting and abuse prevention
+  static const int _maxValidationAttempts = 5;
+  static const int _validationCooldownSeconds = 60;
+  static Map<String, int> _validationAttempts = {};
+  static Map<String, DateTime> _lastValidationTimeMap = {};
 
   /// Initialize premium service and validate current status
   Future<void> initialize() async {
@@ -78,6 +85,14 @@ class PremiumService {
 
   /// Check if user has premium access
   Future<bool> isPremium() async {
+    // 🔒 SECURITY: Validate device fingerprint first
+    if (!await _validateSecurity()) {
+      if (kDebugMode) {
+        print('🚨 Security validation failed - denying premium access');
+      }
+      return false;
+    }
+    
     final status = await getPremiumStatus();
     final isPremium = status == PremiumStatus.premium;
     
@@ -253,6 +268,18 @@ class PremiumService {
   /// Validate premium status with server
   Future<void> _validateWithServer() async {
     try {
+      // 🔒 RATE LIMITING: Check if user can attempt validation
+      final userId = await _getCurrentUserId();
+      if (!_canAttemptValidation(userId)) {
+        if (kDebugMode) {
+          print('🚫 Rate limit exceeded - skipping server validation');
+        }
+        return;
+      }
+      
+      // Record this validation attempt
+      _recordValidationAttempt(userId);
+      
       if (kDebugMode) {
         print('🌐 Validating premium status with server...');
         print('   API endpoint: /api/premium/status');
@@ -331,18 +358,25 @@ class PremiumService {
   Future<void> _loadCachedStatus() async {
     try {
       final prefs = await SharedPreferences.getInstance();
-      final statusString = prefs.getString(_premiumKey);
+      final encryptedStatus = prefs.getString(_premiumKey);
       final lastValidation = prefs.getInt(_lastValidationKey);
       
       if (kDebugMode) {
         print('🔍 DEBUG: _loadCachedStatus() called');
-        print('   Raw status string: "$statusString"');
+        print('   Encrypted status: "$encryptedStatus"');
         print('   Raw last validation: $lastValidation');
       }
       
-      if (statusString != null && lastValidation != null) {
+      if (encryptedStatus != null && lastValidation != null) {
+        // 🔐 DECRYPTION: Decrypt the stored status
+        final decryptedStatus = await EncryptionUtils.decryptString(encryptedStatus);
+        
+        if (kDebugMode) {
+          print('🔐 Decrypted status: "$decryptedStatus"');
+        }
+        
         _cachedStatus = PremiumStatus.values.firstWhere(
-          (e) => e.name == statusString,
+          (e) => e.name == decryptedStatus,
           orElse: () => PremiumStatus.free,
         );
         _lastValidationTime = DateTime.fromMillisecondsSinceEpoch(lastValidation);
@@ -369,15 +403,28 @@ class PremiumService {
   /// Update premium status and cache it
   Future<void> _updatePremiumStatus(PremiumStatus status) async {
     try {
+      // 🔒 SECURITY: Only allow status updates from validated sources
+      if (status == PremiumStatus.premium) {
+        if (!await _isValidPremiumSource()) {
+          if (kDebugMode) {
+            print('🚨 Invalid premium source detected - rejecting status update');
+          }
+          return; // Reject invalid premium status
+        }
+      }
+      
       final prefs = await SharedPreferences.getInstance();
-      await prefs.setString(_premiumKey, status.name);
+      
+      // 🔐 ENCRYPTION: Encrypt premium status before storage
+      final encryptedStatus = await EncryptionUtils.encryptString(status.name);
+      await prefs.setString(_premiumKey, encryptedStatus);
       await prefs.setInt(_lastValidationKey, DateTime.now().millisecondsSinceEpoch);
       
       _cachedStatus = status;
       _lastValidationTime = DateTime.now();
       
       if (kDebugMode) {
-        print('💾 Updated premium status: ${status.name}');
+        print('💾 Updated premium status: ${status.name} (encrypted)');
       }
     } catch (e) {
       if (kDebugMode) {
@@ -392,6 +439,147 @@ class PremiumService {
     
     final timeSinceLastValidation = DateTime.now().difference(_lastValidationTime!).inSeconds;
     return timeSinceLastValidation >= _validationCacheTime;
+  }
+
+  /// Check if user can attempt validation (rate limiting)
+  bool _canAttemptValidation(String userId) {
+    final now = DateTime.now();
+    final lastAttempt = _lastValidationTimeMap[userId];
+    final attempts = _validationAttempts[userId] ?? 0;
+    
+    if (lastAttempt != null) {
+      final timeSinceLast = now.difference(lastAttempt).inSeconds;
+      if (timeSinceLast < _validationCooldownSeconds) {
+        if (kDebugMode) {
+          print('⏰ Rate limit: Too soon since last attempt');
+        }
+        return false;
+      }
+    }
+    
+    if (attempts >= _maxValidationAttempts) {
+      if (kDebugMode) {
+        print('🚫 Rate limit: Max attempts exceeded');
+      }
+      return false;
+    }
+    
+    return true;
+  }
+
+  /// Record validation attempt for rate limiting
+  void _recordValidationAttempt(String userId) {
+    final now = DateTime.now();
+    _lastValidationTimeMap[userId] = now;
+    _validationAttempts[userId] = (_validationAttempts[userId] ?? 0) + 1;
+    
+    if (kDebugMode) {
+      print('📊 Rate limit: User $userId has ${_validationAttempts[userId]} attempts');
+    }
+  }
+
+  /// Get current user ID for rate limiting
+  Future<String> _getCurrentUserId() async {
+    try {
+      // Try to get user ID from shared preferences or other sources
+      final prefs = await SharedPreferences.getInstance();
+      final userId = prefs.getString('user_id') ?? 
+                    prefs.getString('auth_token') ?? 
+                    'anonymous_${DateTime.now().millisecondsSinceEpoch}';
+      
+      return userId;
+    } catch (e) {
+      if (kDebugMode) {
+        print('❌ Error getting user ID: $e');
+      }
+      return 'unknown_user';
+    }
+  }
+
+  /// Log security events for monitoring and debugging
+  void _logSecurityEvent(String event, Map<String, dynamic> details) {
+    if (kDebugMode) {
+      print('🔒 SECURITY EVENT: $event - $details');
+    }
+    
+    // In production, send to security monitoring service
+    if (!kDebugMode) {
+      // TODO: Send to security monitoring service
+      // _sendToSecurityMonitoring(event, details);
+      
+      // For now, just log locally
+      print('🔒 SECURITY EVENT: $event - $details');
+    }
+  }
+
+  /// Validate that premium status update is coming from a legitimate source
+  Future<bool> _isValidPremiumSource() async {
+    try {
+      // Check if this update is coming from:
+      // 1. Valid receipt validation
+      // 2. Backend API call
+      // 3. Valid purchase flow
+      
+      // For now, implement basic validation
+      // TODO: Implement proper receipt validation when backend is ready
+      
+      // Check if we have a recent backend validation
+      if (_lastValidationTime != null) {
+        final timeSinceLastValidation = DateTime.now().difference(_lastValidationTime!).inSeconds;
+        if (timeSinceLastValidation < 300) { // 5 minutes
+          return true; // Recent backend validation
+        }
+      }
+      
+      // Check if device security is valid
+      return await _validateSecurity();
+    } catch (e) {
+      if (kDebugMode) {
+        print('❌ Error validating premium source: $e');
+      }
+      return false; // Fail secure
+    }
+  }
+
+  /// Validate device security and integrity
+  Future<bool> _validateSecurity() async {
+    try {
+      // Check device fingerprint
+      final isFingerprintValid = await EncryptionUtils.validateDeviceFingerprint();
+      
+      // Check device security
+      final isDeviceSecure = !await DeviceSecurityUtils.isDeviceCompromised();
+      
+      if (kDebugMode) {
+        print('🔒 Security validation:');
+        print('   Device fingerprint: ${isFingerprintValid ? "✅ Valid" : "❌ Invalid"}');
+        print('   Device security: ${isDeviceSecure ? "✅ Secure" : "❌ Compromised"}');
+      }
+      
+      // 🔒 SECURITY LOGGING: Log security events
+      _logSecurityEvent('security_validation', {
+        'timestamp': DateTime.now().toIso8601String(),
+        'fingerprint_valid': isFingerprintValid,
+        'device_secure': isDeviceSecure,
+        'overall_result': isFingerprintValid && isDeviceSecure,
+      });
+      
+      return isFingerprintValid && isDeviceSecure;
+    } catch (e) {
+      if (kDebugMode) {
+        print('❌ Error validating security: $e');
+      }
+      
+      // 🔒 SECURITY LOGGING: Log security errors
+      _logSecurityEvent('security_validation_error', {
+        'timestamp': DateTime.now().toIso8601String(),
+        'error': e.toString(),
+        'error_type': e.runtimeType.toString(),
+      });
+      
+      // Fail secure: deny access on security validation errors
+      return false;
+    }
   }
 
   /// Get device fingerprint for security
@@ -703,8 +891,11 @@ class PremiumService {
       _cachedStatus = null;
       _lastValidationTime = null;
       
+      // 🔐 SECURITY: Clear encryption data on logout
+      await EncryptionUtils.clearEncryptionData();
+      
       if (kDebugMode) {
-        print('🗑️ Premium cache cleared');
+        print('🗑️ Premium cache and encryption data cleared');
       }
     } catch (e) {
       if (kDebugMode) {
