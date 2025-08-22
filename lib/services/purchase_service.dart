@@ -1,15 +1,19 @@
 import 'dart:async';
+import 'dart:convert';
 import 'dart:io';
 import 'package:flutter/foundation.dart';
 import 'package:in_app_purchase/in_app_purchase.dart';
-import 'package:in_app_purchase_android/in_app_purchase_android.dart';
-import 'package:in_app_purchase_storekit/in_app_purchase_storekit.dart';
+
+import 'package:shared_preferences/shared_preferences.dart';
+import 'package:crypto/crypto.dart';
 import '../config/purchase_config.dart';
+import '../config/premium_config.dart';
 import '../models/purchase_models.dart';
 import '../models/premium_models.dart';
 import '../services/api_service.dart';
 import '../services/premium_service.dart';
 import '../utils/haptic_utils.dart';
+import '../utils/device_security_utils.dart';
 
 class PurchaseService {
   static final PurchaseService _instance = PurchaseService._internal();
@@ -19,6 +23,9 @@ class PurchaseService {
 
   // In-app purchase instance
   late final InAppPurchase _inAppPurchase;
+  
+  // Device fingerprint key for storage
+  static const String _deviceFingerprintKey = 'device_fingerprint';
   
   // Stream controllers for purchase updates
   final StreamController<PurchaseState> _purchaseStateController = 
@@ -307,11 +314,6 @@ class PurchaseService {
         case PurchaseStatus.canceled:
           _handleCancelledPurchase(purchaseDetails);
           break;
-
-        default:
-          if (kDebugMode) {
-            print('⚠️ Unknown purchase status: ${purchaseDetails.status}');
-          }
       }
     }
   }
@@ -435,22 +437,28 @@ class PurchaseService {
 
       // Prepare validation data
       final validationData = {
-        'productId': purchaseDetails.productID,
-        'purchaseId': purchaseDetails.purchaseID,
-        'transactionDate': purchaseDetails.transactionDate,
         'platform': Platform.isIOS ? 'ios' : 'android',
-        'receiptData': purchaseDetails.verificationData.serverVerificationData,
+        'receiptData': purchaseDetails.verificationData.serverVerificationData.isNotEmpty ? purchaseDetails.verificationData.serverVerificationData : 'mock_receipt_data_${DateTime.now().millisecondsSinceEpoch}',
+        'productId': purchaseDetails.productID,
+        'transactionId': purchaseDetails.purchaseID,
       };
 
+      // Get device fingerprint for security
+      final deviceFingerprint = await _getDeviceFingerprint();
+      
       // Call backend validation endpoint
       final response = await ApiService.shared.post(
         '/api/premium/validate-purchase',
         body: validationData,
+        headers: {
+          'Device-Fingerprint': deviceFingerprint,
+          'App-Version': PremiumConfig.appVersion,
+        },
         requiresAuth: true,
       );
 
       if (response.isSuccess && response.data != null) {
-        final isValid = response.data!['isValid'] as bool? ?? false;
+        final isValid = (response.data!['isValid'] as bool?) ?? false;
         
         if (kDebugMode) {
           print('✅ Backend validation result: $isValid');
@@ -803,5 +811,27 @@ class PurchaseService {
     _purchaseStateController.close();
     _purchaseResultController.close();
     _productsController.close();
+  }
+
+  /// Get device fingerprint for security
+  Future<String> _getDeviceFingerprint() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      String? fingerprint = prefs.getString(_deviceFingerprintKey);
+      
+      if (fingerprint == null) {
+        // Generate new fingerprint
+        final deviceInfo = await DeviceSecurityUtils.getDeviceInfo();
+        fingerprint = sha256.convert(utf8.encode(deviceInfo)).toString();
+        await prefs.setString(_deviceFingerprintKey, fingerprint);
+      }
+      
+      return fingerprint;
+    } catch (e) {
+      if (kDebugMode) {
+        print('❌ Error getting device fingerprint: $e');
+      }
+      return 'unknown';
+    }
   }
 }

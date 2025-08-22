@@ -824,24 +824,30 @@ class PremiumService {
         print('🔍 DEBUG: About to make API call to /api/premium/subscribe');
       }
       
-      // Prepare purchase data matching backend PurchaseCompletedRequest model
+      // Prepare purchase data matching backend ReceiptVerificationRequest model
       final purchaseData = {
-        'plan': subscription.plan.name,
-        'productId': subscription.id,
-        'purchaseDate': subscription.startDate.toIso8601String(),
-        'expiryDate': subscription.endDate?.toIso8601String(),
         'platform': subscription.platform ?? (Platform.isIOS ? 'ios' : 'android'),
+        'receiptData': subscription.receiptData ?? 'mock_receipt_data_${DateTime.now().millisecondsSinceEpoch}',
+        'productId': subscription.id,
+        'transactionId': 'mock_transaction_${DateTime.now().millisecondsSinceEpoch}',
       };
       
       if (kDebugMode) {
         print('🔍 DEBUG: Sending purchase data: $purchaseData');
       }
       
-      final response = await ApiService.shared.post(
-        '/api/premium/subscribe',
-        body: purchaseData,
-        requiresAuth: true,
-      );
+              // Get device fingerprint for security
+        final deviceFingerprint = await _getDeviceFingerprint();
+        
+        final response = await ApiService.shared.post(
+          '/api/premium/validate-purchase',
+          body: purchaseData,
+          headers: {
+            'Device-Fingerprint': deviceFingerprint,
+            'App-Version': PremiumConfig.appVersion,
+          },
+          requiresAuth: true,
+        );
       
       if (kDebugMode) {
         print('🔍 DEBUG: API response received');
