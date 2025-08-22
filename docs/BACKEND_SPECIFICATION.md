@@ -16,7 +16,7 @@ POST /api/auth/logout
 ### 2. Premium Status Management
 ```http
 GET /api/premium/status
-POST /api/premium/validate
+POST /api/premium/validate-purchase
 POST /api/premium/subscribe
 POST /api/premium/cancel
 GET /api/premium/subscription-details

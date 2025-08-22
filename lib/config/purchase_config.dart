@@ -47,6 +47,18 @@ class PurchaseConfig {
     };
   }
   
+  // Mock receipt data for testing
+  static Map<String, dynamic> get mockReceiptData {
+    if (!isDebugMode || !enableMockPurchases) return {};
+    
+    return {
+      'platform': 'ios',
+      'receiptData': 'mock_receipt_data_${DateTime.now().millisecondsSinceEpoch}',
+      'productId': monthlyPremiumId,
+      'transactionId': 'mock_transaction_${DateTime.now().millisecondsSinceEpoch}',
+    };
+  }
+  
   // Get product ID by subscription plan
   static String? getProductId(String plan) {
     return productIds[plan];
