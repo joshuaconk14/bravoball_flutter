@@ -290,9 +290,13 @@ class PremiumService {
         print('   Making API call via ApiService...');
       }
       
+      // Get device fingerprint for security
+      final deviceFingerprint = await _getDeviceFingerprint();
+      
       final response = await ApiService.shared.get(
         '/api/premium/status',
         headers: {
+          'Device-Fingerprint': deviceFingerprint,
           'App-Version': PremiumConfig.appVersion,
         },
         requiresAuth: true,

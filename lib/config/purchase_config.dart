@@ -32,7 +32,7 @@ class PurchaseConfig {
   
   // Debug and development
   static bool get isDebugMode => kDebugMode;
-  static const bool enableMockPurchases = true; // For testing
+  static const bool enableMockPurchases = false; // For testing
   static const bool enablePurchaseBypass = false; // For development
   
   // Mock purchase data for testing
