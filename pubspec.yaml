@@ -34,7 +34,7 @@ dependencies:
   provider: ^6.1.1
   rive: ^0.12.4
   video_player: ^2.8.1
-  audioplayers: ^5.2.1  # Downgrade to stable version that works well with iOS
+  audioplayers: ^5.0.3  # Downgrade to stable version that works well with iOS
   url_launcher: ^6.2.5
   flutter_dotenv: ^5.1.0
   shared_preferences: ^2.2.3

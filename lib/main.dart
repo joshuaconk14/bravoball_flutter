@@ -36,9 +36,11 @@ void main() async {
   
   // Show debug information
   if (kDebugMode) {
-    print('🚀 Starting BravoBall Flutter App');
-    print('📱 ${AppConfig.debugInfo}');
-    print('🌐 Phone Wi-Fi IP: ${AppConfig.phoneWifiIP}');
+  print('�� Starting BravoBall Flutter App');
+  print('📱 ${AppConfig.debugInfo}');
+  print('�� Phone Wi-Fi IP: ${AppConfig.phoneWifiIP}');
+  print('🔗 ACTUAL BASE URL: ${AppConfig.baseUrl}');
+  print('📁 .env file loaded: ${dotenv.env['PHONE_WIFI_IP'] ?? 'NOT FOUND'}');
   }
   
   // ✅ ADDED: Initialize Android compatibility service
