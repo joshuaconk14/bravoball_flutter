@@ -1,4 +1,5 @@
 import 'package:flutter/foundation.dart';
+import 'dart:io';
 
 class PurchaseConfig {
   // Product IDs for both platforms
@@ -32,10 +33,39 @@ class PurchaseConfig {
   
   // Debug and development
   static bool get isDebugMode => kDebugMode;
-  static const bool enableMockPurchases = false; // For testing
-  static const bool enablePurchaseBypass = false; // For development
   
-  // Mock purchase data for testing
+  // PRODUCTION READY: Disable mock purchases for production
+  static const bool enableMockPurchases = false;
+  static const bool enablePurchaseBypass = false;
+  
+  // Environment detection
+  static bool get isProductionBuild => !kDebugMode;
+  static bool get isDevelopmentBuild => kDebugMode;
+  
+  // Sandbox detection and configuration
+  static bool get isSandboxEnvironment {
+    if (isProductionBuild) {
+      return false; // Production builds are never sandbox
+    }
+    
+    // In development, we assume sandbox for testing
+    // This will be overridden by actual device state
+    return true;
+  }
+  
+  // Get product IDs based on environment
+  static List<String> getProductIdsForEnvironment() {
+    if (isSandboxEnvironment) {
+      // Sandbox environment - use the same product IDs
+      // Apple will automatically route these to sandbox
+      return getAllProductIds();
+    } else {
+      // Production environment
+      return getAllProductIds();
+    }
+  }
+  
+  // Mock purchase data for testing (only in development)
   static Map<String, dynamic> get mockPurchaseData {
     if (!isDebugMode || !enableMockPurchases) return {};
     
@@ -47,7 +77,7 @@ class PurchaseConfig {
     };
   }
   
-  // Mock receipt data for testing
+  // Mock receipt data for testing (only in development)
   static Map<String, dynamic> get mockReceiptData {
     if (!isDebugMode || !enableMockPurchases) return {};
     
@@ -117,6 +147,7 @@ class PurchaseConfig {
       'subscriptionGroup': 'bravoball_premium_subscriptions',
       'autoRenewable': true,
       'introductoryPricing': true,
+      'sandboxEnabled': true, // Enable sandbox for iOS
     },
     'android': {
       'subscriptionType': 'recurring',
@@ -140,6 +171,8 @@ class PurchaseConfig {
     'user_cancelled': 'Purchase was cancelled.',
     'purchase_cancelled': 'Purchase was cancelled.',
     'unknown_error': 'An unexpected error occurred. Please try again.',
+    'sandbox_required': 'Please sign in with a sandbox Apple ID for testing.',
+    'products_not_loaded': 'Products are still loading. Please try again in a moment.',
   };
   
   // Get user-friendly error message
@@ -181,10 +214,16 @@ class PurchaseConfig {
   static bool get shouldEnablePurchaseBypass => isDebugMode && enablePurchaseBypass;
   static bool get shouldEnableDebugLogging => isDebugMode;
   
+  // Sandbox-specific configuration
+  static bool get shouldUseSandboxProducts => isSandboxEnvironment;
+  static bool get shouldValidateSandboxReceipts => isSandboxEnvironment;
+  
   // Get configuration summary for debugging
   static Map<String, dynamic> get debugInfo {
     return {
       'isDebugMode': isDebugMode,
+      'isProductionBuild': isProductionBuild,
+      'isSandboxEnvironment': isSandboxEnvironment,
       'enableMockPurchases': enableMockPurchases,
       'enablePurchaseBypass': enablePurchaseBypass,
       'productIds': productIds,
@@ -202,6 +241,11 @@ class PurchaseConfig {
         'receiptEncryption': enableReceiptEncryption,
         'deviceValidation': enableDeviceValidation,
         'rateLimiting': enableRateLimiting,
+      },
+      'environmentSettings': {
+        'sandboxEnabled': shouldUseSandboxProducts,
+        'sandboxReceiptValidation': shouldValidateSandboxReceipts,
+        'platform': Platform.operatingSystem,
       },
     };
   }

@@ -59,6 +59,8 @@ class PurchaseService {
 
     if (kDebugMode) {
       print('🚀 Initializing PurchaseService...');
+      print('🔍 Environment: ${PurchaseConfig.isSandboxEnvironment ? 'Sandbox' : 'Production'}');
+      print('🔍 Build type: ${PurchaseConfig.isProductionBuild ? 'Production' : 'Development'}');
     }
 
     try {
@@ -82,6 +84,12 @@ class PurchaseService {
       
       // Check if in-app purchases are available
       _isAvailable = await _inAppPurchase.isAvailable();
+      
+      if (kDebugMode) {
+        print('🔍 In-app purchase available: $_isAvailable');
+        print('🔍 Platform: ${Platform.operatingSystem}');
+        print('🔍 Sandbox environment: ${PurchaseConfig.isSandboxEnvironment}');
+      }
       
       if (!_isAvailable) {
         if (kDebugMode) {
@@ -133,9 +141,18 @@ class PurchaseService {
     try {
       if (kDebugMode) {
         print('🛍️ Loading products from store...');
+        print('🔍 Using product IDs: ${PurchaseConfig.getProductIdsForEnvironment()}');
+        print('🔍 Sandbox mode: ${PurchaseConfig.isSandboxEnvironment}');
       }
 
-      final productIds = PurchaseConfig.getAllProductIds();
+      final productIds = PurchaseConfig.getProductIdsForEnvironment();
+      
+      if (productIds.isEmpty) {
+        if (kDebugMode) {
+          print('❌ No product IDs configured');
+        }
+        return;
+      }
       
       final ProductDetailsResponse response = 
           await _inAppPurchase.queryProductDetails(productIds.toSet());
@@ -143,12 +160,16 @@ class PurchaseService {
       if (response.notFoundIDs.isNotEmpty) {
         if (kDebugMode) {
           print('⚠️ Some products not found: ${response.notFoundIDs}');
+          print('🔍 This might be normal in sandbox if products are still loading');
+          print('🔍 Wait 15-30 minutes after creating products in App Store Connect');
         }
       }
 
       if (response.error != null) {
         if (kDebugMode) {
           print('❌ Error loading products: ${response.error}');
+          print('🔍 Error code: ${response.error!.code}');
+          print('🔍 Error message: ${response.error!.message}');
         }
         return;
       }
@@ -164,13 +185,21 @@ class PurchaseService {
 
       if (kDebugMode) {
         print('✅ Loaded ${_availableProducts.length} products');
-        for (final product in _availableProducts) {
-          print('   - ${product.id}: ${product.formattedPriceWithCurrency}');
+        if (_availableProducts.isNotEmpty) {
+          for (final product in _availableProducts) {
+            print('   - ${product.id}: ${product.formattedPriceWithCurrency}');
+          }
+        } else {
+          print('⚠️ No products loaded - this might indicate:');
+          print('   1. Products not yet available in App Store Connect');
+          print('   2. Sandbox environment not properly configured');
+          print('   3. Device not signed in with sandbox Apple ID');
         }
       }
     } catch (e) {
       if (kDebugMode) {
         print('❌ Error loading products: $e');
+        print('🔍 This might be a network or configuration issue');
       }
     }
   }
@@ -207,13 +236,21 @@ class PurchaseService {
 
     final product = getProduct(productId);
     if (product == null) {
+      // Check if this is a sandbox environment issue
+      if (PurchaseConfig.isSandboxEnvironment && _availableProducts.isEmpty) {
+        return PurchaseResult.failure(
+          errorMessage: PurchaseConfig.getUserFriendlyErrorMessage('sandbox_required'),
+        );
+      }
+      
       return PurchaseResult.failure(
-        errorMessage: 'Product not available',
+        errorMessage: PurchaseConfig.getUserFriendlyErrorMessage('product_not_available'),
       );
     }
 
     if (kDebugMode) {
       print('🛒 Starting purchase for: ${product.title} (${product.id})');
+      print('🔍 Sandbox environment: ${PurchaseConfig.isSandboxEnvironment}');
     }
 
     // Update state
@@ -227,7 +264,7 @@ class PurchaseService {
     // Check if real purchases are available
     if (!_isAvailable) {
       return PurchaseResult.failure(
-        errorMessage: 'Real purchases not available on this device',
+        errorMessage: PurchaseConfig.getUserFriendlyErrorMessage('billing_unavailable'),
       );
     }
 
@@ -260,6 +297,7 @@ class PurchaseService {
       // Purchase initiated successfully - wait for stream update
       if (kDebugMode) {
         print('✅ Purchase initiated successfully');
+        print('🔍 Waiting for purchase stream update...');
       }
 
       // Return a pending result - actual result will come through stream
@@ -270,6 +308,7 @@ class PurchaseService {
     } catch (e) {
       if (kDebugMode) {
         print('❌ Error starting purchase: $e');
+        print('🔍 This might be a sandbox configuration issue');
       }
       
       _updatePurchaseState(PurchaseState.failed);
@@ -574,9 +613,42 @@ class PurchaseService {
     return product?.price;
   }
 
-  /// Refresh products
+  /// Check sandbox status and provide debugging info
+  Future<Map<String, dynamic>> getSandboxStatus() async {
+    final status = <String, dynamic>{
+      'isSandboxEnvironment': PurchaseConfig.isSandboxEnvironment,
+      'isProductionBuild': PurchaseConfig.isProductionBuild,
+      'isDebugMode': PurchaseConfig.isDebugMode,
+      'productsLoaded': _availableProducts.length,
+      'productsAvailable': _availableProducts.map((p) => p.id).toList(),
+      'purchaseServiceAvailable': _isAvailable,
+      'purchaseServiceInitialized': _isInitialized,
+      'platform': Platform.operatingSystem,
+    };
+    
+    if (kDebugMode) {
+      print('🔍 Sandbox Status:');
+      for (final entry in status.entries) {
+        print('   ${entry.key}: ${entry.value}');
+      }
+    }
+    
+    return status;
+  }
+
+  /// Refresh products with better error handling
   Future<void> refreshProducts() async {
+    if (kDebugMode) {
+      print('🔄 Refreshing products...');
+      print('🔍 Current sandbox status: ${PurchaseConfig.isSandboxEnvironment}');
+    }
+    
     await _loadProducts();
+    
+    if (kDebugMode) {
+      print('🔄 Products refresh completed');
+      print('🔍 Available products: ${_availableProducts.length}');
+    }
   }
 
   // ===== MOCK PURCHASE METHODS FOR TESTING =====
