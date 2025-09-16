@@ -14,7 +14,7 @@ class AppConfig {
   /// 2: Computer (localhost)
   /// 3: Phone (Wi-Fi IP)
   /// 4: V2 Backend (App Store Review & Production)
-  static const int appDevCase = 1;
+  static const int appDevCase = 0;
 
   /// Debug mode toggle
   static const bool debug = true; // PRODUCTION - Set to false for testing and store submission
@@ -66,7 +66,7 @@ class AppConfig {
   static String get environmentName {
     switch (appDevCase) {
       case 0:
-      return 'Staging';
+        return 'Staging';
       case 1:
         return 'Legacy Production (Deprecated)';
       case 2:
