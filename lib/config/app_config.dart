@@ -9,11 +9,12 @@ class AppConfig {
 
   // MARK: - Environment Configuration
   /// App Development Cases (mirrors Swift appDevCase)
+  /// 0: Staging (Testing db for migration)
   /// 1: Legacy Production (DEPRECATED)
   /// 2: Computer (localhost)
   /// 3: Phone (Wi-Fi IP)
   /// 4: V2 Backend (App Store Review & Production)
-  static const int appDevCase = 3;
+  static const int appDevCase = 1;
 
   /// Debug mode toggle
   static const bool debug = true; // PRODUCTION - Set to false for testing and store submission
@@ -27,6 +28,9 @@ class AppConfig {
   static String get baseUrl {
     if (kDebugMode) {
       switch (appDevCase) {
+        case 0:
+          // Staging for migration testing
+          return 'https://bravoball-staging.onrender.com';
         case 1:
           // DEPRECATED: Production (simulated during debug)
           return 'https://bravoball-backend.onrender.com';
@@ -61,6 +65,8 @@ class AppConfig {
   /// Get current environment name
   static String get environmentName {
     switch (appDevCase) {
+      case 0:
+      return 'Staging';
       case 1:
         return 'Legacy Production (Deprecated)';
       case 2:
