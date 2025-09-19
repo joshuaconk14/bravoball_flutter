@@ -143,6 +143,8 @@ class ApiService {
 
       if (kDebugMode) {
         print('🔄 Refreshing access token...');
+        print('🔑 Refresh token being sent: ${userManager.refreshToken}');
+        print('📧 User email: ${userManager.email}');
       }
 
       // Make refresh request without authentication headers

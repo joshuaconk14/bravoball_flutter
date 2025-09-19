@@ -159,6 +159,7 @@ class UserManagerService extends ChangeNotifier {
     if (kDebugMode) {
       print('✅ UserManager: Updated user data for $_email');
       print('🔑 Access token: ${_accessToken.isEmpty ? 'empty' : '${_accessToken.substring(0, 20)}...'}');
+      print('🔄 Refresh token: ${_refreshToken.isEmpty ? 'empty' : '${_refreshToken.substring(0, 20)}...'}');
       print('🎯 New state - isLoggedIn: $_isLoggedIn, isGuestMode: $_isGuestMode, isAuthenticated: $isAuthenticated');
     }
   }
