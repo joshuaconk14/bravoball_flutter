@@ -4,6 +4,7 @@ import 'package:flutter/services.dart'; // ✅ ADDED: For SystemChrome orientati
 import 'package:provider/provider.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:rive/rive.dart';
+import 'package:purchases_flutter/purchases_flutter.dart';
 import 'views/onboarding_view.dart';
 import 'features/onboarding/onboarding_flow.dart';
 import 'features/auth/login_view.dart';
@@ -59,12 +60,17 @@ void main() async {
   await UserManagerService.instance.initialize();
   await AuthenticationService.shared.initialize();
   
+  // Initialize RevenueCat
+  final configuration = PurchasesConfiguration('appl_OIYtlnvDkuuhmFAAWJojwiAgBxi');
+  await Purchases.configure(configuration);
+  
   if (kDebugMode) {
     print('✅ All services initialized successfully');
+    print('✅ RevenueCat configured');
     // ✅ ADDED: Log Android debug info if on Android
     AndroidCompatibilityService.shared.logAndroidDebugInfo();
   }
-  
+
   runApp(const MyApp());
 }
 

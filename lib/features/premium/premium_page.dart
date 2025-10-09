@@ -1,11 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/foundation.dart';
 import '../../constants/app_theme.dart';
-import '../../config/premium_config.dart';
-import '../../models/premium_models.dart';
-import 'purchase_flow_widget.dart';
 import '../../services/purchase_service.dart';
-
+import 'package:purchases_flutter/purchases_flutter.dart';
 
 class PremiumPage extends StatefulWidget {
   const PremiumPage({Key? key}) : super(key: key);
@@ -15,16 +12,13 @@ class PremiumPage extends StatefulWidget {
 }
 
 class _PremiumPageState extends State<PremiumPage> {
-  SubscriptionPlanDetails? _selectedPlan;
   bool _isPremium = false;
   bool _isLoading = true;
+  bool _isPurchasing = false;
 
   @override
   void initState() {
     super.initState();
-    // Auto-select the popular plan (yearly) by default
-    _selectedPlan = PremiumConfig.popularPlan;
-    
     // Initialize purchase service and check premium status
     _initializeServices();
   }
@@ -68,39 +62,48 @@ class _PremiumPageState extends State<PremiumPage> {
     }
   }
 
-  void _showPurchaseFlow() {
-    if (_selectedPlan == null) return;
+  Future<void> _purchaseProduct(String productId, String planName) async {
+    if (_isPurchasing) return;
+
+    setState(() {
+      _isPurchasing = true;
+    });
 
     if (kDebugMode) {
-      print('🛒 Showing purchase flow for: ${_selectedPlan!.name}');
+      print('🛒 Starting purchase for: $productId');
     }
 
-    showDialog(
-      context: context,
-      barrierDismissible: false,
-      builder: (context) => Dialog(
-        backgroundColor: Colors.transparent,
-        child: PurchaseFlowWidget(
-          selectedPlan: _selectedPlan!,
-          onPurchaseSuccess: () {
-            if (kDebugMode) {
-              print('✅ Purchase successful - closing dialog');
-            }
-            Navigator.of(context).pop();
-            // Update user's premium status and show success message
-            _showSuccessMessage();
-            // Refresh premium status to show user is now premium
-            _checkPremiumStatus();
-          },
-          onPurchaseCancelled: () {
-            if (kDebugMode) {
-              print('🚫 Purchase cancelled - closing dialog');
-            }
-            Navigator.of(context).pop();
-          },
+    try {
+      final purchaseResult = await Purchases.purchaseProduct(productId);
+      
+      if (kDebugMode) {
+        print('✅ Purchase successful: ${purchaseResult.customerInfo.activeSubscriptions}');
+      }
+      
+      // Update premium status and show success message
+      await _checkPremiumStatus();
+      _showSuccessMessage();
+      
+    } catch (e) {
+      if (kDebugMode) {
+        print('❌ Purchase failed: $e');
+      }
+      
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            'Purchase failed: ${e.toString()}',
+            style: const TextStyle(fontSize: 16),
+          ),
+          backgroundColor: Colors.red,
+          duration: const Duration(seconds: 4),
         ),
-      ),
-    );
+      );
+    } finally {
+      setState(() {
+        _isPurchasing = false;
+      });
+    }
   }
 
   void _showSuccessMessage() {
@@ -361,8 +364,6 @@ class _PremiumPageState extends State<PremiumPage> {
   }
 
   Widget _buildSubscriptionPlans() {
-    final plans = PremiumConfig.subscriptionPlans;
-    
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -376,170 +377,64 @@ class _PremiumPageState extends State<PremiumPage> {
         ),
         const SizedBox(height: 16),
         
-        // Plans
-        ...plans.map((plan) => Padding(
-          padding: const EdgeInsets.symmetric(vertical: 8),
-          child: _buildPlanCard(plan),
-        )),
-      ],
-    );
-  }
-
-  Widget _buildPlanCard(SubscriptionPlanDetails plan) {
-    final isPopular = plan.isPopular;
-    final isSelected = _selectedPlan?.plan == plan.plan;
-    
-    return GestureDetector(
-      onTap: () {
-        if (kDebugMode) {
-          print('🎯 Plan selected: ${plan.name} (${plan.plan.name})');
-        }
-        setState(() {
-          _selectedPlan = plan;
-        });
-      },
-      child: Container(
-        width: double.infinity,
-        padding: const EdgeInsets.all(16),
-        decoration: BoxDecoration(
-          color: isSelected 
-              ? AppTheme.primaryYellow.withOpacity(0.2)
-              : Colors.grey.shade50,
-          border: Border.all(
-            color: isSelected 
-                ? AppTheme.primaryYellow 
-                : Colors.grey.shade300,
-            width: isSelected ? 3 : 1,
-          ),
-          borderRadius: BorderRadius.circular(12),
-        ),
-        child: Stack(
-          children: [
-            // Selection indicator
-            if (isSelected)
-              Positioned(
-                top: 8,
-                right: 8,
-                child: Container(
-                  width: 28,
-                  height: 28,
-                  decoration: BoxDecoration(
-                    color: AppTheme.primaryYellow,
-                    shape: BoxShape.circle,
-                    boxShadow: [
-                      BoxShadow(
-                        color: AppTheme.primaryYellow.withOpacity(0.3),
-                        blurRadius: 8,
-                        offset: const Offset(0, 2),
-                      ),
-                    ],
-                  ),
-                  child: const Icon(
-                    Icons.check,
-                    color: Colors.white,
-                    size: 18,
-                  ),
-                ),
+        // Monthly subscription button
+        SizedBox(
+          width: double.infinity,
+          height: 60,
+          child: ElevatedButton(
+            onPressed: _isPurchasing ? null : () async {
+              await _purchaseProduct('bravoball_monthly_premium', 'Monthly');
+            },
+            style: ElevatedButton.styleFrom(
+              backgroundColor: AppTheme.primaryYellow,
+              foregroundColor: Colors.white,
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(12),
               ),
-            
-            Column(
-              children: [
-                // Popular badge
-                if (isPopular) ...[
-                  Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
-                    decoration: BoxDecoration(
-                      color: isSelected 
-                          ? AppTheme.primaryYellow
-                          : Colors.grey.shade400,
-                      borderRadius: BorderRadius.circular(12),
-                    ),
-                    child: Text(
-                      'MOST POPULAR',
-                      style: TextStyle(
-                        color: Colors.white,
-                        fontSize: 12,
-                        fontWeight: FontWeight.bold,
-                      ),
-                    ),
-                  ),
-                  const SizedBox(height: 12),
-                ],
-                
-                // Plan name
-                Text(
-                  plan.name,
-                  style: TextStyle(
-                    fontSize: 18,
-                    fontWeight: FontWeight.bold,
-                    color: isSelected 
-                        ? AppTheme.primaryDark 
-                        : AppTheme.primaryGray,
-                  ),
-                ),
-                const SizedBox(height: 8),
-                
-                // Price
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  crossAxisAlignment: CrossAxisAlignment.end,
-                  children: [
-                    Text(
-                      plan.formattedPrice,
-                      style: TextStyle(
-                        fontSize: 32,
-                        fontWeight: FontWeight.bold,
-                        color: isSelected 
-                            ? AppTheme.primaryYellow
-                            : AppTheme.primaryDark,
-                      ),
-                    ),
-                    const SizedBox(width: 4),
-                    Text(
-                      plan.durationText,
-                      style: TextStyle(
-                        fontSize: 16,
-                        color: isSelected 
-                            ? AppTheme.primaryYellow
-                            : AppTheme.primaryGray,
-                      ),
-                    ),
-                  ],
-                ),
-                
-                // Savings for yearly plan
-                if (plan.savingsPercentage != null) ...[
-                  const SizedBox(height: 8),
-                  Text(
-                    'Save ${plan.savingsPercentage!.toStringAsFixed(0)}%',
-                    style: TextStyle(
-                      fontSize: 14,
-                      color: isSelected 
-                          ? AppTheme.primaryYellow
-                          : AppTheme.primaryGray,
-                      fontWeight: FontWeight.w600,
-                    ),
-                  ),
-                ],
-                
-                // Monthly equivalent for yearly
-                if (plan.plan == SubscriptionPlan.yearly) ...[
-                  const SizedBox(height: 4),
-                  Text(
-                    '${plan.formattedMonthlyPrice}/month',
-                    style: TextStyle(
-                      fontSize: 14,
-                      color: isSelected 
-                          ? AppTheme.primaryYellow
-                          : AppTheme.primaryGray,
-                    ),
-                  ),
-                ],
-              ],
+              elevation: 2,
             ),
-          ],
+            child: _isPurchasing
+                ? const CircularProgressIndicator(color: Colors.white)
+                : const Text(
+                    'Monthly Subscription',
+                    style: TextStyle(
+                      fontSize: 18,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+          ),
         ),
-      ),
+        
+        const SizedBox(height: 16),
+        
+        // Yearly subscription button
+        SizedBox(
+          width: double.infinity,
+          height: 60,
+          child: ElevatedButton(
+            onPressed: _isPurchasing ? null : () async {
+              await _purchaseProduct('bravoball_yearly_premium', 'Yearly');
+            },
+            style: ElevatedButton.styleFrom(
+              backgroundColor: AppTheme.primaryYellow,
+              foregroundColor: Colors.white,
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(12),
+              ),
+              elevation: 2,
+            ),
+            child: _isPurchasing
+                ? const CircularProgressIndicator(color: Colors.white)
+                : const Text(
+                    'Yearly Subscription',
+                    style: TextStyle(
+                      fontSize: 18,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+          ),
+        ),
+      ],
     );
   }
 
@@ -550,100 +445,9 @@ class _PremiumPageState extends State<PremiumPage> {
     }
     
     return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
+      crossAxisAlignment: CrossAxisAlignment.center,
       children: [
-        // Section title
-        Text(
-          'Ready to Upgrade?',
-          style: AppTheme.titleMedium.copyWith(
-            color: AppTheme.primaryDark,
-            fontWeight: FontWeight.bold,
-          ),
-        ),
-        const SizedBox(height: 16),
-        
-        // Selected plan info
-        if (_selectedPlan != null) ...[
-          Container(
-            width: double.infinity,
-            padding: const EdgeInsets.all(16),
-            decoration: BoxDecoration(
-              color: AppTheme.primaryYellow.withOpacity(0.1),
-              borderRadius: BorderRadius.circular(12),
-              border: Border.all(
-                color: AppTheme.primaryYellow,
-                width: 1,
-              ),
-            ),
-            child: Row(
-              children: [
-                Icon(
-                  Icons.check_circle,
-                  color: AppTheme.primaryYellow,
-                  size: 24,
-                ),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        'Selected Plan: ${_selectedPlan!.name}',
-                        style: const TextStyle(
-                          fontSize: 16,
-                          fontWeight: FontWeight.bold,
-                          color: AppTheme.primaryDark,
-                        ),
-                      ),
-                      Text(
-                        '${_selectedPlan!.formattedPrice} per ${_selectedPlan!.durationText}',
-                        style: const TextStyle(
-                          fontSize: 14,
-                          color: AppTheme.primaryYellow,
-                          fontWeight: FontWeight.w600,
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-              ],
-            ),
-          ),
-          const SizedBox(height: 16),
-        ],
-        
-        // Upgrade button
-        SizedBox(
-          width: double.infinity,
-          height: 56,
-          child: ElevatedButton(
-            onPressed: _selectedPlan != null 
-                ? () => _showPurchaseFlow()
-                : null,
-            style: ElevatedButton.styleFrom(
-              backgroundColor: _selectedPlan != null 
-                  ? AppTheme.primaryYellow 
-                  : AppTheme.primaryYellow.withOpacity(0.3),
-              foregroundColor: Colors.white,
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(12),
-              ),
-              elevation: 0,
-            ),
-            child: Text(
-              _selectedPlan != null 
-                  ? 'Continue with ${_selectedPlan!.name}'
-                  : 'Select a Plan to Continue',
-              style: const TextStyle(
-                fontSize: 18,
-                fontWeight: FontWeight.bold,
-              ),
-            ),
-          ),
-        ),
-        
         // Restore purchases button
-        const SizedBox(height: 16),
         TextButton(
           onPressed: () => _restorePurchases(),
           child: Text(
@@ -656,8 +460,9 @@ class _PremiumPageState extends State<PremiumPage> {
           ),
         ),
         
+        const SizedBox(height: 8),
+        
         // Trial info
-        const SizedBox(height: 16),
         const Text(
           '7-day free trial, cancel anytime',
           style: TextStyle(
