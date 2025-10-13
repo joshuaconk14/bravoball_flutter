@@ -6,6 +6,7 @@ import '../models/editable_drill_model.dart';
 import 'api_service.dart';
 import 'user_manager_service.dart';
 import 'app_state_service.dart';
+import 'package:purchases_flutter/purchases_flutter.dart';
 
 class OnboardingService {
   static OnboardingService? _instance;
@@ -52,6 +53,25 @@ class OnboardingService {
             accessToken: accessToken,
             refreshToken: refreshToken,
           );
+          
+          // ✅ CRITICAL: Identify new user with RevenueCat to prevent subscription sharing
+          try {
+            if (kDebugMode) {
+              print('🔍 OnboardingService: Identifying new user with RevenueCat...');
+            }
+            
+            // Tell RevenueCat who this new user is - this ensures they start fresh
+            await Purchases.logIn(email);
+            
+            if (kDebugMode) {
+              print('✅ OnboardingService: New user identified with RevenueCat as: $email');
+            }
+          } catch (revenueCatError) {
+            if (kDebugMode) {
+              print('⚠️ OnboardingService: Failed to identify new user with RevenueCat: $revenueCatError');
+            }
+            // Don't fail registration if RevenueCat identification fails
+          }
           
           if (kDebugMode) {
             print('✅ OnboardingService: Registration successful, tokens saved.');

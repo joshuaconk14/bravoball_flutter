@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/foundation.dart';
 import '../../constants/app_theme.dart';
-import '../../services/purchase_service.dart';
 import 'package:purchases_flutter/purchases_flutter.dart';
+import '../../utils/premium_utils.dart';
 
 class PremiumPage extends StatefulWidget {
   const PremiumPage({Key? key}) : super(key: key);
@@ -25,9 +25,6 @@ class _PremiumPageState extends State<PremiumPage> {
 
   Future<void> _initializeServices() async {
     try {
-      // Initialize purchase service
-      await PurchaseService.instance.initialize();
-      
       // Check current premium status
       await _checkPremiumStatus();
       
@@ -47,7 +44,8 @@ class _PremiumPageState extends State<PremiumPage> {
 
   Future<void> _checkPremiumStatus() async {
     try {
-      final isPremium = await PurchaseService.instance.hasPremiumAccess();
+      // Use the simplified PremiumUtils method
+      final isPremium = await PremiumUtils.hasPremiumAccess();
       setState(() {
         _isPremium = isPremium;
       });
@@ -59,6 +57,10 @@ class _PremiumPageState extends State<PremiumPage> {
       if (kDebugMode) {
         print('❌ Error checking premium status: $e');
       }
+      // Default to no premium if there's an error
+      setState(() {
+        _isPremium = false;
+      });
     }
   }
 
@@ -140,35 +142,30 @@ class _PremiumPageState extends State<PremiumPage> {
     }
 
     try {
-      final result = await PurchaseService.instance.restorePurchases();
+      final customerInfo = await Purchases.restorePurchases();
       
-      if (result.success) {
-        if (result.hasRestoredPurchases) {
-          _showSuccessMessage();
-          if (kDebugMode) {
-            print('✅ Restored ${result.restoredPurchaseCount} purchases');
-          }
-        } else {
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(
-              content: Text(
-                'No previous purchases found to restore.',
-                style: TextStyle(fontSize: 16),
-              ),
-              backgroundColor: Colors.orange,
-              duration: Duration(seconds: 3),
-            ),
-          );
-        }
+      if (kDebugMode) {
+        print('✅ Purchases restored');
+        print('🔒 Active entitlements: ${customerInfo.entitlements.active.keys}');
+      }
+      
+      // Check if user now has premium access using simplified method
+      final isPremium = await PremiumUtils.hasPremiumAccess();
+      
+      if (isPremium) {
+        _showSuccessMessage();
+        setState(() {
+          _isPremium = true;
+        });
       } else {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
+          const SnackBar(
             content: Text(
-              'Failed to restore purchases: ${result.errorMessage}',
-              style: const TextStyle(fontSize: 16),
+              'No previous purchases found to restore.',
+              style: TextStyle(fontSize: 16),
             ),
-            backgroundColor: Colors.red,
-            duration: const Duration(seconds: 4),
+            backgroundColor: Colors.orange,
+            duration: Duration(seconds: 3),
           ),
         );
       }
