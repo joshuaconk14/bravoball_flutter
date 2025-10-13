@@ -5,7 +5,6 @@ import 'package:url_launcher/url_launcher.dart';
 import 'package:provider/provider.dart';
 import '../../constants/app_theme.dart';
 import '../../config/app_config.dart';
-import '../../config/premium_config.dart'; // ✅ ADDED: Import PremiumConfig
 import '../../services/user_manager_service.dart';
 import '../debug/debug_settings_view.dart';
 import '../onboarding/onboarding_flow.dart';
@@ -13,7 +12,7 @@ import 'privacy_policy_view.dart';
 import 'terms_of_service_view.dart';
 import 'account_settings_view.dart'; // ✅ ADDED: Import AccountSettingsView
 import '../../utils/haptic_utils.dart';
-import '../../services/premium_service.dart'; // ✅ ADDED: Import PremiumService
+import '../../utils/premium_utils.dart'; // ✅ ADDED: Import PremiumUtils
 import '../../features/premium/premium_page.dart'; // ✅ ADDED: Import premium page
 
 class ProfileView extends StatefulWidget {
@@ -69,7 +68,7 @@ class _ProfileViewState extends State<ProfileView> {
                       // ✅ ADDED: Premium upgrade button (only show for non-premium users)
                       if (!context.read<UserManagerService>().isGuestMode) ...[
                         FutureBuilder<bool>(
-                          future: PremiumService.instance.isPremium(),
+                          future: PremiumUtils.hasPremiumAccess(),
                           builder: (context, snapshot) {
                             if (snapshot.hasData && !snapshot.data!) {
                               // User is not premium, show upgrade button
@@ -641,7 +640,7 @@ class _ProfileViewState extends State<ProfileView> {
   // ✅ ADDED: Handle premium upgrade
   void _handlePremiumUpgrade() async {
     // Check current premium status
-    final isPremium = await PremiumService.instance.isPremium();
+    final isPremium = await PremiumUtils.hasPremiumAccess();
     
     if (isPremium) {
       // User is already premium
@@ -710,11 +709,8 @@ class _ProfileViewState extends State<ProfileView> {
 
   // ✅ ADDED: Show premium debug info
   void _showPremiumDebugInfo() async {
-    final premiumService = PremiumService.instance;
-    final isPremium = await premiumService.isPremium();
-    final usage = await premiumService.getFreeFeatureUsage();
-    final canCreateDrill = await premiumService.canCreateCustomDrill();
-    final canDoSession = await premiumService.canDoSessionToday();
+    final isPremium = await PremiumUtils.hasPremiumAccess();
+    final entitlements = await PremiumUtils.getActiveEntitlements();
     
     if (!mounted) return;
     
@@ -738,20 +734,7 @@ class _ProfileViewState extends State<ProfileView> {
               ),
               const SizedBox(height: 8),
               Text(
-                'Custom Drills: ${usage.customDrillsUsed}/${PremiumConfig.freeCustomDrillsPerMonth}',
-                style: const TextStyle(fontFamily: 'Courier', fontSize: 12),
-              ),
-              Text(
-                'Sessions Today: ${usage.sessionsUsed}/${PremiumConfig.freeSessionsPerDay}',
-                style: const TextStyle(fontFamily: 'Courier', fontSize: 12),
-              ),
-              const SizedBox(height: 8),
-              Text(
-                'Can Create Drill: $canCreateDrill',
-                style: const TextStyle(fontFamily: 'Courier', fontSize: 12),
-              ),
-              Text(
-                'Can Do Session: $canDoSession',
+                'Active Entitlements: ${entitlements.join(", ")}',
                 style: const TextStyle(fontFamily: 'Courier', fontSize: 12),
               ),
             ],
@@ -768,7 +751,6 @@ class _ProfileViewState extends State<ProfileView> {
           TextButton(
             onPressed: () async {
               HapticUtils.mediumImpact(); // Medium haptic for refresh
-              await premiumService.forceRefresh();
               if (mounted) {
                 Navigator.pop(context);
                 _showPremiumDebugInfo(); // Show updated info

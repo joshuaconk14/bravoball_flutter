@@ -10,10 +10,9 @@ import '../features/create_drill/create_drill_sheet.dart';
 import '../constants/app_theme.dart';
 import '../utils/haptic_utils.dart';
 import '../services/app_state_service.dart'; // ✅ ADDED: Import for loading state checking
-import '../services/premium_service.dart'; // ✅ ADDED: Import premium service
+import '../utils/premium_utils.dart'; // ✅ ADDED: Import premium utils
 import '../widgets/guest_account_creation_dialog.dart'; // ✅ ADDED: Import reusable dialog
 import '../features/premium/premium_page.dart'; // ✅ ADDED: Import premium page
-import '../models/premium_models.dart'; // ✅ ADDED: Import premium models for PremiumFeature enum
 import 'package:provider/provider.dart'; // ✅ ADDED: Import for Provider
 
 class MainTabView extends StatefulWidget {
@@ -66,13 +65,12 @@ class _MainTabViewState extends State<MainTabView> {
       return;
     }
     
-    // ✅ ADDED: Check custom drill creation limit
-    final premiumService = PremiumService.instance;
-    final canCreate = await premiumService.canAccessFeature(PremiumFeature.unlimitedCustomDrills);
+    // ✅ ADDED: Check premium access for unlimited custom drills
+    final hasPremium = await PremiumUtils.hasPremiumAccess();
     
-    if (!canCreate) {
+    if (!hasPremium) {
       if (kDebugMode) {
-        print('🔒 Custom drill creation limit reached - showing upgrade prompt');
+        print('🔒 Premium required for custom drill creation');
       }
       _showCustomDrillLimitUpgradePrompt();
       return;

@@ -2,7 +2,7 @@ import 'package:flutter/foundation.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../config/app_config.dart';
 import 'dart:async';
-import 'premium_service.dart';
+import 'package:purchases_flutter/purchases_flutter.dart';
 
 /// User Manager Service
 /// Mirrors Swift UserManager for managing user state and authentication
@@ -388,18 +388,23 @@ class UserManagerService extends ChangeNotifier {
     // Don't persist guest mode to SharedPreferences
     // Guest mode is always temporary and memory-only
     
-    // ✅ CRITICAL: Clear premium cache when entering guest mode
+    // ✅ CRITICAL: Reset RevenueCat user when entering guest mode
     try {
-      final premiumService = PremiumService.instance;
-      premiumService.clearCache();
       if (kDebugMode) {
-        print('✅ UserManagerService: Premium cache cleared for guest mode');
+        print('🔍 UserManagerService: Resetting RevenueCat user for guest mode...');
       }
-    } catch (premiumError) {
+      
+      // Reset RevenueCat to anonymous user - this prevents subscription sharing with guest users
+      await Purchases.logOut();
+      
       if (kDebugMode) {
-        print('⚠️ UserManagerService: Warning - could not clear premium cache: $premiumError');
+        print('✅ UserManagerService: RevenueCat user reset for guest mode');
       }
-      // Don't fail guest mode entry if premium cache clearing fails
+    } catch (revenueCatError) {
+      if (kDebugMode) {
+        print('⚠️ UserManagerService: Failed to reset RevenueCat user for guest mode: $revenueCatError');
+      }
+      // Don't fail guest mode entry if RevenueCat reset fails
     }
     
     // ✅ Validate state after entering guest mode

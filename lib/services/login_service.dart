@@ -8,7 +8,7 @@ import 'authentication_service.dart';
 import 'loading_state_service.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'app_state_service.dart';
-import 'premium_service.dart';
+import 'package:purchases_flutter/purchases_flutter.dart';
 
 /// Login Service
 /// Mirrors Swift LoginService for handling authentication API calls
@@ -100,28 +100,24 @@ class LoginService {
           refreshToken: loginResponse.refreshToken,
         );
 
-        // ✅ CRITICAL: Check and update premium status from backend
-        _loadingService.updateProgress(0.92, message: 'Checking premium status...');
+        // ✅ CRITICAL: Identify user with RevenueCat
+        _loadingService.updateProgress(0.92, message: 'Setting up premium access...');
         try {
           if (kDebugMode) {
-            print('🔍 LoginService: Starting premium status refresh...');
+            print('🔍 LoginService: Identifying user with RevenueCat...');
           }
           
-          final premiumService = PremiumService.instance;
-          await premiumService.forceRefresh(); // Force backend check for fresh user
+          // Tell RevenueCat who this user is - this ensures subscriptions are tied to this specific user
+          await Purchases.logIn(loginResponse.email);
           
-          // Verify the refresh worked
-          final newStatus = await premiumService.getPremiumStatus();
           if (kDebugMode) {
-            print('✅ LoginService: Premium status refreshed from backend');
-            print('   New premium status: ${newStatus.name}');
+            print('✅ LoginService: User identified with RevenueCat as: ${loginResponse.email}');
           }
-        } catch (premiumError) {
+        } catch (revenueCatError) {
           if (kDebugMode) {
-            print('❌ LoginService: ERROR - premium status refresh failed: $premiumError');
-            print('   This will cause user to have incorrect premium status!');
+            print('⚠️ LoginService: Failed to identify user with RevenueCat: $revenueCatError');
           }
-          // Don't fail login if premium status refresh fails, but log the error
+          // Don't fail login if RevenueCat identification fails, but log the error
         }
 
         // ✅ CRITICAL FIX: Handle authentication state transition 
@@ -283,18 +279,23 @@ class LoginService {
       // Clear any cached auth state
       await AuthenticationService.shared.clearInvalidTokens();
       
-      // ✅ CRITICAL: Clear premium status cache to prevent cross-user contamination
+      // ✅ CRITICAL: Reset RevenueCat user to prevent subscription sharing
       try {
-        final premiumService = PremiumService.instance;
-        await premiumService.clearCache();
         if (kDebugMode) {
-          print('✅ LoginService: Premium cache cleared successfully');
+          print('🔍 LoginService: Resetting RevenueCat user on logout...');
         }
-      } catch (premiumError) {
+        
+        // Reset RevenueCat to anonymous user - this prevents subscription sharing
+        await Purchases.logOut();
+        
         if (kDebugMode) {
-          print('⚠️ LoginService: Warning - could not clear premium cache: $premiumError');
+          print('✅ LoginService: RevenueCat user reset successfully');
         }
-        // Don't fail logout if premium cache clearing fails
+      } catch (revenueCatError) {
+        if (kDebugMode) {
+          print('⚠️ LoginService: Failed to reset RevenueCat user: $revenueCatError');
+        }
+        // Don't fail logout if RevenueCat reset fails
       }
       
       if (kDebugMode) {
@@ -353,19 +354,7 @@ class LoginService {
         print('  ✓ Cleared authentication data');
       }
 
-      // ✅ CRITICAL: Clear premium status cache to prevent cross-user contamination
-      try {
-        final premiumService = PremiumService.instance;
-        await premiumService.clearCache();
-        if (kDebugMode) {
-          print('  ✓ Cleared premium cache data');
-        }
-      } catch (premiumError) {
-        if (kDebugMode) {
-          print('  ⚠️ Warning - could not clear premium cache: $premiumError');
-        }
-        // Don't fail account deletion if premium cache clearing fails
-      }
+      // Premium status is now handled by RevenueCat automatically
 
       // Clear shared preferences
       final prefs = await SharedPreferences.getInstance();

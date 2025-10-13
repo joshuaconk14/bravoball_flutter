@@ -17,7 +17,7 @@ import '../services/preferences_sync_service.dart';
 import '../services/loading_state_service.dart';
 import './api_service.dart';
 import './custom_drill_service.dart';
-import './premium_service.dart';
+import 'package:purchases_flutter/purchases_flutter.dart';
 
 // ===== ENUMS FOR STATE MANAGEMENT =====
 // Session lifecycle states - tracks progress through a training session
@@ -1149,52 +1149,57 @@ class AppStateService extends ChangeNotifier {
   }
 
   /// Check if user can start a new session today
-  /// Returns true if user has sessions remaining or is premium
+  /// Free users: 1 session per day
+  /// Premium users: Unlimited sessions
   Future<bool> canStartNewSession() async {
     try {
-      // Check with backend if user can start session
-      // Backend now checks database directly for completedSession creation dates
-      final response = await _apiService.post(
-        '/api/premium/check-feature',
-        body: {'feature': 'unlimitedSessions'},
-        requiresAuth: true,
-      );
+      if (kDebugMode) {
+        print('🔍 Checking if user can start new session...');
+        print('   Sessions completed today: $sessionsCompletedToday');
+      }
       
-      if (response.isSuccess && response.data != null) {
-        // Backend response structure: {success: true, data: {canAccess: true, ...}}
-        final responseData = response.data!['data'] as Map<String, dynamic>?;
-        
-        if (responseData != null) {
-          final canAccess = responseData['canAccess'] as bool? ?? false;
-          final remainingUses = responseData['remainingUses'] as int?;
-          final limit = responseData['limit'] as String?;
-          
-          if (kDebugMode) {
-            print('🔒 Session access check: $canAccess');
-            print('   Remaining uses: $remainingUses');
-            print('   Limit: $limit');
-            print('   Backend response: ${response.data}');
-          }
-          
-          return canAccess;
-        } else {
-          if (kDebugMode) {
-            print('⚠️ Response data structure invalid: ${response.data}');
-          }
-          // On invalid response structure, allow session to proceed (fail-safe)
-          return true;
-        }
-      } else {
+      // If user hasn't completed any sessions today, they can start one
+      if (sessionsCompletedToday == 0) {
         if (kDebugMode) {
-          print('⚠️ Session access check failed: ${response.error}');
-          print('   Response: ${response.data}');
+          print('✅ User can start session - no sessions completed today');
         }
-        // On error, allow session to proceed (fail-safe)
         return true;
       }
+      
+      // If user has already completed a session today, check premium status
+      if (kDebugMode) {
+        print('🔍 User has completed $sessionsCompletedToday session(s) today');
+        print('🔍 Checking premium status...');
+      }
+      
+      // Import premium utils dynamically to avoid circular dependencies
+      // Check if user has premium access via RevenueCat
+      try {
+        final customerInfo = await Purchases.getCustomerInfo();
+        final hasPremium = customerInfo.entitlements.active.isNotEmpty;
+        
+        if (kDebugMode) {
+          if (hasPremium) {
+            print('✅ Premium user - unlimited sessions allowed');
+          } else {
+            print('❌ Free user - only 1 session per day allowed');
+          }
+        }
+        
+        return hasPremium;
+      } catch (revenueCatError) {
+        if (kDebugMode) {
+          print('⚠️ Error checking RevenueCat status: $revenueCatError');
+          print('   Defaulting to free tier (1 session per day)');
+        }
+        // On error, default to free tier (1 session per day)
+        return false;
+      }
+      
     } catch (e) {
       if (kDebugMode) {
-        print('❌ Error checking session access: $e');
+        print('❌ Error in canStartNewSession: $e');
+        print('   Allowing session to proceed (fail-safe)');
       }
       // On error, allow session to proceed (fail-safe)
       return true;
@@ -2338,15 +2343,7 @@ class AppStateService extends ChangeNotifier {
     
     _syncCoordinator.cancelAll();
     
-    // ✅ CRITICAL: Clear premium status cache to prevent cross-user contamination
-    try {
-      final premiumService = PremiumService.instance;
-      premiumService.clearCache();
-      if (kDebugMode) print('✅ Premium cache cleared');
-    } catch (premiumError) {
-      if (kDebugMode) print('⚠️ Warning - could not clear premium cache: $premiumError');
-      // Don't fail user data clearing if premium cache clearing fails
-    }
+    // Premium status is now handled by RevenueCat automatically
     
     if (kDebugMode) print('✅ User data cleared');
   }

@@ -4,6 +4,7 @@ import 'package:flutter/services.dart'; // ✅ ADDED: For SystemChrome orientati
 import 'package:provider/provider.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:rive/rive.dart';
+import 'package:purchases_flutter/purchases_flutter.dart';
 import 'views/onboarding_view.dart';
 import 'features/onboarding/onboarding_flow.dart';
 import 'features/auth/login_view.dart';
@@ -15,7 +16,6 @@ import 'services/user_manager_service.dart';
 import 'services/android_compatibility_service.dart'; // ✅ ADDED: Import Android compatibility service
 import 'services/loading_state_service.dart';
 import 'services/ad_service.dart'; // ✅ ADDED: Import AdService
-import 'services/premium_service.dart'; // ✅ ADDED: Import PremiumService
 import 'constants/app_theme.dart';
 import 'config/app_config.dart';
 import 'widgets/bravo_loading_indicator.dart';
@@ -59,12 +59,38 @@ void main() async {
   await UserManagerService.instance.initialize();
   await AuthenticationService.shared.initialize();
   
+  // Initialize RevenueCat
+  final configuration = PurchasesConfiguration('appl_OIYtlnvDkuuhmFAAWJojwiAgBxi');
+  await Purchases.configure(configuration);
+  
+  // ✅ CRITICAL: Identify returning users with RevenueCat
+  final userManager = UserManagerService.instance;
+  if (userManager.isLoggedIn && userManager.email.isNotEmpty) {
+    try {
+      if (kDebugMode) {
+        print('🔍 Main: Identifying returning user with RevenueCat...');
+      }
+      
+      // Tell RevenueCat who this returning user is
+      await Purchases.logIn(userManager.email);
+      
+      if (kDebugMode) {
+        print('✅ Main: Returning user identified with RevenueCat as: ${userManager.email}');
+      }
+    } catch (revenueCatError) {
+      if (kDebugMode) {
+        print('⚠️ Main: Failed to identify returning user with RevenueCat: $revenueCatError');
+      }
+    }
+  }
+  
   if (kDebugMode) {
     print('✅ All services initialized successfully');
+    print('✅ RevenueCat configured');
     // ✅ ADDED: Log Android debug info if on Android
     AndroidCompatibilityService.shared.logAndroidDebugInfo();
   }
-  
+
   runApp(const MyApp());
 }
 
@@ -249,7 +275,6 @@ class _AuthenticatedAppState extends State<AuthenticatedApp> with WidgetsBinding
     
     // ✅ ADDED: Initialize premium service
     WidgetsBinding.instance.addPostFrameCallback((_) async {
-      await PremiumService.instance.initialize();
       await AdService.instance.showAdOnAppOpenIfAppropriate();
     });
   }
@@ -304,19 +329,7 @@ class _AuthenticatedAppState extends State<AuthenticatedApp> with WidgetsBinding
         print('📱 Loading backend data for user: ${userManager.email}');
       }
       
-      // ✅ CRITICAL: Refresh premium status from backend for already logged-in users
-      try {
-        final premiumService = PremiumService.instance;
-        await premiumService.forceRefresh();
-        if (kDebugMode) {
-          print('✅ Premium status refreshed from backend on app startup');
-        }
-      } catch (premiumError) {
-        if (kDebugMode) {
-          print('⚠️ Warning - could not refresh premium status on startup: $premiumError');
-        }
-        // Don't fail app startup if premium status refresh fails
-      }
+      // Premium status is now handled by RevenueCat automatically
       
       appState.loadBackendData().then((_) {
         if (mounted) {
