@@ -1,8 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:rive/rive.dart';
+import 'package:flutter/painting.dart' as painting;
 import '../../constants/app_theme.dart';
 import '../../widgets/bravo_button.dart';
 import '../../utils/haptic_utils.dart';
+import '../premium/premium_page.dart';
 
 class StorePage extends StatefulWidget {
   const StorePage({Key? key}) : super(key: key);
@@ -112,36 +114,102 @@ class _StorePageState extends State<StorePage> {
     );
   }
 
-  // Header with title and description
+  // Header with premium banner
   Widget _buildHeader() {
     return Container(
-      padding: const EdgeInsets.all(24),
-      child: Column(
-        children: [
-          // Fun title with emoji
-          Text(
-            '🎁 Bravo Store',
-            style: TextStyle(
-              fontFamily: AppTheme.fontPottaOne,
-              fontSize: 28,
-              color: AppTheme.primaryYellow,
-              fontWeight: FontWeight.w400,
-            ),
-          ),
-          
-          const SizedBox(height: 8),
-          
-          Text(
-            'Keep your streak alive with these powerful tools!',
-            style: TextStyle(
-              fontFamily: AppTheme.fontPoppins,
-              fontSize: 16,
-              color: AppTheme.primaryGray,
-              fontWeight: FontWeight.w500,
-            ),
-            textAlign: TextAlign.center,
+      margin: const EdgeInsets.all(20),
+      decoration: BoxDecoration(
+        gradient: painting.LinearGradient(
+          colors: [
+            Color(0xFF9C27B0), // Purple
+            Color(0xFF2196F3), // Blue
+          ],
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+        ),
+        borderRadius: BorderRadius.circular(20),
+        boxShadow: [
+          BoxShadow(
+            color: Color(0xFF9C27B0).withOpacity(0.3),
+            blurRadius: 12,
+            offset: const Offset(0, 4),
           ),
         ],
+      ),
+      child: Material(
+        color: Colors.transparent,
+        child: InkWell(
+          onTap: () {
+            HapticUtils.heavyImpact();
+            Navigator.of(context).push(
+              MaterialPageRoute(
+                builder: (_) => const PremiumPage(),
+              ),
+            );
+          },
+          borderRadius: BorderRadius.circular(20),
+          child: Padding(
+            padding: const EdgeInsets.all(24),
+            child: Column(
+              children: [
+                // Crown icon
+                Icon(
+                  Icons.workspace_premium,
+                  size: 48,
+                  color: AppTheme.white,
+                ),
+                
+                const SizedBox(height: 12),
+                
+                // Premium title
+                Text(
+                  'Unlock Premium',
+                  style: TextStyle(
+                    fontFamily: AppTheme.fontPottaOne,
+                    fontSize: 28,
+                    color: AppTheme.white,
+                    fontWeight: FontWeight.w400,
+                  ),
+                  textAlign: TextAlign.center,
+                ),
+                
+                const SizedBox(height: 8),
+                
+                // Description
+                Text(
+                  'Get unlimited sessions, remove ads, and unlock all features!',
+                  style: TextStyle(
+                    fontFamily: AppTheme.fontPoppins,
+                    fontSize: 16,
+                    color: AppTheme.white.withOpacity(0.95),
+                    fontWeight: FontWeight.w500,
+                  ),
+                  textAlign: TextAlign.center,
+                ),
+                
+                const SizedBox(height: 16),
+                
+                // Get Premium button
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 32, vertical: 12),
+                  decoration: BoxDecoration(
+                    color: AppTheme.white,
+                    borderRadius: BorderRadius.circular(25),
+                  ),
+                  child: Text(
+                    'Get Premium',
+                    style: TextStyle(
+                      fontFamily: AppTheme.fontPoppins,
+                      fontSize: 16,
+                      color: Color(0xFF9C27B0),
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
       ),
     );
   }
@@ -306,6 +374,16 @@ class _StorePageState extends State<StorePage> {
         
         const SizedBox(height: 16),
         
+        // Watch Ad for Treats Button
+        _buildWatchAdButton(
+          onTap: () {
+            HapticUtils.mediumImpact();
+            _showPurchaseDialog('Watch Ad');
+          },
+        ),
+        
+        const SizedBox(height: 16),
+        
         // 500 Treats Package
         _buildTreatPackage(
           amount: '500',
@@ -341,6 +419,102 @@ class _StorePageState extends State<StorePage> {
           },
         ),
       ],
+    );
+  }
+
+  // Watch ad button
+  Widget _buildWatchAdButton({
+    required VoidCallback onTap,
+  }) {
+    return Container(
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(12),
+        boxShadow: [
+          BoxShadow(
+            color: AppTheme.black.withOpacity(0.1),
+            blurRadius: 8,
+            offset: const Offset(0, 2),
+          ),
+        ],
+      ),
+      child: Material(
+        color: Colors.transparent,
+        child: InkWell(
+          onTap: onTap,
+          borderRadius: BorderRadius.circular(12),
+          child: Padding(
+            padding: const EdgeInsets.all(16),
+            child: Row(
+              children: [
+                // Video play icon
+                Container(
+                  width: 40,
+                  height: 40,
+                  decoration: BoxDecoration(
+                    color: AppTheme.primaryYellow,
+                    shape: BoxShape.circle,
+                  ),
+                  child: Icon(
+                    Icons.play_arrow,
+                    color: AppTheme.white,
+                    size: 24,
+                  ),
+                ),
+                
+                const SizedBox(width: 12),
+                
+                // Text
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        '15 Treats',
+                        style: TextStyle(
+                          fontFamily: AppTheme.fontPoppins,
+                          fontSize: 16,
+                          color: AppTheme.black,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                      const SizedBox(height: 2),
+                      Text(
+                        'Watch an ad',
+                        style: TextStyle(
+                          fontFamily: AppTheme.fontPoppins,
+                          fontSize: 12,
+                          color: AppTheme.primaryGray,
+                          fontWeight: FontWeight.w500,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                
+                // FREE badge
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                  decoration: BoxDecoration(
+                    color: AppTheme.primaryYellow,
+                    borderRadius: BorderRadius.circular(20),
+                  ),
+                  child: Text(
+                    'FREE',
+                    style: TextStyle(
+                      fontFamily: AppTheme.fontPoppins,
+                      fontSize: 14,
+                      color: AppTheme.white,
+                      fontWeight: FontWeight.bold,
+                      letterSpacing: 0.5,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
     );
   }
 
