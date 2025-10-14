@@ -21,6 +21,7 @@ import '../mental_training/mental_training_setup_view.dart'; // Added for Mental
 import '../../widgets/guest_account_creation_dialog.dart'; // ✅ ADDED: Import reusable dialog
 import '../../features/premium/premium_page.dart'; // ✅ ADDED: Import premium page
 import '../../services/ad_service.dart'; // Added for AdService
+import '../store/store_page.dart'; // ✅ ADDED: Import store page
 
 class SessionGeneratorHomeFieldView extends StatefulWidget {
   const SessionGeneratorHomeFieldView({Key? key}) : super(key: key);
@@ -140,6 +141,39 @@ class _SessionGeneratorHomeFieldViewState extends State<SessionGeneratorHomeFiel
                 ),
               ),
               
+              const SizedBox(width: 16), // Spacing between profile and streak
+              
+              // Streak display (moved to left)
+              Consumer<AppStateService>(
+                builder: (context, appState, child) {
+                  return Row(
+                    children: [
+                      Icon(Icons.local_fire_department, color: AppTheme.secondaryOrange, size: 24),
+                      const SizedBox(width: 4),
+                      // Show loading indicator while initial data is being fetched
+                      appState.isInitialLoad 
+                        ? SizedBox(
+                            width: 16,
+                            height: 16,
+                            child: CircularProgressIndicator(
+                              strokeWidth: 2,
+                              valueColor: AlwaysStoppedAnimation<Color>(AppTheme.secondaryOrange),
+                            ),
+                          )
+                        : Text(
+                            '${appState.currentStreak}', // Use actual streak from AppStateService
+                            style: TextStyle(
+                              fontFamily: AppTheme.fontPoppins,
+                              fontSize: 20,
+                              color: AppTheme.secondaryOrange,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                    ],
+                  );
+                },
+              ),
+              
               const Spacer(),
               
               Text(
@@ -154,44 +188,39 @@ class _SessionGeneratorHomeFieldViewState extends State<SessionGeneratorHomeFiel
               
               const Spacer(),
               
+              // Treat indicator (diamond icon) - brown color
+              Row(
+                children: [
+                  Icon(Icons.diamond, color: Colors.brown, size: 24),
+                  const SizedBox(width: 4),
+                  Text(
+                    '0', // Placeholder treat count
+                    style: TextStyle(
+                      fontFamily: AppTheme.fontPoppins,
+                      fontSize: 20,
+                      color: Colors.brown,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                ],
+              ),
+              
+              const SizedBox(width: 20), // More spacing between treat and store button
+              
+              // Store button (blue icon without circle)
               GestureDetector(
                 onTap: () {
-                  HapticUtils.heavyImpact(); // Heavy haptic for major navigation  
-                  Navigator.of(context).pushAndRemoveUntil(
+                  HapticUtils.heavyImpact(); // Heavy haptic for major navigation
+                  Navigator.of(context).push(
                     MaterialPageRoute(
-                      builder: (_) => const MainTabView(initialIndex: 1),
+                      builder: (_) => const StorePage(),
                     ),
-                    (route) => false,
                   );
                 },
-                child: Consumer<AppStateService>(
-                  builder: (context, appState, child) {
-                    return Row(
-                      children: [
-                        Icon(Icons.local_fire_department, color: AppTheme.secondaryOrange, size: 24),
-                        const SizedBox(width: 4),
-                        // Show loading indicator while initial data is being fetched
-                        appState.isInitialLoad 
-                          ? SizedBox(
-                              width: 16,
-                              height: 16,
-                              child: CircularProgressIndicator(
-                                strokeWidth: 2,
-                                valueColor: AlwaysStoppedAnimation<Color>(AppTheme.secondaryOrange),
-                              ),
-                            )
-                          : Text(
-                              '${appState.currentStreak}', // Use actual streak from AppStateService
-                              style: TextStyle(
-                                fontFamily: AppTheme.fontPoppins,
-                                fontSize: 20,
-                                color: AppTheme.secondaryOrange,
-                                fontWeight: FontWeight.bold,
-                              ),
-                            ),
-                      ],
-                    );
-                  },
+                child: Icon(
+                  Icons.shopping_bag,
+                  color: AppTheme.secondaryBlue,
+                  size: 28,
                 ),
               ),
             ],
