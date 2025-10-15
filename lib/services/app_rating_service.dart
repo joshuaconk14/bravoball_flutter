@@ -15,8 +15,8 @@ class AppRatingService {
   static const String _lastPromptDateKey = 'last_rating_prompt_date';
 
   // Configuration - when to show the prompt
-  static const int _minSessionsBeforePrompt = 3;  // Show after 3 completed sessions
-  static const int _daysBetweenPrompts = 30;      // Wait 30 days between prompts
+  static const int _minSessionsBeforePrompt = 2;  // Show after 2 completed sessions
+  static const int _daysBetweenPrompts = 14;      // Wait 2 weeks between prompts
 
   /// Call this after each session completion
   Future<void> incrementSessionCount() async {
