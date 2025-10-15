@@ -3,6 +3,7 @@ import 'package:rive/rive.dart' hide LinearGradient;
 import '../../constants/app_theme.dart';
 import '../../services/audio_service.dart';
 import '../../utils/haptic_utils.dart';
+import '../../services/app_rating_service.dart';
 
 class SessionCompletionView extends StatefulWidget {
   final int currentStreak;
@@ -100,6 +101,22 @@ class _SessionCompletionViewState extends State<SessionCompletionView>
     
     // Start animations
     _startAnimations();
+    
+    // Check and show rating prompt if needed
+    _checkAndShowRatingPrompt();
+  }
+
+  Future<void> _checkAndShowRatingPrompt() async {
+    // Increment session count
+    await AppRatingService.instance.incrementSessionCount();
+    
+    // Wait a bit so user sees the completion celebration first
+    await Future.delayed(const Duration(seconds: 3));
+    
+    // Check if we should show the prompt
+    if (await AppRatingService.instance.shouldShowRatingPrompt()) {
+      await AppRatingService.instance.requestReview();
+    }
   }
 
   void _startAnimations() async {

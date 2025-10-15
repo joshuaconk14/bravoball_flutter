@@ -46,6 +46,7 @@ dependencies:
   image_picker: ^1.1.2  # For picking videos from camera roll
   path_provider: ^2.1.4  # For accessing device storage directories
   permission_handler: ^11.3.1  # For handling runtime permissions on Android
+  in_app_review: ^2.0.9  # For requesting app store ratings
 
 dev_dependencies:
   flutter_test:
