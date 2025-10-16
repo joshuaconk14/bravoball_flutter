@@ -15,10 +15,116 @@ class ProgressView extends StatefulWidget {
   State<ProgressView> createState() => _ProgressViewState();
 }
 
-class _ProgressViewState extends State<ProgressView> {
+class _ProgressViewState extends State<ProgressView> with SingleTickerProviderStateMixin {
   DateTime selectedDate = DateTime.now();
+  DateTime? _previousDate; // Store previous date for transition
   bool showWeekView = true;
-  CompletedSession? selectedSession; // Add this
+  CompletedSession? selectedSession;
+  
+  // Animation for month transitions
+  late AnimationController _monthTransitionController;
+  late Animation<Offset> _slideOutAnimation;
+  late Animation<Offset> _slideInAnimation;
+  bool _isAnimating = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _monthTransitionController = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 500),
+    );
+    
+    // Initialize with no animation
+    _slideOutAnimation = Tween<Offset>(
+      begin: Offset.zero,
+      end: Offset.zero,
+    ).animate(CurvedAnimation(
+      parent: _monthTransitionController,
+      curve: Curves.easeInOut,
+    ));
+    
+    _slideInAnimation = Tween<Offset>(
+      begin: Offset.zero,
+      end: Offset.zero,
+    ).animate(CurvedAnimation(
+      parent: _monthTransitionController,
+      curve: Curves.easeInOut,
+    ));
+  }
+
+  @override
+  void dispose() {
+    _monthTransitionController.dispose();
+    super.dispose();
+  }
+
+  void _changeMonth(int monthDelta) async {
+    if (_isAnimating) return; // Prevent multiple animations at once
+    
+    setState(() {
+      _isAnimating = true;
+      _previousDate = selectedDate;
+      
+      // Going back in time (monthDelta < 0): October → September
+      // - October slides OUT to the RIGHT (positive offset)
+      // - September slides IN from the LEFT (negative to zero)
+      
+      // Going forward in time (monthDelta > 0): September → October
+      // - September slides OUT to the LEFT (negative offset)
+      // - October slides IN from the RIGHT (positive to zero)
+      
+      if (monthDelta < 0) {
+        // Going BACK
+        _slideOutAnimation = Tween<Offset>(
+          begin: Offset.zero,
+          end: const Offset(1.0, 0), // Current month slides RIGHT
+        ).animate(CurvedAnimation(
+          parent: _monthTransitionController,
+          curve: Curves.easeInOut,
+        ));
+        
+        _slideInAnimation = Tween<Offset>(
+          begin: const Offset(-1.0, 0), // New month starts from LEFT
+          end: Offset.zero,
+        ).animate(CurvedAnimation(
+          parent: _monthTransitionController,
+          curve: Curves.easeInOut,
+        ));
+      } else {
+        // Going FORWARD
+        _slideOutAnimation = Tween<Offset>(
+          begin: Offset.zero,
+          end: const Offset(-1.0, 0), // Current month slides LEFT
+        ).animate(CurvedAnimation(
+          parent: _monthTransitionController,
+          curve: Curves.easeInOut,
+        ));
+        
+        _slideInAnimation = Tween<Offset>(
+          begin: const Offset(1.0, 0), // New month starts from RIGHT
+          end: Offset.zero,
+        ).animate(CurvedAnimation(
+          parent: _monthTransitionController,
+          curve: Curves.easeInOut,
+        ));
+      }
+      
+      // Update to new date
+      selectedDate = DateTime(selectedDate.year, selectedDate.month + monthDelta, 1);
+    });
+    
+    // Run the animation
+    _monthTransitionController.reset();
+    await _monthTransitionController.forward();
+    
+    // Clean up after animation
+    setState(() {
+      _isAnimating = false;
+      _previousDate = null;
+    });
+    _monthTransitionController.reset();
+  }
 
   void _showSessionResults(CompletedSession session) {
     showModalBottomSheet(
@@ -246,9 +352,7 @@ class _ProgressViewState extends State<ProgressView> {
                   IconButton(
                     onPressed: () {
                       HapticUtils.lightImpact(); // Light haptic for month navigation
-                      setState(() {
-                        selectedDate = DateTime(selectedDate.year, selectedDate.month - 1, 1);
-                      });
+                      _changeMonth(-1);
                     },
                     icon: Icon(Icons.chevron_left, color: Colors.grey.shade600),
                   ),
@@ -267,9 +371,7 @@ class _ProgressViewState extends State<ProgressView> {
                   IconButton(
                     onPressed: () {
                       HapticUtils.lightImpact(); // Light haptic for month navigation
-                      setState(() {
-                        selectedDate = DateTime(selectedDate.year, selectedDate.month + 1, 1);
-                      });
+                      _changeMonth(1);
                     },
                     icon: Icon(Icons.chevron_right, color: Colors.grey.shade600),
                   ),
@@ -311,15 +413,39 @@ class _ProgressViewState extends State<ProgressView> {
             
             const SizedBox(height: 10),
             
-            // Calendar grid
-            showWeekView ? _buildWeekView() : _buildMonthView(),
+            // Calendar grid with slide animation
+            SizedBox(
+              height: showWeekView ? 50 : 264, // Fixed height to prevent layout shifts
+              child: ClipRect(
+                child: Stack(
+                  children: [
+                    // Old month sliding out (only show during animation)
+                    if (_isAnimating && _previousDate != null)
+                      SlideTransition(
+                        position: _slideOutAnimation,
+                        child: showWeekView 
+                          ? _buildWeekViewForDate(_previousDate!) 
+                          : _buildMonthViewForDate(_previousDate!),
+                      ),
+                    
+                    // New month sliding in
+                    SlideTransition(
+                      position: _isAnimating ? _slideInAnimation : _slideOutAnimation,
+                      child: showWeekView 
+                        ? _buildWeekViewForDate(selectedDate) 
+                        : _buildMonthViewForDate(selectedDate),
+                    ),
+                  ],
+                ),
+              ),
+            ),
           ],
         ),
       ),
     );
   }
 
-  Widget _buildWeekView() {
+  Widget _buildWeekViewForDate(DateTime date) {
     final now = DateTime.now();
     final startOfWeek = now.subtract(Duration(days: now.weekday % 7));
     final appState = Provider.of<AppStateService>(context, listen: false);
@@ -350,9 +476,9 @@ class _ProgressViewState extends State<ProgressView> {
     );
   }
 
-  Widget _buildMonthView() {
-    final daysInMonth = DateTime(selectedDate.year, selectedDate.month + 1, 0).day;
-    final firstDayOfMonth = DateTime(selectedDate.year, selectedDate.month, 1);
+  Widget _buildMonthViewForDate(DateTime date) {
+    final daysInMonth = DateTime(date.year, date.month + 1, 0).day;
+    final firstDayOfMonth = DateTime(date.year, date.month, 1);
     final firstWeekday = firstDayOfMonth.weekday % 7;
     final appState = Provider.of<AppStateService>(context, listen: false);
     return Column(
@@ -367,10 +493,10 @@ class _ProgressViewState extends State<ProgressView> {
                 if (dayNumber <= 0 || dayNumber > daysInMonth) {
                   return const SizedBox(width: 30, height: 40);
                 }
-                final date = DateTime(selectedDate.year, selectedDate.month, dayNumber);
-                final isToday = _isSameDay(date, DateTime.now());
-                final hasSession = appState.completedSessions.any((s) => _isSameDay(s.date, date));
-                return _buildDayCell(dayNumber, isToday, hasSession, date: date);
+                final cellDate = DateTime(date.year, date.month, dayNumber);
+                final isToday = _isSameDay(cellDate, DateTime.now());
+                final hasSession = appState.completedSessions.any((s) => _isSameDay(s.date, cellDate));
+                return _buildDayCell(dayNumber, isToday, hasSession, date: cellDate);
               }),
             ),
           ),
