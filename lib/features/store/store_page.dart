@@ -4,6 +4,7 @@ import 'package:flutter/painting.dart' as painting;
 import '../../constants/app_theme.dart';
 import '../../widgets/bravo_button.dart';
 import '../../utils/haptic_utils.dart';
+import '../../utils/premium_utils.dart';
 import '../premium/premium_page.dart';
 
 class StorePage extends StatefulWidget {
@@ -14,6 +15,30 @@ class StorePage extends StatefulWidget {
 }
 
 class _StorePageState extends State<StorePage> {
+  bool _isPremium = false;
+  bool _isLoading = true;
+
+  @override
+  void initState() {
+    super.initState();
+    _checkPremiumStatus();
+  }
+
+  Future<void> _checkPremiumStatus() async {
+    try {
+      final isPremium = await PremiumUtils.hasPremiumAccess();
+      setState(() {
+        _isPremium = isPremium;
+        _isLoading = false;
+      });
+    } catch (e) {
+      setState(() {
+        _isPremium = false;
+        _isLoading = false;
+      });
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -27,20 +52,25 @@ class _StorePageState extends State<StorePage> {
           Expanded(
             child: Container(
               color: Colors.white,
-              child: SingleChildScrollView(
-                physics: const BouncingScrollPhysics(),
-                child: Column(
-                  children: [
-                    // Header section
-                    _buildHeader(),
-                    
-                    // Store items section
-                    _buildStoreItems(),
-                    
-                    const SizedBox(height: 32),
-                  ],
-                ),
-              ),
+              child: _isLoading 
+                ? const Center(child: CircularProgressIndicator())
+                : SingleChildScrollView(
+                    physics: const BouncingScrollPhysics(),
+                    child: Column(
+                      children: [
+                        // Header section - only show for non-premium users
+                        if (!_isPremium) _buildHeader(),
+                        
+                        // My Items section
+                        _buildMyItemsSection(),
+                        
+                        // Store items section
+                        _buildStoreItems(),
+                        
+                        const SizedBox(height: 32),
+                      ],
+                    ),
+                  ),
             ),
           ),
         ],
@@ -93,19 +123,25 @@ class _StorePageState extends State<StorePage> {
               
               const Spacer(),
               
-              // Placeholder for balance or other info
-              Container(
-                width: 36,
-                height: 36,
-                decoration: BoxDecoration(
-                  color: AppTheme.primaryYellow,
-                  shape: BoxShape.circle,
-                ),
-                child: Icon(
-                  Icons.diamond,
-                  color: AppTheme.white,
-                  size: 20,
-                ),
+              // Treats balance display - matches front page style
+              Row(
+                children: [
+                  Icon(
+                    Icons.diamond,
+                    color: Colors.brown,
+                    size: 20,
+                  ),
+                  const SizedBox(width: 4),
+                  Text(
+                    '0', // Placeholder treat count
+                    style: TextStyle(
+                      fontFamily: AppTheme.fontPoppins,
+                      fontSize: 20,
+                      color: Colors.brown,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                ],
               ),
             ],
           ),
@@ -214,12 +250,173 @@ class _StorePageState extends State<StorePage> {
     );
   }
 
+  // My Items section - shows user's current inventory
+  Widget _buildMyItemsSection() {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 20),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          // Section title
+          Text(
+            'My Items',
+            style: TextStyle(
+              fontFamily: AppTheme.fontPottaOne,
+              fontSize: 20,
+              color: AppTheme.primaryYellow,
+              fontWeight: FontWeight.w400,
+            ),
+          ),
+          
+          const SizedBox(height: 16),
+          
+          // Horizontal scrollable items
+          SizedBox(
+            height: 180, // Increased height for larger squares
+            child: ListView(
+              scrollDirection: Axis.horizontal,
+              physics: const BouncingScrollPhysics(),
+              children: [
+                // Streak Freezes
+                _buildMyItemSquare(
+                  title: 'Streak Freezes',
+                  amount: 3,
+                  icon: Icons.ac_unit,
+                  color: AppTheme.secondaryBlue,
+                ),
+                
+                const SizedBox(width: 16),
+                
+                // Streak Reviver
+                _buildMyItemSquare(
+                  title: 'Streak Reviver',
+                  amount: 3,
+                  icon: Icons.restore,
+                  color: AppTheme.secondaryOrange,
+                ),
+                
+                const SizedBox(width: 16),
+                
+                // Add more items here in the future
+                // _buildMyItemSquare(...),
+              ],
+            ),
+          ),
+          
+          const SizedBox(height: 20),
+        ],
+      ),
+    );
+  }
+
+  // Individual my item square
+  Widget _buildMyItemSquare({
+    required String title,
+    required int amount,
+    required IconData icon,
+    required Color color,
+  }) {
+    return Container(
+      width: 160, // Increased width for larger squares
+      height: 160, // Increased height for larger squares
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(16),
+        boxShadow: [
+          BoxShadow(
+            color: AppTheme.black.withOpacity(0.1),
+            blurRadius: 8,
+            offset: const Offset(0, 2),
+          ),
+        ],
+      ),
+      child: Padding(
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            // Icon
+            Container(
+              width: 60,
+              height: 60,
+              decoration: BoxDecoration(
+                color: color,
+                shape: BoxShape.circle,
+              ),
+              child: Icon(
+                icon,
+                color: AppTheme.white,
+                size: 30,
+              ),
+            ),
+            
+            const SizedBox(height: 12),
+            
+            // Title
+            Text(
+              title,
+              style: TextStyle(
+                fontFamily: AppTheme.fontPoppins,
+                fontSize: 16,
+                color: AppTheme.black,
+                fontWeight: FontWeight.bold,
+              ),
+              textAlign: TextAlign.center,
+              maxLines: 2,
+              overflow: TextOverflow.ellipsis,
+            ),
+            
+            const SizedBox(height: 8),
+            
+            // Amount
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
+              decoration: BoxDecoration(
+                color: AppTheme.primaryYellow,
+                borderRadius: BorderRadius.circular(16),
+              ),
+              child: Text(
+                '$amount',
+                style: TextStyle(
+                  fontFamily: AppTheme.fontPoppins,
+                  fontSize: 18,
+                  color: AppTheme.white,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
   // Store items section
   Widget _buildStoreItems() {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 20),
       child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
+          // Premium user message
+          if (_isPremium) ...[
+            _buildPremiumUserMessage(),
+            const SizedBox(height: 20),
+          ],
+          
+          // Bravo's Store section title
+          Text(
+            'Bravo\'s Store',
+            style: TextStyle(
+              fontFamily: AppTheme.fontPottaOne,
+              fontSize: 20,
+              color: AppTheme.primaryYellow,
+              fontWeight: FontWeight.w400,
+            ),
+          ),
+          
+          const SizedBox(height: 16),
+          
           // Streak Freeze Item
           _buildStoreItem(
             title: 'Streak Freeze',
@@ -235,16 +432,16 @@ class _StorePageState extends State<StorePage> {
           
           const SizedBox(height: 20),
           
-          // Streak Recovery Item
+          // Streak Reviver Item
           _buildStoreItem(
-            title: 'Streak Recovery',
+            title: 'Streak Reviver',
             description: 'Restore your broken streak',
             icon: Icons.restore,
             price: '100 Treats',
             color: AppTheme.secondaryOrange,
             onTap: () {
               HapticUtils.mediumImpact();
-              _showPurchaseDialog('Streak Recovery');
+              _showPurchaseDialog('Streak Reviver');
             },
           ),
           
@@ -252,6 +449,76 @@ class _StorePageState extends State<StorePage> {
           
           // Treat Packages Section
           _buildTreatPackages(),
+        ],
+      ),
+    );
+  }
+
+  // Premium user message
+  Widget _buildPremiumUserMessage() {
+    return Container(
+      padding: const EdgeInsets.all(20),
+      decoration: BoxDecoration(
+        gradient: painting.LinearGradient(
+          colors: [
+            AppTheme.primaryYellow.withOpacity(0.1),
+            AppTheme.secondaryBlue.withOpacity(0.1),
+          ],
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+        ),
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(
+          color: AppTheme.primaryYellow.withOpacity(0.3),
+          width: 2,
+        ),
+      ),
+      child: Row(
+        children: [
+          // Crown icon
+          Container(
+            width: 50,
+            height: 50,
+            decoration: BoxDecoration(
+              color: AppTheme.primaryYellow,
+              shape: BoxShape.circle,
+            ),
+            child: Icon(
+              Icons.workspace_premium,
+              color: AppTheme.white,
+              size: 28,
+            ),
+          ),
+          
+          const SizedBox(width: 16),
+          
+          // Text
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  'Premium Active!',
+                  style: TextStyle(
+                    fontFamily: AppTheme.fontPottaOne,
+                    fontSize: 18,
+                    color: AppTheme.primaryYellow,
+                    fontWeight: FontWeight.w400,
+                  ),
+                ),
+                const SizedBox(height: 4),
+                Text(
+                  'You have access to all premium features',
+                  style: TextStyle(
+                    fontFamily: AppTheme.fontPoppins,
+                    fontSize: 14,
+                    color: AppTheme.primaryGray,
+                    fontWeight: FontWeight.w500,
+                  ),
+                ),
+              ],
+            ),
+          ),
         ],
       ),
     );
