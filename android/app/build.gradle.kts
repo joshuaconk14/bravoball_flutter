@@ -38,6 +38,11 @@ android {
         targetSdk = 35  // Required for Google Play Store submission (Android 14)
         versionCode = flutter.versionCode
         versionName = flutter.versionName
+        
+        // Support for 16 KB page sizes (required by Google Play)
+        ndk {
+            abiFilters += listOf("armeabi-v7a", "arm64-v8a", "x86_64")
+        }
     }
 
     signingConfigs {
