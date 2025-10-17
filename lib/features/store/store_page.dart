@@ -1,10 +1,13 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/foundation.dart';
 import 'package:rive/rive.dart';
 import 'package:flutter/painting.dart' as painting;
+import 'package:provider/provider.dart';
 import '../../constants/app_theme.dart';
 import '../../widgets/bravo_button.dart';
 import '../../utils/haptic_utils.dart';
 import '../../utils/premium_utils.dart';
+import '../../services/store_service.dart';
 import '../premium/premium_page.dart';
 
 class StorePage extends StatefulWidget {
@@ -22,6 +25,11 @@ class _StorePageState extends State<StorePage> {
   void initState() {
     super.initState();
     _checkPremiumStatus();
+    _initializeStoreService();
+  }
+
+  Future<void> _initializeStoreService() async {
+    await StoreService.instance.initialize();
   }
 
   Future<void> _checkPremiumStatus() async {
@@ -68,13 +76,16 @@ class _StorePageState extends State<StorePage> {
                         _buildStoreItems(),
                         
                         const SizedBox(height: 32),
+                        
+                        // Debug button - only show in debug mode
+                        if (kDebugMode) _buildDebugButton(),
                       ],
                     ),
                   ),
+              ),
             ),
-          ),
-        ],
-      ),
+          ],
+        ),
     );
   }
 
@@ -124,24 +135,28 @@ class _StorePageState extends State<StorePage> {
               const Spacer(),
               
               // Treats balance display - matches front page style
-              Row(
-                children: [
-                  Icon(
-                    Icons.diamond,
-                    color: Colors.brown,
-                    size: 20,
-                  ),
-                  const SizedBox(width: 4),
-                  Text(
-                    '0', // Placeholder treat count
-                    style: TextStyle(
-                      fontFamily: AppTheme.fontPoppins,
-                      fontSize: 20,
-                      color: Colors.brown,
-                      fontWeight: FontWeight.bold,
-                    ),
-                  ),
-                ],
+              Consumer<StoreService>(
+                builder: (context, storeService, child) {
+                  return Row(
+                    children: [
+                      Icon(
+                        Icons.diamond,
+                        color: Colors.brown,
+                        size: 20,
+                      ),
+                      const SizedBox(width: 4),
+                      Text(
+                        '${storeService.treats}', // Real treat count from API
+                        style: TextStyle(
+                          fontFamily: AppTheme.fontPoppins,
+                          fontSize: 20,
+                          color: Colors.brown,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                    ],
+                  );
+                },
               ),
             ],
           ),
@@ -271,36 +286,40 @@ class _StorePageState extends State<StorePage> {
           const SizedBox(height: 16),
           
           // Horizontal scrollable items
-          SizedBox(
-            height: 180, // Increased height for larger squares
-            child: ListView(
-              scrollDirection: Axis.horizontal,
-              physics: const BouncingScrollPhysics(),
-              children: [
-                // Streak Freezes
-                _buildMyItemSquare(
-                  title: 'Streak Freezes',
-                  amount: 3,
-                  icon: Icons.ac_unit,
-                  color: AppTheme.secondaryBlue,
+          Consumer<StoreService>(
+            builder: (context, storeService, child) {
+              return SizedBox(
+                height: 180, // Increased height for larger squares
+                child: ListView(
+                  scrollDirection: Axis.horizontal,
+                  physics: const BouncingScrollPhysics(),
+                  children: [
+                    // Streak Freezes
+                    _buildMyItemSquare(
+                      title: 'Streak Freezes',
+                      amount: storeService.streakFreezes,
+                      icon: Icons.ac_unit,
+                      color: AppTheme.secondaryBlue,
+                    ),
+                    
+                    const SizedBox(width: 16),
+                    
+                    // Streak Reviver
+                    _buildMyItemSquare(
+                      title: 'Streak Reviver',
+                      amount: storeService.streakRevivers,
+                      icon: Icons.restore,
+                      color: AppTheme.secondaryOrange,
+                    ),
+                    
+                    const SizedBox(width: 16),
+                    
+                    // Add more items here in the future
+                    // _buildMyItemSquare(...),
+                  ],
                 ),
-                
-                const SizedBox(width: 16),
-                
-                // Streak Reviver
-                _buildMyItemSquare(
-                  title: 'Streak Reviver',
-                  amount: 3,
-                  icon: Icons.restore,
-                  color: AppTheme.secondaryOrange,
-                ),
-                
-                const SizedBox(width: 16),
-                
-                // Add more items here in the future
-                // _buildMyItemSquare(...),
-              ],
-            ),
+              );
+            },
           ),
           
           const SizedBox(height: 20),
@@ -418,30 +437,38 @@ class _StorePageState extends State<StorePage> {
           const SizedBox(height: 16),
           
           // Streak Freeze Item
-          _buildStoreItem(
-            title: 'Streak Freeze',
-            description: 'Freeze your streak for 24 hours',
-            icon: Icons.ac_unit,
-            price: '50 Treats',
-            color: AppTheme.secondaryBlue,
-            onTap: () {
-              HapticUtils.mediumImpact();
-              _showPurchaseDialog('Streak Freeze');
+          Consumer<StoreService>(
+            builder: (context, storeService, child) {
+              return _buildStoreItem(
+                title: 'Streak Freeze',
+                description: 'Freeze your streak for 24 hours',
+                icon: Icons.ac_unit,
+                price: '50 Treats',
+                color: AppTheme.secondaryBlue,
+                onTap: () {
+                  HapticUtils.mediumImpact();
+                  _purchaseStreakFreeze(storeService);
+                },
+              );
             },
           ),
           
           const SizedBox(height: 20),
           
           // Streak Reviver Item
-          _buildStoreItem(
-            title: 'Streak Reviver',
-            description: 'Restore your broken streak',
-            icon: Icons.restore,
-            price: '100 Treats',
-            color: AppTheme.secondaryOrange,
-            onTap: () {
-              HapticUtils.mediumImpact();
-              _showPurchaseDialog('Streak Reviver');
+          Consumer<StoreService>(
+            builder: (context, storeService, child) {
+              return _buildStoreItem(
+                title: 'Streak Reviver',
+                description: 'Restore your broken streak',
+                icon: Icons.restore,
+                price: '100 Treats',
+                color: AppTheme.secondaryOrange,
+                onTap: () {
+                  HapticUtils.mediumImpact();
+                  _purchaseStreakReviver(storeService);
+                },
+              );
             },
           ),
           
@@ -879,6 +906,355 @@ class _StorePageState extends State<StorePage> {
           ),
         ),
       ),
+    );
+  }
+
+  // Debug button for adding treats
+  Widget _buildDebugButton() {
+    return Container(
+      margin: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
+      child: Consumer<StoreService>(
+        builder: (context, storeService, child) {
+          return Container(
+            width: double.infinity,
+            decoration: BoxDecoration(
+              color: Colors.red.withOpacity(0.1),
+              borderRadius: BorderRadius.circular(12),
+              border: Border.all(
+                color: Colors.red.withOpacity(0.3),
+                width: 2,
+              ),
+            ),
+            child: Material(
+              color: Colors.transparent,
+              child: InkWell(
+                onTap: () {
+                  HapticUtils.mediumImpact();
+                  _addDebugTreats(storeService);
+                },
+                borderRadius: BorderRadius.circular(12),
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 20),
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      Icon(
+                        Icons.bug_report,
+                        color: Colors.red,
+                        size: 24,
+                      ),
+                      const SizedBox(width: 12),
+                      Text(
+                        'DEBUG: Add 1000 Treats',
+                        style: TextStyle(
+                          fontFamily: AppTheme.fontPoppins,
+                          fontSize: 16,
+                          color: Colors.red,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            ),
+          );
+        },
+      ),
+    );
+  }
+
+  // Add debug treats
+  Future<void> _addDebugTreats(StoreService storeService) async {
+    // Add 1000 treats for debugging (now syncs with backend)
+    await storeService.addDebugTreats(1000);
+    
+    // Show a debug snackbar
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(
+          '🐛 DEBUG: Added 1000 treats! New total: ${storeService.treats}',
+          style: TextStyle(
+            fontFamily: AppTheme.fontPoppins,
+            fontWeight: FontWeight.bold,
+          ),
+        ),
+        backgroundColor: Colors.green,
+        duration: const Duration(seconds: 2),
+      ),
+    );
+  }
+
+  // Purchase streak freeze
+  Future<void> _purchaseStreakFreeze(StoreService storeService) async {
+    // Show confirmation dialog first
+    final confirmed = await _showPurchaseConfirmationDialog(
+      itemName: 'Streak Freeze',
+      treatCost: 50,
+      icon: Icons.ac_unit,
+      color: AppTheme.secondaryBlue,
+      description: 'Freeze your streak for 24 hours',
+    );
+
+    if (!confirmed) return;
+
+    final success = await storeService.purchaseStreakFreeze();
+    if (success) {
+      _showSuccessDialog('Streak Freeze', 'You now have ${storeService.streakFreezes} streak freezes!');
+    } else {
+      _showErrorDialog(storeService.error ?? 'Failed to purchase Streak Freeze');
+    }
+  }
+
+  // Purchase streak reviver
+  Future<void> _purchaseStreakReviver(StoreService storeService) async {
+    // Show confirmation dialog first
+    final confirmed = await _showPurchaseConfirmationDialog(
+      itemName: 'Streak Reviver',
+      treatCost: 100,
+      icon: Icons.restore,
+      color: AppTheme.secondaryOrange,
+      description: 'Restore your broken streak',
+    );
+
+    if (!confirmed) return;
+
+    final success = await storeService.purchaseStreakReviver();
+    if (success) {
+      _showSuccessDialog('Streak Reviver', 'You now have ${storeService.streakRevivers} streak revivers!');
+    } else {
+      _showErrorDialog(storeService.error ?? 'Failed to purchase Streak Reviver');
+    }
+  }
+
+  // Show purchase confirmation dialog
+  Future<bool> _showPurchaseConfirmationDialog({
+    required String itemName,
+    required int treatCost,
+    required IconData icon,
+    required Color color,
+    required String description,
+  }) async {
+    return await showDialog<bool>(
+      context: context,
+      builder: (BuildContext context) {
+        return AlertDialog(
+          backgroundColor: Colors.white,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(20),
+          ),
+          contentPadding: const EdgeInsets.all(24),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              // Icon
+              Container(
+                width: 80,
+                height: 80,
+                decoration: BoxDecoration(
+                  color: color,
+                  shape: BoxShape.circle,
+                ),
+                child: Icon(
+                  icon,
+                  color: AppTheme.white,
+                  size: 40,
+                ),
+              ),
+              
+              const SizedBox(height: 20),
+              
+              // Title
+              Text(
+                'Purchase $itemName?',
+                style: TextStyle(
+                  fontFamily: AppTheme.fontPottaOne,
+                  fontSize: 22,
+                  color: AppTheme.primaryYellow,
+                  fontWeight: FontWeight.w400,
+                ),
+                textAlign: TextAlign.center,
+              ),
+              
+              const SizedBox(height: 12),
+              
+              // Description
+              Text(
+                description,
+                style: TextStyle(
+                  fontFamily: AppTheme.fontPoppins,
+                  fontSize: 14,
+                  color: AppTheme.primaryGray,
+                  fontWeight: FontWeight.w500,
+                ),
+                textAlign: TextAlign.center,
+              ),
+              
+              const SizedBox(height: 20),
+              
+              // Treat cost display
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
+                decoration: BoxDecoration(
+                  color: Colors.brown.withOpacity(0.1),
+                  borderRadius: BorderRadius.circular(16),
+                  border: Border.all(
+                    color: Colors.brown.withOpacity(0.3),
+                    width: 2,
+                  ),
+                ),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Icon(
+                      Icons.diamond,
+                      color: Colors.brown,
+                      size: 28,
+                    ),
+                    const SizedBox(width: 8),
+                    Text(
+                      '$treatCost Treats',
+                      style: TextStyle(
+                        fontFamily: AppTheme.fontPoppins,
+                        fontSize: 20,
+                        color: Colors.brown,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              
+              const SizedBox(height: 24),
+              
+              // Buttons
+              Row(
+                children: [
+                  // Cancel button
+                  Expanded(
+                    child: BravoButton(
+                      text: 'Cancel',
+                      onPressed: () {
+                        Navigator.of(context).pop(false);
+                      },
+                      color: Colors.grey.shade400,
+                      backColor: Colors.grey.shade300,
+                      textColor: AppTheme.primaryGray,
+                    ),
+                  ),
+                  
+                  const SizedBox(width: 12),
+                  
+                  // Confirm button
+                  Expanded(
+                    child: BravoButton(
+                      text: 'Get It!',
+                      onPressed: () {
+                        Navigator.of(context).pop(true);
+                      },
+                      color: color,
+                      backColor: color.withOpacity(0.8),
+                      textColor: AppTheme.white,
+                    ),
+                  ),
+                ],
+              ),
+            ],
+          ),
+        );
+      },
+    ) ?? false; // Return false if dialog is dismissed
+  }
+
+  // Show success dialog
+  void _showSuccessDialog(String itemName, String message) {
+    showDialog(
+      context: context,
+      builder: (BuildContext context) {
+        return AlertDialog(
+          backgroundColor: Colors.white,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(16),
+          ),
+          title: Text(
+            'Purchase Successful!',
+            style: TextStyle(
+              fontFamily: AppTheme.fontPottaOne,
+              fontSize: 20,
+              color: AppTheme.primaryYellow,
+            ),
+            textAlign: TextAlign.center,
+          ),
+          content: Text(
+            message,
+            style: TextStyle(
+              fontFamily: AppTheme.fontPoppins,
+              fontSize: 16,
+              color: AppTheme.primaryGray,
+            ),
+            textAlign: TextAlign.center,
+          ),
+          actions: [
+            Center(
+              child: BravoButton(
+                text: 'Awesome!',
+                onPressed: () {
+                  Navigator.of(context).pop();
+                },
+                color: AppTheme.primaryYellow,
+                backColor: AppTheme.primaryYellow.withOpacity(0.8),
+                textColor: AppTheme.white,
+              ),
+            ),
+          ],
+        );
+      },
+    );
+  }
+
+  // Show error dialog
+  void _showErrorDialog(String message) {
+    showDialog(
+      context: context,
+      builder: (BuildContext context) {
+        return AlertDialog(
+          backgroundColor: Colors.white,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(16),
+          ),
+          title: Text(
+            'Purchase Failed',
+            style: TextStyle(
+              fontFamily: AppTheme.fontPottaOne,
+              fontSize: 20,
+              color: Colors.red,
+            ),
+            textAlign: TextAlign.center,
+          ),
+          content: Text(
+            message,
+            style: TextStyle(
+              fontFamily: AppTheme.fontPoppins,
+              fontSize: 16,
+              color: AppTheme.primaryGray,
+            ),
+            textAlign: TextAlign.center,
+          ),
+          actions: [
+            Center(
+              child: BravoButton(
+                text: 'Got it!',
+                onPressed: () {
+                  Navigator.of(context).pop();
+                },
+                color: Colors.red,
+                backColor: Colors.red.withOpacity(0.8),
+                textColor: AppTheme.white,
+              ),
+            ),
+          ],
+        );
+      },
     );
   }
 
