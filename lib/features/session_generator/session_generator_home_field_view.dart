@@ -21,6 +21,7 @@ import '../mental_training/mental_training_setup_view.dart'; // Added for Mental
 import '../../widgets/guest_account_creation_dialog.dart'; // ✅ ADDED: Import reusable dialog
 import '../../features/premium/premium_page.dart'; // ✅ ADDED: Import premium page
 import '../../services/ad_service.dart'; // Added for AdService
+import '../../services/store_service.dart'; // Added for StoreService
 import '../store/store_page.dart'; // ✅ ADDED: Import store page
 
 class SessionGeneratorHomeFieldView extends StatefulWidget {
@@ -31,6 +32,16 @@ class SessionGeneratorHomeFieldView extends StatefulWidget {
 }
 
 class _SessionGeneratorHomeFieldViewState extends State<SessionGeneratorHomeFieldView> {
+  @override
+  void initState() {
+    super.initState();
+    _initializeStoreService();
+  }
+
+  Future<void> _initializeStoreService() async {
+    await StoreService.instance.initialize();
+  }
+
   // ✅ NEW: Calculate dynamic spacing between drill buttons based on their sizes
   double _getSpacingForButton(
     EditableDrillModel currentDrill, 
@@ -189,20 +200,24 @@ class _SessionGeneratorHomeFieldViewState extends State<SessionGeneratorHomeFiel
               const Spacer(),
               
               // Treat indicator (diamond icon) - brown color
-              Row(
-                children: [
-                  Icon(Icons.diamond, color: Colors.brown, size: 24),
-                  const SizedBox(width: 4),
-                  Text(
-                    '0', // Placeholder treat count
-                    style: TextStyle(
-                      fontFamily: AppTheme.fontPoppins,
-                      fontSize: 20,
-                      color: Colors.brown,
-                      fontWeight: FontWeight.bold,
-                    ),
-                  ),
-                ],
+              Consumer<StoreService>(
+                builder: (context, storeService, child) {
+                  return Row(
+                    children: [
+                      Icon(Icons.diamond, color: Colors.brown, size: 24),
+                      const SizedBox(width: 4),
+                      Text(
+                        '${storeService.treats}', // Real treat count from API
+                        style: TextStyle(
+                          fontFamily: AppTheme.fontPoppins,
+                          fontSize: 20,
+                          color: Colors.brown,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                    ],
+                  );
+                },
               ),
               
               const SizedBox(width: 20), // More spacing between treat and store button

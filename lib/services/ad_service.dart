@@ -12,7 +12,9 @@ class AdService {
   AdService._internal();
   
   InterstitialAd? _interstitialAd;
+  RewardedAd? _rewardedAd;
   bool _isAdLoaded = false;
+  bool _isRewardedAdLoaded = false;
   bool _isShowingAd = false;
   
   // Ad frequency settings from config
@@ -51,9 +53,7 @@ class AdService {
   }
   
   String get _adUnitId {
-    if (kDebugMode && !AdConfig.showAdsInDebugMode) {
-      return ''; // Return empty string to disable ads in debug mode
-    }
+
     
     if (kDebugMode) {
       // Use test ad unit IDs in debug mode
@@ -61,6 +61,21 @@ class AdService {
     } else {
       // Use production ad unit IDs in release mode
       return Platform.isAndroid ? AdConfig.androidProductionAdUnitId : AdConfig.iosProductionAdUnitId;
+    }
+  }
+
+  String get _rewardedAdUnitId {
+    
+    if (kDebugMode) {
+      // Use test rewarded ad unit IDs
+      return Platform.isAndroid 
+        ? 'ca-app-pub-3940256099942544/5224354917'  // Android test rewarded ad
+        : 'ca-app-pub-3940256099942544/1712485313'; // iOS test rewarded ad
+    } else {
+      // TODO: Add production rewarded ad unit IDs to AdConfig
+      return Platform.isAndroid 
+        ? 'ca-app-pub-3940256099942544/5224354917'  // Using test ID for now
+        : 'ca-app-pub-3940256099942544/1712485313'; // Using test ID for now
     }
   }
   
@@ -122,6 +137,136 @@ class AdService {
     
     // Load the next ad
     _loadInterstitialAd();
+  }
+
+  // Load rewarded ad
+  Future<void> _loadRewardedAd() async {
+    if (_isRewardedAdLoaded || _rewardedAdUnitId.isEmpty) return;
+    
+    try {
+      await RewardedAd.load(
+        adUnitId: _rewardedAdUnitId,
+        request: const AdRequest(),
+        rewardedAdLoadCallback: RewardedAdLoadCallback(
+          onAdLoaded: (ad) {
+            _rewardedAd = ad;
+            _isRewardedAdLoaded = true;
+            
+            if (kDebugMode) {
+              print('✅ Rewarded ad loaded successfully');
+            }
+          },
+          onAdFailedToLoad: (LoadAdError error) {
+            if (kDebugMode) {
+              print('❌ Failed to load rewarded ad: $error');
+            }
+            _isRewardedAdLoaded = false;
+            _rewardedAd = null;
+          },
+        ),
+      );
+    } catch (e) {
+      if (kDebugMode) {
+        print('❌ Error loading rewarded ad: $e');
+      }
+      _isRewardedAdLoaded = false;
+    }
+  }
+
+  // Show rewarded ad and return reward amount (0 if ad not shown or not completed)
+  Future<int> showRewardedAd() async {
+    if (!AdConfig.adsEnabled) {
+      if (kDebugMode) {
+        print('⚠️ Ads are disabled, cannot show ad');
+      }
+      return -1; // Return -1 to indicate ads are disabled
+    }
+
+    if (_isShowingAd) {
+      if (kDebugMode) {
+        print('⚠️ Cannot show rewarded ad: already showing an ad');
+      }
+      return -1; // Return -1 to indicate error
+    }
+
+    // Load ad if not loaded
+    if (!_isRewardedAdLoaded) {
+      if (kDebugMode) {
+        print('📱 Loading rewarded ad...');
+      }
+      await _loadRewardedAd();
+      
+      // Wait for ad to load (up to 3 seconds)
+      int waitTime = 0;
+      while (!_isRewardedAdLoaded && waitTime < 3000) {
+        await Future.delayed(const Duration(milliseconds: 100));
+        waitTime += 100;
+      }
+    }
+
+    if (!_isRewardedAdLoaded || _rewardedAd == null) {
+      if (kDebugMode) {
+        print('⚠️ Rewarded ad failed to load');
+      }
+      return -1; // Return -1 to indicate ad failed to load
+    }
+
+    int rewardAmount = 0;
+    bool adCompleted = false;
+
+    try {
+      _isShowingAd = true;
+      
+      // Set up full screen content callback
+      _rewardedAd!.fullScreenContentCallback = FullScreenContentCallback(
+        onAdDismissedFullScreenContent: (ad) {
+          if (kDebugMode) {
+            print('📱 Rewarded ad dismissed');
+          }
+          _isShowingAd = false;
+          _isRewardedAdLoaded = false;
+          _rewardedAd = null;
+          
+          // Load next rewarded ad
+          _loadRewardedAd();
+        },
+        onAdFailedToShowFullScreenContent: (ad, error) {
+          if (kDebugMode) {
+            print('❌ Rewarded ad failed to show: $error');
+          }
+          _isShowingAd = false;
+          _isRewardedAdLoaded = false;
+          _rewardedAd = null;
+          
+          // Load next rewarded ad
+          _loadRewardedAd();
+        },
+      );
+
+      await _rewardedAd!.show(
+        onUserEarnedReward: (ad, reward) {
+          rewardAmount = 15; // Always give 15 treats
+          adCompleted = true;
+          
+          if (kDebugMode) {
+            print('🎁 User earned reward: 15 treats');
+          }
+        },
+      );
+
+      // Wait for ad to be dismissed
+      while (_isShowingAd) {
+        await Future.delayed(const Duration(milliseconds: 100));
+      }
+
+      return rewardAmount;
+    } catch (e) {
+      if (kDebugMode) {
+        print('❌ Error showing rewarded ad: $e');
+      }
+      _isShowingAd = false;
+      return 0;
+    }
   }
   
   Future<bool> showAdIfAppropriate({required String trigger}) async {
@@ -265,7 +410,10 @@ class AdService {
   void dispose() {
     _interstitialAd?.dispose();
     _interstitialAd = null;
+    _rewardedAd?.dispose();
+    _rewardedAd = null;
     _isAdLoaded = false;
+    _isRewardedAdLoaded = false;
     _isShowingAd = false;
   }
 }
