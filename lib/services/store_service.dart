@@ -1,7 +1,5 @@
 import 'package:flutter/foundation.dart';
-import 'package:http/http.dart' as http;
-import 'dart:convert';
-import '../config/app_config.dart';
+import '../services/api_service.dart';
 import '../services/user_manager_service.dart';
 
 /// Store Service for managing user store items and purchases
@@ -54,16 +52,13 @@ class StoreService extends ChangeNotifier {
         return;
       }
 
-      final response = await http.get(
-        Uri.parse(AppConfig.apiUrl('/api/store/items')),
-        headers: {
-          'Authorization': 'Bearer ${userManager.accessToken}',
-          'Content-Type': 'application/json',
-        },
+      final response = await ApiService.shared.get(
+        '/api/store/items',
+        requiresAuth: true,
       );
 
-      if (response.statusCode == 200) {
-        final data = json.decode(response.body);
+      if (response.isSuccess && response.data != null) {
+        final data = response.data!;
         _treats = data['treats'] ?? 2000;
         _streakFreezes = data['streak_freezes'] ?? 0;
         _streakRevivers = data['streak_revivers'] ?? 0;
@@ -77,7 +72,7 @@ class StoreService extends ChangeNotifier {
         
         notifyListeners();
       } else {
-        throw Exception('Failed to fetch store items: ${response.statusCode}');
+        throw Exception('Failed to fetch store items: ${response.error}');
       }
     } catch (e) {
       if (kDebugMode) {
@@ -114,35 +109,25 @@ class StoreService extends ChangeNotifier {
       }
 
       // Step 1: Increment streak freezes
-      final incrementResponse = await http.post(
-        Uri.parse(AppConfig.apiUrl('/api/store/items/increment')),
-        headers: {
-          'Authorization': 'Bearer ${userManager.accessToken}',
-          'Content-Type': 'application/json',
-        },
-        body: json.encode({
-          'streak_freezes': 1,
-        }),
+      final incrementResponse = await ApiService.shared.post(
+        '/api/store/items/increment',
+        body: {'streak_freezes': 1},
+        requiresAuth: true,
       );
 
-      if (incrementResponse.statusCode != 200) {
-        throw Exception('Failed to increment streak freezes: ${incrementResponse.statusCode}');
+      if (!incrementResponse.isSuccess) {
+        throw Exception('Failed to increment streak freezes: ${incrementResponse.error}');
       }
 
       // Step 2: Decrement treats
-      final decrementResponse = await http.post(
-        Uri.parse(AppConfig.apiUrl('/api/store/items/decrement')),
-        headers: {
-          'Authorization': 'Bearer ${userManager.accessToken}',
-          'Content-Type': 'application/json',
-        },
-        body: json.encode({
-          'treats': requiredTreats,
-        }),
+      final decrementResponse = await ApiService.shared.post(
+        '/api/store/items/decrement',
+        body: {'treats': requiredTreats},
+        requiresAuth: true,
       );
 
-      if (decrementResponse.statusCode == 200) {
-        final data = json.decode(decrementResponse.body);
+      if (decrementResponse.isSuccess && decrementResponse.data != null) {
+        final data = decrementResponse.data!;
         _treats = data['treats'] ?? _treats - requiredTreats;
         _streakFreezes = data['streak_freezes'] ?? _streakFreezes + 1;
         
@@ -155,7 +140,7 @@ class StoreService extends ChangeNotifier {
         notifyListeners();
         return true;
       } else {
-        throw Exception('Failed to decrement treats: ${decrementResponse.statusCode}');
+        throw Exception('Failed to decrement treats: ${decrementResponse.error}');
       }
     } catch (e) {
       if (kDebugMode) {
@@ -191,35 +176,25 @@ class StoreService extends ChangeNotifier {
       }
 
       // Step 1: Increment streak revivers
-      final incrementResponse = await http.post(
-        Uri.parse(AppConfig.apiUrl('/api/store/items/increment')),
-        headers: {
-          'Authorization': 'Bearer ${userManager.accessToken}',
-          'Content-Type': 'application/json',
-        },
-        body: json.encode({
-          'streak_revivers': 1,
-        }),
+      final incrementResponse = await ApiService.shared.post(
+        '/api/store/items/increment',
+        body: {'streak_revivers': 1},
+        requiresAuth: true,
       );
 
-      if (incrementResponse.statusCode != 200) {
-        throw Exception('Failed to increment streak revivers: ${incrementResponse.statusCode}');
+      if (!incrementResponse.isSuccess) {
+        throw Exception('Failed to increment streak revivers: ${incrementResponse.error}');
       }
 
       // Step 2: Decrement treats
-      final decrementResponse = await http.post(
-        Uri.parse(AppConfig.apiUrl('/api/store/items/decrement')),
-        headers: {
-          'Authorization': 'Bearer ${userManager.accessToken}',
-          'Content-Type': 'application/json',
-        },
-        body: json.encode({
-          'treats': requiredTreats,
-        }),
+      final decrementResponse = await ApiService.shared.post(
+        '/api/store/items/decrement',
+        body: {'treats': requiredTreats},
+        requiresAuth: true,
       );
 
-      if (decrementResponse.statusCode == 200) {
-        final data = json.decode(decrementResponse.body);
+      if (decrementResponse.isSuccess && decrementResponse.data != null) {
+        final data = decrementResponse.data!;
         _treats = data['treats'] ?? _treats - requiredTreats;
         _streakRevivers = data['streak_revivers'] ?? _streakRevivers + 1;
         
@@ -232,7 +207,7 @@ class StoreService extends ChangeNotifier {
         notifyListeners();
         return true;
       } else {
-        throw Exception('Failed to decrement treats: ${decrementResponse.statusCode}');
+        throw Exception('Failed to decrement treats: ${decrementResponse.error}');
       }
     } catch (e) {
       if (kDebugMode) {
@@ -262,6 +237,59 @@ class StoreService extends ChangeNotifier {
     _setError(null);
   }
 
+  /// Add treats as a reward (for ads, achievements, etc.)
+  Future<bool> addTreatsReward(int amount) async {
+    try {
+      _setLoading(true);
+      _setError(null);
+
+      final userManager = UserManagerService.instance;
+      if (!userManager.isAuthenticated) {
+        // For testing without authentication
+        _treats += amount;
+        notifyListeners();
+        if (kDebugMode) {
+          print('🎁 Reward: Added $amount treats. New total: $_treats');
+        }
+        return true;
+      }
+
+      // Make API call to add treats in backend
+      final response = await ApiService.shared.post(
+        '/api/store/items/increment',
+        body: {'treats': amount},
+        requiresAuth: true,
+      );
+
+      if (response.isSuccess && response.data != null) {
+        final data = response.data!;
+        _treats = data['treats'] ?? _treats + amount;
+        
+        if (kDebugMode) {
+          print('🎁 Reward: Added $amount treats via API. New total: $_treats');
+        }
+        
+        notifyListeners();
+        return true;
+      } else {
+        throw Exception('Failed to add treats reward: ${response.error}');
+      }
+    } catch (e) {
+      if (kDebugMode) {
+        print('❌ Error adding treats reward: $e');
+      }
+      // Fallback to local update if API fails
+      _treats += amount;
+      notifyListeners();
+      if (kDebugMode) {
+        print('🎁 Reward: Added $amount treats locally (API failed). New total: $_treats');
+      }
+      return true;
+    } finally {
+      _setLoading(false);
+    }
+  }
+
   /// Debug method to add treats (only works in debug mode)
   Future<void> addDebugTreats(int amount) async {
     if (kDebugMode) {
@@ -281,19 +309,14 @@ class StoreService extends ChangeNotifier {
         }
 
         // Make API call to update treats in backend
-        final response = await http.post(
-          Uri.parse(AppConfig.apiUrl('/api/store/items/increment')),
-          headers: {
-            'Authorization': 'Bearer ${userManager.accessToken}',
-            'Content-Type': 'application/json',
-          },
-          body: json.encode({
-            'treats': amount,
-          }),
+        final response = await ApiService.shared.post(
+          '/api/store/items/increment',
+          body: {'treats': amount},
+          requiresAuth: true,
         );
 
-        if (response.statusCode == 200) {
-          final data = json.decode(response.body);
+        if (response.isSuccess && response.data != null) {
+          final data = response.data!;
           _treats = data['treats'] ?? _treats + amount;
           
           if (kDebugMode) {
@@ -302,7 +325,7 @@ class StoreService extends ChangeNotifier {
           
           notifyListeners();
         } else {
-          throw Exception('Failed to update treats: ${response.statusCode}');
+          throw Exception('Failed to update treats: ${response.error}');
         }
       } catch (e) {
         if (kDebugMode) {

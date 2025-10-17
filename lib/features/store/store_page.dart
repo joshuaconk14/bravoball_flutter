@@ -8,6 +8,7 @@ import '../../widgets/bravo_button.dart';
 import '../../utils/haptic_utils.dart';
 import '../../utils/premium_utils.dart';
 import '../../services/store_service.dart';
+import '../../services/ad_service.dart';
 import '../premium/premium_page.dart';
 
 class StorePage extends StatefulWidget {
@@ -68,6 +69,14 @@ class _StorePageState extends State<StorePage> {
                       children: [
                         // Header section - only show for non-premium users
                         if (!_isPremium) _buildHeader(),
+                        
+                        // Premium user message - show above My Items
+                        if (_isPremium) ...[
+                          Padding(
+                            padding: const EdgeInsets.fromLTRB(20, 20, 20, 0),
+                            child: _buildPremiumUserMessage(),
+                          ),
+                        ],
                         
                         // My Items section
                         _buildMyItemsSection(),
@@ -268,7 +277,7 @@ class _StorePageState extends State<StorePage> {
   // My Items section - shows user's current inventory
   Widget _buildMyItemsSection() {
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 20),
+      padding: EdgeInsets.fromLTRB(20, _isPremium ? 16 : 20, 20, 0),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -417,12 +426,6 @@ class _StorePageState extends State<StorePage> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // Premium user message
-          if (_isPremium) ...[
-            _buildPremiumUserMessage(),
-            const SizedBox(height: 20),
-          ],
-          
           // Bravo's Store section title
           Text(
             'Bravo\'s Store',
@@ -670,9 +673,9 @@ class _StorePageState extends State<StorePage> {
         
         // Watch Ad for Treats Button
         _buildWatchAdButton(
-          onTap: () {
+          onTap: () async {
             HapticUtils.mediumImpact();
-            _showPurchaseDialog('Watch Ad');
+            await _watchAdForTreats();
           },
         ),
         
@@ -962,6 +965,75 @@ class _StorePageState extends State<StorePage> {
         },
       ),
     );
+  }
+
+  // Watch ad for treats
+  Future<void> _watchAdForTreats() async {
+    try {
+      // Show loading indicator
+      showDialog(
+        context: context,
+        barrierDismissible: false,
+        builder: (context) => Center(
+          child: Container(
+            padding: const EdgeInsets.all(24),
+            decoration: BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.circular(16),
+            ),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                CircularProgressIndicator(color: AppTheme.primaryYellow),
+                const SizedBox(height: 16),
+                Text(
+                  'Loading ad...',
+                  style: TextStyle(
+                    fontFamily: AppTheme.fontPoppins,
+                    fontSize: 16,
+                    color: AppTheme.primaryGray,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+      );
+
+      // Show rewarded ad
+      final rewardAmount = await AdService.instance.showRewardedAd();
+      
+      // Close loading dialog
+      Navigator.of(context).pop();
+
+      if (rewardAmount > 0) {
+        // Add treats to user's account
+        final storeService = StoreService.instance;
+        await storeService.addTreatsReward(rewardAmount);
+
+        // Show success message
+        _showSuccessDialog(
+          'Treats Earned!',
+          'You earned $rewardAmount treats for watching the ad!',
+        );
+      } else if (rewardAmount == -1) {
+        // Ad failed to load or is disabled
+        _showErrorDialog('Ad failed to load. Please try again later.');
+      } else {
+        // User closed ad early without completing it
+        _showErrorDialog('Ad was not completed. Please watch the full ad to earn treats.');
+      }
+    } catch (e) {
+      // Close loading dialog if still open
+      if (Navigator.of(context).canPop()) {
+        Navigator.of(context).pop();
+      }
+
+      if (kDebugMode) {
+        print('❌ Error watching ad for treats: $e');
+      }
+      _showErrorDialog('Failed to show ad. Please try again later.');
+    }
   }
 
   // Add debug treats
