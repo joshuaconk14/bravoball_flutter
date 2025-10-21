@@ -1,7 +1,7 @@
 i want to implement a points system with xp and treats, this is how it works:
 XP: use case is for progress towards leaderboards. how to earn: through training and drill completion
 treats: use case is streak saver, streak freezer, drill skippers, end session early, double XP. how to earn: refill treats:
-50 treats: $5.99
+50 treats: $4.99
 100 treats: $9.99
 200 treats: $19.99
 

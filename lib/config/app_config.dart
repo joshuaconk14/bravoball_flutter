@@ -19,6 +19,9 @@ class AppConfig {
   /// Debug mode toggle
   static const bool debug = true; // PRODUCTION - Set to false for testing and store submission
 
+  /// StoreKit Configuration - Set to true for local testing, false for production
+  static const bool useLocalStoreKit = true; // Set to false for production App Store Connect/Google Play
+
   /// Wi-Fi IP address for phone testing - loaded from .env file
   /// You can find this by running `ipconfig getifaddr en0` on macOS
   static String get phoneWifiIP => dotenv.env['PHONE_WIFI_IP'] ?? '127.0.0.1';
@@ -89,6 +92,7 @@ class AppConfig {
   static bool get logApiCalls => kDebugMode && debug;
   static bool get showPerformanceOverlay => kDebugMode && false;
   static bool get fastMentalTrainingTimers => kDebugMode && debug; // Speed up mental training timers for testing
+  
 
   // MARK: - Test Data Settings (when useTestData is true)
   static const int testDrillCount = 5;
