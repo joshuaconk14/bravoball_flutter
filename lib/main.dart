@@ -21,6 +21,7 @@ import 'services/unified_purchase_service.dart'; // ✅ ADDED: Import UnifiedPur
 import 'constants/app_theme.dart';
 import 'config/app_config.dart';
 import 'widgets/bravo_loading_indicator.dart';
+import 'utils/streak_dialog_manager.dart'; // ✅ ADDED: Import StreakDialogManager
 
 // Global flag to track intro animation - persists across widget rebuilds
 bool _hasShownIntroAnimation = false;
@@ -340,6 +341,9 @@ class _AuthenticatedAppState extends State<AuthenticatedApp> with WidgetsBinding
           setState(() {
             _hasLoadedBackendData = true;
           });
+          
+          // ✅ NEW: Check if user just lost their streak and show dialog
+          _checkForStreakLoss();
         }
       });
     } else {
@@ -349,6 +353,13 @@ class _AuthenticatedAppState extends State<AuthenticatedApp> with WidgetsBinding
       if (kDebugMode) {
         print('✅ Initialization complete - isInitialLoad set to false (no user history)');
       }
+    }
+  }
+
+  /// ✅ NEW: Check if user lost their streak and show dialog
+  void _checkForStreakLoss() {
+    if (mounted) {
+      StreakDialogManager.checkAndShowStreakLossDialog(context);
     }
   }
 

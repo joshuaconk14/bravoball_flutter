@@ -10,7 +10,7 @@ class StoreService extends ChangeNotifier {
   StoreService._();
 
   // Store items state
-  int _treats = 2000; // Placeholder amount
+  int _treats = 0; // Placeholder amount
   int _streakFreezes = 0;
   int _streakRevivers = 0;
   bool _isLoading = false;
@@ -59,7 +59,7 @@ class StoreService extends ChangeNotifier {
 
       if (response.isSuccess && response.data != null) {
         final data = response.data!;
-        _treats = data['treats'] ?? 2000;
+        _treats = data['treats'] ?? 0;
         _streakFreezes = data['streak_freezes'] ?? 0;
         _streakRevivers = data['streak_revivers'] ?? 0;
         
@@ -79,7 +79,7 @@ class StoreService extends ChangeNotifier {
         print('❌ Error fetching store items: $e');
       }
       // Keep placeholder values on error
-      _treats = 2000;
+      _treats = 0;
       _streakFreezes = 0;
       _streakRevivers = 0;
       notifyListeners();
@@ -215,6 +215,112 @@ class StoreService extends ChangeNotifier {
       }
       _setError('Failed to purchase streak reviver');
       return false;
+    } finally {
+      _setLoading(false);
+    }
+  }
+
+  /// Use a streak reviver to restore a lost streak
+  Future<Map<String, dynamic>?> useStreakReviver() async {
+    if (_streakRevivers <= 0) {
+      _setError('You don\'t have any streak revivers available');
+      return null;
+    }
+
+    try {
+      _setLoading(true);
+      _setError(null);
+
+      final userManager = UserManagerService.instance;
+      if (!userManager.isAuthenticated) {
+        _setError('You must be logged in to use a streak reviver');
+        return null;
+      }
+
+      // Call the use-streak-reviver endpoint
+      final response = await ApiService.shared.post(
+        '/api/store/use-streak-reviver',
+        requiresAuth: true,
+      );
+
+      if (response.isSuccess && response.data != null) {
+        final data = response.data!;
+        
+        // Update local state
+        if (data['store_items'] != null) {
+          _streakRevivers = data['store_items']['streak_revivers'] ?? _streakRevivers;
+        }
+        
+        if (kDebugMode) {
+          print('✅ Streak reviver used successfully!');
+          print('   ${data['message']}');
+          print('   Remaining streak revivers: $_streakRevivers');
+        }
+        
+        notifyListeners();
+        return data;
+      } else {
+        throw Exception(response.error ?? 'Failed to use streak reviver');
+      }
+    } catch (e) {
+      if (kDebugMode) {
+        print('❌ Error using streak reviver: $e');
+      }
+      _setError(e.toString().replaceAll('Exception: ', ''));
+      return null;
+    } finally {
+      _setLoading(false);
+    }
+  }
+
+  /// Use a streak freeze to protect today's streak
+  Future<Map<String, dynamic>?> useStreakFreeze() async {
+    if (_streakFreezes <= 0) {
+      _setError('You don\'t have any streak freezes available');
+      return null;
+    }
+
+    try {
+      _setLoading(true);
+      _setError(null);
+
+      final userManager = UserManagerService.instance;
+      if (!userManager.isAuthenticated) {
+        _setError('You must be logged in to use a streak freeze');
+        return null;
+      }
+
+      // Call the use-streak-freeze endpoint
+      final response = await ApiService.shared.post(
+        '/api/store/use-streak-freeze',
+        requiresAuth: true,
+      );
+
+      if (response.isSuccess && response.data != null) {
+        final data = response.data!;
+        
+        // Update local state
+        if (data['store_items'] != null) {
+          _streakFreezes = data['store_items']['streak_freezes'] ?? _streakFreezes;
+        }
+        
+        if (kDebugMode) {
+          print('✅ Streak freeze used successfully!');
+          print('   ${data['message']}');
+          print('   Remaining streak freezes: $_streakFreezes');
+        }
+        
+        notifyListeners();
+        return data;
+      } else {
+        throw Exception(response.error ?? 'Failed to use streak freeze');
+      }
+    } catch (e) {
+      if (kDebugMode) {
+        print('❌ Error using streak freeze: $e');
+      }
+      _setError(e.toString().replaceAll('Exception: ', ''));
+      return null;
     } finally {
       _setLoading(false);
     }

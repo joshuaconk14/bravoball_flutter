@@ -6,9 +6,11 @@ import 'package:provider/provider.dart';
 import 'package:purchases_flutter/purchases_flutter.dart';
 import '../../constants/app_theme.dart';
 import '../../widgets/bravo_button.dart';
+import '../../widgets/item_usage_confirmation_dialog.dart';
 import '../../utils/haptic_utils.dart';
 import '../../utils/premium_utils.dart';
 import '../../services/store_service.dart';
+import '../../services/app_state_service.dart';
 import '../../services/ad_service.dart';
 import '../../services/unified_purchase_service.dart';
 import '../premium/premium_page.dart';
@@ -311,6 +313,7 @@ class _StorePageState extends State<StorePage> {
                       amount: storeService.streakFreezes,
                       icon: Icons.ac_unit,
                       color: AppTheme.secondaryBlue,
+                      onTap: () => _useStreakFreeze(context, storeService),
                     ),
                     
                     const SizedBox(width: 16),
@@ -321,6 +324,7 @@ class _StorePageState extends State<StorePage> {
                       amount: storeService.streakRevivers,
                       icon: Icons.restore,
                       color: AppTheme.secondaryOrange,
+                      onTap: () => _useStreakReviver(context, storeService),
                     ),
                     
                     const SizedBox(width: 16),
@@ -345,26 +349,32 @@ class _StorePageState extends State<StorePage> {
     required int amount,
     required IconData icon,
     required Color color,
+    VoidCallback? onTap,
   }) {
-    return Container(
-      width: 160, // Increased width for larger squares
-      height: 160, // Increased height for larger squares
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(16),
-        boxShadow: [
-          BoxShadow(
-            color: AppTheme.black.withOpacity(0.1),
-            blurRadius: 8,
-            offset: const Offset(0, 2),
-          ),
-        ],
-      ),
-      child: Padding(
-        padding: const EdgeInsets.all(16),
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
+    return GestureDetector(
+      onTap: amount > 0 ? onTap : null,
+      child: Container(
+        width: 160, // Increased width for larger squares
+        height: 160, // Increased height for larger squares
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(16),
+          border: onTap != null && amount > 0
+              ? Border.all(color: color.withOpacity(0.3), width: 2)
+              : null,
+          boxShadow: [
+            BoxShadow(
+              color: AppTheme.black.withOpacity(0.1),
+              blurRadius: 8,
+              offset: const Offset(0, 2),
+            ),
+          ],
+        ),
+        child: Padding(
+          padding: const EdgeInsets.all(16),
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
             // Icon
             Container(
               width: 60,
@@ -418,6 +428,7 @@ class _StorePageState extends State<StorePage> {
           ],
         ),
       ),
+    ),
     );
   }
 
@@ -1146,6 +1157,192 @@ class _StorePageState extends State<StorePage> {
     } else {
       _showErrorDialog(storeService.error ?? 'Failed to purchase Streak Reviver');
     }
+  }
+
+  // Use streak reviver
+  Future<void> _useStreakReviver(BuildContext context, StoreService storeService) async {
+    HapticUtils.mediumImpact();
+    
+    // Check if user has any streak revivers
+    if (storeService.streakRevivers <= 0) {
+      _showErrorDialog('You don\'t have any streak revivers. Purchase one from the store!');
+      return;
+    }
+
+    // Check if user has a lost streak to restore
+    final appState = Provider.of<AppStateService>(context, listen: false);
+    if (appState.currentStreak > 0) {
+      _showErrorDialog('You already have an active streak! Streak revivers can only be used when you\'ve lost your streak.');
+      return;
+    }
+    
+    if (appState.previousStreak <= 0) {
+      _showErrorDialog('You don\'t have a previous streak to restore.');
+      return;
+    }
+
+    // Show confirmation dialog
+    await _showUseStreakReviverDialog(context, storeService, appState);
+  }
+
+  // Show use streak reviver confirmation dialog
+  Future<void> _showUseStreakReviverDialog(
+    BuildContext context,
+    StoreService storeService,
+    AppStateService appState,
+  ) async {
+    bool isLoading = false;
+
+    await showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (dialogContext) => StatefulBuilder(
+        builder: (context, setState) {
+          return ItemUsageConfirmationDialog(
+            title: 'Restore Your Streak?',
+            description: 'Use a Streak Reviver to restore your ${appState.previousStreak}-day streak?',
+            itemName: 'Streak Reviver',
+            icon: Icons.restore,
+            iconColor: AppTheme.secondaryOrange,
+            confirmButtonText: 'Restore Streak',
+            isLoading: isLoading,
+            onConfirm: () async {
+              setState(() {
+                isLoading = true;
+              });
+
+              final result = await storeService.useStreakReviver();
+              
+              if (result != null) {
+                // ✅ Update AppStateService with the returned streak values
+                if (result['progress_history'] != null) {
+                  appState.updateStreakValues(
+                    currentStreak: result['progress_history']['current_streak'] ?? 0,
+                    previousStreak: result['progress_history']['previous_streak'] ?? 0,
+                  );
+                }
+                
+                if (context.mounted) {
+                  Navigator.of(dialogContext).pop();
+                  _showSuccessDialog(
+                    'Streak Restored!',
+                    result['message'] ?? 'Your streak has been restored!',
+                  );
+                }
+              } else {
+                // Error
+                setState(() {
+                  isLoading = false;
+                });
+                
+                if (context.mounted) {
+                  Navigator.of(dialogContext).pop();
+                  _showErrorDialog(storeService.error ?? 'Failed to use streak reviver');
+                }
+              }
+            },
+            onCancel: () {
+              // Dialog already closes itself, no need to pop again
+            },
+          );
+        },
+      ),
+    );
+  }
+
+  // Use streak freeze
+  Future<void> _useStreakFreeze(BuildContext context, StoreService storeService) async {
+    HapticUtils.mediumImpact();
+    
+    // Check if user has any streak freezes
+    if (storeService.streakFreezes <= 0) {
+      _showErrorDialog('You don\'t have any streak freezes. Purchase one from the store!');
+      return;
+    }
+
+    // Check if user has an active streak
+    final appState = Provider.of<AppStateService>(context, listen: false);
+    if (appState.currentStreak <= 0) {
+      _showErrorDialog('You need an active streak to use a streak freeze!');
+      return;
+    }
+    
+    // Check if there's already an active freeze for today
+    final today = DateTime.now();
+    if (appState.activeFreezeDate != null) {
+      final freezeDate = appState.activeFreezeDate!;
+      if (freezeDate.year == today.year && 
+          freezeDate.month == today.month && 
+          freezeDate.day == today.day) {
+        _showErrorDialog('You already have a streak freeze active for today!');
+        return;
+      }
+    }
+
+    // Show confirmation dialog
+    await _showUseStreakFreezeDialog(context, storeService, appState);
+  }
+
+  // Show use streak freeze confirmation dialog
+  Future<void> _showUseStreakFreezeDialog(
+    BuildContext context,
+    StoreService storeService,
+    AppStateService appState,
+  ) async {
+    bool isLoading = false;
+
+    await showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (dialogContext) => StatefulBuilder(
+        builder: (context, setState) {
+          return ItemUsageConfirmationDialog(
+            title: 'Protect Your Streak?',
+            description: 'Use a Streak Freeze to protect your ${appState.currentStreak}-day streak for today?',
+            itemName: 'Streak Freeze',
+            icon: Icons.ac_unit,
+            iconColor: AppTheme.secondaryBlue,
+            confirmButtonText: 'Freeze Streak',
+            isLoading: isLoading,
+            onConfirm: () async {
+              setState(() {
+                isLoading = true;
+              });
+
+              final result = await storeService.useStreakFreeze();
+              
+              if (result != null) {
+                // ✅ Update AppStateService with the freeze date
+                if (result['freeze_date'] != null) {
+                  appState.updateActiveFreezeDate(DateTime.parse(result['freeze_date']));
+                }
+                
+                if (context.mounted) {
+                  Navigator.of(dialogContext).pop();
+                  _showSuccessDialog(
+                    'Streak Protected!',
+                    result['message'] ?? 'Your streak is protected for today!',
+                  );
+                }
+              } else {
+                // Error
+                setState(() {
+                  isLoading = false;
+                });
+                
+                if (context.mounted) {
+                  Navigator.of(dialogContext).pop();
+                  _showErrorDialog(storeService.error ?? 'Failed to use streak freeze');
+                }
+              }
+            },
+            onCancel: () {
+              // Dialog already closes itself, no need to pop again
+            },
+          );
+        },
+      ),
+    );
   }
 
   // Show purchase confirmation dialog

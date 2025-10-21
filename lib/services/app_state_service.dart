@@ -274,6 +274,49 @@ class AppStateService extends ChangeNotifier {
   int _countOfFullyCompletedSessions = 0;
   int get countOfFullyCompletedSessions => _countOfFullyCompletedSessions;
   
+  // ✅ NEW: Track if user just lost their streak (for showing revival dialog)
+  bool _hasJustLostStreak = false;
+  bool get hasJustLostStreak => _hasJustLostStreak;
+  
+  // ✅ NEW: Mark that we've shown the streak loss dialog
+  void markStreakLossDialogShown() {
+    _hasJustLostStreak = false;
+    notifyListeners();
+  }
+  
+  // ✅ NEW: Update streak values directly (used after streak reviver)
+  void updateStreakValues({
+    required int currentStreak,
+    required int previousStreak,
+    int? highestStreak,
+  }) {
+    _currentStreak = currentStreak;
+    _previousStreak = previousStreak;
+    if (highestStreak != null && highestStreak > _highestStreak) {
+      _highestStreak = highestStreak;
+    }
+    _hasJustLostStreak = false; // Clear streak loss flag
+    notifyListeners();
+    
+    if (kDebugMode) {
+      print('✅ Streak values updated: current=$_currentStreak, previous=$_previousStreak, highest=$_highestStreak');
+    }
+  }
+  
+  // ✅ NEW: Active freeze date tracking
+  DateTime? _activeFreezeDate;
+  DateTime? get activeFreezeDate => _activeFreezeDate;
+  
+  // ✅ NEW: Update active freeze date (used after streak freeze)
+  void updateActiveFreezeDate(DateTime? freezeDate) {
+    _activeFreezeDate = freezeDate;
+    notifyListeners();
+    
+    if (kDebugMode) {
+      print('✅ Active freeze date updated: $_activeFreezeDate');
+    }
+  }
+  
   // ✅ NEW: Backend-sourced progress metrics only
   String _favoriteDrill = '';
   String get favoriteDrill => _favoriteDrill;
@@ -639,8 +682,20 @@ class AppStateService extends ChangeNotifier {
       
       final progressHistory = await _progressSyncService.updateProgressHistory();
       if (progressHistory != null) {
-        _currentStreak = progressHistory['currentStreak'] ?? 0;
-        _previousStreak = progressHistory['previousStreak'] ?? 0;
+        final newCurrentStreak = progressHistory['currentStreak'] ?? 0;
+        final newPreviousStreak = progressHistory['previousStreak'] ?? 0;
+        
+        // ✅ NEW: Check if user just lost their streak
+        // Condition: current_streak == 0 AND previous_streak > 0
+        if (newCurrentStreak == 0 && newPreviousStreak > 0) {
+          _hasJustLostStreak = true;
+          if (kDebugMode) {
+            print('💔 Streak loss detected! Previous streak: $newPreviousStreak days');
+          }
+        }
+        
+        _currentStreak = newCurrentStreak;
+        _previousStreak = newPreviousStreak;
         _highestStreak = progressHistory['highestStreak'] ?? 0;
         _countOfFullyCompletedSessions = progressHistory['completedSessionsCount'] ?? 0;
         
@@ -667,6 +722,23 @@ class AppStateService extends ChangeNotifier {
         // ✅ NEW: Mental training metrics
         _mentalTrainingSessions = progressHistory['mentalTrainingSessions'] ?? 0;
         _totalMentalTrainingMinutes = progressHistory['totalMentalTrainingMinutes'] ?? 0;
+        
+        // ✅ NEW: Load active freeze date
+        if (progressHistory['activeFreezeDate'] != null) {
+          try {
+            _activeFreezeDate = DateTime.parse(progressHistory['activeFreezeDate']);
+            if (kDebugMode) {
+              print('✅ Loaded active freeze date: $_activeFreezeDate');
+            }
+          } catch (e) {
+            if (kDebugMode) {
+              print('❌ Error parsing active freeze date: $e');
+            }
+            _activeFreezeDate = null;
+          }
+        } else {
+          _activeFreezeDate = null;
+        }
       }
       
       if (kDebugMode) print('✅ Loaded progress data from backend');
@@ -883,8 +955,20 @@ class AppStateService extends ChangeNotifier {
       
       final progressHistory = await _progressSyncService.updateProgressHistory();
       if (progressHistory != null) {
-        _currentStreak = progressHistory['currentStreak'] ?? 0;
-        _previousStreak = progressHistory['previousStreak'] ?? 0;
+        final newCurrentStreak = progressHistory['currentStreak'] ?? 0;
+        final newPreviousStreak = progressHistory['previousStreak'] ?? 0;
+        
+        // ✅ NEW: Check if user just lost their streak
+        // Condition: current_streak == 0 AND previous_streak > 0
+        if (newCurrentStreak == 0 && newPreviousStreak > 0) {
+          _hasJustLostStreak = true;
+          if (kDebugMode) {
+            print('💔 Streak loss detected! Previous streak: $newPreviousStreak days');
+          }
+        }
+        
+        _currentStreak = newCurrentStreak;
+        _previousStreak = newPreviousStreak;
         _highestStreak = progressHistory['highestStreak'] ?? 0;
         _countOfFullyCompletedSessions = progressHistory['completedSessionsCount'] ?? 0;
         
@@ -911,6 +995,23 @@ class AppStateService extends ChangeNotifier {
         // ✅ NEW: Refresh mental training metrics
         _mentalTrainingSessions = progressHistory['mentalTrainingSessions'] ?? 0;
         _totalMentalTrainingMinutes = progressHistory['totalMentalTrainingMinutes'] ?? 0;
+        
+        // ✅ NEW: Refresh active freeze date
+        if (progressHistory['active_freeze_date'] != null) {
+          try {
+            _activeFreezeDate = DateTime.parse(progressHistory['active_freeze_date']);
+            if (kDebugMode) {
+              print('✅ Refreshed active freeze date: $_activeFreezeDate');
+            }
+          } catch (e) {
+            if (kDebugMode) {
+              print('❌ Error parsing active freeze date during refresh: $e');
+            }
+            _activeFreezeDate = null;
+          }
+        } else {
+          _activeFreezeDate = null;
+        }
         
         notifyListeners();
       }
