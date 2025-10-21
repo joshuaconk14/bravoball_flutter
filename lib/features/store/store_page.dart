@@ -3,6 +3,7 @@ import 'package:flutter/foundation.dart';
 import 'package:rive/rive.dart';
 import 'package:flutter/painting.dart' as painting;
 import 'package:provider/provider.dart';
+import 'package:purchases_flutter/purchases_flutter.dart';
 import '../../constants/app_theme.dart';
 import '../../widgets/bravo_button.dart';
 import '../../utils/haptic_utils.dart';
@@ -681,38 +682,85 @@ class _StorePageState extends State<StorePage> {
         
         const SizedBox(height: 16),
         
-        // 500 Treats Package
-        _buildTreatPackage(
-          amount: '500',
-          price: '\$5.99',
-          onTap: () {
-            HapticUtils.mediumImpact();
-            _showPurchaseDialog('500 Treats');
-          },
-        ),
-        
-        const SizedBox(height: 12),
-        
-        // 1000 Treats Package
-        _buildTreatPackage(
-          amount: '1000',
-          price: '\$9.99',
-          isPopular: true,
-          onTap: () {
-            HapticUtils.mediumImpact();
-            _showPurchaseDialog('1000 Treats');
-          },
-        ),
-        
-        const SizedBox(height: 12),
-        
-        // 2000 Treats Package
-        _buildTreatPackage(
-          amount: '2000',
-          price: '\$19.99',
-          onTap: () {
-            HapticUtils.mediumImpact();
-            _showPurchaseDialog('2000 Treats');
+        // Treat Packages - Dynamic from RevenueCat
+        Consumer<StoreService>(
+          builder: (context, storeService, child) {
+            return FutureBuilder<List<Package>>(
+              future: storeService.getAvailableTreatPackages(),
+              builder: (context, snapshot) {
+                if (snapshot.connectionState == ConnectionState.waiting) {
+                  return const Center(
+                    child: Padding(
+                      padding: EdgeInsets.all(20),
+                      child: CircularProgressIndicator(),
+                    ),
+                  );
+                }
+                
+                if (snapshot.hasError || !snapshot.hasData || snapshot.data!.isEmpty) {
+                  // Fallback to static packages if RevenueCat fails
+                  return Column(
+                    children: [
+                      _buildTreatPackage(
+                        amount: '500',
+                        price: '\$4.99',
+                        onTap: () {
+                          HapticUtils.mediumImpact();
+                          _purchaseTreatPackage('Treats500');
+                        },
+                      ),
+                      const SizedBox(height: 12),
+                      _buildTreatPackage(
+                        amount: '1000',
+                        price: '\$9.99',
+                        isPopular: true,
+                        onTap: () {
+                          HapticUtils.mediumImpact();
+                          _purchaseTreatPackage('Treats1000');
+                        },
+                      ),
+                      const SizedBox(height: 12),
+                      _buildTreatPackage(
+                        amount: '2000',
+                        price: '\$19.99',
+                        onTap: () {
+                          HapticUtils.mediumImpact();
+                          _purchaseTreatPackage('Treats2000');
+                        },
+                      ),
+                    ],
+                  );
+                }
+                
+                final packages = snapshot.data!;
+                return Column(
+                  children: packages.asMap().entries.map((entry) {
+                    final index = entry.key;
+                    final package = entry.value;
+                    
+                    // Extract amount from package identifier
+                    String amount = '500'; // default
+                    if (package.identifier == 'Treats1000') amount = '1000';
+                    if (package.identifier == 'Treats2000') amount = '2000';
+                    
+                    return Column(
+                      children: [
+                        if (index > 0) const SizedBox(height: 12),
+                        _buildTreatPackage(
+                          amount: amount,
+                          price: package.storeProduct.priceString,
+                          isPopular: package.identifier == 'Treats1000',
+                          onTap: () {
+                            HapticUtils.mediumImpact();
+                            _purchaseTreatPackage(package.identifier);
+                          },
+                        ),
+                      ],
+                    );
+                  }).toList(),
+                );
+              },
+            );
           },
         ),
       ],
@@ -1328,6 +1376,44 @@ class _StorePageState extends State<StorePage> {
         );
       },
     );
+  }
+
+  // Purchase treat package
+  Future<void> _purchaseTreatPackage(String packageIdentifier) async {
+    try {
+      final storeService = StoreService.instance;
+      final success = await storeService.purchaseTreatPackage(packageIdentifier);
+      
+      if (success) {
+        // Show success message
+        _showSuccessDialog(
+          'Purchase Successful!',
+          'You received ${_getTreatAmountFromPackage(packageIdentifier)} treats!',
+        );
+      } else {
+        // Show error message
+        _showErrorDialog(storeService.error ?? 'Purchase failed');
+      }
+    } catch (e) {
+      if (kDebugMode) {
+        print('❌ Error purchasing treat package: $e');
+      }
+      _showErrorDialog('Purchase failed: $e');
+    }
+  }
+
+  // Helper method to get treat amount from package identifier
+  int _getTreatAmountFromPackage(String packageIdentifier) {
+    switch (packageIdentifier) {
+      case 'Treats500':
+        return 500;
+      case 'Treats1000':
+        return 1000;
+      case 'Treats2000':
+        return 2000;
+      default:
+        return 0;
+    }
   }
 
   // Show purchase dialog

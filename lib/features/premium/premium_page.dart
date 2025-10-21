@@ -3,6 +3,7 @@ import 'package:flutter/foundation.dart';
 import '../../constants/app_theme.dart';
 import 'package:purchases_flutter/purchases_flutter.dart';
 import '../../utils/premium_utils.dart';
+import '../../config/app_config.dart';
 
 class PremiumPage extends StatefulWidget {
   const PremiumPage({Key? key}) : super(key: key);
@@ -64,7 +65,7 @@ class _PremiumPageState extends State<PremiumPage> {
     }
   }
 
-  Future<void> _purchaseProduct(String productId, String planName) async {
+  Future<void> _purchasePackage(String packageIdentifier, String planName) async {
     if (_isPurchasing) return;
 
     setState(() {
@@ -72,11 +73,32 @@ class _PremiumPageState extends State<PremiumPage> {
     });
 
     if (kDebugMode) {
-      print('🛒 Starting purchase for: $productId');
+      print('🛒 Starting purchase for package: $packageIdentifier');
+      print('   Using ${AppConfig.useLocalStoreKit ? 'Local StoreKit' : 'Production'}');
     }
 
     try {
-      final purchaseResult = await Purchases.purchaseProduct(productId);
+      // Get offerings from RevenueCat
+      final offerings = await Purchases.getOfferings();
+      
+      if (offerings.current == null) {
+        throw Exception('No offerings available');
+      }
+
+      // Find the package
+      final package = offerings.current!.getPackage(packageIdentifier);
+      if (package == null) {
+        throw Exception('Package $packageIdentifier not found');
+      }
+
+      if (kDebugMode) {
+        print('📦 Found package: ${package.identifier}');
+        print('   Product: ${package.storeProduct.identifier}');
+        print('   Price: ${package.storeProduct.priceString}');
+      }
+
+      // Make the purchase
+      final purchaseResult = await Purchases.purchase(PurchaseParams.package(package));
       
       if (kDebugMode) {
         print('✅ Purchase successful: ${purchaseResult.customerInfo.activeSubscriptions}');
@@ -380,7 +402,7 @@ class _PremiumPageState extends State<PremiumPage> {
           height: 60,
           child: ElevatedButton(
             onPressed: _isPurchasing ? null : () async {
-              await _purchaseProduct('bravoball_monthly_premium', 'Monthly');
+              await _purchasePackage('PremiumMonthly', 'Monthly');
             },
             style: ElevatedButton.styleFrom(
               backgroundColor: AppTheme.primaryYellow,
@@ -410,7 +432,7 @@ class _PremiumPageState extends State<PremiumPage> {
           height: 60,
           child: ElevatedButton(
             onPressed: _isPurchasing ? null : () async {
-              await _purchaseProduct('bravoball_yearly_premium', 'Yearly');
+              await _purchasePackage('PremiumYearly', 'Annual');
             },
             style: ElevatedButton.styleFrom(
               backgroundColor: AppTheme.primaryYellow,

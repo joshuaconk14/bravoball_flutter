@@ -300,6 +300,10 @@ class RevenueCatTestService {
   static const String monthlyPremiumId = 'bravoball_monthly_premium';
   static const String yearlyPremiumId = 'bravoball_yearly_premium';
   
+  // RevenueCat Package Identifiers - these should match your RevenueCat dashboard
+  static const String monthlyPackageId = 'PremiumMonthly';
+  static const String annualPackageId = 'PremiumYearly';
+  
   bool _isInitialized = false;
 
   /// Initialize RevenueCat

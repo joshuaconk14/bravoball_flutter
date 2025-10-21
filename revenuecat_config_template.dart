@@ -18,6 +18,10 @@ class RevenueCatConfig {
   static const String monthlyPremiumId = 'bravoball_monthly_premium';
   static const String yearlyPremiumId = 'bravoball_yearly_premium';
   
+  // RevenueCat Package Identifiers - these should match your RevenueCat dashboard
+  static const String monthlyPackageId = 'PremiumMonthly';
+  static const String annualPackageId = 'PremiumYearly';
+  
   // Entitlement ID - this should match what you set up in RevenueCat dashboard
   static const String premiumEntitlementId = 'premium';
   
