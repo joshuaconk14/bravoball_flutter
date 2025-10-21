@@ -10,6 +10,7 @@ import '../../utils/haptic_utils.dart';
 import '../../utils/premium_utils.dart';
 import '../../services/store_service.dart';
 import '../../services/ad_service.dart';
+import '../../services/unified_purchase_service.dart';
 import '../premium/premium_page.dart';
 
 class StorePage extends StatefulWidget {
@@ -686,7 +687,7 @@ class _StorePageState extends State<StorePage> {
         Consumer<StoreService>(
           builder: (context, storeService, child) {
             return FutureBuilder<List<Package>>(
-              future: storeService.getAvailableTreatPackages(),
+              future: UnifiedPurchaseService.instance.getAvailablePackages(ProductType.treats),
               builder: (context, snapshot) {
                 if (snapshot.connectionState == ConnectionState.waiting) {
                   return const Center(
@@ -1380,25 +1381,23 @@ class _StorePageState extends State<StorePage> {
 
   // Purchase treat package
   Future<void> _purchaseTreatPackage(String packageIdentifier) async {
-    try {
-      final storeService = StoreService.instance;
-      final success = await storeService.purchaseTreatPackage(packageIdentifier);
-      
-      if (success) {
-        // Show success message
-        _showSuccessDialog(
-          'Purchase Successful!',
-          'You received ${_getTreatAmountFromPackage(packageIdentifier)} treats!',
-        );
-      } else {
-        // Show error message
-        _showErrorDialog(storeService.error ?? 'Purchase failed');
-      }
-    } catch (e) {
-      if (kDebugMode) {
-        print('❌ Error purchasing treat package: $e');
-      }
-      _showErrorDialog('Purchase failed: $e');
+    // Use the unified purchase service
+    final purchaseService = UnifiedPurchaseService.instance;
+    final result = await purchaseService.purchaseProduct(
+      productType: ProductType.treats,
+      packageIdentifier: packageIdentifier,
+      productName: '${_getTreatAmountFromPackage(packageIdentifier)} Treats',
+    );
+    
+    if (result.success) {
+      // Show success message
+      _showSuccessDialog(
+        'Purchase Successful!',
+        'You received ${_getTreatAmountFromPackage(packageIdentifier)} treats!',
+      );
+    } else {
+      // Show error message
+      _showErrorDialog(result.error ?? 'Purchase failed');
     }
   }
 

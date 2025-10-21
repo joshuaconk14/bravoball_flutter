@@ -17,6 +17,7 @@ import 'services/android_compatibility_service.dart'; // ✅ ADDED: Import Andro
 import 'services/loading_state_service.dart';
 import 'services/ad_service.dart'; // ✅ ADDED: Import AdService
 import 'services/store_service.dart'; // ✅ ADDED: Import StoreService
+import 'services/unified_purchase_service.dart'; // ✅ ADDED: Import UnifiedPurchaseService
 import 'constants/app_theme.dart';
 import 'config/app_config.dart';
 import 'widgets/bravo_loading_indicator.dart';
@@ -138,6 +139,7 @@ class _MyAppState extends State<MyApp> {
         ChangeNotifierProvider.value(value: AuthenticationService.shared),
         ChangeNotifierProvider.value(value: LoadingStateService.instance),
         ChangeNotifierProvider.value(value: StoreService.instance),
+        ChangeNotifierProvider.value(value: UnifiedPurchaseService.instance),
       ],
       child: MaterialApp(
         title: 'BravoBall',
