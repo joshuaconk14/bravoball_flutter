@@ -4,6 +4,7 @@ import '../../constants/app_theme.dart';
 import 'package:purchases_flutter/purchases_flutter.dart';
 import '../../utils/premium_utils.dart';
 import '../../config/app_config.dart';
+import '../../services/unified_purchase_service.dart';
 
 class PremiumPage extends StatefulWidget {
   const PremiumPage({Key? key}) : super(key: key);
@@ -72,62 +73,35 @@ class _PremiumPageState extends State<PremiumPage> {
       _isPurchasing = true;
     });
 
-    if (kDebugMode) {
-      print('🛒 Starting purchase for package: $packageIdentifier');
-      print('   Using ${AppConfig.useLocalStoreKit ? 'Local StoreKit' : 'Production'}');
-    }
+    // Use the unified purchase service
+    final purchaseService = UnifiedPurchaseService.instance;
+    final result = await purchaseService.purchaseProduct(
+      productType: ProductType.premium,
+      packageIdentifier: packageIdentifier,
+      productName: planName,
+    );
 
-    try {
-      // Get offerings from RevenueCat
-      final offerings = await Purchases.getOfferings();
-      
-      if (offerings.current == null) {
-        throw Exception('No offerings available');
-      }
-
-      // Find the package
-      final package = offerings.current!.getPackage(packageIdentifier);
-      if (package == null) {
-        throw Exception('Package $packageIdentifier not found');
-      }
-
-      if (kDebugMode) {
-        print('📦 Found package: ${package.identifier}');
-        print('   Product: ${package.storeProduct.identifier}');
-        print('   Price: ${package.storeProduct.priceString}');
-      }
-
-      // Make the purchase
-      final purchaseResult = await Purchases.purchase(PurchaseParams.package(package));
-      
-      if (kDebugMode) {
-        print('✅ Purchase successful: ${purchaseResult.customerInfo.activeSubscriptions}');
-      }
-      
+    if (result.success) {
       // Update premium status and show success message
       await _checkPremiumStatus();
       _showSuccessMessage();
-      
-    } catch (e) {
-      if (kDebugMode) {
-        print('❌ Purchase failed: $e');
-      }
-      
+    } else {
+      // Show error message
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text(
-            'Purchase failed: ${e.toString()}',
+            result.error ?? 'Purchase failed',
             style: const TextStyle(fontSize: 16),
           ),
           backgroundColor: Colors.red,
           duration: const Duration(seconds: 4),
         ),
       );
-    } finally {
-      setState(() {
-        _isPurchasing = false;
-      });
     }
+
+    setState(() {
+      _isPurchasing = false;
+    });
   }
 
   void _showSuccessMessage() {
@@ -159,19 +133,12 @@ class _PremiumPageState extends State<PremiumPage> {
   }
 
   Future<void> _restorePurchases() async {
-    if (kDebugMode) {
-      print('🔄 Restoring previous purchases...');
-    }
-
-    try {
-      final customerInfo = await Purchases.restorePurchases();
-      
-      if (kDebugMode) {
-        print('✅ Purchases restored');
-        print('🔒 Active entitlements: ${customerInfo.entitlements.active.keys}');
-      }
-      
-      // Check if user now has premium access using simplified method
+    // Use the unified purchase service
+    final purchaseService = UnifiedPurchaseService.instance;
+    final success = await purchaseService.restorePurchases();
+    
+    if (success) {
+      // Check if user now has premium access
       final isPremium = await PremiumUtils.hasPremiumAccess();
       
       if (isPremium) {
@@ -191,14 +158,11 @@ class _PremiumPageState extends State<PremiumPage> {
           ),
         );
       }
-    } catch (e) {
-      if (kDebugMode) {
-        print('❌ Error restoring purchases: $e');
-      }
+    } else {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text(
-            'Error restoring purchases: $e',
+            purchaseService.lastError ?? 'Error restoring purchases',
             style: const TextStyle(fontSize: 16),
           ),
           backgroundColor: Colors.red,

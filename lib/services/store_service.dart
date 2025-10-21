@@ -1,8 +1,6 @@
 import 'package:flutter/foundation.dart';
-import 'package:purchases_flutter/purchases_flutter.dart';
 import '../services/api_service.dart';
 import '../services/user_manager_service.dart';
-import '../config/app_config.dart';
 
 /// Store Service for managing user store items and purchases
 class StoreService extends ChangeNotifier {
@@ -12,7 +10,7 @@ class StoreService extends ChangeNotifier {
   StoreService._();
 
   // Store items state
-  int _treats = 2000; // Placeholder amount
+  int _treats = 0; // Placeholder amount
   int _streakFreezes = 0;
   int _streakRevivers = 0;
   bool _isLoading = false;
@@ -61,7 +59,7 @@ class StoreService extends ChangeNotifier {
 
       if (response.isSuccess && response.data != null) {
         final data = response.data!;
-        _treats = data['treats'] ?? 2000;
+        _treats = data['treats'] ?? 0;
         _streakFreezes = data['streak_freezes'] ?? 0;
         _streakRevivers = data['streak_revivers'] ?? 0;
         
@@ -81,7 +79,7 @@ class StoreService extends ChangeNotifier {
         print('❌ Error fetching store items: $e');
       }
       // Keep placeholder values on error
-      _treats = 2000;
+      _treats = 0;
       _streakFreezes = 0;
       _streakRevivers = 0;
       notifyListeners();
@@ -222,6 +220,112 @@ class StoreService extends ChangeNotifier {
     }
   }
 
+  /// Use a streak reviver to restore a lost streak
+  Future<Map<String, dynamic>?> useStreakReviver() async {
+    if (_streakRevivers <= 0) {
+      _setError('You don\'t have any streak revivers available');
+      return null;
+    }
+
+    try {
+      _setLoading(true);
+      _setError(null);
+
+      final userManager = UserManagerService.instance;
+      if (!userManager.isAuthenticated) {
+        _setError('You must be logged in to use a streak reviver');
+        return null;
+      }
+
+      // Call the use-streak-reviver endpoint
+      final response = await ApiService.shared.post(
+        '/api/store/use-streak-reviver',
+        requiresAuth: true,
+      );
+
+      if (response.isSuccess && response.data != null) {
+        final data = response.data!;
+        
+        // Update local state
+        if (data['store_items'] != null) {
+          _streakRevivers = data['store_items']['streak_revivers'] ?? _streakRevivers;
+        }
+        
+        if (kDebugMode) {
+          print('✅ Streak reviver used successfully!');
+          print('   ${data['message']}');
+          print('   Remaining streak revivers: $_streakRevivers');
+        }
+        
+        notifyListeners();
+        return data;
+      } else {
+        throw Exception(response.error ?? 'Failed to use streak reviver');
+      }
+    } catch (e) {
+      if (kDebugMode) {
+        print('❌ Error using streak reviver: $e');
+      }
+      _setError(e.toString().replaceAll('Exception: ', ''));
+      return null;
+    } finally {
+      _setLoading(false);
+    }
+  }
+
+  /// Use a streak freeze to protect today's streak
+  Future<Map<String, dynamic>?> useStreakFreeze() async {
+    if (_streakFreezes <= 0) {
+      _setError('You don\'t have any streak freezes available');
+      return null;
+    }
+
+    try {
+      _setLoading(true);
+      _setError(null);
+
+      final userManager = UserManagerService.instance;
+      if (!userManager.isAuthenticated) {
+        _setError('You must be logged in to use a streak freeze');
+        return null;
+      }
+
+      // Call the use-streak-freeze endpoint
+      final response = await ApiService.shared.post(
+        '/api/store/use-streak-freeze',
+        requiresAuth: true,
+      );
+
+      if (response.isSuccess && response.data != null) {
+        final data = response.data!;
+        
+        // Update local state
+        if (data['store_items'] != null) {
+          _streakFreezes = data['store_items']['streak_freezes'] ?? _streakFreezes;
+        }
+        
+        if (kDebugMode) {
+          print('✅ Streak freeze used successfully!');
+          print('   ${data['message']}');
+          print('   Remaining streak freezes: $_streakFreezes');
+        }
+        
+        notifyListeners();
+        return data;
+      } else {
+        throw Exception(response.error ?? 'Failed to use streak freeze');
+      }
+    } catch (e) {
+      if (kDebugMode) {
+        print('❌ Error using streak freeze: $e');
+      }
+      _setError(e.toString().replaceAll('Exception: ', ''));
+      return null;
+    } finally {
+      _setLoading(false);
+    }
+  }
+
   /// Set loading state
   void _setLoading(bool loading) {
     _isLoading = loading;
@@ -345,200 +449,5 @@ class StoreService extends ChangeNotifier {
     }
   }
 
-  /// Purchase treat packages using RevenueCat
-  Future<bool> purchaseTreatPackage(String packageIdentifier) async {
-    try {
-      _setLoading(true);
-      _setError(null);
 
-      if (kDebugMode) {
-        print('🛒 Attempting to purchase treat package: $packageIdentifier');
-        print('   Using ${AppConfig.useLocalStoreKit ? 'Local StoreKit' : 'Production'}');
-      }
-
-      // Get offerings from RevenueCat
-      final offerings = await Purchases.getOfferings();
-      
-      if (kDebugMode) {
-        print('🔍 Debug: All available offerings:');
-        for (final entry in offerings.all.entries) {
-          print('   ${entry.key}: ${entry.value.availablePackages.length} packages');
-          for (final package in entry.value.availablePackages) {
-            print('     - ${package.identifier}: ${package.storeProduct.identifier}');
-          }
-        }
-      }
-      
-      // Get the treats offering specifically
-      final treatsOffering = offerings.all['bravoball_treats'];
-      if (treatsOffering == null) {
-        throw Exception('Treats offering not found. Available offerings: ${offerings.all.keys}');
-      }
-
-      if (kDebugMode) {
-        print('📦 Found treats offering: ${treatsOffering.identifier}');
-        print('   Available packages: ${treatsOffering.availablePackages.map((p) => p.identifier).toList()}');
-      }
-
-      // Find the package - handle local StoreKit vs production mapping
-      Package? package;
-      if (AppConfig.useLocalStoreKit) {
-        // For local StoreKit, map package identifiers to product IDs
-        String productId;
-        switch (packageIdentifier) {
-          case 'Treats500':
-            productId = 'bravoball_treats_500';
-            break;
-          case 'Treats1000':
-            productId = 'bravoball_treats_1000';
-            break;
-          case 'Treats2000':
-            productId = 'bravoball_treats_2000';
-            break;
-          default:
-            throw Exception('Unknown package identifier: $packageIdentifier');
-        }
-        
-        // Find package by product ID in local StoreKit
-        package = treatsOffering.availablePackages
-            .where((p) => p.storeProduct.identifier == productId)
-            .firstOrNull;
-      } else {
-        // For production, use RevenueCat package identifiers
-        package = treatsOffering.getPackage(packageIdentifier);
-      }
-      
-      if (package == null) {
-        throw Exception('Package $packageIdentifier not found');
-      }
-
-      if (kDebugMode) {
-        print('📦 Found package: ${package.identifier}');
-        print('   Product: ${package.storeProduct.identifier}');
-        print('   Price: ${package.storeProduct.priceString}');
-      }
-
-      // Make the purchase
-      final purchaseResult = await Purchases.purchase(PurchaseParams.package(package));
-      
-      if (purchaseResult.customerInfo.entitlements.active.isNotEmpty) {
-        // This shouldn't happen for consumables, but just in case
-        if (kDebugMode) {
-          print('⚠️ Purchase completed but no entitlements expected for consumables');
-        }
-      }
-
-      // Determine treat amount based on package identifier
-      int treatAmount = 0;
-      switch (packageIdentifier) {
-        case 'Treats500':
-          treatAmount = 500;
-          break;
-        case 'Treats1000':
-          treatAmount = 1000;
-          break;
-        case 'Treats2000':
-          treatAmount = 2000;
-          break;
-        default:
-          throw Exception('Unknown package identifier: $packageIdentifier');
-      }
-
-      // Add treats to user's account
-      final success = await addTreatsReward(treatAmount);
-      
-      if (success) {
-        if (kDebugMode) {
-          print('✅ Treat package purchased successfully!');
-          print('   Package: $packageIdentifier');
-          print('   Treats added: $treatAmount');
-          print('   New total: $_treats');
-        }
-        return true;
-      } else {
-        throw Exception('Failed to add treats to account');
-      }
-
-    } catch (e) {
-      if (kDebugMode) {
-        print('❌ Error purchasing treat package: $e');
-      }
-      
-      // Handle specific RevenueCat errors
-      if (e is PurchasesError) {
-        switch (e.code) {
-          case PurchasesErrorCode.purchaseCancelledError:
-            _setError('Purchase was cancelled');
-            break;
-          case PurchasesErrorCode.paymentPendingError:
-            _setError('Payment is pending');
-            break;
-          case PurchasesErrorCode.productNotAvailableForPurchaseError:
-            _setError('Product not available');
-            break;
-          case PurchasesErrorCode.purchaseNotAllowedError:
-            _setError('Purchase not allowed');
-            break;
-          case PurchasesErrorCode.purchaseInvalidError:
-            _setError('Invalid purchase');
-            break;
-          default:
-            _setError('Purchase failed: ${e.message}');
-        }
-      } else {
-        _setError('Purchase failed: $e');
-      }
-      
-      return false;
-    } finally {
-      _setLoading(false);
-    }
-  }
-
-  /// Get available treat packages from RevenueCat
-  Future<List<Package>> getAvailableTreatPackages() async {
-    try {
-      final offerings = await Purchases.getOfferings();
-      
-      // Get the treats offering specifically
-      final treatsOffering = offerings.all['bravoball_treats'];
-      if (treatsOffering == null) {
-        if (kDebugMode) {
-          print('⚠️ Treats offering not found. Available offerings: ${offerings.all.keys}');
-        }
-        return [];
-      }
-
-      List<Package> treatPackages;
-      
-      if (AppConfig.useLocalStoreKit) {
-        // For local StoreKit, filter by product IDs
-        treatPackages = treatsOffering.availablePackages
-            .where((package) => 
-                package.storeProduct.identifier == 'bravoball_treats_500' ||
-                package.storeProduct.identifier == 'bravoball_treats_1000' ||
-                package.storeProduct.identifier == 'bravoball_treats_2000')
-            .toList();
-      } else {
-        // For production, filter by package identifiers
-        treatPackages = treatsOffering.availablePackages
-            .where((package) => package.identifier.startsWith('Treats'))
-            .toList();
-      }
-
-      if (kDebugMode) {
-        print('📦 Available treat packages from ${treatsOffering.identifier}:');
-        for (final package in treatPackages) {
-          print('   ${package.identifier}: ${package.storeProduct.priceString}');
-        }
-      }
-
-      return treatPackages;
-    } catch (e) {
-      if (kDebugMode) {
-        print('❌ Error getting treat packages: $e');
-      }
-      return [];
-    }
-  }
 }

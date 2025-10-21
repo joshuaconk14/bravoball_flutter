@@ -17,9 +17,11 @@ import 'services/android_compatibility_service.dart'; // ✅ ADDED: Import Andro
 import 'services/loading_state_service.dart';
 import 'services/ad_service.dart'; // ✅ ADDED: Import AdService
 import 'services/store_service.dart'; // ✅ ADDED: Import StoreService
+import 'services/unified_purchase_service.dart'; // ✅ ADDED: Import UnifiedPurchaseService
 import 'constants/app_theme.dart';
 import 'config/app_config.dart';
 import 'widgets/bravo_loading_indicator.dart';
+import 'utils/streak_dialog_manager.dart'; // ✅ ADDED: Import StreakDialogManager
 
 // Global flag to track intro animation - persists across widget rebuilds
 bool _hasShownIntroAnimation = false;
@@ -138,6 +140,7 @@ class _MyAppState extends State<MyApp> {
         ChangeNotifierProvider.value(value: AuthenticationService.shared),
         ChangeNotifierProvider.value(value: LoadingStateService.instance),
         ChangeNotifierProvider.value(value: StoreService.instance),
+        ChangeNotifierProvider.value(value: UnifiedPurchaseService.instance),
       ],
       child: MaterialApp(
         title: 'BravoBall',
@@ -338,6 +341,9 @@ class _AuthenticatedAppState extends State<AuthenticatedApp> with WidgetsBinding
           setState(() {
             _hasLoadedBackendData = true;
           });
+          
+          // ✅ NEW: Check if user just lost their streak and show dialog
+          _checkForStreakLoss();
         }
       });
     } else {
@@ -347,6 +353,13 @@ class _AuthenticatedAppState extends State<AuthenticatedApp> with WidgetsBinding
       if (kDebugMode) {
         print('✅ Initialization complete - isInitialLoad set to false (no user history)');
       }
+    }
+  }
+
+  /// ✅ NEW: Check if user lost their streak and show dialog
+  void _checkForStreakLoss() {
+    if (mounted) {
+      StreakDialogManager.checkAndShowStreakLossDialog(context);
     }
   }
 
