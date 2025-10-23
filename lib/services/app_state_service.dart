@@ -17,6 +17,7 @@ import '../services/preferences_sync_service.dart';
 import '../services/loading_state_service.dart';
 import './api_service.dart';
 import './custom_drill_service.dart';
+import './store_service.dart';
 import 'package:purchases_flutter/purchases_flutter.dart';
 
 // ===== ENUMS FOR STATE MANAGEMENT =====
@@ -303,19 +304,11 @@ class AppStateService extends ChangeNotifier {
     }
   }
   
-  // ✅ NEW: Active freeze date tracking
-  DateTime? _activeFreezeDate;
-  DateTime? get activeFreezeDate => _activeFreezeDate;
+  // ✅ Active freeze date - delegates to StoreService
+  DateTime? get activeFreezeDate => StoreService.instance.activeFreezeDate;
   
-  // ✅ NEW: Update active freeze date (used after streak freeze)
-  void updateActiveFreezeDate(DateTime? freezeDate) {
-    _activeFreezeDate = freezeDate;
-    notifyListeners();
-    
-    if (kDebugMode) {
-      print('✅ Active freeze date updated: $_activeFreezeDate');
-    }
-  }
+  // ✅ Used freezes history - delegates to StoreService
+  List<DateTime> get usedFreezes => StoreService.instance.usedFreezes;
   
   // ✅ NEW: Backend-sourced progress metrics only
   String _favoriteDrill = '';
@@ -722,23 +715,6 @@ class AppStateService extends ChangeNotifier {
         // ✅ NEW: Mental training metrics
         _mentalTrainingSessions = progressHistory['mentalTrainingSessions'] ?? 0;
         _totalMentalTrainingMinutes = progressHistory['totalMentalTrainingMinutes'] ?? 0;
-        
-        // ✅ NEW: Load active freeze date
-        if (progressHistory['activeFreezeDate'] != null) {
-          try {
-            _activeFreezeDate = DateTime.parse(progressHistory['activeFreezeDate']);
-            if (kDebugMode) {
-              print('✅ Loaded active freeze date: $_activeFreezeDate');
-            }
-          } catch (e) {
-            if (kDebugMode) {
-              print('❌ Error parsing active freeze date: $e');
-            }
-            _activeFreezeDate = null;
-          }
-        } else {
-          _activeFreezeDate = null;
-        }
       }
       
       if (kDebugMode) print('✅ Loaded progress data from backend');
@@ -995,23 +971,6 @@ class AppStateService extends ChangeNotifier {
         // ✅ NEW: Refresh mental training metrics
         _mentalTrainingSessions = progressHistory['mentalTrainingSessions'] ?? 0;
         _totalMentalTrainingMinutes = progressHistory['totalMentalTrainingMinutes'] ?? 0;
-        
-        // ✅ NEW: Refresh active freeze date
-        if (progressHistory['active_freeze_date'] != null) {
-          try {
-            _activeFreezeDate = DateTime.parse(progressHistory['active_freeze_date']);
-            if (kDebugMode) {
-              print('✅ Refreshed active freeze date: $_activeFreezeDate');
-            }
-          } catch (e) {
-            if (kDebugMode) {
-              print('❌ Error parsing active freeze date during refresh: $e');
-            }
-            _activeFreezeDate = null;
-          }
-        } else {
-          _activeFreezeDate = null;
-        }
         
         notifyListeners();
       }

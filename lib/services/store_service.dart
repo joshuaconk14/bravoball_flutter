@@ -13,6 +13,8 @@ class StoreService extends ChangeNotifier {
   int _treats = 0; // Placeholder amount
   int _streakFreezes = 0;
   int _streakRevivers = 0;
+  DateTime? _activeFreezeDate;
+  List<DateTime> _usedFreezes = []; // ✅ NEW: Historical record of all freeze dates used
   bool _isLoading = false;
   String? _error;
 
@@ -20,6 +22,8 @@ class StoreService extends ChangeNotifier {
   int get treats => _treats;
   int get streakFreezes => _streakFreezes;
   int get streakRevivers => _streakRevivers;
+  DateTime? get activeFreezeDate => _activeFreezeDate;
+  List<DateTime> get usedFreezes => _usedFreezes; // ✅ NEW: Expose used freezes
   bool get isLoading => _isLoading;
   String? get error => _error;
 
@@ -63,11 +67,43 @@ class StoreService extends ChangeNotifier {
         _streakFreezes = data['streak_freezes'] ?? 0;
         _streakRevivers = data['streak_revivers'] ?? 0;
         
+        // ✅ Load active freeze date from store items
+        if (data['active_freeze_date'] != null) {
+          try {
+            _activeFreezeDate = DateTime.parse(data['active_freeze_date']);
+          } catch (e) {
+            if (kDebugMode) {
+              print('❌ Error parsing active freeze date: $e');
+            }
+            _activeFreezeDate = null;
+          }
+        } else {
+          _activeFreezeDate = null;
+        }
+        
+        // ✅ NEW: Load used freezes array from store items
+        if (data['used_freezes'] != null && data['used_freezes'] is List) {
+          _usedFreezes = [];
+          for (var freezeDateStr in data['used_freezes']) {
+            try {
+              _usedFreezes.add(DateTime.parse(freezeDateStr));
+            } catch (e) {
+              if (kDebugMode) {
+                print('❌ Error parsing freeze date $freezeDateStr: $e');
+              }
+            }
+          }
+        } else {
+          _usedFreezes = [];
+        }
+        
         if (kDebugMode) {
           print('📦 Store items loaded:');
           print('   Treats: $_treats');
           print('   Streak Freezes: $_streakFreezes');
           print('   Streak Revivers: $_streakRevivers');
+          print('   Active Freeze Date: $_activeFreezeDate');
+          print('   Used Freezes Count: ${_usedFreezes.length}');
         }
         
         notifyListeners();
@@ -302,12 +338,39 @@ class StoreService extends ChangeNotifier {
         // Update local state
         if (data['store_items'] != null) {
           _streakFreezes = data['store_items']['streak_freezes'] ?? _streakFreezes;
+          
+          // ✅ Update active freeze date from store items
+          if (data['store_items']['active_freeze_date'] != null) {
+            try {
+              _activeFreezeDate = DateTime.parse(data['store_items']['active_freeze_date']);
+            } catch (e) {
+              if (kDebugMode) {
+                print('❌ Error parsing active freeze date: $e');
+              }
+            }
+          }
+          
+          // ✅ NEW: Update used freezes array from store items
+          if (data['store_items']['used_freezes'] != null && data['store_items']['used_freezes'] is List) {
+            _usedFreezes = [];
+            for (var freezeDateStr in data['store_items']['used_freezes']) {
+              try {
+                _usedFreezes.add(DateTime.parse(freezeDateStr));
+              } catch (e) {
+                if (kDebugMode) {
+                  print('❌ Error parsing freeze date $freezeDateStr: $e');
+                }
+              }
+            }
+          }
         }
         
         if (kDebugMode) {
           print('✅ Streak freeze used successfully!');
           print('   ${data['message']}');
           print('   Remaining streak freezes: $_streakFreezes');
+          print('   Active freeze date: $_activeFreezeDate');
+          print('   Total used freezes: ${_usedFreezes.length}');
         }
         
         notifyListeners();
