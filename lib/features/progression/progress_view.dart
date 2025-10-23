@@ -509,17 +509,18 @@ class _ProgressViewState extends State<ProgressView> with SingleTickerProviderSt
     Color textColor = AppTheme.primaryDark;
     final appState = Provider.of<AppStateService>(context, listen: false);
     
-    // Check if this date has an active freeze
-    bool hasActiveFreeze = false;
-    if (date != null && appState.activeFreezeDate != null) {
-      final freezeDate = appState.activeFreezeDate!;
-      hasActiveFreeze = date.year == freezeDate.year &&
-                        date.month == freezeDate.month &&
-                        date.day == freezeDate.day;
+    // ✅ Check if this date has a used freeze (from historical freeze array)
+    bool hasUsedFreeze = false;
+    if (date != null && appState.usedFreezes.isNotEmpty) {
+      hasUsedFreeze = appState.usedFreezes.any((freezeDate) =>
+        date.year == freezeDate.year &&
+        date.month == freezeDate.month &&
+        date.day == freezeDate.day
+      );
     }
     
-    // Set colors based on state
-    if (hasActiveFreeze) {
+    // Set colors based on state (prioritize freeze over session)
+    if (hasUsedFreeze) {
       // Light blue for streak freeze days
       backgroundColor = AppTheme.secondaryBlue.withOpacity(0.7);
       textColor = AppTheme.white;

@@ -58,6 +58,9 @@ void main() async {
   // Initialize the app state service
   await AppStateService.instance.initialize();
   
+  // ✅ ADDED: Initialize StoreService to load store items and freeze dates
+  await StoreService.instance.initialize();
+  
   // Initialize authentication services
   await UserManagerService.instance.initialize();
   await AuthenticationService.shared.initialize();

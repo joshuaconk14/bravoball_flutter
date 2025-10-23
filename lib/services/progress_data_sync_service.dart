@@ -233,8 +233,6 @@ class ProgressDataSyncService {
           // ✅ NEW: Mental training metrics
           'mentalTrainingSessions': response.data!['mental_training_sessions'] ?? 0,
           'totalMentalTrainingMinutes': response.data!['total_mental_training_minutes'] ?? 0,
-          // ✅ NEW: Active freeze date
-          'activeFreezeDate': response.data!['active_freeze_date'],
         };
 
         if (kDebugMode) {

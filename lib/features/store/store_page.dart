@@ -1309,13 +1309,10 @@ class _StorePageState extends State<StorePage> {
                 isLoading = true;
               });
 
-              final result = await storeService.useStreakFreeze();
-              
-              if (result != null) {
-                // ✅ Update AppStateService with the freeze date
-                if (result['freeze_date'] != null) {
-                  appState.updateActiveFreezeDate(DateTime.parse(result['freeze_date']));
-                }
+                    final result = await storeService.useStreakFreeze();
+                    
+                    if (result != null) {
+                      // ✅ Freeze date is now automatically updated in StoreService
                 
                 if (context.mounted) {
                   Navigator.of(dialogContext).pop();
