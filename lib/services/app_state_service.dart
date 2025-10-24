@@ -310,6 +310,12 @@ class AppStateService extends ChangeNotifier {
   // ✅ Used freezes history - delegates to StoreService
   List<DateTime> get usedFreezes => StoreService.instance.usedFreezes;
   
+  // ✅ Active streak reviver - delegates to StoreService
+  DateTime? get activeStreakReviver => StoreService.instance.activeStreakReviver;
+  
+  // ✅ Used revivers history - delegates to StoreService
+  List<DateTime> get usedRevivers => StoreService.instance.usedRevivers;
+  
   // ✅ NEW: Backend-sourced progress metrics only
   String _favoriteDrill = '';
   String get favoriteDrill => _favoriteDrill;
