@@ -1,6 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:bravoball_flutter/constants/app_theme.dart';
 import 'package:bravoball_flutter/utils/haptic_utils.dart';
+import 'package:bravoball_flutter/widgets/item_usage_confirmation_dialog.dart';
+import 'package:bravoball_flutter/services/store_service.dart';
+import 'package:bravoball_flutter/services/app_state_service.dart';
+import 'package:provider/provider.dart';
 
 /// Dialog shown when a user loses their streak
 /// Offers option to restore it using a streak reviver
@@ -144,12 +148,13 @@ class StreakLossDialog extends StatelessWidget {
                   // Restore button
                   SizedBox(
                     width: double.infinity,
-                    child: ElevatedButton(
-                      onPressed: () {
-                        HapticUtils.mediumImpact();
-                        Navigator.of(context).pop();
-                        onRestore?.call();
-                      },
+                        child: ElevatedButton(
+                          onPressed: () {
+                            HapticUtils.mediumImpact();
+                            Navigator.of(context).pop();
+                            // ✅ Show confirmation dialog instead of calling onRestore directly
+                            _showRestoreConfirmationDialog(context);
+                          },
                       style: ElevatedButton.styleFrom(
                         backgroundColor: AppTheme.primaryYellow,
                         foregroundColor: Colors.white,
@@ -230,6 +235,150 @@ class StreakLossDialog extends StatelessWidget {
         previousStreak: previousStreak,
         onRestore: onRestore,
         onDismiss: onDismiss,
+      ),
+    );
+  }
+
+  // ✅ NEW: Show confirmation dialog for streak reviver usage
+  void _showRestoreConfirmationDialog(BuildContext context) {
+    bool isLoading = false;
+    final storeService = StoreService.instance;
+    final appState = Provider.of<AppStateService>(context, listen: false);
+
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (dialogContext) => StatefulBuilder(
+        builder: (context, setState) {
+          return ItemUsageConfirmationDialog(
+            title: 'Restore Your Streak?',
+            description: 'Use a Streak Reviver to restore your $previousStreak-day streak?',
+            itemName: 'Streak Reviver',
+            icon: Icons.restore,
+            iconColor: AppTheme.secondaryOrange,
+            confirmButtonText: 'Restore Streak',
+            isLoading: isLoading,
+            onConfirm: () async {
+              setState(() {
+                isLoading = true;
+              });
+
+              // ✅ Actually call the streak reviver API
+              final result = await storeService.useStreakReviver();
+              
+              if (result != null) {
+                // ✅ Update AppStateService with the returned streak values
+                if (result['progress_history'] != null) {
+                  appState.updateStreakValues(
+                    currentStreak: result['progress_history']['current_streak'] ?? 0,
+                    previousStreak: result['progress_history']['previous_streak'] ?? 0,
+                  );
+                }
+                
+                if (context.mounted) {
+                  Navigator.of(dialogContext).pop();
+                  _showSuccessDialog(
+                    context,
+                    'Streak Restored!',
+                    result['message'] ?? 'Your streak has been restored!',
+                  );
+                }
+              } else {
+                // Error
+                setState(() {
+                  isLoading = false;
+                });
+                
+                if (context.mounted) {
+                  Navigator.of(dialogContext).pop();
+                  _showErrorDialog(
+                    context,
+                    storeService.error ?? 'Failed to use streak reviver',
+                  );
+                }
+              }
+            },
+            onCancel: () {
+              // Dialog already closes itself, no need to pop again
+            },
+          );
+        },
+      ),
+    );
+  }
+
+  // ✅ Helper method to show success dialog
+  void _showSuccessDialog(BuildContext context, String title, String message) {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        title: Text(
+          title,
+          style: TextStyle(
+            fontFamily: AppTheme.fontPoppins,
+            fontWeight: FontWeight.bold,
+            color: AppTheme.textPrimary,
+          ),
+        ),
+        content: Text(
+          message,
+          style: TextStyle(
+            fontFamily: AppTheme.fontPoppins,
+            color: AppTheme.textPrimary,
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(),
+            child: Text(
+              'OK',
+              style: TextStyle(
+                fontFamily: AppTheme.fontPoppins,
+                fontWeight: FontWeight.w600,
+                color: AppTheme.primaryYellow,
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  // ✅ Helper method to show error dialog
+  void _showErrorDialog(BuildContext context, String message) {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        title: Text(
+          'Error',
+          style: TextStyle(
+            fontFamily: AppTheme.fontPoppins,
+            fontWeight: FontWeight.bold,
+            color: AppTheme.textPrimary,
+          ),
+        ),
+        content: Text(
+          message,
+          style: TextStyle(
+            fontFamily: AppTheme.fontPoppins,
+            color: AppTheme.textPrimary,
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(),
+            child: Text(
+              'OK',
+              style: TextStyle(
+                fontFamily: AppTheme.fontPoppins,
+                fontWeight: FontWeight.w600,
+                color: AppTheme.secondaryOrange,
+              ),
+            ),
+          ),
+        ],
       ),
     );
   }

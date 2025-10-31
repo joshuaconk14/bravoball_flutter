@@ -14,7 +14,9 @@ class StoreService extends ChangeNotifier {
   int _streakFreezes = 0;
   int _streakRevivers = 0;
   DateTime? _activeFreezeDate;
-  List<DateTime> _usedFreezes = []; // ✅ NEW: Historical record of all freeze dates used
+  List<DateTime> _usedFreezes = []; // ✅ Historical record of all freeze dates used
+  DateTime? _activeStreakReviver; // ✅ NEW: Active streak reviver date
+  List<DateTime> _usedRevivers = []; // ✅ NEW: Historical record of all reviver dates used
   bool _isLoading = false;
   String? _error;
 
@@ -23,7 +25,9 @@ class StoreService extends ChangeNotifier {
   int get streakFreezes => _streakFreezes;
   int get streakRevivers => _streakRevivers;
   DateTime? get activeFreezeDate => _activeFreezeDate;
-  List<DateTime> get usedFreezes => _usedFreezes; // ✅ NEW: Expose used freezes
+  List<DateTime> get usedFreezes => _usedFreezes; // ✅ Expose used freezes
+  DateTime? get activeStreakReviver => _activeStreakReviver; // ✅ NEW: Expose active reviver
+  List<DateTime> get usedRevivers => _usedRevivers; // ✅ NEW: Expose used revivers
   bool get isLoading => _isLoading;
   String? get error => _error;
 
@@ -97,6 +101,36 @@ class StoreService extends ChangeNotifier {
           _usedFreezes = [];
         }
         
+        // ✅ NEW: Load active streak reviver date from store items
+        if (data['active_streak_reviver'] != null) {
+          try {
+            _activeStreakReviver = DateTime.parse(data['active_streak_reviver']);
+          } catch (e) {
+            if (kDebugMode) {
+              print('❌ Error parsing active streak reviver date: $e');
+            }
+            _activeStreakReviver = null;
+          }
+        } else {
+          _activeStreakReviver = null;
+        }
+        
+        // ✅ NEW: Load used revivers array from store items
+        if (data['used_revivers'] != null && data['used_revivers'] is List) {
+          _usedRevivers = [];
+          for (var reviverDateStr in data['used_revivers']) {
+            try {
+              _usedRevivers.add(DateTime.parse(reviverDateStr));
+            } catch (e) {
+              if (kDebugMode) {
+                print('❌ Error parsing reviver date $reviverDateStr: $e');
+              }
+            }
+          }
+        } else {
+          _usedRevivers = [];
+        }
+        
         if (kDebugMode) {
           print('📦 Store items loaded:');
           print('   Treats: $_treats');
@@ -104,6 +138,10 @@ class StoreService extends ChangeNotifier {
           print('   Streak Revivers: $_streakRevivers');
           print('   Active Freeze Date: $_activeFreezeDate');
           print('   Used Freezes Count: ${_usedFreezes.length}');
+          print('   Used Freezes Array: $_usedFreezes');
+          print('   Active Streak Reviver: $_activeStreakReviver');
+          print('   Used Revivers Count: ${_usedRevivers.length}');
+          print('   Used Revivers Array: $_usedRevivers');
         }
         
         notifyListeners();
@@ -285,12 +323,39 @@ class StoreService extends ChangeNotifier {
         // Update local state
         if (data['store_items'] != null) {
           _streakRevivers = data['store_items']['streak_revivers'] ?? _streakRevivers;
+          
+          // ✅ Update active streak reviver date from store items
+          if (data['store_items']['active_streak_reviver'] != null) {
+            try {
+              _activeStreakReviver = DateTime.parse(data['store_items']['active_streak_reviver']);
+            } catch (e) {
+              if (kDebugMode) {
+                print('❌ Error parsing active streak reviver date: $e');
+              }
+            }
+          }
+          
+          // ✅ NEW: Update used revivers array from store items
+          if (data['store_items']['used_revivers'] != null && data['store_items']['used_revivers'] is List) {
+            _usedRevivers = [];
+            for (var reviverDateStr in data['store_items']['used_revivers']) {
+              try {
+                _usedRevivers.add(DateTime.parse(reviverDateStr));
+              } catch (e) {
+                if (kDebugMode) {
+                  print('❌ Error parsing reviver date $reviverDateStr: $e');
+                }
+              }
+            }
+          }
         }
         
         if (kDebugMode) {
           print('✅ Streak reviver used successfully!');
           print('   ${data['message']}');
           print('   Remaining streak revivers: $_streakRevivers');
+          print('   Active streak reviver: $_activeStreakReviver');
+          print('   Total used revivers: ${_usedRevivers.length}');
         }
         
         notifyListeners();

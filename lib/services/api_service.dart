@@ -17,20 +17,25 @@ class ApiService {
   static ApiService get shared => _instance;
 
   // MARK: - HTTP Client
-  late final http.Client _client;
+  http.Client? _client;
 
   // MARK: - Token Refresh State
   bool _isRefreshingToken = false;
   List<Function> _failedRequestQueue = [];
 
+  /// Get the HTTP client (creates if not exists)
+  http.Client get client => _client ??= http.Client();
+
   /// Initialize the API service
+  /// Safe to call multiple times (idempotent)
   void initialize() {
-    _client = http.Client();
+    _client ??= http.Client();
   }
 
   /// Dispose of the HTTP client
   void dispose() {
-    _client.close();
+    _client?.close();
+    _client = null;
   }
 
   // MARK: - Generic Request Method
@@ -148,7 +153,7 @@ class ApiService {
       }
 
       // Make refresh request without authentication headers
-      final refreshResponse = await _client.post(
+      final refreshResponse = await client.post(
         _buildUri('/refresh/', null),
         headers: {
           'Content-Type': 'application/json',
@@ -354,27 +359,27 @@ class ApiService {
   }) {
     switch (method.toUpperCase()) {
       case 'GET':
-        return _client.get(uri, headers: headers);
+        return client.get(uri, headers: headers);
       case 'POST':
-        return _client.post(
+        return client.post(
           uri,
           headers: headers,
           body: body != null ? json.encode(body) : null,
         );
       case 'PUT':
-        return _client.put(
+        return client.put(
           uri,
           headers: headers,
           body: body != null ? json.encode(body) : null,
         );
       case 'PATCH':
-        return _client.patch(
+        return client.patch(
           uri,
           headers: headers,
           body: body != null ? json.encode(body) : null,
         );
       case 'DELETE':
-        return _client.delete(uri, headers: headers);
+        return client.delete(uri, headers: headers);
       default:
         throw ArgumentError('Unsupported HTTP method: $method');
     }

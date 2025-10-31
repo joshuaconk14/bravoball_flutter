@@ -23,7 +23,8 @@ async def get_user_store_items(
                 treats=0,
                 streak_freezes=0,
                 streak_revivers=0,
-                used_freezes=[]
+                used_freezes=[],
+                used_revivers=[]
             )
             db.add(store_items)
             db.commit()
@@ -247,8 +248,21 @@ async def use_streak_reviver(
         progress_history.current_streak = progress_history.previous_streak
         progress_history.previous_streak = 0
         
+        # Track reviver usage
+        today = datetime.now().date()
+        store_items.active_streak_reviver = today
+        
+        # Add to used revivers history
+        if store_items.used_revivers is None:
+            store_items.used_revivers = []
+        store_items.used_revivers.append(today.isoformat())
+        
         # Decrement streak revivers
         store_items.streak_revivers -= 1
+        
+        # ✅ IMPORTANT: Flag the JSON field as modified so SQLAlchemy saves it
+        from sqlalchemy.orm.attributes import flag_modified
+        flag_modified(store_items, 'used_revivers')
         
         db.commit()
         db.refresh(progress_history)
@@ -262,7 +276,9 @@ async def use_streak_reviver(
                 "previous_streak": progress_history.previous_streak
             },
             "store_items": {
-                "streak_revivers": store_items.streak_revivers
+                "streak_revivers": store_items.streak_revivers,
+                "active_streak_reviver": store_items.active_streak_reviver.isoformat() if store_items.active_streak_reviver else None,
+                "used_revivers": store_items.used_revivers
             }
         }
     
@@ -347,6 +363,10 @@ async def use_streak_freeze(
         # Decrement streak freezes
         store_items.streak_freezes -= 1
         
+        # ✅ IMPORTANT: Flag the JSON field as modified so SQLAlchemy saves it
+        from sqlalchemy.orm.attributes import flag_modified
+        flag_modified(store_items, 'used_freezes')
+        
         db.commit()
         db.refresh(store_items)
         
@@ -360,7 +380,9 @@ async def use_streak_freeze(
             "store_items": {
                 "streak_freezes": store_items.streak_freezes,
                 "active_freeze_date": store_items.active_freeze_date.isoformat() if store_items.active_freeze_date else None,
-                "used_freezes": store_items.used_freezes
+                "used_freezes": store_items.used_freezes,
+                "active_streak_reviver": store_items.active_streak_reviver.isoformat() if store_items.active_streak_reviver else None,
+                "used_revivers": store_items.used_revivers
             }
         }
     
@@ -374,23 +396,37 @@ async def use_streak_freeze(
         )
 
 
-
-
 # *** STORE ITEMS MODELS ***
-class UserStoreItems(Base):
-    __tablename__ = "user_store_items"
+# Store Items Schemas
+class UserStoreItemsBase(BaseModel):
+    treats: int = 0
+    streak_freezes: int = 0
+    streak_revivers: int = 0
+    # ✅ NEW: Streak freeze date
+    active_freeze_date: Optional[date] = None
+    # ✅ NEW: History of all freeze dates used (list of ISO date strings)
+    used_freezes: List[str] = []
+    # ✅ NEW: Streak reviver date
+    active_streak_reviver: Optional[date] = None
+    # ✅ NEW: History of all reviver dates used (list of ISO date strings)
+    used_revivers: List[str] = []
 
-    id = Column(Integer, primary_key=True, index=True)
-    user_id = Column(Integer, ForeignKey("users.id"), unique=True, nullable=False)
-    treats = Column(Integer, default=0, nullable=False)
-    streak_freezes = Column(Integer, default=0, nullable=False)
-    streak_revivers = Column(Integer, default=0, nullable=False)
-    # ✅ NEW: Streak freeze date - date when freeze is active
-    active_freeze_date = Column(Date, nullable=True)
-    # ✅ NEW: History of all freeze dates used/activated (stored as JSON array of ISO date strings)
-    used_freezes = Column(JSON, default=list, nullable=False)
-    created_at = Column(DateTime, server_default=func.now())
-    updated_at = Column(DateTime, server_default=func.now(), onupdate=func.now())
+    model_config = ConfigDict(from_attributes=True)
 
-    # Relationship
-    user = relationship("User", back_populates="store_items")
+
+class UserStoreItemsResponse(UserStoreItemsBase):
+    id: int
+    user_id: int
+    created_at: datetime
+    updated_at: datetime
+
+    model_config = ConfigDict(from_attributes=True)
+
+
+class UserStoreItemsUpdate(BaseModel):
+    treats: Optional[int] = None
+    streak_freezes: Optional[int] = None
+    streak_revivers: Optional[int] = None
+
+    model_config = ConfigDict(from_attributes=True)
+

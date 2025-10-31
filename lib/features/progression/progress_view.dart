@@ -519,8 +519,22 @@ class _ProgressViewState extends State<ProgressView> with SingleTickerProviderSt
       );
     }
     
-    // Set colors based on state (prioritize freeze over session)
-    if (hasUsedFreeze) {
+    // ✅ NEW: Check if this date has a used reviver (from historical reviver array)
+    bool hasUsedReviver = false;
+    if (date != null && appState.usedRevivers.isNotEmpty) {
+      hasUsedReviver = appState.usedRevivers.any((reviverDate) =>
+        date.year == reviverDate.year &&
+        date.month == reviverDate.month &&
+        date.day == reviverDate.day
+      );
+    }
+    
+    // Set colors based on state (prioritize reviver > freeze > session)
+    if (hasUsedReviver) {
+      // Full orange circle for streak reviver days
+      backgroundColor = AppTheme.secondaryOrange;
+      textColor = AppTheme.white;
+    } else if (hasUsedFreeze) {
       // Light blue for streak freeze days
       backgroundColor = AppTheme.secondaryBlue.withOpacity(0.7);
       textColor = AppTheme.white;
@@ -1385,7 +1399,7 @@ class _ProgressViewState extends State<ProgressView> with SingleTickerProviderSt
     InfoPopupWidget.show(
       context,
       title: 'Track Your Progress',
-      description: 'View your comprehensive training progress with detailed metrics:\n\n• Calendar shows your daily training activity\n• Track your current and highest streaks\n• Monitor drills completed by skill type\n• See your session averages and total training time\n• Discover your most improved skill and unique drills completed\n• View difficulty breakdown (Beginner, Intermediate, Advanced)\n• Find your favorite drills and training patterns\n\nTap on calendar days to view detailed session results.',
+      description: 'View your comprehensive training progress with detailed metrics:\n\n• Calendar shows your daily training activity\n• Track your current and highest streaks\n• Monitor drills completed by skill type\n• See your session averages and total training time\n• Discover your most improved skill and unique drills completed\n• View difficulty breakdown (Beginner, Intermediate, Advanced)\n• Find your favorite drills and training patterns\n\n📅 Calendar Color Guide:\n🟢 Green circles = Completed training sessions\n🔵 Blue circles = Streak freeze used\n🟠 Orange circles = Streak reviver used\n\nTap on calendar days to view detailed session results.',
       riveFileName: 'Bravo_Animation.riv',
     );
   }
