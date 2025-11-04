@@ -1,6 +1,7 @@
 import 'package:flutter/foundation.dart';
 import '../services/api_service.dart';
 import '../services/user_manager_service.dart';
+import '../utils/store_business_rules.dart';
 
 /// Store Service for managing user store items and purchases
 class StoreService extends ChangeNotifier {
@@ -72,18 +73,7 @@ class StoreService extends ChangeNotifier {
         _streakRevivers = data['streak_revivers'] ?? 0;
         
         // ✅ Load active freeze date from store items
-        if (data['active_freeze_date'] != null) {
-          try {
-            _activeFreezeDate = DateTime.parse(data['active_freeze_date']);
-          } catch (e) {
-            if (kDebugMode) {
-              print('❌ Error parsing active freeze date: $e');
-            }
-            _activeFreezeDate = null;
-          }
-        } else {
-          _activeFreezeDate = null;
-        }
+        _activeFreezeDate = StoreBusinessRules.parseDateSafely(data['active_freeze_date']);
         
         // ✅ NEW: Load used freezes array from store items
         if (data['used_freezes'] != null && data['used_freezes'] is List) {
@@ -102,18 +92,7 @@ class StoreService extends ChangeNotifier {
         }
         
         // ✅ NEW: Load active streak reviver date from store items
-        if (data['active_streak_reviver'] != null) {
-          try {
-            _activeStreakReviver = DateTime.parse(data['active_streak_reviver']);
-          } catch (e) {
-            if (kDebugMode) {
-              print('❌ Error parsing active streak reviver date: $e');
-            }
-            _activeStreakReviver = null;
-          }
-        } else {
-          _activeStreakReviver = null;
-        }
+        _activeStreakReviver = StoreBusinessRules.parseDateSafely(data['active_streak_reviver']);
         
         // ✅ NEW: Load used revivers array from store items
         if (data['used_revivers'] != null && data['used_revivers'] is List) {
@@ -162,9 +141,9 @@ class StoreService extends ChangeNotifier {
 
   /// Purchase a streak freeze using treats
   Future<bool> purchaseStreakFreeze() async {
-    const requiredTreats = 50;
+    final requiredTreats = StoreBusinessRules.getRequiredTreatsForFreeze();
     
-    if (_treats < requiredTreats) {
+    if (!StoreBusinessRules.canPurchaseStreakFreeze(_treats)) {
       _setError('Not enough treats! You need $requiredTreats treats.');
       return false;
     }
@@ -229,9 +208,9 @@ class StoreService extends ChangeNotifier {
 
   /// Purchase a streak reviver using treats
   Future<bool> purchaseStreakReviver() async {
-    const requiredTreats = 100;
+    final requiredTreats = StoreBusinessRules.getRequiredTreatsForReviver();
     
-    if (_treats < requiredTreats) {
+    if (!StoreBusinessRules.canPurchaseStreakReviver(_treats)) {
       _setError('Not enough treats! You need $requiredTreats treats.');
       return false;
     }
@@ -296,7 +275,7 @@ class StoreService extends ChangeNotifier {
 
   /// Use a streak reviver to restore a lost streak
   Future<Map<String, dynamic>?> useStreakReviver() async {
-    if (_streakRevivers <= 0) {
+    if (!StoreBusinessRules.hasStreakReviversAvailable(_streakRevivers)) {
       _setError('You don\'t have any streak revivers available');
       return null;
     }
@@ -325,15 +304,9 @@ class StoreService extends ChangeNotifier {
           _streakRevivers = data['store_items']['streak_revivers'] ?? _streakRevivers;
           
           // ✅ Update active streak reviver date from store items
-          if (data['store_items']['active_streak_reviver'] != null) {
-            try {
-              _activeStreakReviver = DateTime.parse(data['store_items']['active_streak_reviver']);
-            } catch (e) {
-              if (kDebugMode) {
-                print('❌ Error parsing active streak reviver date: $e');
-              }
-            }
-          }
+          _activeStreakReviver = StoreBusinessRules.parseDateSafely(
+            data['store_items']['active_streak_reviver'],
+          );
           
           // ✅ NEW: Update used revivers array from store items
           if (data['store_items']['used_revivers'] != null && data['store_items']['used_revivers'] is List) {
@@ -376,7 +349,7 @@ class StoreService extends ChangeNotifier {
 
   /// Use a streak freeze to protect today's streak
   Future<Map<String, dynamic>?> useStreakFreeze() async {
-    if (_streakFreezes <= 0) {
+    if (!StoreBusinessRules.hasStreakFreezesAvailable(_streakFreezes)) {
       _setError('You don\'t have any streak freezes available');
       return null;
     }
@@ -405,15 +378,9 @@ class StoreService extends ChangeNotifier {
           _streakFreezes = data['store_items']['streak_freezes'] ?? _streakFreezes;
           
           // ✅ Update active freeze date from store items
-          if (data['store_items']['active_freeze_date'] != null) {
-            try {
-              _activeFreezeDate = DateTime.parse(data['store_items']['active_freeze_date']);
-            } catch (e) {
-              if (kDebugMode) {
-                print('❌ Error parsing active freeze date: $e');
-              }
-            }
-          }
+          _activeFreezeDate = StoreBusinessRules.parseDateSafely(
+            data['store_items']['active_freeze_date'],
+          );
           
           // ✅ NEW: Update used freezes array from store items
           if (data['store_items']['used_freezes'] != null && data['store_items']['used_freezes'] is List) {

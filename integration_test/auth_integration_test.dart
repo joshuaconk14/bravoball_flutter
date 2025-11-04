@@ -16,7 +16,20 @@ void main() {
   group('Authentication Integration Tests', () {
     testWidgets('User can login successfully', (WidgetTester tester) async {
       app.main();
-      await tester.pumpAndSettle(const Duration(seconds: 5));
+      
+      // Wait for app to initialize
+      await tester.pump(const Duration(seconds: 2));
+      await tester.pump(const Duration(seconds: 2));
+      await tester.pump(const Duration(seconds: 2));
+      await tester.pump(const Duration(seconds: 2));
+
+      // Dismiss "Streak Lost" dialog if it appears
+      final maybeLaterButton = find.text('Maybe Later');
+      if (maybeLaterButton.evaluate().isNotEmpty) {
+        await tester.tap(maybeLaterButton);
+        await tester.pump(const Duration(seconds: 1));
+        await tester.pump(const Duration(seconds: 1));
+      }
 
       // Find login fields
       final emailField = find.byType(TextField).first;
@@ -26,18 +39,20 @@ void main() {
       // Enter test credentials
       if (emailField.evaluate().isNotEmpty) {
         await tester.enterText(emailField, 'test@example.com');
-        await tester.pumpAndSettle();
+        await tester.pump(const Duration(seconds: 1));
       }
 
       if (passwordField.evaluate().isNotEmpty) {
         await tester.enterText(passwordField, 'testpassword');
-        await tester.pumpAndSettle();
+        await tester.pump(const Duration(seconds: 1));
       }
 
       // Tap login button
       if (loginButton.evaluate().isNotEmpty) {
         await tester.tap(loginButton);
-        await tester.pumpAndSettle(const Duration(seconds: 5));
+        await tester.pump(const Duration(seconds: 2));
+        await tester.pump(const Duration(seconds: 2));
+        await tester.pump(const Duration(seconds: 2));
       }
 
       // Verify login succeeded - check for home screen
@@ -46,7 +61,20 @@ void main() {
 
     testWidgets('Invalid login credentials show error message', (WidgetTester tester) async {
       app.main();
-      await tester.pumpAndSettle(const Duration(seconds: 5));
+      
+      // Wait for app to initialize
+      await tester.pump(const Duration(seconds: 2));
+      await tester.pump(const Duration(seconds: 2));
+      await tester.pump(const Duration(seconds: 2));
+      await tester.pump(const Duration(seconds: 2));
+
+      // Dismiss "Streak Lost" dialog if it appears
+      final maybeLaterButton = find.text('Maybe Later');
+      if (maybeLaterButton.evaluate().isNotEmpty) {
+        await tester.tap(maybeLaterButton);
+        await tester.pump(const Duration(seconds: 1));
+        await tester.pump(const Duration(seconds: 1));
+      }
 
       // Enter invalid credentials
       final emailField = find.byType(TextField).first;
@@ -55,17 +83,18 @@ void main() {
 
       if (emailField.evaluate().isNotEmpty) {
         await tester.enterText(emailField, 'invalid@example.com');
-        await tester.pumpAndSettle();
+        await tester.pump(const Duration(seconds: 1));
       }
 
       if (passwordField.evaluate().isNotEmpty) {
         await tester.enterText(passwordField, 'wrongpassword');
-        await tester.pumpAndSettle();
+        await tester.pump(const Duration(seconds: 1));
       }
 
       if (loginButton.evaluate().isNotEmpty) {
         await tester.tap(loginButton);
-        await tester.pumpAndSettle(const Duration(seconds: 3));
+        await tester.pump(const Duration(seconds: 2));
+        await tester.pump(const Duration(seconds: 2));
       }
 
       // Verify error message is displayed
@@ -80,7 +109,20 @@ void main() {
       // 4. User remains logged in
 
       app.main();
-      await tester.pumpAndSettle(const Duration(seconds: 5));
+      
+      // Wait for app to initialize
+      await tester.pump(const Duration(seconds: 2));
+      await tester.pump(const Duration(seconds: 2));
+      await tester.pump(const Duration(seconds: 2));
+      await tester.pump(const Duration(seconds: 2));
+
+      // Dismiss "Streak Lost" dialog if it appears
+      final maybeLaterButton = find.text('Maybe Later');
+      if (maybeLaterButton.evaluate().isNotEmpty) {
+        await tester.tap(maybeLaterButton);
+        await tester.pump(const Duration(seconds: 1));
+        await tester.pump(const Duration(seconds: 1));
+      }
 
       // Login (use test credentials)
       // Close app

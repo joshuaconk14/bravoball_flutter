@@ -9,6 +9,7 @@ import '../../widgets/bravo_button.dart';
 import '../../widgets/item_usage_confirmation_dialog.dart';
 import '../../utils/haptic_utils.dart';
 import '../../utils/premium_utils.dart';
+import '../../utils/store_business_rules.dart';
 import '../../services/store_service.dart';
 import '../../services/app_state_service.dart';
 import '../../services/ad_service.dart';
@@ -459,7 +460,7 @@ class _StorePageState extends State<StorePage> {
                 title: 'Streak Freeze',
                 description: 'Freeze your streak for 24 hours',
                 icon: Icons.ac_unit,
-                price: '50 Treats',
+                price: '${StoreBusinessRules.streakFreezeCost} Treats',
                 color: AppTheme.secondaryBlue,
                 onTap: () {
                   HapticUtils.mediumImpact();
@@ -478,7 +479,7 @@ class _StorePageState extends State<StorePage> {
                 title: 'Streak Reviver',
                 description: 'Restore your broken streak',
                 icon: Icons.restore,
-                price: '100 Treats',
+                price: '${StoreBusinessRules.streakReviverCost} Treats',
                 color: AppTheme.secondaryOrange,
                 onTap: () {
                   HapticUtils.mediumImpact();
@@ -1122,7 +1123,7 @@ class _StorePageState extends State<StorePage> {
     // Show confirmation dialog first
     final confirmed = await _showPurchaseConfirmationDialog(
       itemName: 'Streak Freeze',
-      treatCost: 50,
+      treatCost: StoreBusinessRules.streakFreezeCost,
       icon: Icons.ac_unit,
       color: AppTheme.secondaryBlue,
       description: 'Freeze your streak for 24 hours',
@@ -1143,7 +1144,7 @@ class _StorePageState extends State<StorePage> {
     // Show confirmation dialog first
     final confirmed = await _showPurchaseConfirmationDialog(
       itemName: 'Streak Reviver',
-      treatCost: 100,
+      treatCost: StoreBusinessRules.streakReviverCost,
       icon: Icons.restore,
       color: AppTheme.secondaryOrange,
       description: 'Restore your broken streak',
