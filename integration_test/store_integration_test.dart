@@ -18,14 +18,29 @@ void main() {
     testWidgets('Store page loads and displays items correctly', (WidgetTester tester) async {
       // Arrange: Launch app
       app.main();
-      await tester.pumpAndSettle(const Duration(seconds: 5));
+      
+      // Wait for app to initialize (use pump with fixed durations instead of pumpAndSettle)
+      // pumpAndSettle waits forever for animations to settle, which can cause hangs
+      await tester.pump(const Duration(seconds: 2));
+      await tester.pump(const Duration(seconds: 2));
+      await tester.pump(const Duration(seconds: 2));
+      await tester.pump(const Duration(seconds: 2));
+
+      // Check if "Streak Lost" dialog appears and dismiss it
+      final maybeLaterButton = find.text('Maybe Later');
+      if (maybeLaterButton.evaluate().isNotEmpty) {
+        await tester.tap(maybeLaterButton);
+        await tester.pump(const Duration(seconds: 1));
+        await tester.pump(const Duration(seconds: 1));
+      }
 
       // Act: Navigate to store page
       // Find and tap the store tab/navigation item
       final storeTab = find.text('Store');
       if (storeTab.evaluate().isNotEmpty) {
         await tester.tap(storeTab);
-        await tester.pumpAndSettle(const Duration(seconds: 3));
+        await tester.pump(const Duration(seconds: 2));
+        await tester.pump(const Duration(seconds: 2));
       }
 
       // Assert: Verify store items are displayed
@@ -38,13 +53,27 @@ void main() {
     testWidgets('Streak reviver confirmation dialog appears when tapped', (WidgetTester tester) async {
       // Arrange: Launch app and navigate to store
       app.main();
-      await tester.pumpAndSettle(const Duration(seconds: 5));
+      
+      // Wait for app to initialize
+      await tester.pump(const Duration(seconds: 2));
+      await tester.pump(const Duration(seconds: 2));
+      await tester.pump(const Duration(seconds: 2));
+      await tester.pump(const Duration(seconds: 2));
+
+      // Dismiss "Streak Lost" dialog if it appears
+      final maybeLaterButton = find.text('Maybe Later');
+      if (maybeLaterButton.evaluate().isNotEmpty) {
+        await tester.tap(maybeLaterButton);
+        await tester.pump(const Duration(seconds: 1));
+        await tester.pump(const Duration(seconds: 1));
+      }
 
       // Navigate to store page
       final storeTab = find.text('Store');
       if (storeTab.evaluate().isNotEmpty) {
         await tester.tap(storeTab);
-        await tester.pumpAndSettle(const Duration(seconds: 3));
+        await tester.pump(const Duration(seconds: 2));
+        await tester.pump(const Duration(seconds: 2));
       }
 
       // Act: Tap on streak reviver item
@@ -52,7 +81,8 @@ void main() {
       final reviverItem = find.text('Streak Revivers').first;
       if (reviverItem.evaluate().isNotEmpty) {
         await tester.tap(reviverItem);
-        await tester.pumpAndSettle(const Duration(seconds: 2));
+        await tester.pump(const Duration(seconds: 1));
+        await tester.pump(const Duration(seconds: 1));
       }
 
       // Assert: Confirmation dialog should appear
@@ -64,20 +94,35 @@ void main() {
     testWidgets('Streak freeze confirmation dialog appears when tapped', (WidgetTester tester) async {
       // Arrange: Launch app and navigate to store
       app.main();
-      await tester.pumpAndSettle(const Duration(seconds: 5));
+      
+      // Wait for app to initialize
+      await tester.pump(const Duration(seconds: 2));
+      await tester.pump(const Duration(seconds: 2));
+      await tester.pump(const Duration(seconds: 2));
+      await tester.pump(const Duration(seconds: 2));
+
+      // Dismiss "Streak Lost" dialog if it appears
+      final maybeLaterButton = find.text('Maybe Later');
+      if (maybeLaterButton.evaluate().isNotEmpty) {
+        await tester.tap(maybeLaterButton);
+        await tester.pump(const Duration(seconds: 1));
+        await tester.pump(const Duration(seconds: 1));
+      }
 
       // Navigate to store page
       final storeTab = find.text('Store');
       if (storeTab.evaluate().isNotEmpty) {
         await tester.tap(storeTab);
-        await tester.pumpAndSettle(const Duration(seconds: 3));
+        await tester.pump(const Duration(seconds: 2));
+        await tester.pump(const Duration(seconds: 2));
       }
 
       // Act: Tap on streak freeze item
       final freezeItem = find.text('Streak Freezes').first;
       if (freezeItem.evaluate().isNotEmpty) {
         await tester.tap(freezeItem);
-        await tester.pumpAndSettle(const Duration(seconds: 2));
+        await tester.pump(const Duration(seconds: 1));
+        await tester.pump(const Duration(seconds: 1));
       }
 
       // Assert: Confirmation dialog should appear
@@ -93,13 +138,27 @@ void main() {
       // 3. User to have a lost streak (current_streak == 0, previous_streak > 0)
 
       app.main();
-      await tester.pumpAndSettle(const Duration(seconds: 5));
+      
+      // Wait for app to initialize
+      await tester.pump(const Duration(seconds: 2));
+      await tester.pump(const Duration(seconds: 2));
+      await tester.pump(const Duration(seconds: 2));
+      await tester.pump(const Duration(seconds: 2));
+
+      // Dismiss "Streak Lost" dialog if it appears
+      final maybeLaterButton = find.text('Maybe Later');
+      if (maybeLaterButton.evaluate().isNotEmpty) {
+        await tester.tap(maybeLaterButton);
+        await tester.pump(const Duration(seconds: 1));
+        await tester.pump(const Duration(seconds: 1));
+      }
 
       // Navigate to store
       final storeTab = find.text('Store');
       if (storeTab.evaluate().isNotEmpty) {
         await tester.tap(storeTab);
-        await tester.pumpAndSettle(const Duration(seconds: 3));
+        await tester.pump(const Duration(seconds: 2));
+        await tester.pump(const Duration(seconds: 2));
       }
 
       // Get initial reviver count
@@ -116,13 +175,27 @@ void main() {
   group('Premium Integration Tests', () {
     testWidgets('Premium page loads correctly', (WidgetTester tester) async {
       app.main();
-      await tester.pumpAndSettle(const Duration(seconds: 5));
+      
+      // Wait for app to initialize
+      await tester.pump(const Duration(seconds: 2));
+      await tester.pump(const Duration(seconds: 2));
+      await tester.pump(const Duration(seconds: 2));
+      await tester.pump(const Duration(seconds: 2));
+
+      // Dismiss "Streak Lost" dialog if it appears
+      final maybeLaterButton = find.text('Maybe Later');
+      if (maybeLaterButton.evaluate().isNotEmpty) {
+        await tester.tap(maybeLaterButton);
+        await tester.pump(const Duration(seconds: 1));
+        await tester.pump(const Duration(seconds: 1));
+      }
 
       // Navigate to premium page
       final premiumTab = find.text('Premium');
       if (premiumTab.evaluate().isNotEmpty) {
         await tester.tap(premiumTab);
-        await tester.pumpAndSettle(const Duration(seconds: 3));
+        await tester.pump(const Duration(seconds: 2));
+        await tester.pump(const Duration(seconds: 2));
       }
 
       // Verify premium page elements
@@ -136,7 +209,20 @@ void main() {
       // 3. Mock purchase products
 
       app.main();
-      await tester.pumpAndSettle(const Duration(seconds: 5));
+      
+      // Wait for app to initialize
+      await tester.pump(const Duration(seconds: 2));
+      await tester.pump(const Duration(seconds: 2));
+      await tester.pump(const Duration(seconds: 2));
+      await tester.pump(const Duration(seconds: 2));
+
+      // Dismiss "Streak Lost" dialog if it appears
+      final maybeLaterButton = find.text('Maybe Later');
+      if (maybeLaterButton.evaluate().isNotEmpty) {
+        await tester.tap(maybeLaterButton);
+        await tester.pump(const Duration(seconds: 1));
+        await tester.pump(const Duration(seconds: 1));
+      }
 
       // Navigate to premium page
       // Tap upgrade button
@@ -152,13 +238,27 @@ void main() {
   group('Calendar Display Integration Tests', () {
     testWidgets('Calendar displays correctly on progress page', (WidgetTester tester) async {
       app.main();
-      await tester.pumpAndSettle(const Duration(seconds: 5));
+      
+      // Wait for app to initialize
+      await tester.pump(const Duration(seconds: 2));
+      await tester.pump(const Duration(seconds: 2));
+      await tester.pump(const Duration(seconds: 2));
+      await tester.pump(const Duration(seconds: 2));
+
+      // Dismiss "Streak Lost" dialog if it appears
+      final maybeLaterButton = find.text('Maybe Later');
+      if (maybeLaterButton.evaluate().isNotEmpty) {
+        await tester.tap(maybeLaterButton);
+        await tester.pump(const Duration(seconds: 1));
+        await tester.pump(const Duration(seconds: 1));
+      }
 
       // Navigate to progress/calendar page
       final progressTab = find.text('Progress');
       if (progressTab.evaluate().isNotEmpty) {
         await tester.tap(progressTab);
-        await tester.pumpAndSettle(const Duration(seconds: 3));
+        await tester.pump(const Duration(seconds: 2));
+        await tester.pump(const Duration(seconds: 2));
       }
 
       // Verify calendar is displayed
@@ -176,13 +276,27 @@ void main() {
       // 4. Priority system (reviver > freeze > session)
 
       app.main();
-      await tester.pumpAndSettle(const Duration(seconds: 5));
+      
+      // Wait for app to initialize
+      await tester.pump(const Duration(seconds: 2));
+      await tester.pump(const Duration(seconds: 2));
+      await tester.pump(const Duration(seconds: 2));
+      await tester.pump(const Duration(seconds: 2));
+
+      // Dismiss "Streak Lost" dialog if it appears
+      final maybeLaterButton = find.text('Maybe Later');
+      if (maybeLaterButton.evaluate().isNotEmpty) {
+        await tester.tap(maybeLaterButton);
+        await tester.pump(const Duration(seconds: 1));
+        await tester.pump(const Duration(seconds: 1));
+      }
 
       // Navigate to progress page
       final progressTab = find.text('Progress');
       if (progressTab.evaluate().isNotEmpty) {
         await tester.tap(progressTab);
-        await tester.pumpAndSettle(const Duration(seconds: 3));
+        await tester.pump(const Duration(seconds: 2));
+        await tester.pump(const Duration(seconds: 2));
       }
 
       // Verify calendar day colors
