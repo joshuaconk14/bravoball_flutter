@@ -1,5 +1,5 @@
 # Uncomment this line to define a global platform for your project
-platform :ios, '12.0'
+platform :ios, '13.0'
 
 # Use git source instead of CDN to avoid network issues
 source 'https://github.com/CocoaPods/Specs.git'
