@@ -18,7 +18,7 @@ if (keystorePropertiesFile.exists()) {
 android {
     namespace = "com.bravoball.app.bravoball_flutter"
     compileSdk = flutter.compileSdkVersion
-    ndkVersion = "27.0.12077973"
+    ndkVersion = "28.0.12674087"
 
     compileOptions {
         sourceCompatibility = JavaVersion.VERSION_11
@@ -34,12 +34,12 @@ android {
         // TODO: Specify your own unique Application ID (https://developer.android.com/studio/build/application-id.html).
         applicationId = "com.bravoball.app.bravoball_flutter"
         // Optimized for maximum compatibility and Play Store compliance
-        minSdk = 23  // Android 6.0 (API 23) - Covers ~98% of active Android devices
+        minSdk = flutter.minSdkVersion  // Android 6.0 (API 23) - Covers ~98% of active Android devices
         targetSdk = 35  // Required for Google Play Store submission (Android 14)
         versionCode = flutter.versionCode
         versionName = flutter.versionName
-        
-        // Support for 16 KB page sizes (required by Google Play)
+
+        // Support for multiple CPU architectures including 64-bit devices
         ndk {
             abiFilters += listOf("armeabi-v7a", "arm64-v8a", "x86_64")
         }
@@ -60,6 +60,13 @@ android {
             isMinifyEnabled = false  // Temporarily disabled to fix R8 issues
             isShrinkResources = false  // Must be false when minification is disabled
             // proguardFiles(getDefaultProguardFile("proguard-android-optimize.txt"), "proguard-rules.pro")
+        }
+    }
+
+    // Support for 16 KB page sizes - required by Google Play (Nov 2025+)
+    packaging {
+        jniLibs {
+            useLegacyPackaging = false  // Use uncompressed, 16KB-aligned libraries
         }
     }
 }
