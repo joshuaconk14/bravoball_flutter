@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/foundation.dart';
-import 'package:rive/rive.dart';
 import 'package:flutter/painting.dart' as painting;
 import 'package:provider/provider.dart';
 import 'package:purchases_flutter/purchases_flutter.dart';
@@ -10,6 +9,7 @@ import '../../widgets/item_usage_confirmation_dialog.dart';
 import '../../utils/haptic_utils.dart';
 import '../../utils/premium_utils.dart';
 import '../../utils/store_business_rules.dart';
+import '../../config/purchase_config.dart';
 import '../../services/store_service.dart';
 import '../../services/app_state_service.dart';
 import '../../services/ad_service.dart';
@@ -715,30 +715,30 @@ class _StorePageState extends State<StorePage> {
                   return Column(
                     children: [
                       _buildTreatPackage(
-                        amount: '500',
+                        amount: '${PurchaseConfig.treats500Amount}',
                         price: '\$4.99',
                         onTap: () {
                           HapticUtils.mediumImpact();
-                          _purchaseTreatPackage('Treats500');
+                          _purchaseTreatPackage(PurchaseConfig.treats500PackageId);
                         },
                       ),
                       const SizedBox(height: 12),
                       _buildTreatPackage(
-                        amount: '1000',
+                        amount: '${PurchaseConfig.treats1000Amount}',
                         price: '\$9.99',
                         isPopular: true,
                         onTap: () {
                           HapticUtils.mediumImpact();
-                          _purchaseTreatPackage('Treats1000');
+                          _purchaseTreatPackage(PurchaseConfig.treats1000PackageId);
                         },
                       ),
                       const SizedBox(height: 12),
                       _buildTreatPackage(
-                        amount: '2000',
+                        amount: '${PurchaseConfig.treats2000Amount}',
                         price: '\$19.99',
                         onTap: () {
                           HapticUtils.mediumImpact();
-                          _purchaseTreatPackage('Treats2000');
+                          _purchaseTreatPackage(PurchaseConfig.treats2000PackageId);
                         },
                       ),
                     ],
@@ -752,9 +752,7 @@ class _StorePageState extends State<StorePage> {
                     final package = entry.value;
                     
                     // Extract amount from package identifier
-                    String amount = '500'; // default
-                    if (package.identifier == 'Treats1000') amount = '1000';
-                    if (package.identifier == 'Treats2000') amount = '2000';
+                    final amount = PurchaseConfig.getTreatAmountFromPackageId(package.identifier).toString();
                     
                     return Column(
                       children: [
@@ -762,7 +760,7 @@ class _StorePageState extends State<StorePage> {
                         _buildTreatPackage(
                           amount: amount,
                           price: package.storeProduct.priceString,
-                          isPopular: package.identifier == 'Treats1000',
+                          isPopular: package.identifier == PurchaseConfig.treats1000PackageId,
                           onTap: () {
                             HapticUtils.mediumImpact();
                             _purchaseTreatPackage(package.identifier);
@@ -1578,35 +1576,22 @@ class _StorePageState extends State<StorePage> {
   Future<void> _purchaseTreatPackage(String packageIdentifier) async {
     // Use the unified purchase service
     final purchaseService = UnifiedPurchaseService.instance;
+    final treatAmount = PurchaseConfig.getTreatAmountFromPackageId(packageIdentifier);
     final result = await purchaseService.purchaseProduct(
       productType: ProductType.treats,
       packageIdentifier: packageIdentifier,
-      productName: '${_getTreatAmountFromPackage(packageIdentifier)} Treats',
+      productName: '$treatAmount Treats',
     );
     
     if (result.success) {
       // Show success message
       _showSuccessDialog(
         'Purchase Successful!',
-        'You received ${_getTreatAmountFromPackage(packageIdentifier)} treats!',
+        'You received $treatAmount treats!',
       );
     } else {
       // Show error message
       _showErrorDialog(result.error ?? 'Purchase failed');
-    }
-  }
-
-  // Helper method to get treat amount from package identifier
-  int _getTreatAmountFromPackage(String packageIdentifier) {
-    switch (packageIdentifier) {
-      case 'Treats500':
-        return 500;
-      case 'Treats1000':
-        return 1000;
-      case 'Treats2000':
-        return 2000;
-      default:
-        return 0;
     }
   }
 

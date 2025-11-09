@@ -60,6 +60,33 @@ class OnboardingService {
               print('🔍 OnboardingService: Identifying new user with RevenueCat...');
             }
             
+            // ✅ CRITICAL FIX: Log out any existing RevenueCat user BEFORE logging in
+            // This prevents purchases from being transferred to the new user
+            try {
+              final customerInfo = await Purchases.getCustomerInfo();
+              final currentAppUserId = customerInfo.originalAppUserId;
+              
+              // If there's a different user already logged in, log them out first
+              if (currentAppUserId.isNotEmpty && 
+                  currentAppUserId != email &&
+                  !currentAppUserId.contains('Anonymous')) {
+                if (kDebugMode) {
+                  print('⚠️ OnboardingService: Different user ($currentAppUserId) logged in to RevenueCat, logging out first...');
+                }
+                await Purchases.logOut();
+              }
+            } catch (checkError) {
+              if (kDebugMode) {
+                print('⚠️ OnboardingService: Error checking RevenueCat user, logging out to be safe: $checkError');
+              }
+              // If we can't check, log out to be safe
+              try {
+                await Purchases.logOut();
+              } catch (logoutError) {
+                // Ignore logout errors
+              }
+            }
+            
             // Tell RevenueCat who this new user is - this ensures they start fresh
             await Purchases.logIn(email);
             

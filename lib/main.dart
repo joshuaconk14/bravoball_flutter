@@ -20,6 +20,7 @@ import 'services/store_service.dart'; // ✅ ADDED: Import StoreService
 import 'services/unified_purchase_service.dart'; // ✅ ADDED: Import UnifiedPurchaseService
 import 'constants/app_theme.dart';
 import 'config/app_config.dart';
+import 'config/purchase_config.dart';
 import 'widgets/bravo_loading_indicator.dart';
 import 'utils/streak_dialog_manager.dart'; // ✅ ADDED: Import StreakDialogManager
 
@@ -66,7 +67,7 @@ void main() async {
   await AuthenticationService.shared.initialize();
   
   // Initialize RevenueCat
-  final configuration = PurchasesConfiguration('appl_OIYtlnvDkuuhmFAAWJojwiAgBxi');
+  final configuration = PurchasesConfiguration(PurchaseConfig.revenueCatApiKey);
   await Purchases.configure(configuration);
   
   // ✅ CRITICAL: Identify returning users with RevenueCat
@@ -75,6 +76,35 @@ void main() async {
     try {
       if (kDebugMode) {
         print('🔍 Main: Identifying returning user with RevenueCat...');
+      }
+      
+      // ✅ CRITICAL FIX: Check current RevenueCat user and log out if different
+      // This prevents purchases from being transferred between users
+      try {
+        final customerInfo = await Purchases.getCustomerInfo();
+        final currentAppUserId = customerInfo.originalAppUserId;
+        
+        // If there's a different user already logged in to RevenueCat, log them out first
+        // Anonymous users start with "$RCAnonymousID:", so we check if it's a real user ID
+        // and if it's different from the current user's email
+        if (currentAppUserId.isNotEmpty && 
+            currentAppUserId != userManager.email &&
+            !currentAppUserId.contains('Anonymous')) {
+          if (kDebugMode) {
+            print('⚠️ Main: Different user ($currentAppUserId) logged in to RevenueCat, logging out first...');
+          }
+          await Purchases.logOut();
+        }
+      } catch (e) {
+        if (kDebugMode) {
+          print('⚠️ Main: Error checking RevenueCat user: $e');
+        }
+        // If we can't check, log out to be safe
+        try {
+          await Purchases.logOut();
+        } catch (logoutError) {
+          // Ignore logout errors
+        }
       }
       
       // Tell RevenueCat who this returning user is

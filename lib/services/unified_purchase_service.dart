@@ -1,6 +1,7 @@
 import 'package:flutter/foundation.dart';
 import 'package:purchases_flutter/purchases_flutter.dart';
 import '../config/app_config.dart';
+import '../config/purchase_config.dart';
 import 'store_service.dart';
 
 /// Unified Purchase Service
@@ -119,27 +120,14 @@ class UnifiedPurchaseService extends ChangeNotifier {
         
       case ProductType.treats:
         // Treat products are in the bravoball_treats offering
-        final treatsOffering = offerings.all['bravoball_treats'];
+        final treatsOffering = offerings.all[PurchaseConfig.treatsOfferingId];
         if (treatsOffering == null) {
           throw Exception('Treats offering not found. Available: ${offerings.all.keys}');
         }
         
         if (AppConfig.useLocalStoreKit) {
           // For local StoreKit, map package identifiers to product IDs
-          String productId;
-          switch (packageIdentifier) {
-            case 'Treats500':
-              productId = 'bravoball_treats_500';
-              break;
-            case 'Treats1000':
-              productId = 'bravoball_treats_1000';
-              break;
-            case 'Treats2000':
-              productId = 'bravoball_treats_2000';
-              break;
-            default:
-              throw Exception('Unknown treat package: $packageIdentifier');
-          }
+          final productId = PurchaseConfig.getProductIdFromPackageId(packageIdentifier);
           
           return treatsOffering.availablePackages
               .where((p) => p.storeProduct.identifier == productId)
@@ -168,7 +156,7 @@ class UnifiedPurchaseService extends ChangeNotifier {
         
       case ProductType.treats:
         // For treat products, we need to add treats to the user's account
-        final treatAmount = _getTreatAmountFromPackage(packageIdentifier);
+        final treatAmount = PurchaseConfig.getTreatAmountFromPackageId(packageIdentifier);
         if (treatAmount > 0) {
           final storeService = StoreService.instance;
           final success = await storeService.addTreatsReward(treatAmount);
@@ -184,22 +172,6 @@ class UnifiedPurchaseService extends ChangeNotifier {
         break;
     }
   }
-
-  /// Get treat amount from package identifier
-  int _getTreatAmountFromPackage(String packageIdentifier) {
-    switch (packageIdentifier) {
-      case 'Treats500':
-        return 500;
-      case 'Treats1000':
-        return 1000;
-      case 'Treats2000':
-        return 2000;
-      default:
-        return 0;
-    }
-  }
-
-  /// Get user-friendly error message
   String _getErrorMessage(dynamic error, String productName) {
     if (error is PurchasesError) {
       switch (error.code) {
@@ -231,28 +203,26 @@ class UnifiedPurchaseService extends ChangeNotifier {
           return offerings.current!.availablePackages;
           
         case ProductType.treats:
-          final treatsOffering = offerings.all['bravoball_treats'];
+          final treatsOffering = offerings.all[PurchaseConfig.treatsOfferingId];
           if (treatsOffering == null) return [];
           
           List<Package> treatPackages;
           
           if (AppConfig.useLocalStoreKit) {
+            final treatProductIds = PurchaseConfig.getTreatProductIds();
             treatPackages = treatsOffering.availablePackages
-                .where((package) => 
-                    package.storeProduct.identifier == 'bravoball_treats_500' ||
-                    package.storeProduct.identifier == 'bravoball_treats_1000' ||
-                    package.storeProduct.identifier == 'bravoball_treats_2000')
+                .where((package) => treatProductIds.contains(package.storeProduct.identifier))
                 .toList();
           } else {
             treatPackages = treatsOffering.availablePackages
-                .where((package) => package.identifier.startsWith('Treats'))
+                .where((package) => PurchaseConfig.isTreatPackage(package.identifier))
                 .toList();
           }
           
           // Sort packages in desired order: 500, 1000, 2000
           treatPackages.sort((a, b) {
-            final aAmount = _getTreatAmountFromPackage(a.identifier);
-            final bAmount = _getTreatAmountFromPackage(b.identifier);
+            final aAmount = PurchaseConfig.getTreatAmountFromPackageId(a.identifier);
+            final bAmount = PurchaseConfig.getTreatAmountFromPackageId(b.identifier);
             return aAmount.compareTo(bAmount);
           });
           

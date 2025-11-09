@@ -1,9 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/foundation.dart';
 import '../../constants/app_theme.dart';
-import 'package:purchases_flutter/purchases_flutter.dart';
 import '../../utils/premium_utils.dart';
-import '../../config/app_config.dart';
+import '../../config/purchase_config.dart';
 import '../../services/unified_purchase_service.dart';
 
 class PremiumPage extends StatefulWidget {
@@ -366,7 +365,7 @@ class _PremiumPageState extends State<PremiumPage> {
           height: 60,
           child: ElevatedButton(
             onPressed: _isPurchasing ? null : () async {
-              await _purchasePackage('PremiumMonthly', 'Monthly');
+              await _purchasePackage(PurchaseConfig.premiumMonthlyPackageId, 'Monthly');
             },
             style: ElevatedButton.styleFrom(
               backgroundColor: AppTheme.primaryYellow,
@@ -396,7 +395,7 @@ class _PremiumPageState extends State<PremiumPage> {
           height: 60,
           child: ElevatedButton(
             onPressed: _isPurchasing ? null : () async {
-              await _purchasePackage('PremiumYearly', 'Annual');
+              await _purchasePackage(PurchaseConfig.premiumYearlyPackageId, 'Annual');
             },
             style: ElevatedButton.styleFrom(
               backgroundColor: AppTheme.primaryYellow,

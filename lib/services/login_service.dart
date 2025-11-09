@@ -107,6 +107,33 @@ class LoginService {
             print('🔍 LoginService: Identifying user with RevenueCat...');
           }
           
+          // ✅ CRITICAL FIX: Log out any existing RevenueCat user BEFORE logging in
+          // This prevents purchases from being transferred between users
+          try {
+            final customerInfo = await Purchases.getCustomerInfo();
+            final currentAppUserId = customerInfo.originalAppUserId;
+            
+            // If there's a different user already logged in, log them out first
+            if (currentAppUserId.isNotEmpty && 
+                currentAppUserId != loginResponse.email &&
+                !currentAppUserId.contains('Anonymous')) {
+              if (kDebugMode) {
+                print('⚠️ LoginService: Different user ($currentAppUserId) logged in to RevenueCat, logging out first...');
+              }
+              await Purchases.logOut();
+            }
+          } catch (checkError) {
+            if (kDebugMode) {
+              print('⚠️ LoginService: Error checking RevenueCat user, logging out to be safe: $checkError');
+            }
+            // If we can't check, log out to be safe
+            try {
+              await Purchases.logOut();
+            } catch (logoutError) {
+              // Ignore logout errors
+            }
+          }
+          
           // Tell RevenueCat who this user is - this ensures subscriptions are tied to this specific user
           await Purchases.logIn(loginResponse.email);
           
