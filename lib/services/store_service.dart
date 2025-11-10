@@ -438,7 +438,15 @@ class StoreService extends ChangeNotifier {
     _setError(null);
   }
 
+  /// Grant treats to user based on reward type (centralized function)
+  /// This is the single source of truth for granting treats for any action
+  Future<bool> grantTreatsReward(TreatRewardType rewardType) async {
+    final amount = StoreBusinessRules.getTreatRewardAmount(rewardType);
+    return await addTreatsReward(amount);
+  }
+
   /// Add treats as a reward (for ads, achievements, etc.)
+  /// Use grantTreatsReward() for standard reward types, or this for custom amounts
   Future<bool> addTreatsReward(int amount) async {
     try {
       _setLoading(true);

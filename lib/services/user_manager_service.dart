@@ -171,6 +171,25 @@ class UserManagerService extends ChangeNotifier {
     }
     
     try {
+      // ✅ CRITICAL: Reset RevenueCat user BEFORE clearing local state
+      // This prevents purchases from being transferred to the next user
+      try {
+        if (kDebugMode) {
+          print('🔍 UserManager: Resetting RevenueCat user on logout...');
+        }
+        
+        await Purchases.logOut();
+        
+        if (kDebugMode) {
+          print('✅ UserManager: RevenueCat user reset successfully');
+        }
+      } catch (revenueCatError) {
+        if (kDebugMode) {
+          print('⚠️ UserManager: Failed to reset RevenueCat user: $revenueCatError');
+        }
+        // Don't fail logout if RevenueCat reset fails, but log the error
+      }
+      
       // Cancel proactive refresh timer first
       _cancelProactiveTokenRefresh();
       

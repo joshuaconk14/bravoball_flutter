@@ -36,6 +36,8 @@
 	<string>This app needs access to your microphone to record videos with audio for custom drills.</string>
 	<key>NSPhotoLibraryUsageDescription</key>
 	<string>This app needs access to your photo library to upload videos for custom drills.</string>
+	<key>NSLocalNetworkUsageDescription</key>
+	<string>This app needs access to your local network to connect to the development backend server for testing.</string>
 	<key>SKAdNetworkItems</key>
 	<array>
 		<dict>

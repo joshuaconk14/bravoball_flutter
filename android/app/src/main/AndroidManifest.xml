@@ -4,19 +4,21 @@
     <uses-permission android:name="android.permission.INTERNET" />
     <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
     
-    <!-- Media access permissions for image picker -->
+    <!-- Media access permissions for custom drill video selection -->
+    <!-- Core Feature: Users can create custom training drills by selecting videos from their gallery -->
+    <!-- This permission is essential for the "Create Custom Drill" feature, a core functionality of the app -->
     <uses-permission android:name="android.permission.READ_EXTERNAL_STORAGE" android:maxSdkVersion="32" />
-    <!-- For Android 13+ (API 33+) -->
+    <!-- For Android 13+ (API 33+): Required for users to select videos from gallery for custom drills -->
     <uses-permission android:name="android.permission.READ_MEDIA_VIDEO" />
-    <uses-permission android:name="android.permission.READ_MEDIA_IMAGES" />
     
     <!-- Background Audio and Wake Lock permissions -->
+    <!-- WAKE_LOCK: Required to keep screen on during training drills -->
+    <!-- FOREGROUND_SERVICE: Required for background audio playback during drills -->
     <uses-permission android:name="android.permission.WAKE_LOCK" />
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE_MEDIA_PLAYBACK" />
     
-    <!-- ✅ ADDED: Android battery optimization and background execution -->
-    <uses-permission android:name="android.permission.REQUEST_IGNORE_BATTERY_OPTIMIZATIONS" />
+    <!-- Haptic feedback for user interactions -->
     <uses-permission android:name="android.permission.VIBRATE" />
     
     <!-- ✅ ADDED: Restrict to phones only (no tablets) -->

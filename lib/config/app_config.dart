@@ -14,13 +14,23 @@ class AppConfig {
   /// 2: Computer (localhost)
   /// 3: Phone (Wi-Fi IP)
   /// 4: V2 Backend (App Store Review & Production)
-  static const int appDevCase = 2; // 🆕 V2 BACKEND - For App Store submission & production
+  static const int appDevCase = 3;
 
   /// Debug mode toggle
   static const bool debug = true; // PRODUCTION - Set to false for testing and store submission
 
-  /// StoreKit Configuration - Set to true for local testing, false for production
-  static const bool useLocalStoreKit = true; // Set to false for production App Store Connect/Google Play
+  /// StoreKit Configuration - Set to true for local testing, false for sandbox/production
+  /// 
+  /// **Local StoreKit Testing** (`true`):
+  /// - Uses local StoreKit configuration file
+  /// - User identification doesn't work (always anonymous IDs)
+  /// - Good for testing purchase flow without App Store Connect
+  /// 
+  /// **Sandbox/Production** (`false`):
+  /// - Uses real App Store Connect products
+  /// - User identification works correctly
+  /// - Required for testing user switching and production
+  static const bool useLocalStoreKit = false; // Set to false for sandbox/production testing
 
   /// Wi-Fi IP address for phone testing - loaded from .env file
   /// You can find this by running `ipconfig getifaddr en0` on macOS
@@ -91,7 +101,12 @@ class AppConfig {
   static bool get enableDebugMenu => kDebugMode && debug;
   static bool get logApiCalls => kDebugMode && debug;
   static bool get showPerformanceOverlay => kDebugMode && false;
-  static bool get fastMentalTrainingTimers => kDebugMode && debug; // Speed up mental training timers for testing
+  static bool get fastMentalTrainingTimers => kDebugMode && debug;
+  
+  /// Verbose backend logging - set to false to show only simple success/failure messages
+  /// When false: Shows "✅ API endpoint loaded successfully" or "❌ API endpoint failed"
+  /// When true: Shows full API request/response details including response bodies
+  static const bool verboseBackendLogging = false;
   
 
   // MARK: - Test Data Settings (when useTestData is true)

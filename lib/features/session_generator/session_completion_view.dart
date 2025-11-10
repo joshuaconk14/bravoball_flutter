@@ -5,6 +5,8 @@ import '../../services/audio_service.dart';
 import '../../services/ad_service.dart'; // ✅ ADDED: Import AdService
 import '../../utils/haptic_utils.dart';
 import '../../services/app_rating_service.dart';
+import '../../utils/store_business_rules.dart';
+import '../../services/user_manager_service.dart';
 
 class SessionCompletionView extends StatefulWidget {
   final int currentStreak;
@@ -36,11 +38,13 @@ class _SessionCompletionViewState extends State<SessionCompletionView>
   late AnimationController _slideController;
   late AnimationController _streakController;
   late AnimationController _characterController;
+  late AnimationController _treatsController;
   
   late Animation<double> _fadeAnimation;
   late Animation<Offset> _slideAnimation;
   late Animation<double> _streakAnimation;
   late Animation<double> _characterBounceAnimation;
+  late Animation<double> _treatsAnimation;
 
   @override
   void initState() {
@@ -64,6 +68,11 @@ class _SessionCompletionViewState extends State<SessionCompletionView>
     
     _characterController = AnimationController(
       duration: const Duration(milliseconds: 1200),
+      vsync: this,
+    );
+    
+    _treatsController = AnimationController(
+      duration: const Duration(milliseconds: 1000),
       vsync: this,
     );
     
@@ -100,6 +109,14 @@ class _SessionCompletionViewState extends State<SessionCompletionView>
       curve: Curves.elasticOut,
     ));
     
+    _treatsAnimation = Tween<double>(
+      begin: 0.0,
+      end: 1.0,
+    ).animate(CurvedAnimation(
+      parent: _treatsController,
+      curve: Curves.bounceOut,
+    ));
+    
     // Start animations
     _startAnimations();
     
@@ -134,6 +151,9 @@ class _SessionCompletionViewState extends State<SessionCompletionView>
     
     await Future.delayed(const Duration(milliseconds: 500));
     _streakController.forward();
+    
+    await Future.delayed(const Duration(milliseconds: 300));
+    _treatsController.forward();
   }
 
   @override
@@ -142,6 +162,7 @@ class _SessionCompletionViewState extends State<SessionCompletionView>
     _slideController.dispose();
     _streakController.dispose();
     _characterController.dispose();
+    _treatsController.dispose();
     super.dispose();
   }
 
@@ -254,6 +275,23 @@ class _SessionCompletionViewState extends State<SessionCompletionView>
                     );
                   },
                 ),
+                
+                const SizedBox(height: 20),
+                
+                // Treats reward display with animation (only show for authenticated users)
+                if (!UserManagerService.instance.isGuestMode)
+                  AnimatedBuilder(
+                    animation: _treatsAnimation,
+                    builder: (context, child) {
+                      return Transform.scale(
+                        scale: _treatsAnimation.value,
+                        child: Opacity(
+                          opacity: _treatsAnimation.value,
+                          child: _buildTreatsReward(),
+                        ),
+                      );
+                    },
+                  ),
                 
                 const Spacer(), // Use spacer to push buttons to bottom
                 
@@ -499,6 +537,94 @@ class _SessionCompletionViewState extends State<SessionCompletionView>
             color: Colors.white.withValues(alpha: 0.8),
           ),
           textAlign: TextAlign.center,
+        ),
+      ],
+    );
+  }
+
+  Widget _buildTreatsReward() {
+    final treatAmount = StoreBusinessRules.sessionCompletionRewardAmount;
+    
+    return Row(
+      mainAxisAlignment: MainAxisAlignment.center,
+      children: [
+        // Treat icon/emoji
+        Container(
+          width: 50,
+          height: 50,
+          decoration: BoxDecoration(
+            color: AppTheme.primaryYellow,
+            shape: BoxShape.circle,
+            boxShadow: [
+              BoxShadow(
+                color: AppTheme.primaryYellow.withValues(alpha: 0.4),
+                blurRadius: 12,
+                offset: const Offset(0, 4),
+              ),
+            ],
+          ),
+          child: const Center(
+            child: Text(
+              '🍪',
+              style: TextStyle(fontSize: 28),
+            ),
+          ),
+        ),
+        
+        const SizedBox(width: 16),
+        
+        // Treat amount
+        Text(
+          treatAmount.toString(),
+          style: const TextStyle(
+            fontFamily: 'Poppins',
+            fontSize: 48,
+            fontWeight: FontWeight.bold,
+            color: Colors.white,
+          ),
+        ),
+        
+        const SizedBox(width: 8),
+        
+        // "Treats" label
+        const Text(
+          'Treats',
+          style: TextStyle(
+            fontFamily: 'Poppins',
+            fontSize: 20,
+            fontWeight: FontWeight.w600,
+            color: Colors.white,
+          ),
+        ),
+        
+        const SizedBox(width: 12),
+        
+        // Plus icon indicator
+        Container(
+          width: 44,
+          height: 44,
+          decoration: BoxDecoration(
+            color: AppTheme.primaryGreen,
+            shape: BoxShape.circle,
+            boxShadow: [
+              BoxShadow(
+                color: AppTheme.primaryGreen.withValues(alpha: 0.3),
+                blurRadius: 10,
+                offset: const Offset(0, 4),
+              ),
+            ],
+          ),
+          child: const Center(
+            child: Text(
+              '+',
+              style: TextStyle(
+                fontFamily: 'Poppins',
+                fontSize: 24,
+                fontWeight: FontWeight.bold,
+                color: Colors.white,
+              ),
+            ),
+          ),
         ),
       ],
     );
