@@ -1,5 +1,6 @@
 import 'dart:convert';
 import 'package:flutter/foundation.dart';
+import '../config/app_config.dart';
 import '../models/drill_group_model.dart';
 import '../models/drill_model.dart';
 import '../models/api_response_models.dart';
@@ -35,7 +36,7 @@ class DrillGroupSyncService {
       );
 
       if (response.isSuccess && response.data != null) {
-        if (kDebugMode) {
+        if (kDebugMode && AppConfig.verboseBackendLogging) {
           print('📥 Raw response data type: ${response.data.runtimeType}');
           print('📥 Raw response data: ${response.data}');
         }

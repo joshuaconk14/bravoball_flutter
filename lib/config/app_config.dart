@@ -101,7 +101,12 @@ class AppConfig {
   static bool get enableDebugMenu => kDebugMode && debug;
   static bool get logApiCalls => kDebugMode && debug;
   static bool get showPerformanceOverlay => kDebugMode && false;
-  static bool get fastMentalTrainingTimers => kDebugMode && debug; // Speed up mental training timers for testing
+  static bool get fastMentalTrainingTimers => kDebugMode && debug;
+  
+  /// Verbose backend logging - set to false to show only simple success/failure messages
+  /// When false: Shows "✅ API endpoint loaded successfully" or "❌ API endpoint failed"
+  /// When true: Shows full API request/response details including response bodies
+  static const bool verboseBackendLogging = false;
   
 
   // MARK: - Test Data Settings (when useTestData is true)

@@ -1,11 +1,31 @@
+/// Reward types that can grant treats to users
+enum TreatRewardType {
+  ad, // Watching a rewarded ad
+  sessionCompletion, // Completing a training session
+}
+
 /// Pure business logic functions for store operations
 /// These functions are testable without mocks or dependencies
 class StoreBusinessRules {
   /// Cost of purchasing a streak freeze
-  static const int streakFreezeCost = 50;
+  static const int streakFreezeCost = 175;
   
   /// Cost of purchasing a streak reviver
-  static const int streakReviverCost = 100;
+  static const int streakReviverCost = 350;
+
+  /// Treat reward amounts for different actions
+  static const int adRewardAmount = 15; // Treats earned for watching a rewarded ad
+  static const int sessionCompletionRewardAmount = 45; // Treats earned for completing a session
+
+  /// Get the treat reward amount for a specific reward type
+  static int getTreatRewardAmount(TreatRewardType rewardType) {
+    switch (rewardType) {
+      case TreatRewardType.ad:
+        return adRewardAmount;
+      case TreatRewardType.sessionCompletion:
+        return sessionCompletionRewardAmount;
+    }
+  }
 
   /// Check if user has enough treats to purchase a streak freeze
   static bool canPurchaseStreakFreeze(int currentTreats) {

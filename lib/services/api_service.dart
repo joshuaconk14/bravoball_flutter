@@ -72,7 +72,7 @@ class ApiService {
 
       // Log the response if debugging
       if (AppConfig.logApiCalls) {
-        _logResponse(response);
+        _logResponse(response, endpoint, method);
       }
 
       // Check if we got a 401 error and should try to refresh token
@@ -482,27 +482,43 @@ class ApiService {
     Map<String, dynamic>? body,
   ) {
     if (kDebugMode) {
-      print('🌐 API Request: $method $uri');
-      print('📤 Headers: $headers');
-      if (body != null) {
-        print('📤 Body: ${json.encode(body)}');
+      if (AppConfig.verboseBackendLogging) {
+        // Verbose mode: Show full request details
+        print('🌐 API Request: $method $uri');
+        print('📤 Headers: $headers');
+        if (body != null) {
+          print('📤 Body: ${json.encode(body)}');
+        }
+      } else {
+        // Simple mode: Show only method and endpoint
+        print('🌐 $method ${uri.path}');
       }
     }
   }
 
   /// Log HTTP response for debugging
-  void _logResponse(http.Response response) {
+  void _logResponse(http.Response response, String endpoint, String method) {
     if (kDebugMode) {
-      print('📥 API Response: ${response.statusCode}');
-      if (response.body.isNotEmpty) {
-        try {
-          final prettyJson = const JsonEncoder.withIndent('  ').convert(
-            json.decode(response.body),
-          );
-          print('📥 Body: $prettyJson');
-        } catch (e) {
-          print('📥 Body: ${response.body}');
+      final isSuccess = response.statusCode >= 200 && response.statusCode < 300;
+      
+      if (AppConfig.verboseBackendLogging) {
+        // Verbose mode: Show full details
+        print('📥 API Response: ${response.statusCode}');
+        if (response.body.isNotEmpty) {
+          try {
+            final prettyJson = const JsonEncoder.withIndent('  ').convert(
+              json.decode(response.body),
+            );
+            print('📥 Body: $prettyJson');
+          } catch (e) {
+            print('📥 Body: ${response.body}');
+          }
         }
+      } else {
+        // Simple mode: Show only success/failure with endpoint
+        final statusIcon = isSuccess ? '✅' : '❌';
+        final statusText = isSuccess ? 'successfully' : 'failed';
+        print('$statusIcon $method $endpoint - ${response.statusCode} ($statusText)');
       }
     }
   }

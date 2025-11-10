@@ -18,6 +18,7 @@ import '../services/loading_state_service.dart';
 import './api_service.dart';
 import './custom_drill_service.dart';
 import './store_service.dart';
+import '../utils/store_business_rules.dart';
 import 'package:purchases_flutter/purchases_flutter.dart';
 
 // ===== ENUMS FOR STATE MANAGEMENT =====
@@ -1177,6 +1178,22 @@ class AppStateService extends ChangeNotifier {
       
       await _addCompletedSessionWithSync(completedSession);
       _setSessionState(SessionState.completed);
+      
+      // Grant treats reward for completing a session
+      if (!isGuestMode) {
+        try {
+          final storeService = StoreService.instance;
+          await storeService.grantTreatsReward(TreatRewardType.sessionCompletion);
+          if (kDebugMode) {
+            print('🎁 Session completion reward: ${StoreBusinessRules.sessionCompletionRewardAmount} treats granted');
+          }
+        } catch (e) {
+          if (kDebugMode) {
+            print('⚠️ Failed to grant session completion reward: $e');
+          }
+          // Don't fail session completion if reward fails
+        }
+      }
       
       if (kDebugMode) print('✅ Session completed successfully');
     } catch (e) {

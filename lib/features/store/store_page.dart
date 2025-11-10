@@ -10,6 +10,7 @@ import '../../utils/haptic_utils.dart';
 import '../../utils/premium_utils.dart';
 import '../../utils/store_business_rules.dart';
 import '../../config/purchase_config.dart';
+import '../../config/ad_config.dart';
 import '../../services/store_service.dart';
 import '../../services/app_state_service.dart';
 import '../../services/ad_service.dart';
@@ -826,7 +827,7 @@ class _StorePageState extends State<StorePage> {
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Text(
-                        '15 Treats',
+                        '${StoreBusinessRules.adRewardAmount} Treats',
                         style: TextStyle(
                           fontFamily: AppTheme.fontPoppins,
                           fontSize: 16,
@@ -1066,15 +1067,18 @@ class _StorePageState extends State<StorePage> {
       Navigator.of(context).pop();
 
       if (rewardAmount > 0) {
-        // Add treats to user's account
+        // Add treats to user's account using centralized reward function
         final storeService = StoreService.instance;
-        await storeService.addTreatsReward(rewardAmount);
-
-        // Show success message
-        _showSuccessDialog(
-          'Treats Earned!',
-          'You earned $rewardAmount treats for watching the ad!',
-        );
+        final success = await storeService.grantTreatsReward(TreatRewardType.ad);
+        
+        if (success) {
+          // Show success message with centralized reward amount
+          final earnedAmount = StoreBusinessRules.adRewardAmount;
+          _showSuccessDialog(
+            'Treats Earned!',
+            'You earned $earnedAmount treats for watching the ad!',
+          );
+        }
       } else if (rewardAmount == -1) {
         // Ad failed to load or is disabled
         _showErrorDialog('Ad failed to load. Please try again later.');

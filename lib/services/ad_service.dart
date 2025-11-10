@@ -4,6 +4,7 @@ import 'package:google_mobile_ads/google_mobile_ads.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../config/ad_config.dart'; // ✅ ADDED: Import AdConfig
 import '../utils/premium_utils.dart'; // ✅ ADDED: Import PremiumUtils
+import '../utils/store_business_rules.dart'; // ✅ ADDED: Import StoreBusinessRules for reward amounts
 
 class AdService {
   static final AdService _instance = AdService._internal();
@@ -64,20 +65,7 @@ class AdService {
     }
   }
 
-  String get _rewardedAdUnitId {
-    
-    if (kDebugMode) {
-      // Use test rewarded ad unit IDs
-      return Platform.isAndroid 
-        ? 'ca-app-pub-3940256099942544/5224354917'  // Android test rewarded ad
-        : 'ca-app-pub-3940256099942544/1712485313'; // iOS test rewarded ad
-    } else {
-      // TODO: Add production rewarded ad unit IDs to AdConfig
-      return Platform.isAndroid 
-        ? 'ca-app-pub-3940256099942544/5224354917'  // Using test ID for now
-        : 'ca-app-pub-3940256099942544/1712485313'; // Using test ID for now
-    }
-  }
+  String get _rewardedAdUnitId => AdConfig.rewardedAdUnitId;
   
   Future<void> _loadInterstitialAd() async {
     if (_isAdLoaded || _isShowingAd || _adUnitId.isEmpty) return;
@@ -196,9 +184,9 @@ class AdService {
       }
       await _loadRewardedAd();
       
-      // Wait for ad to load (up to 3 seconds)
+      // Wait for ad to load (up to configured timeout)
       int waitTime = 0;
-      while (!_isRewardedAdLoaded && waitTime < 3000) {
+      while (!_isRewardedAdLoaded && waitTime < AdConfig.rewardedAdLoadTimeoutMs) {
         await Future.delayed(const Duration(milliseconds: 100));
         waitTime += 100;
       }
@@ -245,11 +233,11 @@ class AdService {
 
       await _rewardedAd!.show(
         onUserEarnedReward: (ad, reward) {
-          rewardAmount = 15; // Always give 15 treats
+          rewardAmount = StoreBusinessRules.adRewardAmount;
           adCompleted = true;
           
           if (kDebugMode) {
-            print('🎁 User earned reward: 15 treats');
+            print('🎁 User earned reward: ${StoreBusinessRules.adRewardAmount} treats');
           }
         },
       );
