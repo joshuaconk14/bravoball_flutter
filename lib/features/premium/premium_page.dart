@@ -46,7 +46,7 @@ class _PremiumPageState extends State<PremiumPage> {
   Future<void> _checkPremiumStatus() async {
     try {
       // Use the simplified PremiumUtils method
-      final isPremium = await PremiumUtils.hasPremiumAccess();
+      final isPremium = await PremiumUtils.instance.hasPremiumAccess();
       setState(() {
         _isPremium = isPremium;
       });
@@ -138,7 +138,7 @@ class _PremiumPageState extends State<PremiumPage> {
     
     if (success) {
       // Check if user now has premium access
-      final isPremium = await PremiumUtils.hasPremiumAccess();
+      final isPremium = await PremiumUtils.instance.hasPremiumAccess();
       
       if (isPremium) {
         _showSuccessMessage();

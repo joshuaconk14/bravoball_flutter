@@ -20,6 +20,9 @@ import './custom_drill_service.dart';
 import './store_service.dart';
 import '../utils/store_business_rules.dart';
 import 'package:purchases_flutter/purchases_flutter.dart';
+import 'revenue_cat_service.dart';
+import 'revenue_cat_service_impl.dart';
+import '../utils/premium_utils.dart';
 
 // ===== ENUMS FOR STATE MANAGEMENT =====
 // Session lifecycle states - tracks progress through a training session
@@ -169,8 +172,6 @@ class AppStateService extends ChangeNotifier {
   static AppStateService? _instance;
   static AppStateService get instance => _instance ??= AppStateService._();
   
-  AppStateService._();
-  
   // ===== SERVICES =====
   // External service dependencies - centralized here for easy testing/mocking
   final DrillApiService _drillApiService = DrillApiService.shared;
@@ -182,6 +183,13 @@ class AppStateService extends ChangeNotifier {
   final UserManagerService _userManager = UserManagerService.instance;
   // ✅ ADDED: Custom drill service for fetching user's custom drills
   final CustomDrillService _customDrillService = CustomDrillService.shared;
+  
+  // ✅ ADDED: RevenueCat service for premium checks (injectable for testing)
+  final RevenueCatService _revenueCatService;
+  
+  // Private constructor with optional dependencies for testing
+  AppStateService._({RevenueCatService? revenueCatService})
+      : _revenueCatService = revenueCatService ?? RevenueCatServiceImpl();
   
 
   
@@ -1255,10 +1263,9 @@ class AppStateService extends ChangeNotifier {
         print('🔍 Checking premium status...');
       }
       
-      // Import premium utils dynamically to avoid circular dependencies
       // Check if user has premium access via RevenueCat
       try {
-        final customerInfo = await Purchases.getCustomerInfo();
+        final customerInfo = await _revenueCatService.getCustomerInfo();
         final hasPremium = customerInfo.entitlements.active.isNotEmpty;
         
         if (kDebugMode) {
