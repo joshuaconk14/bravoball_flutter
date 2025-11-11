@@ -41,7 +41,7 @@ class _StorePageState extends State<StorePage> {
 
   Future<void> _checkPremiumStatus() async {
     try {
-      final isPremium = await PremiumUtils.hasPremiumAccess();
+      final isPremium = await PremiumUtils.instance.hasPremiumAccess();
       setState(() {
         _isPremium = isPremium;
         _isLoading = false;

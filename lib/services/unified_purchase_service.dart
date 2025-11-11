@@ -3,6 +3,8 @@ import 'package:purchases_flutter/purchases_flutter.dart';
 import '../config/app_config.dart';
 import '../config/purchase_config.dart';
 import 'store_service.dart';
+import 'revenue_cat_service.dart';
+import 'revenue_cat_service_impl.dart';
 
 /// Unified Purchase Service
 /// 
@@ -12,7 +14,15 @@ class UnifiedPurchaseService extends ChangeNotifier {
   static UnifiedPurchaseService? _instance;
   static UnifiedPurchaseService get instance => _instance ??= UnifiedPurchaseService._();
   
-  UnifiedPurchaseService._();
+  // Dependencies (injectable for testing)
+  final RevenueCatService revenueCat;
+  final StoreService storeService;
+  
+  UnifiedPurchaseService._({
+    RevenueCatService? revenueCat,
+    StoreService? storeService,
+  }) : revenueCat = revenueCat ?? RevenueCatServiceImpl(),
+       storeService = storeService ?? StoreService.instance;
 
   // Purchase state
   bool _isPurchasing = false;
@@ -46,7 +56,7 @@ class UnifiedPurchaseService extends ChangeNotifier {
       }
 
       // Get offerings from RevenueCat
-      final offerings = await Purchases.getOfferings();
+      final offerings = await revenueCat.getOfferings();
       
       if (kDebugMode) {
         print('🔍 Debug: All available offerings:');
@@ -69,22 +79,22 @@ class UnifiedPurchaseService extends ChangeNotifier {
       }
 
       // Make the purchase
-      final purchaseResult = await Purchases.purchase(PurchaseParams.package(package));
+      final customerInfo = await revenueCat.purchase(PurchaseParams.package(package));
       
       if (kDebugMode) {
         print('✅ Purchase completed');
-        print('   Active subscriptions: ${purchaseResult.customerInfo.activeSubscriptions}');
-        print('   Entitlements: ${purchaseResult.customerInfo.entitlements.active.keys}');
+        print('   Active subscriptions: ${customerInfo.activeSubscriptions}');
+        print('   Entitlements: ${customerInfo.entitlements.active.keys}');
       }
 
       // Handle post-purchase logic based on product type
-      await _handlePostPurchase(productType, packageIdentifier, purchaseResult.customerInfo);
+      await _handlePostPurchase(productType, packageIdentifier, customerInfo);
 
       return PurchaseResult.success(
         productName: productName,
         packageIdentifier: packageIdentifier,
         price: package.storeProduct.priceString,
-        customerInfo: purchaseResult.customerInfo,
+        customerInfo: customerInfo,
       );
 
     } catch (e) {
@@ -158,7 +168,6 @@ class UnifiedPurchaseService extends ChangeNotifier {
         // For treat products, we need to add treats to the user's account
         final treatAmount = PurchaseConfig.getTreatAmountFromPackageId(packageIdentifier);
         if (treatAmount > 0) {
-          final storeService = StoreService.instance;
           final success = await storeService.addTreatsReward(treatAmount);
           
           if (success) {
@@ -195,7 +204,7 @@ class UnifiedPurchaseService extends ChangeNotifier {
   /// Get available packages for a specific product type
   Future<List<Package>> getAvailablePackages(ProductType productType) async {
     try {
-      final offerings = await Purchases.getOfferings();
+      final offerings = await revenueCat.getOfferings();
       
       switch (productType) {
         case ProductType.premium:
@@ -246,7 +255,7 @@ class UnifiedPurchaseService extends ChangeNotifier {
         print('🔄 Restoring previous purchases...');
       }
 
-      final customerInfo = await Purchases.restorePurchases();
+      final customerInfo = await revenueCat.restorePurchases();
       
       if (kDebugMode) {
         print('✅ Purchases restored');

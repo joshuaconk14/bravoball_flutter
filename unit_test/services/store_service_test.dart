@@ -120,27 +120,27 @@ void main() {
     test('uses StoreBusinessRules.streakFreezeCost for validation', () {
       // Verify that the service uses the utility constant
       final cost = StoreBusinessRules.streakFreezeCost;
-      expect(cost, 50);
+      expect(cost, 175);
     });
 
     test('uses StoreBusinessRules.streakReviverCost for validation', () {
       // Verify that the service uses the utility constant
       final cost = StoreBusinessRules.streakReviverCost;
-      expect(cost, 100);
+      expect(cost, 350);
     });
 
     test('canPurchaseStreakFreeze validation matches service logic', () {
       // Test that StoreBusinessRules.canPurchaseStreakFreeze matches service behavior
-      expect(StoreBusinessRules.canPurchaseStreakFreeze(50), true);
-      expect(StoreBusinessRules.canPurchaseStreakFreeze(49), false);
-      expect(StoreBusinessRules.canPurchaseStreakFreeze(100), true);
+      expect(StoreBusinessRules.canPurchaseStreakFreeze(175), true);
+      expect(StoreBusinessRules.canPurchaseStreakFreeze(174), false);
+      expect(StoreBusinessRules.canPurchaseStreakFreeze(200), true);
     });
 
     test('canPurchaseStreakReviver validation matches service logic', () {
       // Test that StoreBusinessRules.canPurchaseStreakReviver matches service behavior
-      expect(StoreBusinessRules.canPurchaseStreakReviver(100), true);
-      expect(StoreBusinessRules.canPurchaseStreakReviver(99), false);
-      expect(StoreBusinessRules.canPurchaseStreakReviver(200), true);
+      expect(StoreBusinessRules.canPurchaseStreakReviver(350), true);
+      expect(StoreBusinessRules.canPurchaseStreakReviver(349), false);
+      expect(StoreBusinessRules.canPurchaseStreakReviver(400), true);
     });
 
     test('hasStreakFreezesAvailable validation matches service logic', () {

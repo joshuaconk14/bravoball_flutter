@@ -68,7 +68,7 @@ class _ProfileViewState extends State<ProfileView> {
                       // ✅ ADDED: Premium upgrade button (only show for non-premium users)
                       if (!context.read<UserManagerService>().isGuestMode) ...[
                         FutureBuilder<bool>(
-                          future: PremiumUtils.hasPremiumAccess(),
+                          future: PremiumUtils.instance.hasPremiumAccess(),
                           builder: (context, snapshot) {
                             if (snapshot.hasData && !snapshot.data!) {
                               // User is not premium, show upgrade button
@@ -640,7 +640,7 @@ class _ProfileViewState extends State<ProfileView> {
   // ✅ ADDED: Handle premium upgrade
   void _handlePremiumUpgrade() async {
     // Check current premium status
-    final isPremium = await PremiumUtils.hasPremiumAccess();
+    final isPremium = await PremiumUtils.instance.hasPremiumAccess();
     
     if (isPremium) {
       // User is already premium
@@ -709,8 +709,8 @@ class _ProfileViewState extends State<ProfileView> {
 
   // ✅ ADDED: Show premium debug info
   void _showPremiumDebugInfo() async {
-    final isPremium = await PremiumUtils.hasPremiumAccess();
-    final entitlements = await PremiumUtils.getActiveEntitlements();
+    final isPremium = await PremiumUtils.instance.hasPremiumAccess();
+    final entitlements = await PremiumUtils.instance.getActiveEntitlements();
     
     if (!mounted) return;
     

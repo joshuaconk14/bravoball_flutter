@@ -66,7 +66,7 @@ class _MainTabViewState extends State<MainTabView> {
     }
     
     // ✅ ADDED: Check premium access for unlimited custom drills
-    final hasPremium = await PremiumUtils.hasPremiumAccess();
+    final hasPremium = await PremiumUtils.instance.hasPremiumAccess();
     
     if (!hasPremium) {
       if (kDebugMode) {

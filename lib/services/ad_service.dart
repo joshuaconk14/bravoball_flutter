@@ -259,7 +259,7 @@ class AdService {
   
   Future<bool> showAdIfAppropriate({required String trigger}) async {
     // ✅ ADDED: Check premium status first
-    if (await PremiumUtils.hasPremiumAccess()) {
+    if (await PremiumUtils.instance.hasPremiumAccess()) {
       if (kDebugMode) {
         print('👑 Premium user - no ads shown');
       }

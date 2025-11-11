@@ -14,7 +14,7 @@ class AppConfig {
   /// 2: Computer (localhost)
   /// 3: Phone (Wi-Fi IP)
   /// 4: V2 Backend (App Store Review & Production)
-  static const int appDevCase = 3;
+  static const int appDevCase = 2;
 
   /// Debug mode toggle
   static const bool debug = true; // PRODUCTION - Set to false for testing and store submission
