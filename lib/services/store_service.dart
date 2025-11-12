@@ -1,4 +1,5 @@
 import 'package:flutter/foundation.dart';
+import 'package:purchases_flutter/purchases_flutter.dart';
 import '../services/api_service.dart';
 import '../services/user_manager_service.dart';
 import '../utils/store_business_rules.dart';
@@ -445,8 +446,108 @@ class StoreService extends ChangeNotifier {
     return await addTreatsReward(amount);
   }
 
+  /// Verify a treat purchase with the backend and grant treats
+  /// 
+  /// This method sends purchase information to the backend, which verifies it
+  /// via RevenueCat webhook before granting treats. This prevents fraud.
+  Future<bool> verifyAndGrantTreatPurchase({
+    required String productId,
+    required String packageIdentifier,
+    required int treatAmount,
+    required CustomerInfo customerInfo,
+  }) async {
+    try {
+      _setLoading(true);
+      _setError(null);
+
+      final userManager = UserManagerService.instance;
+      if (!userManager.isAuthenticated) {
+        if (kDebugMode) {
+          print('⚠️ Cannot verify purchase: User not authenticated');
+        }
+        throw Exception('User must be authenticated to verify purchases');
+      }
+
+      // Extract transaction information from CustomerInfo
+      // Get the latest transaction for this product
+      final nonSubscriptionTransactions = customerInfo.nonSubscriptionTransactions;
+      
+      // Find the transaction for this product
+      Transaction? transaction;
+      for (final tx in nonSubscriptionTransactions) {
+        if (tx.productIdentifier == productId) {
+          transaction = tx;
+          break;
+        }
+      }
+
+      if (transaction == null) {
+        if (kDebugMode) {
+          print('⚠️ No transaction found for product: $productId');
+        }
+        // Fallback: use the most recent transaction if available
+        if (nonSubscriptionTransactions.isNotEmpty) {
+          transaction = nonSubscriptionTransactions.last;
+          if (kDebugMode) {
+            print('📝 Using most recent transaction: ${transaction.productIdentifier}');
+          }
+        } else {
+          throw Exception('No transaction found for purchase verification');
+        }
+      }
+
+      // Send purchase verification to backend
+      final response = await ApiService.shared.post(
+        '/api/store/verify-treat-purchase',
+        body: {
+          'product_id': productId,
+          'package_identifier': packageIdentifier,
+          'treat_amount': treatAmount,
+          'transaction_id': transaction.transactionIdentifier,
+          'original_transaction_id': transaction.originalTransactionIdentifier,
+          'purchase_date': transaction.purchaseDate.toIso8601String(),
+          'revenue_cat_user_id': customerInfo.originalAppUserId,
+          'platform': transaction.store == Store.appStore ? 'ios' : 'android',
+        },
+        requiresAuth: true,
+      );
+
+      if (response.isSuccess && response.data != null) {
+        final data = response.data!;
+        
+        // Update local state with verified treats
+        if (data['treats'] != null) {
+          _treats = data['treats'] as int;
+        }
+        
+        if (kDebugMode) {
+          print('✅ Purchase verified and treats granted');
+          print('   Product: $productId');
+          print('   Transaction: ${transaction.transactionIdentifier}');
+          print('   Treats granted: $treatAmount');
+          print('   New total: $_treats');
+        }
+        
+        notifyListeners();
+        return true;
+      } else {
+        throw Exception('Purchase verification failed: ${response.error ?? 'Unknown error'}');
+      }
+    } catch (e) {
+      if (kDebugMode) {
+        print('❌ Error verifying purchase: $e');
+      }
+      _setError('Failed to verify purchase: ${e.toString()}');
+      return false;
+    } finally {
+      _setLoading(false);
+    }
+  }
+
   /// Add treats as a reward (for ads, achievements, etc.)
   /// Use grantTreatsReward() for standard reward types, or this for custom amounts
+  /// 
+  /// NOTE: This method should NOT be used for purchases - use verifyAndGrantTreatPurchase instead
   Future<bool> addTreatsReward(int amount) async {
     try {
       _setLoading(true);
@@ -487,13 +588,10 @@ class StoreService extends ChangeNotifier {
       if (kDebugMode) {
         print('❌ Error adding treats reward: $e');
       }
-      // Fallback to local update if API fails
-      _treats += amount;
-      notifyListeners();
-      if (kDebugMode) {
-        print('🎁 Reward: Added $amount treats locally (API failed). New total: $_treats');
-      }
-      return true;
+      // DO NOT fallback to local update - this prevents fraud
+      // If API fails, the operation should fail
+      _setError('Failed to add treats: ${e.toString()}');
+      return false;
     } finally {
       _setLoading(false);
     }
