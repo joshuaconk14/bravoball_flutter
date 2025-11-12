@@ -85,10 +85,11 @@ class UnifiedPurchaseService extends ChangeNotifier {
         print('✅ Purchase completed');
         print('   Active subscriptions: ${customerInfo.activeSubscriptions}');
         print('   Entitlements: ${customerInfo.entitlements.active.keys}');
+        print('   Original App User ID: ${customerInfo.originalAppUserId}');
       }
 
       // Handle post-purchase logic based on product type
-      await _handlePostPurchase(productType, packageIdentifier, customerInfo);
+      await _handlePostPurchase(productType, packageIdentifier, customerInfo, package);
 
       return PurchaseResult.success(
         productName: productName,
@@ -154,6 +155,7 @@ class UnifiedPurchaseService extends ChangeNotifier {
     ProductType productType,
     String packageIdentifier,
     CustomerInfo customerInfo,
+    Package package,
   ) async {
     switch (productType) {
       case ProductType.premium:
@@ -165,17 +167,25 @@ class UnifiedPurchaseService extends ChangeNotifier {
         break;
         
       case ProductType.treats:
-        // For treat products, we need to add treats to the user's account
+        // For treat products, we need to verify the purchase server-side before granting treats
         final treatAmount = PurchaseConfig.getTreatAmountFromPackageId(packageIdentifier);
+        final productId = package.storeProduct.identifier;
+        
         if (treatAmount > 0) {
-          final success = await storeService.addTreatsReward(treatAmount);
+          // Verify purchase with backend - backend will validate via RevenueCat webhook
+          final success = await storeService.verifyAndGrantTreatPurchase(
+            productId: productId,
+            packageIdentifier: packageIdentifier,
+            treatAmount: treatAmount,
+            customerInfo: customerInfo,
+          );
           
           if (success) {
             if (kDebugMode) {
-              print('🎁 Added $treatAmount treats to user account');
+              print('🎁 Verified and added $treatAmount treats to user account');
             }
           } else {
-            throw Exception('Failed to add treats to account');
+            throw Exception('Failed to verify purchase and add treats to account');
           }
         }
         break;
