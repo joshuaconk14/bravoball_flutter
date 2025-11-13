@@ -1,3 +1,4 @@
+import 'dart:io' show Platform;
 import 'package:flutter/foundation.dart';
 import 'package:purchases_flutter/purchases_flutter.dart';
 import '../services/api_service.dart';
@@ -469,34 +470,41 @@ class StoreService extends ChangeNotifier {
       }
 
       // Extract transaction information from CustomerInfo
-      // Get the latest transaction for this product
+      // nonSubscriptionTransactions is a List<StoreTransaction>
       final nonSubscriptionTransactions = customerInfo.nonSubscriptionTransactions;
       
       // Find the transaction for this product
-      Transaction? transaction;
+      StoreTransaction? transaction;
+      
+      // Iterate through transactions to find matching product
       for (final tx in nonSubscriptionTransactions) {
         if (tx.productIdentifier == productId) {
           transaction = tx;
           break;
         }
       }
-
-      if (transaction == null) {
+      
+      // Fallback: use most recent transaction if product-specific one not found
+      if (transaction == null && nonSubscriptionTransactions.isNotEmpty) {
+        transaction = nonSubscriptionTransactions.last;
         if (kDebugMode) {
           print('⚠️ No transaction found for product: $productId');
-        }
-        // Fallback: use the most recent transaction if available
-        if (nonSubscriptionTransactions.isNotEmpty) {
-          transaction = nonSubscriptionTransactions.last;
-          if (kDebugMode) {
-            print('📝 Using most recent transaction: ${transaction.productIdentifier}');
-          }
-        } else {
-          throw Exception('No transaction found for purchase verification');
+          print('📝 Using most recent transaction: ${transaction.productIdentifier}');
         }
       }
 
+      if (transaction == null) {
+        throw Exception('No transaction found for purchase verification');
+      }
+
       // Send purchase verification to backend
+      // StoreTransaction properties: transactionIdentifier, productIdentifier, purchaseDate
+      final purchaseDate = transaction.purchaseDate;
+      // purchaseDate can be DateTime or String depending on RevenueCat SDK version
+      final purchaseDateString = purchaseDate is DateTime 
+          ? (purchaseDate as DateTime).toIso8601String() 
+          : purchaseDate.toString();
+      
       final response = await ApiService.shared.post(
         '/api/store/verify-treat-purchase',
         body: {
@@ -504,10 +512,10 @@ class StoreService extends ChangeNotifier {
           'package_identifier': packageIdentifier,
           'treat_amount': treatAmount,
           'transaction_id': transaction.transactionIdentifier,
-          'original_transaction_id': transaction.originalTransactionIdentifier,
-          'purchase_date': transaction.purchaseDate.toIso8601String(),
+          'original_transaction_id': transaction.transactionIdentifier, // Use same ID if original not available
+          'purchase_date': purchaseDateString,
           'revenue_cat_user_id': customerInfo.originalAppUserId,
-          'platform': transaction.store == Store.appStore ? 'ios' : 'android',
+          'platform': Platform.isIOS ? 'ios' : 'android', // Use Platform instead of transaction.store
         },
         requiresAuth: true,
       );
@@ -652,3 +660,4 @@ class StoreService extends ChangeNotifier {
 
 
 }
+
