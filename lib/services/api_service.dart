@@ -2,8 +2,10 @@ import 'dart:convert';
 import 'dart:io';
 import 'package:http/http.dart' as http;
 import 'package:flutter/foundation.dart';
+import 'package:package_info_plus/package_info_plus.dart';
 import '../config/app_config.dart';
 import '../models/api_response_models.dart';
+import '../utils/encryption_utils.dart';
 import 'user_manager_service.dart';
 
 /// Base API Service
@@ -333,11 +335,35 @@ class ApiService {
       headers.addAll(customHeaders);
     }
 
-    // Add authentication header if required
+    // Add authentication header and security headers if required
     if (requiresAuth) {
       final userManager = UserManagerService.instance;
       if (userManager.hasValidToken) {
         headers['Authorization'] = 'Bearer ${userManager.accessToken}';
+        
+        // Add device fingerprint for security and audit purposes
+        try {
+          final deviceFingerprint = await EncryptionUtils.generateDeviceFingerprint();
+          headers['Device-Fingerprint'] = deviceFingerprint;
+          
+          if (AppConfig.logApiCalls && kDebugMode) {
+            print('🔐 Added device fingerprint header');
+          }
+        } catch (e) {
+          if (kDebugMode) {
+            print('⚠️ Failed to generate device fingerprint: $e');
+          }
+        }
+        
+        // Add app version header
+        try {
+          final packageInfo = await PackageInfo.fromPlatform();
+          headers['App-Version'] = '${packageInfo.version}+${packageInfo.buildNumber}';
+        } catch (e) {
+          if (kDebugMode) {
+            print('⚠️ Failed to get app version: $e');
+          }
+        }
         
         if (AppConfig.logApiCalls && kDebugMode) {
           print('🔑 Added auth header: Bearer ${userManager.accessToken.substring(0, 20)}...');

@@ -155,12 +155,13 @@ class StoreService extends ChangeNotifier {
       _setError(null);
 
       final userManager = UserManagerService.instance;
+      // Require authentication - no bypasses in production
       if (!userManager.isAuthenticated) {
-        // For testing without authentication
-        _treats -= requiredTreats;
-        _streakFreezes += 1;
-        notifyListeners();
-        return true;
+        if (kDebugMode) {
+          print('⚠️ Cannot purchase streak freeze: User not authenticated');
+        }
+        _setError('You must be logged in to purchase items');
+        return false;
       }
 
       // Step 1: Increment streak freezes
@@ -222,12 +223,13 @@ class StoreService extends ChangeNotifier {
       _setError(null);
 
       final userManager = UserManagerService.instance;
+      // Require authentication - no bypasses in production
       if (!userManager.isAuthenticated) {
-        // For testing without authentication
-        _treats -= requiredTreats;
-        _streakRevivers += 1;
-        notifyListeners();
-        return true;
+        if (kDebugMode) {
+          print('⚠️ Cannot purchase streak reviver: User not authenticated');
+        }
+        _setError('You must be logged in to purchase items');
+        return false;
       }
 
       // Step 1: Increment streak revivers
@@ -562,14 +564,13 @@ class StoreService extends ChangeNotifier {
       _setError(null);
 
       final userManager = UserManagerService.instance;
+      // Require authentication - no bypasses in production
       if (!userManager.isAuthenticated) {
-        // For testing without authentication
-        _treats += amount;
-        notifyListeners();
         if (kDebugMode) {
-          print('🎁 Reward: Added $amount treats. New total: $_treats');
+          print('⚠️ Cannot add treats reward: User not authenticated');
         }
-        return true;
+        _setError('You must be logged in to receive rewards');
+        return false;
       }
 
       // Make API call to add treats in backend
@@ -606,58 +607,61 @@ class StoreService extends ChangeNotifier {
   }
 
   /// Debug method to add treats (only works in debug mode)
+  /// 
+  /// ⚠️ SECURITY: This method only works in debug mode and requires authentication
+  /// In production builds, this method does nothing
   Future<void> addDebugTreats(int amount) async {
-    if (kDebugMode) {
-      try {
-        _setLoading(true);
-        _setError(null);
-
-        final userManager = UserManagerService.instance;
-        if (!userManager.isAuthenticated) {
-          // For testing without authentication
-          _treats += amount;
-          notifyListeners();
-          if (kDebugMode) {
-            print('🐛 DEBUG: Added $amount treats. New total: $_treats');
-          }
-          return;
-        }
-
-        // Make API call to update treats in backend
-        final response = await ApiService.shared.post(
-          '/api/store/items/increment',
-          body: {'treats': amount},
-          requiresAuth: true,
-        );
-
-        if (response.isSuccess && response.data != null) {
-          final data = response.data!;
-          _treats = data['treats'] ?? _treats + amount;
-          
-          if (kDebugMode) {
-            print('🐛 DEBUG: Added $amount treats via API. New total: $_treats');
-          }
-          
-          notifyListeners();
-        } else {
-          throw Exception('Failed to update treats: ${response.error}');
-        }
-      } catch (e) {
-        if (kDebugMode) {
-          print('❌ Error updating treats: $e');
-        }
-        // Fallback to local update if API fails
-        _treats += amount;
-        notifyListeners();
-        if (kDebugMode) {
-          print('🐛 DEBUG: Added $amount treats locally (API failed). New total: $_treats');
-        }
-      } finally {
-        _setLoading(false);
+    if (!kDebugMode) {
+      // Do nothing in release builds
+      if (kDebugMode) {
+        print('⚠️ addDebugTreats: Only available in debug mode');
       }
+      return;
+    }
+    
+    try {
+      _setLoading(true);
+      _setError(null);
+
+      final userManager = UserManagerService.instance;
+      // Even in debug mode, require authentication for security
+      if (!userManager.isAuthenticated) {
+        if (kDebugMode) {
+          print('⚠️ DEBUG: Cannot add treats - user not authenticated');
+        }
+        _setError('Debug treats require authentication');
+        return;
+      }
+
+      // Make API call to update treats in backend
+      final response = await ApiService.shared.post(
+        '/api/store/items/increment',
+        body: {'treats': amount},
+        requiresAuth: true,
+      );
+
+      if (response.isSuccess && response.data != null) {
+        final data = response.data!;
+        _treats = data['treats'] ?? _treats + amount;
+        
+        if (kDebugMode) {
+          print('🐛 DEBUG: Added $amount treats via API. New total: $_treats');
+        }
+        
+        notifyListeners();
+      } else {
+        throw Exception('Failed to update treats: ${response.error}');
+      }
+    } catch (e) {
+      if (kDebugMode) {
+        print('❌ Error updating treats: $e');
+      }
+      // DO NOT fallback to local update - this prevents fraud
+      // If API fails, the operation should fail
+      _setError('Failed to add debug treats: ${e.toString()}');
+    } finally {
+      _setLoading(false);
     }
   }
-
-
 }
 

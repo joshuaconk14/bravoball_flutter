@@ -1,6 +1,7 @@
 import 'package:flutter/foundation.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../config/app_config.dart';
+import '../utils/encryption_utils.dart';
 import 'dart:async';
 import 'package:purchases_flutter/purchases_flutter.dart';
 
@@ -75,9 +76,56 @@ class UserManagerService extends ChangeNotifier {
     try {
       final prefs = await SharedPreferences.getInstance();
       
-      _email = prefs.getString('userEmail') ?? '';
-      _accessToken = prefs.getString('accessToken') ?? '';
-      _refreshToken = prefs.getString('refreshToken') ?? '';
+      // Load email (can be plain text or encrypted for backward compatibility)
+      final emailData = prefs.getString('userEmail') ?? '';
+      if (emailData.isNotEmpty) {
+        // Try to decrypt, if it fails assume it's plain text (backward compatibility)
+        try {
+          _email = await EncryptionUtils.decryptString(emailData);
+        } catch (e) {
+          // If decryption fails, assume it's plain text (old format)
+          _email = emailData;
+          if (kDebugMode) {
+            print('⚠️ UserManager: Email was stored unencrypted, migrating...');
+          }
+        }
+      }
+      
+      // Load and decrypt tokens
+      final encryptedAccessToken = prefs.getString('accessToken') ?? '';
+      if (encryptedAccessToken.isNotEmpty) {
+        try {
+          _accessToken = await EncryptionUtils.decryptString(encryptedAccessToken);
+        } catch (e) {
+          // If decryption fails, assume it's plain text (old format) - backward compatibility
+          _accessToken = encryptedAccessToken;
+          if (kDebugMode) {
+            print('⚠️ UserManager: Access token was stored unencrypted, migrating...');
+          }
+          // Re-save encrypted version
+          if (_accessToken.isNotEmpty) {
+            await prefs.setString('accessToken', await EncryptionUtils.encryptString(_accessToken));
+          }
+        }
+      }
+      
+      final encryptedRefreshToken = prefs.getString('refreshToken') ?? '';
+      if (encryptedRefreshToken.isNotEmpty) {
+        try {
+          _refreshToken = await EncryptionUtils.decryptString(encryptedRefreshToken);
+        } catch (e) {
+          // If decryption fails, assume it's plain text (old format) - backward compatibility
+          _refreshToken = encryptedRefreshToken;
+          if (kDebugMode) {
+            print('⚠️ UserManager: Refresh token was stored unencrypted, migrating...');
+          }
+          // Re-save encrypted version
+          if (_refreshToken.isNotEmpty) {
+            await prefs.setString('refreshToken', await EncryptionUtils.encryptString(_refreshToken));
+          }
+        }
+      }
+      
       _isLoggedIn = prefs.getBool('isLoggedIn') ?? false;
       _userHasAccountHistory = prefs.getBool('userHasAccountHistory') ?? false;
       
@@ -105,9 +153,31 @@ class UserManagerService extends ChangeNotifier {
     try {
       final prefs = await SharedPreferences.getInstance();
       
-      await prefs.setString('userEmail', _email);
-      await prefs.setString('accessToken', _accessToken);
-      await prefs.setString('refreshToken', _refreshToken);
+      // Encrypt sensitive data before saving
+      String? encryptedAccessToken;
+      String? encryptedRefreshToken;
+      
+      if (_email.isNotEmpty) {
+        final encryptedEmail = await EncryptionUtils.encryptString(_email);
+        await prefs.setString('userEmail', encryptedEmail);
+      } else {
+        await prefs.remove('userEmail');
+      }
+      
+      if (_accessToken.isNotEmpty) {
+        encryptedAccessToken = await EncryptionUtils.encryptString(_accessToken);
+        await prefs.setString('accessToken', encryptedAccessToken);
+      } else {
+        await prefs.remove('accessToken');
+      }
+      
+      if (_refreshToken.isNotEmpty) {
+        encryptedRefreshToken = await EncryptionUtils.encryptString(_refreshToken);
+        await prefs.setString('refreshToken', encryptedRefreshToken);
+      } else {
+        await prefs.remove('refreshToken');
+      }
+      
       await prefs.setBool('isLoggedIn', _isLoggedIn);
       await prefs.setBool('userHasAccountHistory', _userHasAccountHistory);
       
@@ -117,11 +187,36 @@ class UserManagerService extends ChangeNotifier {
       }
       
       if (kDebugMode) {
-        print('💾 UserManager: Saved to storage - Email: $_email, LoggedIn: $_isLoggedIn');
+        print('💾 UserManager: Saved encrypted data to storage - Email: $_email, LoggedIn: $_isLoggedIn');
+        
+        // Show encryption verification
+        if (_accessToken.isNotEmpty && encryptedAccessToken != null) {
+          print('🔐 Encryption Verification:');
+          print('   Plain Access Token (first 30): ${_accessToken.substring(0, _accessToken.length > 30 ? 30 : _accessToken.length)}...');
+          print('   Encrypted Access Token (first 50): ${encryptedAccessToken.substring(0, encryptedAccessToken.length > 50 ? 50 : encryptedAccessToken.length)}...');
+        }
+        if (_refreshToken.isNotEmpty && encryptedRefreshToken != null) {
+          print('   Plain Refresh Token (first 30): ${_refreshToken.substring(0, _refreshToken.length > 30 ? 30 : _refreshToken.length)}...');
+          print('   Encrypted Refresh Token (first 50): ${encryptedRefreshToken.substring(0, encryptedRefreshToken.length > 50 ? 50 : encryptedRefreshToken.length)}...');
+        }
       }
     } catch (e) {
       if (kDebugMode) {
         print('❌ UserManager: Error saving user data: $e');
+      }
+      // If encryption fails, fall back to unencrypted storage (better than losing data)
+      try {
+        final prefs = await SharedPreferences.getInstance();
+        await prefs.setString('userEmail', _email);
+        await prefs.setString('accessToken', _accessToken);
+        await prefs.setString('refreshToken', _refreshToken);
+        if (kDebugMode) {
+          print('⚠️ UserManager: Encryption failed, saved unencrypted (fallback)');
+        }
+      } catch (fallbackError) {
+        if (kDebugMode) {
+          print('❌ UserManager: Fallback save also failed: $fallbackError');
+        }
       }
     }
   }
@@ -242,8 +337,11 @@ class UserManagerService extends ChangeNotifier {
       await prefs.remove('tokenCreatedAt');
       // ✅ No need to clear guest mode from persistence since it's never saved
       
+      // Clear encryption keys on logout for security
+      await EncryptionUtils.clearEncryptionData();
+      
       if (kDebugMode) {
-        print('🗑️ UserManager: Cleared storage');
+        print('🗑️ UserManager: Cleared storage and encryption data');
       }
     } catch (e) {
       if (kDebugMode) {
