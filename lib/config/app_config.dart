@@ -9,12 +9,12 @@ class AppConfig {
 
   // MARK: - Environment Configuration
   /// App Development Cases (mirrors Swift appDevCase)
-  /// 0: Staging (Testing db for migration)
+  /// 0: Staging (Testing db for migration) - Points to bravoball-staging.onrender.com
   /// 1: Legacy Production (DEPRECATED)
   /// 2: Computer (localhost)
   /// 3: Phone (Wi-Fi IP)
-  /// 4: V2 Backend (App Store Review & Production)
-  static const int appDevCase = 4;
+  /// 4: V2 Backend (App Store Review & Production) - Points to bravoball-v2-backend.onrender.com
+  static const int appDevCase = 0; // Set to 0 for TestFlight (uses testflight-testing branch), 4 for production
 
   /// Debug mode toggle
   static const bool debug = false; // PRODUCTION - Set to false for testing and store submission
@@ -39,38 +39,35 @@ class AppConfig {
   // MARK: - Environment Settings
   /// Get base URL based on app development case
   static String get baseUrl {
-    if (kDebugMode) {
-      switch (appDevCase) {
-        case 0:
-          // Staging for migration testing
-          return 'https://bravoball-staging.onrender.com';
-        case 1:
-          // DEPRECATED: Production (simulated during debug)
-          return 'https://bravoball-backend.onrender.com';
-        case 2:
-          // Localhost for simulator or computer
-          // Use 10.0.2.2 for Android emulator, 127.0.0.1 for iOS simulator
-          if (defaultTargetPlatform == TargetPlatform.android) {
-            return 'http://10.0.2.2:8000';
-          } else {
-            return 'http://127.0.0.1:8000';
-          }
-        case 3:
-          // Wi-Fi IP for phone testing
-          return 'http://$phoneWifiIP:8000';
-        case 4:
-          // 🆕 V2 Backend for App Store review
-          return 'https://bravoball-v2-backend.onrender.com';
-        default:
-          if (defaultTargetPlatform == TargetPlatform.android) {
-            return 'http://10.0.2.2:8000';
-          } else {
-            return 'http://127.0.0.1:8000';
-          }
-      }
-    } else {
-      // V2 Backend for new v2 production
-      return 'https://bravoball-v2-backend.onrender.com';
+    // Use appDevCase for both debug and release builds
+    // This allows TestFlight builds to use staging backend
+    switch (appDevCase) {
+      case 0:
+        // Staging for migration testing / TestFlight testing
+        return 'https://bravoball-staging.onrender.com';
+      case 1:
+        // DEPRECATED: Production (simulated during debug)
+        return 'https://bravoball-backend.onrender.com';
+      case 2:
+        // Localhost for simulator or computer
+        // Use 10.0.2.2 for Android emulator, 127.0.0.1 for iOS simulator
+        if (defaultTargetPlatform == TargetPlatform.android) {
+          return 'http://10.0.2.2:8000';
+        } else {
+          return 'http://127.0.0.1:8000';
+        }
+      case 3:
+        // Wi-Fi IP for phone testing
+        return 'http://$phoneWifiIP:8000';
+      case 4:
+        // V2 Backend for App Store review / Production
+        return 'https://bravoball-v2-backend.onrender.com';
+      default:
+        if (defaultTargetPlatform == TargetPlatform.android) {
+          return 'http://10.0.2.2:8000';
+        } else {
+          return 'http://127.0.0.1:8000';
+        }
     }
   }
 
