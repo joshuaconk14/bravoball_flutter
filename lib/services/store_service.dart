@@ -525,9 +525,17 @@ class StoreService extends ChangeNotifier {
       if (response.isSuccess && response.data != null) {
         final data = response.data!;
         
-        // Update local state with verified treats
+        if (kDebugMode) {
+          print('📦 verify-treat-purchase API response: $data');
+        }
+        
+        // Update local state with backend's authoritative final_treat_balance
+        // Backend handles idempotency and returns the correct balance even if transaction was already processed
         if (data['treats'] != null) {
           _treats = data['treats'] as int;
+        } else {
+          // This shouldn't happen, but if treats is missing, it's a backend error
+          throw Exception('API response missing treats field - backend error');
         }
         
         if (kDebugMode) {
@@ -535,7 +543,10 @@ class StoreService extends ChangeNotifier {
           print('   Product: $productId');
           print('   Transaction: ${transaction.transactionIdentifier}');
           print('   Treats granted: $treatAmount');
-          print('   New total: $_treats');
+          print('   Final balance (from backend): $_treats');
+          if (data['message'] != null) {
+            print('   Message: ${data['message']}');
+          }
         }
         
         notifyListeners();
