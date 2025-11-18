@@ -18,7 +18,7 @@ if (keystorePropertiesFile.exists()) {
 android {
     namespace = "com.bravoball.app.bravoball_flutter"
     compileSdk = flutter.compileSdkVersion
-    ndkVersion = "28.0.12674087"
+    ndkVersion = "28.2.13676358"  // Updated for 16 KB page size support (matches rive.ndk.version)
 
     compileOptions {
         sourceCompatibility = JavaVersion.VERSION_11
@@ -40,8 +40,21 @@ android {
         versionName = flutter.versionName
 
         // Support for multiple CPU architectures including 64-bit devices
+        // Note: x86_64 excluded from production builds as it's only needed for emulators
+        // and Rive's x86_64 libraries don't support 16 KB page sizes yet
         ndk {
-            abiFilters += listOf("armeabi-v7a", "arm64-v8a", "x86_64")
+            abiFilters += listOf("armeabi-v7a", "arm64-v8a")
+            // x86_64 removed: only needed for emulators, not production devices
+            // Re-add when Rive updates librive_text.so with 16 KB support for x86_64
+        }
+        
+        // Support for 16 KB page sizes - NDK r27+ configuration
+        // This ensures native libraries built with CMake are 16KB-aligned
+        externalNativeBuild {
+            cmake {
+                // Enable 16 KB page size support for native libraries
+                arguments += listOf("-DANDROID_SUPPORT_FLEXIBLE_PAGE_SIZES=ON")
+            }
         }
     }
 
@@ -67,6 +80,8 @@ android {
     packaging {
         jniLibs {
             useLegacyPackaging = false  // Use uncompressed, 16KB-aligned libraries
+            // Ensure native libraries are stored uncompressed for proper alignment
+            pickFirsts += listOf("**/libc++_shared.so")
         }
     }
 }
