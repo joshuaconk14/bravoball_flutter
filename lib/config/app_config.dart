@@ -14,23 +14,18 @@ class AppConfig {
   /// 2: Computer (localhost)
   /// 3: Phone (Wi-Fi IP)
   /// 4: V2 Backend (App Store Review & Production) - Points to bravoball-v2-backend.onrender.com
-  static const int appDevCase = 0; // Set to 0 for TestFlight (uses testflight-testing branch), 4 for production
+  static const int appDevCase = 3; // Set to 0 for TestFlight (uses testflight-testing branch), 4 for production, 2 for localhost
 
   /// Debug mode toggle
-  static const bool debug = false; // PRODUCTION - Set to false for testing and store submission
+  static const bool debug = true; // PRODUCTION - Set to false for testing and store submission
 
-  /// StoreKit Configuration - Set to true for local testing, false for sandbox/production
+  /// StoreKit Configuration - Package handling configuration
+  /// 
+  /// NOTE: to fully stop using storekit, go to xcworkspace and remove it from project scheme
   /// 
   /// **Local StoreKit Testing** (`true`):
-  /// - Uses local StoreKit configuration file
-  /// - User identification doesn't work (always anonymous IDs)
-  /// - Good for testing purchase flow without App Store Connect
-  /// 
   /// **Sandbox/Production** (`false`):
-  /// - Uses real App Store Connect products
-  /// - User identification works correctly
-  /// - Required for testing user switching and production
-  static const bool useLocalStoreKit = false; // Set to false for sandbox/production testing
+  static const bool useLocalStoreKit = false;  // Set to true for local testing, false for sandbox/production
 
   /// Wi-Fi IP address for phone testing - loaded from .env file
   /// You can find this by running `ipconfig getifaddr en0` on macOS
