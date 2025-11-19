@@ -172,12 +172,34 @@ class UnifiedPurchaseService extends ChangeNotifier {
         final productId = package.storeProduct.identifier;
         
         if (treatAmount > 0) {
-          // Verify purchase with backend - backend will validate via RevenueCat webhook
+          // Refresh CustomerInfo to ensure we have the latest transaction data
+          // RevenueCat backend may take a few seconds to sync, so refresh before verification
+          CustomerInfo refreshedCustomerInfo = customerInfo;
+          try {
+            if (kDebugMode) {
+              print('🔄 Refreshing CustomerInfo to get latest transaction data...');
+            }
+            // Small delay to allow RevenueCat backend to sync
+            await Future.delayed(const Duration(seconds: 2));
+            refreshedCustomerInfo = await revenueCat.getCustomerInfo();
+            
+            if (kDebugMode) {
+              print('✅ CustomerInfo refreshed');
+              print('   Non-subscription transactions: ${refreshedCustomerInfo.nonSubscriptionTransactions.length}');
+            }
+          } catch (e) {
+            if (kDebugMode) {
+              print('⚠️ Failed to refresh CustomerInfo, using original: $e');
+            }
+            // Continue with original customerInfo if refresh fails
+          }
+          
+          // Verify purchase with backend - backend will validate via RevenueCat API
           final success = await storeService.verifyAndGrantTreatPurchase(
             productId: productId,
             packageIdentifier: packageIdentifier,
             treatAmount: treatAmount,
-            customerInfo: customerInfo,
+            customerInfo: refreshedCustomerInfo,
           );
           
           if (success) {

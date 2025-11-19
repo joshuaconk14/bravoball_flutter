@@ -449,6 +449,49 @@ class StoreService extends ChangeNotifier {
     return await addTreatsReward(amount);
   }
 
+  /// Helper: Parse purchase date from StoreTransaction
+  /// Handles both DateTime and String formats from RevenueCat SDK
+  static DateTime _parsePurchaseDate(dynamic purchaseDate) {
+    return purchaseDate is DateTime 
+        ? purchaseDate as DateTime 
+        : DateTime.parse(purchaseDate.toString());
+  }
+
+  /// Helper: Sort transactions by purchase date (most recent first)
+  static void _sortTransactionsByDate(List<StoreTransaction> transactions) {
+    transactions.sort((a, b) {
+      final aDate = _parsePurchaseDate(a.purchaseDate);
+      final bDate = _parsePurchaseDate(b.purchaseDate);
+      return bDate.compareTo(aDate); // Descending order (newest first)
+    });
+  }
+
+  /// Helper: Find the most recent transaction for a product
+  static StoreTransaction? _findMostRecentTransaction(
+    List<StoreTransaction> transactions,
+    String productId,
+  ) {
+    // Filter transactions for this product
+    final productTransactions = transactions
+        .where((tx) => tx.productIdentifier == productId)
+        .toList();
+    
+    if (productTransactions.isEmpty) return null;
+    
+    // Sort by date (most recent first)
+    _sortTransactionsByDate(productTransactions);
+    
+    return productTransactions.first; // Most recent transaction
+  }
+
+  /// Helper: Convert purchase date to ISO8601 string
+  /// Handles both DateTime and String formats from RevenueCat SDK
+  static String _purchaseDateToString(dynamic purchaseDate) {
+    return purchaseDate is DateTime 
+        ? (purchaseDate as DateTime).toIso8601String() 
+        : purchaseDate.toString();
+  }
+
   /// Verify a treat purchase with the backend and grant treats
   /// 
   /// This method sends purchase information to the backend, which verifies it
@@ -475,23 +518,45 @@ class StoreService extends ChangeNotifier {
       // nonSubscriptionTransactions is a List<StoreTransaction>
       final nonSubscriptionTransactions = customerInfo.nonSubscriptionTransactions;
       
-      // Find the transaction for this product
-      StoreTransaction? transaction;
-      
-      // Iterate through transactions to find matching product
-      for (final tx in nonSubscriptionTransactions) {
-        if (tx.productIdentifier == productId) {
-          transaction = tx;
-          break;
+      if (kDebugMode) {
+        print('🔍 Transaction details:');
+        print('   Total transactions: ${nonSubscriptionTransactions.length}');
+        for (final tx in nonSubscriptionTransactions) {
+          print('   Product: ${tx.productIdentifier}');
+          print('   Transaction ID: ${tx.transactionIdentifier}');
+          print('   Purchase Date: ${tx.purchaseDate}');
+          print('   ---');
         }
       }
       
-      // Fallback: use most recent transaction if product-specific one not found
+      // Find the MOST RECENT transaction for this product
+      // Important: We need the latest transaction, not just any matching one
+      StoreTransaction? transaction = _findMostRecentTransaction(
+        nonSubscriptionTransactions,
+        productId,
+      );
+      
+      if (transaction != null) {
+        if (kDebugMode) {
+          final productCount = nonSubscriptionTransactions
+              .where((tx) => tx.productIdentifier == productId)
+              .length;
+          print('✅ Found $productCount transaction(s) for product $productId');
+          print('   Using most recent: ${transaction.transactionIdentifier}');
+          print('   Purchase date: ${transaction.purchaseDate}');
+        }
+      }
+      
+      // Fallback: use most recent transaction across all products if product-specific one not found
       if (transaction == null && nonSubscriptionTransactions.isNotEmpty) {
-        transaction = nonSubscriptionTransactions.last;
+        final sortedTransactions = List<StoreTransaction>.from(nonSubscriptionTransactions);
+        _sortTransactionsByDate(sortedTransactions);
+        transaction = sortedTransactions.first;
+        
         if (kDebugMode) {
           print('⚠️ No transaction found for product: $productId');
-          print('📝 Using most recent transaction: ${transaction.productIdentifier}');
+          print('📝 Using most recent transaction across all products: ${transaction.productIdentifier}');
+          print('   Transaction ID: ${transaction.transactionIdentifier}');
         }
       }
 
@@ -501,11 +566,7 @@ class StoreService extends ChangeNotifier {
 
       // Send purchase verification to backend
       // StoreTransaction properties: transactionIdentifier, productIdentifier, purchaseDate
-      final purchaseDate = transaction.purchaseDate;
-      // purchaseDate can be DateTime or String depending on RevenueCat SDK version
-      final purchaseDateString = purchaseDate is DateTime 
-          ? (purchaseDate as DateTime).toIso8601String() 
-          : purchaseDate.toString();
+      final purchaseDateString = _purchaseDateToString(transaction.purchaseDate);
       
       final response = await ApiService.shared.post(
         '/api/store/verify-treat-purchase',
@@ -514,10 +575,9 @@ class StoreService extends ChangeNotifier {
           'package_identifier': packageIdentifier,
           'treat_amount': treatAmount,
           'transaction_id': transaction.transactionIdentifier,
-          'original_transaction_id': transaction.transactionIdentifier, // Use same ID if original not available
           'purchase_date': purchaseDateString,
           'revenue_cat_user_id': customerInfo.originalAppUserId,
-          'platform': Platform.isIOS ? 'ios' : 'android', // Use Platform instead of transaction.store
+          'platform': Platform.isIOS ? 'ios' : 'android',
         },
         requiresAuth: true,
       );
