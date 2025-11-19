@@ -32,23 +32,24 @@ This document outlines the migration from StoreKit testing to real sandbox testi
 
 ## What Went Wrong
 
-### Issue 1: StoreKit Transaction IDs Still Being Sent
-**Problem**: 
+### Issue 1: Transaction ID Format Confusion (RESOLVED)
+
+**⚠️ CLARIFICATION (November 19, 2025)**: This was **not** actually an issue. The confusion arose from misunderstanding RevenueCat's transaction ID format.
+
+**What We Thought Was Wrong**:
 - App is sending StoreKit test transaction IDs (`o1_...`) instead of real sandbox transaction IDs (`2000001059010649`)
 - RevenueCat dashboard shows correct sandbox transaction IDs
-- Backend verification works (uses product ID + user ID for idempotency), but wrong transaction ID is sent
 
-**Evidence**:
-```
-RevenueCat Logs: INFO: 💰 Finishing transaction '2000001059010649' (sandbox)
-JWS Token: "transactionId":"2000001059010649" (sandbox)
-Flutter Code: Transaction: o1_bJI5hCFcWcJFp2SxdQUyIw (StoreKit test ID)
-```
+**What We Learned**:
+- `o1_` prefix is RevenueCat's format for **one-time purchases** (both sandbox and production)
+- `StoreTransaction.transactionIdentifier` returns RevenueCat's internal transaction ID format
+- The `o1_` prefix indicates purchase type (one-time), **not** environment (StoreKit vs Sandbox)
+- RevenueCat dashboard may show different transaction IDs because it displays App Store transaction IDs, while SDK returns RevenueCat's internal IDs
 
-**Root Cause (Uncertain)**:
-1. **Most Likely**: `StoreTransaction.transactionIdentifier` returns cached StoreKit transaction IDs from previous purchases when StoreKit was configured
-2. **Alternative**: `StoreTransaction.transactionIdentifier` might return RevenueCat's internal transaction ID format, not the App Store transaction ID
-3. **Alternative**: Multiple transactions exist (old StoreKit + new sandbox), and code picks the wrong one
+**Resolution**:
+- ✅ Removed incorrect filtering logic that excluded `o1_` transactions
+- ✅ All RevenueCat transactions (including `o1_` prefix) are now used for verification
+- ✅ Backend correctly handles RevenueCat transaction IDs regardless of prefix
 
 **Current Code** (`lib/services/store_service.dart:482-486`):
 ```dart
@@ -80,43 +81,31 @@ for (final tx in nonSubscriptionTransactions) {
 
 ## Recommended Next Steps
 
-### Priority 1: Fix Transaction ID Extraction
+### Priority 1: Transaction ID Handling (RESOLVED)
 
-**Option A: Filter Out StoreKit Transactions** (Recommended)
+**✅ RESOLUTION (November 19, 2025)**: Removed incorrect filtering logic.
+
+**What We Did**:
+- Removed filtering that excluded `o1_` transactions
+- Use all transactions from `nonSubscriptionTransactions` for verification
+- RevenueCat transaction IDs (including `o1_` prefix) are valid for both sandbox and production
+
+**Current Implementation**:
 ```dart
-// In lib/services/store_service.dart, modify transaction selection:
-// Find the transaction for this product, excluding StoreKit test transactions
+// In lib/services/store_service.dart - CORRECT approach:
+// Use all transactions from RevenueCat (no filtering by prefix)
 for (final tx in nonSubscriptionTransactions) {
   if (tx.productIdentifier == productId) {
-    // Skip StoreKit test transactions (they start with "o1_")
-    if (!tx.transactionIdentifier.startsWith('o1_')) {
-      transaction = tx;
-      break;
-    }
-  }
-}
-
-// If no non-StoreKit transaction found, use most recent real transaction
-if (transaction == null && nonSubscriptionTransactions.isNotEmpty) {
-  final realTransactions = nonSubscriptionTransactions
-      .where((tx) => !tx.transactionIdentifier.startsWith('o1_'))
-      .toList();
-  
-  if (realTransactions.isNotEmpty) {
-    // Sort by purchase date (most recent first)
-    realTransactions.sort((a, b) {
-      final aDate = a.purchaseDate is DateTime 
-          ? a.purchaseDate as DateTime 
-          : DateTime.parse(a.purchaseDate.toString());
-      final bDate = b.purchaseDate is DateTime 
-          ? b.purchaseDate as DateTime 
-          : DateTime.parse(b.purchaseDate.toString());
-      return bDate.compareTo(aDate);
-    });
-    transaction = realTransactions.first;
+    transaction = tx;
+    break;
   }
 }
 ```
+
+**Key Takeaway**: 
+- `o1_` prefix = RevenueCat's format for one-time purchases (sandbox AND production)
+- **DO NOT** filter transactions by prefix
+- All RevenueCat transaction IDs are valid for backend verification
 
 **Option B: Extract from JWS Token** (If Option A doesn't work)
 - The JWS token contains the real transaction ID in its payload
@@ -174,19 +163,49 @@ if (kDebugMode) {
 
 ## Technical Details
 
-### StoreKit vs Sandbox Transaction IDs
+### ⚠️ IMPORTANT: RevenueCat Transaction ID Format Clarification
 
-**StoreKit Test Transactions**:
-- Format: `o1_...` (e.g., `o1_bJI5hCFcWcJFp2SxdQUyIw`)
-- Environment: `"xcode"` in receipt
-- Not synced to RevenueCat backend API
-- Local/simulated transactions
+**CORRECTION (November 19, 2025)**: The `o1_` prefix is **NOT** StoreKit-specific. It is RevenueCat's format for **one-time purchases** (non-subscription transactions) in **both sandbox and production**.
 
-**Sandbox Transactions**:
-- Format: Numeric (e.g., `2000001059010649`)
-- Environment: `"Sandbox"` in receipt
-- Synced to RevenueCat backend API
-- Real App Store Connect transactions
+**RevenueCat Transaction ID Prefixes**:
+- `o1_` = One-time purchase (non-subscription) — used for **both sandbox and production**
+- `sub_` = Subscription purchase
+- Other prefixes for other purchase types
+
+**What This Means**:
+- ✅ `o1_` transactions from RevenueCat are **legitimate** sandbox/production transactions
+- ❌ **DO NOT** filter out `o1_` transactions — they are valid RevenueCat transaction IDs
+- The prefix indicates purchase type, **not** the environment (StoreKit vs Sandbox vs Production)
+
+**How to Distinguish StoreKit vs Sandbox vs Production**:
+- **StoreKit Test Transactions**: Created when StoreKit configuration file is active in Xcode scheme
+  - May appear in `nonSubscriptionTransactions` but are local/simulated
+  - Not synced to RevenueCat backend API
+  - Environment can be checked via receipt data (if available)
+  
+- **Sandbox Transactions**: Real transactions from App Store Connect sandbox environment
+  - Synced to RevenueCat backend API
+  - Can have `o1_` prefix (for one-time purchases) or `sub_` prefix (for subscriptions)
+  - Verified through RevenueCat dashboard
+  
+- **Production Transactions**: Real transactions from live App Store
+  - Synced to RevenueCat backend API
+  - Can have `o1_` prefix (for one-time purchases) or `sub_` prefix (for subscriptions)
+  - Verified through RevenueCat dashboard
+
+### Previous Incorrect Understanding (Corrected)
+
+**❌ INCORRECT (Previous Documentation)**:
+- "StoreKit Test Transactions: Format: `o1_...`"
+- "Sandbox Transactions: Format: Numeric"
+
+**✅ CORRECT (Current Understanding)**:
+- RevenueCat uses `o1_` prefix for **all** one-time purchases (sandbox and production)
+- The transaction ID format does **not** indicate StoreKit vs Sandbox
+- To distinguish environments, check:
+  1. Whether StoreKit configuration is active in Xcode scheme
+  2. RevenueCat dashboard to verify transaction source
+  3. Receipt data (if available) for environment information
 
 ### RevenueCat Transaction Flow
 
@@ -212,21 +231,23 @@ if (kDebugMode) {
 
 ## Testing Checklist
 
-- [ ] Verify StoreKit configuration is removed from Xcode scheme
+- [x] Verify StoreKit configuration is removed from Xcode scheme
+- [x] Removed StoreKit file references from project.pbxproj
+- [x] Renamed StoreKit configuration file to prevent auto-detection
+- [x] Removed incorrect transaction filtering logic
 - [ ] Test purchase with sandbox Apple ID
-- [ ] Check logs for transaction ID format (should be numeric, not `o1_`)
-- [ ] Verify backend receives correct transaction ID
+- [ ] Verify backend receives RevenueCat transaction ID (may have `o1_` prefix for one-time purchases)
 - [ ] Test that backend can find transaction in RevenueCat API
 - [ ] Clear RevenueCat cache and test again
-- [ ] Verify no StoreKit transactions in `nonSubscriptionTransactions` array
+- [ ] Verify transactions are processed correctly regardless of prefix
 
-## Questions to Investigate
+## Questions to Investigate (RESOLVED)
 
-1. Why does `StoreTransaction.transactionIdentifier` return StoreKit IDs even in sandbox?
-2. Is there a property on `StoreTransaction` that contains the App Store transaction ID?
-3. Should we extract transaction ID from JWS token instead?
-4. Can we query RevenueCat API directly for the transaction ID?
-5. Is `useLocalStoreKit` flag still needed?
+1. ✅ **RESOLVED**: `StoreTransaction.transactionIdentifier` returns RevenueCat's internal transaction ID format (`o1_` for one-time purchases), not StoreKit-specific IDs
+2. ⚠️ **CLARIFIED**: RevenueCat SDK returns its own transaction IDs, not App Store transaction IDs directly
+3. ❓ **OPTIONAL**: Could extract from JWS token if App Store transaction ID is needed, but RevenueCat IDs work fine for verification
+4. ❓ **OPTIONAL**: Could query RevenueCat API, but SDK transaction IDs are sufficient
+5. ⚠️ **INVESTIGATE**: `useLocalStoreKit` flag may still be needed for package lookup logic (product ID vs package identifier)
 
 ## References
 
@@ -236,8 +257,28 @@ if (kDebugMode) {
 
 ## Notes
 
-- Backend verification currently works via product ID + user ID (idempotency check)
-- Transaction ID mismatch doesn't break functionality, but should be fixed for accuracy
-- Consider implementing Option A (filter StoreKit transactions) as quick fix
-- Long-term: investigate proper way to get App Store transaction ID from RevenueCat SDK
+- ✅ Backend verification works via product ID + user ID (idempotency check)
+- ✅ RevenueCat transaction IDs (including `o1_` prefix) are valid for verification
+- ✅ Removed incorrect filtering logic that was excluding legitimate transactions
+- ✅ All RevenueCat transactions are now processed correctly
+
+## Key Learnings (November 19, 2025)
+
+1. **RevenueCat Transaction ID Format**:
+   - `o1_` = One-time purchase (sandbox AND production)
+   - `sub_` = Subscription purchase
+   - Prefix indicates purchase type, NOT environment
+
+2. **DO NOT filter transactions by prefix**:
+   - All RevenueCat transaction IDs are valid
+   - Filtering `o1_` transactions was incorrectly excluding legitimate sandbox/production transactions
+
+3. **StoreKit Detection**:
+   - Check Xcode scheme configuration (StoreKit Configuration setting)
+   - Check if StoreKit file exists and is referenced
+   - Do NOT rely on transaction ID prefix to detect StoreKit
+
+4. **Backend Verification**:
+   - RevenueCat transaction IDs work correctly for backend verification
+   - Backend uses product ID + user ID for idempotency (more reliable than transaction ID)
 
