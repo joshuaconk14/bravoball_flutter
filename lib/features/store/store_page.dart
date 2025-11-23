@@ -58,49 +58,63 @@ class _StorePageState extends State<StorePage> {
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: Colors.white,
-      body: Column(
+      body: Stack(
         children: [
-          // Top bar
-          _buildTopBar(context),
-          
-          // Main content
-          Expanded(
-            child: Container(
-              color: Colors.white,
-              child: _isLoading 
-                ? const Center(child: CircularProgressIndicator())
-                : SingleChildScrollView(
-                    physics: const BouncingScrollPhysics(),
-                    child: Column(
-                      children: [
-                        // Header section - only show for non-premium users
-                        if (!_isPremium) _buildHeader(),
-                        
-                        // Premium user message - show above My Items
-                        if (_isPremium) ...[
-                          Padding(
-                            padding: const EdgeInsets.fromLTRB(20, 20, 20, 0),
-                            child: _buildPremiumUserMessage(),
-                          ),
-                        ],
-                        
-                        // My Items section
-                        _buildMyItemsSection(),
-                        
-                        // Store items section
-                        _buildStoreItems(),
-                        
-                        const SizedBox(height: 32),
-                        
-                        // Debug button - only show in debug mode
-                        if (kDebugMode) _buildDebugButton(),
-                      ],
-                    ),
-                  ),
+          Column(
+            children: [
+              // Top bar
+              _buildTopBar(context),
+              
+              // Main content
+              Expanded(
+                child: Container(
+                  color: Colors.white,
+                  child: _isLoading 
+                    ? const Center(child: CircularProgressIndicator())
+                    : SingleChildScrollView(
+                        physics: const BouncingScrollPhysics(),
+                        child: Column(
+                          children: [
+                            // Header section - only show for non-premium users
+                            if (!_isPremium) _buildHeader(),
+                            
+                            // Premium user message - show above My Items
+                            if (_isPremium) ...[
+                              Padding(
+                                padding: const EdgeInsets.fromLTRB(20, 20, 20, 0),
+                                child: _buildPremiumUserMessage(),
+                              ),
+                            ],
+                            
+                            // My Items section
+                            _buildMyItemsSection(),
+                            
+                            // Store items section
+                            _buildStoreItems(),
+                            
+                            const SizedBox(height: 32),
+                            
+                            // Debug button - only show in debug mode
+                            if (kDebugMode) _buildDebugButton(),
+                          ],
+                        ),
+                      ),
+                ),
               ),
-            ),
-          ],
-        ),
+            ],
+          ),
+          
+          // Purchase loading overlay
+          Consumer<UnifiedPurchaseService>(
+            builder: (context, purchaseService, child) {
+              if (!purchaseService.isPurchasing) {
+                return const SizedBox.shrink();
+              }
+              return _buildPurchaseLoadingOverlay();
+            },
+          ),
+        ],
+      ),
     );
   }
 
@@ -1597,6 +1611,36 @@ class _StorePageState extends State<StorePage> {
       // Show error message
       _showErrorDialog(result.error ?? 'Purchase failed');
     }
+  }
+
+  // Purchase loading overlay - simple loading circle
+  Widget _buildPurchaseLoadingOverlay() {
+    return Container(
+      color: Colors.black.withOpacity(0.3),
+      child: Center(
+        child: Container(
+          width: 80,
+          height: 80,
+          decoration: BoxDecoration(
+            color: Colors.white,
+            shape: BoxShape.circle,
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black.withOpacity(0.2),
+                blurRadius: 12,
+                offset: const Offset(0, 4),
+              ),
+            ],
+          ),
+          child: const Center(
+            child: CircularProgressIndicator(
+              valueColor: AlwaysStoppedAnimation<Color>(AppTheme.primaryYellow),
+              strokeWidth: 3.0,
+            ),
+          ),
+        ),
+      ),
+    );
   }
 
   // Show purchase dialog
