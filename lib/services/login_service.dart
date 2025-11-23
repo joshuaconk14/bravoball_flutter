@@ -107,31 +107,30 @@ class LoginService {
             print('🔍 LoginService: Identifying user with RevenueCat...');
           }
           
-          // ✅ CRITICAL FIX: Log out any existing RevenueCat user BEFORE logging in
+          // ✅ CRITICAL FIX: ALWAYS log out BEFORE logging in
           // This prevents purchases from being transferred between users
+          // RevenueCat's logIn() can transfer purchases from anonymous or previous users,
+          // so we must always reset to a clean state first
           try {
-            final customerInfo = await Purchases.getCustomerInfo();
-            final currentAppUserId = customerInfo.originalAppUserId;
-            
-            // If there's a different user already logged in, log them out first
-            if (currentAppUserId.isNotEmpty && 
-                currentAppUserId != loginResponse.email &&
-                !currentAppUserId.contains('Anonymous')) {
-              if (kDebugMode) {
-                print('⚠️ LoginService: Different user ($currentAppUserId) logged in to RevenueCat, logging out first...');
-              }
-              await Purchases.logOut();
-            }
-          } catch (checkError) {
             if (kDebugMode) {
-              print('⚠️ LoginService: Error checking RevenueCat user, logging out to be safe: $checkError');
+              print('🔍 LoginService: Resetting RevenueCat user before login...');
             }
-            // If we can't check, log out to be safe
-            try {
-              await Purchases.logOut();
-            } catch (logoutError) {
-              // Ignore logout errors
+            
+            // Always log out first, regardless of current user state
+            // This ensures a clean slate and prevents purchase transfers
+            await Purchases.logOut();
+            
+            // Small delay to ensure logout completes
+            await Future.delayed(const Duration(milliseconds: 100));
+            
+            if (kDebugMode) {
+              print('✅ LoginService: RevenueCat user reset, now identifying new user...');
             }
+          } catch (logoutError) {
+            if (kDebugMode) {
+              print('⚠️ LoginService: Error during logout (continuing anyway): $logoutError');
+            }
+            // Continue even if logout fails - better to try than skip
           }
           
           // Tell RevenueCat who this user is - this ensures subscriptions are tied to this specific user

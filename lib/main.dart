@@ -78,33 +78,30 @@ void main() async {
         print('🔍 Main: Identifying returning user with RevenueCat...');
       }
       
-      // ✅ CRITICAL FIX: Check current RevenueCat user and log out if different
+      // ✅ CRITICAL FIX: ALWAYS log out BEFORE logging in
       // This prevents purchases from being transferred between users
+      // RevenueCat's logIn() can transfer purchases from anonymous or previous users,
+      // so we must always reset to a clean state first
       try {
-        final customerInfo = await Purchases.getCustomerInfo();
-        final currentAppUserId = customerInfo.originalAppUserId;
-        
-        // If there's a different user already logged in to RevenueCat, log them out first
-        // Anonymous users start with "$RCAnonymousID:", so we check if it's a real user ID
-        // and if it's different from the current user's email
-        if (currentAppUserId.isNotEmpty && 
-            currentAppUserId != userManager.email &&
-            !currentAppUserId.contains('Anonymous')) {
-          if (kDebugMode) {
-            print('⚠️ Main: Different user ($currentAppUserId) logged in to RevenueCat, logging out first...');
-          }
-          await Purchases.logOut();
-        }
-      } catch (e) {
         if (kDebugMode) {
-          print('⚠️ Main: Error checking RevenueCat user: $e');
+          print('🔍 Main: Resetting RevenueCat user before identifying returning user...');
         }
-        // If we can't check, log out to be safe
-        try {
-          await Purchases.logOut();
-        } catch (logoutError) {
-          // Ignore logout errors
+        
+        // Always log out first, regardless of current user state
+        // This ensures a clean slate and prevents purchase transfers
+        await Purchases.logOut();
+        
+        // Small delay to ensure logout completes
+        await Future.delayed(const Duration(milliseconds: 100));
+        
+        if (kDebugMode) {
+          print('✅ Main: RevenueCat user reset, now identifying returning user...');
         }
+      } catch (logoutError) {
+        if (kDebugMode) {
+          print('⚠️ Main: Error during logout (continuing anyway): $logoutError');
+        }
+        // Continue even if logout fails - better to try than skip
       }
       
       // Tell RevenueCat who this returning user is

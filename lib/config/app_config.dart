@@ -14,7 +14,7 @@ class AppConfig {
   /// 2: Computer (localhost)
   /// 3: Phone (Wi-Fi IP)
   /// 4: V2 Backend (App Store Review & Production) - Points to bravoball-v2-backend.onrender.com
-  static const int appDevCase = 3; // Set to 0 for TestFlight (uses testflight-testing branch), 4 for production, 2 for localhost
+  static const int appDevCase = 2; // Set to 0 for TestFlight (uses testflight-testing branch), 4 for production, 2 for localhost
 
   /// Debug mode toggle
   static const bool debug = true; // PRODUCTION - Set to false for testing and store submission
