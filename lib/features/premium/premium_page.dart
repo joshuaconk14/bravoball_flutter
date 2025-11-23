@@ -1,9 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/foundation.dart';
+import 'package:provider/provider.dart';
 import '../../constants/app_theme.dart';
 import '../../utils/premium_utils.dart';
 import '../../config/purchase_config.dart';
 import '../../services/unified_purchase_service.dart';
+import '../../widgets/loading_overlay.dart';
 
 class PremiumPage extends StatefulWidget {
   const PremiumPage({Key? key}) : super(key: key);
@@ -185,33 +187,44 @@ class _PremiumPageState extends State<PremiumPage> {
           onPressed: () => Navigator.of(context).pop(),
         ),
       ),
-      body: SingleChildScrollView(
-        padding: const EdgeInsets.symmetric(horizontal: 24),
-        child: Column(
-          children: [
-            // Header content (star icon, title, description)
-            _buildHeader(),
-            const SizedBox(height: 32),
-            
-            // Premium status indicator
-            if (_isPremium) _buildPremiumStatusIndicator(),
-            if (_isPremium) const SizedBox(height: 32),
-            
-            // Features list
-            _buildFeaturesList(),
-            const SizedBox(height: 32),
-            
-            // Subscription plans
-            _buildSubscriptionPlans(),
-            const SizedBox(height: 32),
-            
-            // Action buttons
-            _buildActionButtons(context),
-            
-            // Bottom padding
-            const SizedBox(height: 40),
-          ],
-        ),
+      body: Stack(
+        children: [
+          SingleChildScrollView(
+            padding: const EdgeInsets.symmetric(horizontal: 24),
+            child: Column(
+              children: [
+                // Header content (star icon, title, description)
+                _buildHeader(),
+                const SizedBox(height: 32),
+                
+                // Premium status indicator
+                if (_isPremium) _buildPremiumStatusIndicator(),
+                if (_isPremium) const SizedBox(height: 32),
+                
+                // Features list
+                _buildFeaturesList(),
+                const SizedBox(height: 32),
+                
+                // Subscription plans
+                _buildSubscriptionPlans(),
+                const SizedBox(height: 32),
+                
+                // Action buttons
+                _buildActionButtons(context),
+                
+                // Bottom padding
+                const SizedBox(height: 40),
+              ],
+            ),
+          ),
+          
+          // Purchase loading overlay
+          Consumer<UnifiedPurchaseService>(
+            builder: (context, purchaseService, child) {
+              return LoadingOverlay(isLoading: purchaseService.isPurchasing);
+            },
+          ),
+        ],
       ),
     );
   }

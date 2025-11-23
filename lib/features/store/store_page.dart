@@ -6,6 +6,7 @@ import 'package:purchases_flutter/purchases_flutter.dart';
 import '../../constants/app_theme.dart';
 import '../../widgets/bravo_button.dart';
 import '../../widgets/item_usage_confirmation_dialog.dart';
+import '../../widgets/loading_overlay.dart';
 import '../../utils/haptic_utils.dart';
 import '../../utils/premium_utils.dart';
 import '../../utils/store_business_rules.dart';
@@ -27,6 +28,7 @@ class StorePage extends StatefulWidget {
 class _StorePageState extends State<StorePage> {
   bool _isPremium = false;
   bool _isLoading = true;
+  bool _isLoadingAd = false;
 
   @override
   void initState() {
@@ -107,12 +109,12 @@ class _StorePageState extends State<StorePage> {
           // Purchase loading overlay
           Consumer<UnifiedPurchaseService>(
             builder: (context, purchaseService, child) {
-              if (!purchaseService.isPurchasing) {
-                return const SizedBox.shrink();
-              }
-              return _buildPurchaseLoadingOverlay();
+              return LoadingOverlay(isLoading: purchaseService.isPurchasing);
             },
           ),
+          
+          // Ad loading overlay
+          LoadingOverlay(isLoading: _isLoadingAd),
         ],
       ),
     );
@@ -1044,41 +1046,18 @@ class _StorePageState extends State<StorePage> {
   // Watch ad for treats
   Future<void> _watchAdForTreats() async {
     try {
-      // Show loading indicator
-      showDialog(
-        context: context,
-        barrierDismissible: false,
-        builder: (context) => Center(
-          child: Container(
-            padding: const EdgeInsets.all(24),
-            decoration: BoxDecoration(
-              color: Colors.white,
-              borderRadius: BorderRadius.circular(16),
-            ),
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                CircularProgressIndicator(color: AppTheme.primaryYellow),
-                const SizedBox(height: 16),
-                Text(
-                  'Loading ad...',
-                  style: TextStyle(
-                    fontFamily: AppTheme.fontPoppins,
-                    fontSize: 16,
-                    color: AppTheme.primaryGray,
-                  ),
-                ),
-              ],
-            ),
-          ),
-        ),
-      );
+      // Show loading overlay
+      setState(() {
+        _isLoadingAd = true;
+      });
 
       // Show rewarded ad
       final rewardAmount = await AdService.instance.showRewardedAd();
       
-      // Close loading dialog
-      Navigator.of(context).pop();
+      // Hide loading overlay
+      setState(() {
+        _isLoadingAd = false;
+      });
 
       if (rewardAmount > 0) {
         // Add treats to user's account using centralized reward function
@@ -1101,10 +1080,10 @@ class _StorePageState extends State<StorePage> {
         _showErrorDialog('Ad was not completed. Please watch the full ad to earn treats.');
       }
     } catch (e) {
-      // Close loading dialog if still open
-      if (Navigator.of(context).canPop()) {
-        Navigator.of(context).pop();
-      }
+      // Hide loading overlay
+      setState(() {
+        _isLoadingAd = false;
+      });
 
       if (kDebugMode) {
         print('❌ Error watching ad for treats: $e');
@@ -1611,36 +1590,6 @@ class _StorePageState extends State<StorePage> {
       // Show error message
       _showErrorDialog(result.error ?? 'Purchase failed');
     }
-  }
-
-  // Purchase loading overlay - simple loading circle
-  Widget _buildPurchaseLoadingOverlay() {
-    return Container(
-      color: Colors.black.withOpacity(0.3),
-      child: Center(
-        child: Container(
-          width: 80,
-          height: 80,
-          decoration: BoxDecoration(
-            color: Colors.white,
-            shape: BoxShape.circle,
-            boxShadow: [
-              BoxShadow(
-                color: Colors.black.withOpacity(0.2),
-                blurRadius: 12,
-                offset: const Offset(0, 4),
-              ),
-            ],
-          ),
-          child: const Center(
-            child: CircularProgressIndicator(
-              valueColor: AlwaysStoppedAnimation<Color>(AppTheme.primaryYellow),
-              strokeWidth: 3.0,
-            ),
-          ),
-        ),
-      ),
-    );
   }
 
   // Show purchase dialog
