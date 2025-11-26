@@ -7,6 +7,7 @@ import 'onboarding_questions.dart';
 import '../../widgets/bravo_button.dart';
 import '../../features/auth/login_view.dart';
 import '../../constants/app_theme.dart';
+import '../../constants/app_assets.dart';
 import '../../services/onboarding_service.dart';
 import '../../models/onboarding_model.dart';
 import '../../services/user_manager_service.dart'; // ✅ NEW: Import user manager
@@ -373,7 +374,7 @@ class _OnboardingFlowState extends State<OnboardingFlow> {
             child: SizedBox(
               height: 250,
               child: RiveAnimation.asset(
-                'assets/rive/Bravo_Animation.riv',
+                AppAssets.bravoAnimation,
                 fit: BoxFit.contain,
               ),
             ),
@@ -577,7 +578,7 @@ class _OnboardingFlowState extends State<OnboardingFlow> {
                     width: (_isBravoTransitioning || _step >= stepFirstQuestion) ? 110 : 180,
                     height: (_isBravoTransitioning || _step >= stepFirstQuestion) ? 110 : 180,
                     child: RiveAnimation.asset(
-                      'assets/rive/Bravo_Animation.riv',
+                      AppAssets.bravoAnimation,
                       stateMachines: const ['State Machine 2'],
                       fit: BoxFit.contain,
                     ),
@@ -763,7 +764,7 @@ class _OnboardingFlowState extends State<OnboardingFlow> {
               width: _isBravoTransitioning ? 100 : 180,
               height: _isBravoTransitioning ? 100 : 180,
               child: RiveAnimation.asset(
-                'assets/rive/Bravo_Animation.riv',
+                AppAssets.bravoAnimation,
                 stateMachines: const ['State Machine 2'],
                 fit: BoxFit.contain,
               ),
@@ -855,7 +856,7 @@ class _OnboardingFlowState extends State<OnboardingFlow> {
                           width: 100,
                           height: 100,
                           child: RiveAnimation.asset(
-                            'assets/rive/Bravo_Animation.riv',
+                            AppAssets.bravoAnimation,
                             stateMachines: const ['State Machine 2'],
                             fit: BoxFit.contain,
                           ),
@@ -984,7 +985,7 @@ class _OnboardingFlowState extends State<OnboardingFlow> {
                   width: 100,
                   height: 100,
                   child: RiveAnimation.asset(
-                    'assets/rive/Bravo_Animation.riv',
+                    AppAssets.bravoAnimation,
                     stateMachines: const ['State Machine 2'],
                     fit: BoxFit.contain,
                   ),

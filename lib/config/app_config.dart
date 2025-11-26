@@ -17,12 +17,12 @@ class AppConfig {
   static const int appDevCase = 2; // Set to 0 for TestFlight (uses testflight-testing branch), 4 for production, 2 for localhost
 
   /// Debug mode toggle
-  static const bool debug = true; // PRODUCTION - Set to false for testing and store submission
+  static const bool debug = true; // set false for store submission
 
   /// StoreKit Configuration - Package handling configuration
   /// 
   /// NOTE: to fully stop using storekit, go to xcworkspace and remove it from project scheme
-  /// 
+  /// NOTE: in backend, set REVENUECAT_ALLOW_SIMULATOR_BYPASS=true for storekit/local test
   /// **Local StoreKit Testing** (`true`):
   /// **Sandbox/Production** (`false`):
   static const bool useLocalStoreKit = false;  // Set to true for local testing, false for sandbox/production

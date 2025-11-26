@@ -44,7 +44,13 @@ static const String yearlyPremiumId = 'bravoball_yearly_premium';
 ```dart
 // lib/config/app_config.dart
 static const bool debug = true; // Set to false for production
+static const bool useLocalStoreKit = true; // Set to false for production
 ```
+
+// backend
+.env
+REVENUECAT_ALLOW_SIMULATOR_BYPASS=true // Set to false for production
+
 
 ## Current Status
 

@@ -4,6 +4,7 @@ import 'package:flutter/painting.dart' as painting;
 import 'package:provider/provider.dart';
 import 'package:purchases_flutter/purchases_flutter.dart';
 import '../../constants/app_theme.dart';
+import '../../constants/app_assets.dart';
 import '../../widgets/bravo_button.dart';
 import '../../widgets/item_usage_confirmation_dialog.dart';
 import '../../widgets/loading_overlay.dart';
@@ -170,17 +171,18 @@ class _StorePageState extends State<StorePage> {
                 builder: (context, storeService, child) {
                   return Row(
                     children: [
-                      Icon(
-                        Icons.diamond,
-                        color: Colors.brown,
-                        size: 20,
+                      Image.asset(
+                        AppAssets.treatIcon,
+                        width: 25,
+                        height: 25,
+                        fit: BoxFit.contain,
                       ),
-                      const SizedBox(width: 4),
+                      const SizedBox(width: 6),
                       Text(
                         '${storeService.treats}', // Real treat count from API
                         style: TextStyle(
                           fontFamily: AppTheme.fontPoppins,
-                          fontSize: 20,
+                          fontSize: 24,
                           color: Colors.brown,
                           fontWeight: FontWeight.bold,
                         ),
@@ -920,19 +922,12 @@ class _StorePageState extends State<StorePage> {
             padding: const EdgeInsets.all(16),
             child: Row(
               children: [
-                // Diamond icon
-                Container(
-                  width: 40,
-                  height: 40,
-                  decoration: BoxDecoration(
-                    color: AppTheme.primaryYellow,
-                    shape: BoxShape.circle,
-                  ),
-                  child: Icon(
-                    Icons.diamond,
-                    color: AppTheme.white,
-                    size: 20,
-                  ),
+                // Treat icon (no golden circle)
+                Image.asset(
+                  AppAssets.treatIcon,
+                  width: 28,
+                  height: 28,
+                  fit: BoxFit.contain,
                 ),
                 
                 const SizedBox(width: 12),
@@ -1417,10 +1412,11 @@ class _StorePageState extends State<StorePage> {
                 child: Row(
                   mainAxisSize: MainAxisSize.min,
                   children: [
-                    Icon(
-                      Icons.diamond,
-                      color: Colors.brown,
-                      size: 28,
+                    Image.asset(
+                      AppAssets.treatIcon,
+                      width: 28,
+                      height: 28,
+                      fit: BoxFit.contain,
                     ),
                     const SizedBox(width: 8),
                     Text(

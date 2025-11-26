@@ -99,6 +99,7 @@ flutter:
     - assets/rive/Tab_Dude.riv
     - assets/fonts/
     - assets/drill-icons/
+    - assets/other-icons/
     - assets/audio/321-start.mp3
     - assets/audio/321-done.mp3
     - assets/audio/success.mp3
