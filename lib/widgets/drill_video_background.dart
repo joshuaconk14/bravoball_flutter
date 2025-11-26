@@ -5,6 +5,7 @@ import 'dart:io';
 import 'dart:ui';
 import 'package:rive/rive.dart' as rive;
 import '../constants/app_theme.dart';
+import '../constants/app_assets.dart';
 
 class DrillVideoBackground extends StatefulWidget {
   final String videoUrl;
@@ -272,8 +273,8 @@ class _DrillVideoBackgroundState extends State<DrillVideoBackground> {
             Container(
               width: 120,
               height: 120,
-              child: const rive.RiveAnimation.asset(
-                'assets/rive/Bravo_Animation.riv',
+              child: rive.RiveAnimation.asset(
+                AppAssets.bravoAnimation,
                 fit: BoxFit.contain,
               ),
             ),

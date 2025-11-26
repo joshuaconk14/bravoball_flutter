@@ -19,6 +19,7 @@ import 'services/ad_service.dart'; // ✅ ADDED: Import AdService
 import 'services/store_service.dart'; // ✅ ADDED: Import StoreService
 import 'services/unified_purchase_service.dart'; // ✅ ADDED: Import UnifiedPurchaseService
 import 'constants/app_theme.dart';
+import 'constants/app_assets.dart';
 import 'config/app_config.dart';
 import 'config/purchase_config.dart';
 import 'widgets/bravo_loading_indicator.dart';
@@ -186,8 +187,8 @@ class _MyAppState extends State<MyApp> {
                 width: MediaQuery.of(context).size.width,
                 height: MediaQuery.of(context).size.height,
                 color: Colors.transparent,
-                child: const RiveAnimation.asset(
-                  'assets/rive/BravoBall_Intro.riv',
+                child: RiveAnimation.asset(
+                  AppAssets.bravoBallIntro,
                   fit: BoxFit.cover,
                 ),
               ),

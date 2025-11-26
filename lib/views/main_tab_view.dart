@@ -8,6 +8,7 @@ import '../features/saved_drills/saved_drills_view.dart';
 import '../features/profile/profile_view.dart';
 import '../features/create_drill/create_drill_sheet.dart';
 import '../constants/app_theme.dart';
+import '../constants/app_assets.dart';
 import '../utils/haptic_utils.dart';
 import '../services/app_state_service.dart'; // ✅ ADDED: Import for loading state checking
 import '../utils/premium_utils.dart'; // ✅ ADDED: Import premium utils
@@ -117,11 +118,11 @@ class _MainTabViewState extends State<MainTabView> {
               showUnselectedLabels: false,
               items: [
                 BottomNavigationBarItem(
-                  icon: _buildRiveTab('Tab_House.riv', 0),
+                  icon: _buildRiveTab(AppAssets.tabHouse, 0),
                   label: 'Home',
                 ),
                 BottomNavigationBarItem(
-                  icon: _buildRiveTab('Tab_Calendar.riv', 1),
+                  icon: _buildRiveTab(AppAssets.tabCalendar, 1),
                   label: 'Progression',
                 ),
                 BottomNavigationBarItem(
@@ -129,11 +130,11 @@ class _MainTabViewState extends State<MainTabView> {
                   label: '',
                 ),
                 BottomNavigationBarItem(
-                  icon: _buildRiveTab('Tab_Saved.riv', 2),
+                  icon: _buildRiveTab(AppAssets.tabSaved, 2),
                   label: 'Saved',
                 ),
                 BottomNavigationBarItem(
-                  icon: _buildRiveTab('Tab_Dude.riv', 3),
+                  icon: _buildRiveTab(AppAssets.tabDude, 3),
                   label: 'Profile',
                 ),
               ],
@@ -246,7 +247,7 @@ class _MainTabViewState extends State<MainTabView> {
     );
   }
 
-  Widget _buildRiveTab(String assetName, int index) {
+  Widget _buildRiveTab(String assetPath, int index) {
     final isSelected = _selectedIndex == index;
     final size = isSelected ? 32.0 : 24.0; // Bigger when selected
     
@@ -256,11 +257,11 @@ class _MainTabViewState extends State<MainTabView> {
       width: size,
       height: size,
       child: RiveAnimation.asset(
-        'assets/rive/$assetName',
+        assetPath,
         fit: BoxFit.contain,
         onInit: (artboard) {
           // Rive asset loaded successfully
-          print('Loaded Rive asset: $assetName');
+          print('Loaded Rive asset: $assetPath');
         },
         // Add fallback in case of errors
         placeHolder: Icon(

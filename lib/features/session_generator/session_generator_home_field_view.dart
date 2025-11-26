@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
-import 'package:rive/rive.dart';
+import 'package:rive/rive.dart' hide Image;
 import 'dart:ui' as ui show Gradient;
 import 'package:flutter/painting.dart' as painting;
 import '../../widgets/bravo_button.dart';
@@ -10,6 +10,7 @@ import '../../models/editable_drill_model.dart';
 import '../../services/app_state_service.dart';
 import '../../services/audio_service.dart';
 import '../../constants/app_theme.dart';
+import '../../constants/app_assets.dart';
 import '../../utils/haptic_utils.dart';
 import 'session_generator_editor_page.dart';
 import 'edit_drill_view.dart';
@@ -135,6 +136,7 @@ class _SessionGeneratorHomeFieldViewState extends State<SessionGeneratorHomeFiel
           height: 48,
           child: Row(
             children: [
+              // Profile icon
               GestureDetector(
                 onTap: () {
                   HapticUtils.heavyImpact(); // Heavy haptic for major navigation
@@ -146,26 +148,27 @@ class _SessionGeneratorHomeFieldViewState extends State<SessionGeneratorHomeFiel
                   );
                 },
                 child: CircleAvatar(
-                radius: 18,
-                backgroundColor: AppTheme.backgroundPrimary,
-                child: Icon(Icons.person, color: AppTheme.secondaryBlue, size: 28),
+                  radius: 18,
+                  backgroundColor: AppTheme.backgroundPrimary,
+                  child: Icon(Icons.person, color: AppTheme.secondaryBlue, size: 28),
                 ),
               ),
               
-              const SizedBox(width: 16), // Spacing between profile and streak
+              const Spacer(),
               
-              // Streak display (moved to left)
+              // Streak display (flame and number grouped)
               Consumer<AppStateService>(
                 builder: (context, appState, child) {
                   return Row(
+                    mainAxisSize: MainAxisSize.min,
                     children: [
-                      Icon(Icons.local_fire_department, color: AppTheme.secondaryOrange, size: 24),
+                      Icon(Icons.local_fire_department, color: AppTheme.secondaryOrange, size: 28),
                       const SizedBox(width: 4),
                       // Show loading indicator while initial data is being fetched
                       appState.isInitialLoad 
                         ? SizedBox(
-                            width: 16,
-                            height: 16,
+                            width: 20,
+                            height: 20,
                             child: CircularProgressIndicator(
                               strokeWidth: 2,
                               valueColor: AlwaysStoppedAnimation<Color>(AppTheme.secondaryOrange),
@@ -175,7 +178,7 @@ class _SessionGeneratorHomeFieldViewState extends State<SessionGeneratorHomeFiel
                             '${appState.currentStreak}', // Use actual streak from AppStateService
                             style: TextStyle(
                               fontFamily: AppTheme.fontPoppins,
-                              fontSize: 20,
+                              fontSize: 24,
                               color: AppTheme.secondaryOrange,
                               fontWeight: FontWeight.bold,
                             ),
@@ -187,30 +190,24 @@ class _SessionGeneratorHomeFieldViewState extends State<SessionGeneratorHomeFiel
               
               const Spacer(),
               
-              Text(
-                'BravoBall',
-                style: TextStyle(
-                  fontFamily: AppTheme.fontPottaOne,
-                  fontSize: 22,
-                  color: AppTheme.primaryYellow,
-                  fontWeight: FontWeight.w400,
-                ),
-              ),
-              
-              const Spacer(),
-              
-              // Treat indicator (diamond icon) - brown color
+              // Treat indicator (icon and number grouped)
               Consumer<StoreService>(
                 builder: (context, storeService, child) {
                   return Row(
+                    mainAxisSize: MainAxisSize.min,
                     children: [
-                      Icon(Icons.diamond, color: Colors.brown, size: 24),
-                      const SizedBox(width: 4),
+                      Image.asset(
+                        AppAssets.treatIcon,
+                        width: 25,
+                        height: 25,
+                        fit: BoxFit.contain,
+                      ),
+                      const SizedBox(width: 6),
                       Text(
                         '${storeService.treats}', // Real treat count from API
                         style: TextStyle(
                           fontFamily: AppTheme.fontPoppins,
-                          fontSize: 20,
+                          fontSize: 24,
                           color: Colors.brown,
                           fontWeight: FontWeight.bold,
                         ),
@@ -220,9 +217,9 @@ class _SessionGeneratorHomeFieldViewState extends State<SessionGeneratorHomeFiel
                 },
               ),
               
-              const SizedBox(width: 20), // More spacing between treat and store button
+              const Spacer(),
               
-              // Store button (blue icon without circle)
+              // Store button
               GestureDetector(
                 onTap: () {
                   HapticUtils.heavyImpact(); // Heavy haptic for major navigation
@@ -262,7 +259,7 @@ class _SessionGeneratorHomeFieldViewState extends State<SessionGeneratorHomeFiel
             child: SizedBox(
               height: 380, // Reduced height for appropriate field size
               child: RiveAnimation.asset(
-                'assets/rive/Grass_Field.riv',
+                AppAssets.grassField,
                 fit: BoxFit.cover,
               ),
             ),
@@ -284,7 +281,7 @@ class _SessionGeneratorHomeFieldViewState extends State<SessionGeneratorHomeFiel
               width: 110,
               height: 110,
               child: RiveAnimation.asset(
-                'assets/rive/Bravo_Animation.riv',
+                AppAssets.bravoAnimation,
                 fit: BoxFit.contain,
               ),
             ),
@@ -323,7 +320,7 @@ class _SessionGeneratorHomeFieldViewState extends State<SessionGeneratorHomeFiel
                 width: 90,
                 height: 90,
                 child: RiveAnimation.asset(
-                  'assets/rive/Backpack.riv',
+                  AppAssets.backpack,
                   fit: BoxFit.contain,
                 ),
               ),

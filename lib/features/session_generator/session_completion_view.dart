@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
-import 'package:rive/rive.dart' hide LinearGradient;
+import 'package:rive/rive.dart' hide LinearGradient, Image;
 import '../../constants/app_theme.dart';
+import '../../constants/app_assets.dart';
 import '../../services/audio_service.dart';
 import '../../services/ad_service.dart'; // ✅ ADDED: Import AdService
 import '../../utils/haptic_utils.dart';
@@ -324,7 +325,7 @@ class _SessionCompletionViewState extends State<SessionCompletionView>
           width: 120,
           height: 120,
           child: RiveAnimation.asset(
-            'assets/rive/Bravo_Animation.riv',
+            AppAssets.bravoAnimation,
             fit: BoxFit.contain,
           ),
         ),
@@ -548,7 +549,7 @@ class _SessionCompletionViewState extends State<SessionCompletionView>
     return Row(
       mainAxisAlignment: MainAxisAlignment.center,
       children: [
-        // Treat icon/emoji
+        // Treat icon
         Container(
           width: 50,
           height: 50,
@@ -563,10 +564,13 @@ class _SessionCompletionViewState extends State<SessionCompletionView>
               ),
             ],
           ),
-          child: const Center(
-            child: Text(
-              '🍪',
-              style: TextStyle(fontSize: 28),
+          child: Padding(
+            padding: const EdgeInsets.all(8.0),
+            child: Image.asset(
+              AppAssets.treatIcon,
+              width: 34,
+              height: 34,
+              fit: BoxFit.contain,
             ),
           ),
         ),
