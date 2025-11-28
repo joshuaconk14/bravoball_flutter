@@ -148,9 +148,9 @@ class _SessionGeneratorHomeFieldViewState extends State<SessionGeneratorHomeFiel
                   );
                 },
                 child: CircleAvatar(
-                  radius: 18,
-                  backgroundColor: AppTheme.backgroundPrimary,
-                  child: Icon(Icons.person, color: AppTheme.secondaryBlue, size: 28),
+                radius: 18,
+                backgroundColor: AppTheme.backgroundPrimary,
+                child: Icon(Icons.person, color: AppTheme.secondaryBlue, size: 28),
                 ),
               ),
               
@@ -681,6 +681,7 @@ class _SessionGeneratorHomeFieldViewState extends State<SessionGeneratorHomeFiel
           totalDrills: appState.editableSessionDrills.length,
           isFirstSessionOfDay: isFirstSessionOfDay,
           sessionsCompletedToday: sessionsToday, // ✅ Use actual count, not incremented
+          treatsAwarded: appState.lastSessionTreatsAwarded, // ✅ Use treats from backend response
           onViewProgress: () async {
             appState.resetDrillProgressForNewSession();
             

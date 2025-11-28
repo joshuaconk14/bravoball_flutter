@@ -64,46 +64,46 @@ class _StorePageState extends State<StorePage> {
       body: Stack(
         children: [
           Column(
-            children: [
-              // Top bar
-              _buildTopBar(context),
-              
-              // Main content
-              Expanded(
-                child: Container(
-                  color: Colors.white,
-                  child: _isLoading 
-                    ? const Center(child: CircularProgressIndicator())
-                    : SingleChildScrollView(
-                        physics: const BouncingScrollPhysics(),
-                        child: Column(
-                          children: [
-                            // Header section - only show for non-premium users
-                            if (!_isPremium) _buildHeader(),
-                            
-                            // Premium user message - show above My Items
-                            if (_isPremium) ...[
-                              Padding(
-                                padding: const EdgeInsets.fromLTRB(20, 20, 20, 0),
-                                child: _buildPremiumUserMessage(),
-                              ),
-                            ],
-                            
-                            // My Items section
-                            _buildMyItemsSection(),
-                            
-                            // Store items section
-                            _buildStoreItems(),
-                            
-                            const SizedBox(height: 32),
-                            
-                            // Debug button - only show in debug mode
-                            if (kDebugMode) _buildDebugButton(),
-                          ],
-                        ),
-                      ),
-                ),
+        children: [
+          // Top bar
+          _buildTopBar(context),
+          
+          // Main content
+          Expanded(
+            child: Container(
+              color: Colors.white,
+              child: _isLoading 
+                ? const Center(child: CircularProgressIndicator())
+                : SingleChildScrollView(
+                    physics: const BouncingScrollPhysics(),
+                    child: Column(
+                      children: [
+                        // Header section - only show for non-premium users
+                        if (!_isPremium) _buildHeader(),
+                        
+                        // Premium user message - show above My Items
+                        if (_isPremium) ...[
+                          Padding(
+                            padding: const EdgeInsets.fromLTRB(20, 20, 20, 0),
+                            child: _buildPremiumUserMessage(),
+                          ),
+                        ],
+                        
+                        // My Items section
+                        _buildMyItemsSection(),
+                        
+                        // Store items section
+                        _buildStoreItems(),
+                        
+                        const SizedBox(height: 32),
+                        
+                        // Debug button - only show in debug mode
+                        if (kDebugMode) _buildDebugButton(),
+                      ],
+                    ),
+                  ),
               ),
+            ),
             ],
           ),
           
@@ -116,8 +116,8 @@ class _StorePageState extends State<StorePage> {
           
           // Ad loading overlay
           LoadingOverlay(isLoading: _isLoadingAd),
-        ],
-      ),
+          ],
+        ),
     );
   }
 
@@ -1567,25 +1567,25 @@ class _StorePageState extends State<StorePage> {
 
   // Purchase treat package
   Future<void> _purchaseTreatPackage(String packageIdentifier) async {
-    // Use the unified purchase service
-    final purchaseService = UnifiedPurchaseService.instance;
-    final treatAmount = PurchaseConfig.getTreatAmountFromPackageId(packageIdentifier);
-    final result = await purchaseService.purchaseProduct(
-      productType: ProductType.treats,
-      packageIdentifier: packageIdentifier,
-      productName: '$treatAmount Treats',
-    );
-    
-    if (result.success) {
-      // Show success message
-      _showSuccessDialog(
-        'Purchase Successful!',
-        'You received $treatAmount treats!',
+      // Use the unified purchase service
+      final purchaseService = UnifiedPurchaseService.instance;
+      final treatAmount = PurchaseConfig.getTreatAmountFromPackageId(packageIdentifier);
+      final result = await purchaseService.purchaseProduct(
+        productType: ProductType.treats,
+        packageIdentifier: packageIdentifier,
+        productName: '$treatAmount Treats',
       );
-    } else {
-      // Show error message
-      _showErrorDialog(result.error ?? 'Purchase failed');
-    }
+      
+      if (result.success) {
+        // Show success message
+        _showSuccessDialog(
+          'Purchase Successful!',
+          'You received $treatAmount treats!',
+        );
+      } else {
+        // Show error message
+        _showErrorDialog(result.error ?? 'Purchase failed');
+      }
   }
 
   // Show purchase dialog

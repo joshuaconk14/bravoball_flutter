@@ -1,432 +1,171 @@
-# this is the backend schema and implementation from the backend for progress history, mainly looking at active freeze date implementation
-# use this doc as reference when implementing into this frontend code of app
+# this is the backend schema and implementation from the backend for session completion and rewarding treats. currently, we only return the completed session to the user when we do a POST to the backend. we need to grant treats to users when we complete a session. the backend will perform the treat calculation. here is what we currently have in the backend for completed sessions:
 
-# backend api endpoint
-@router.get("/api/store/items", response_model=UserStoreItemsResponse)
-async def get_user_store_items(
-    current_user: User = Depends(get_current_user),
-    db: Session = Depends(get_db)
-):
-    """
-    Get the current user's store items inventory
-    """
+# API
+# Completed Sessions Endpoints
+@router.post("/api/sessions/completed/", response_model=CompletedSessionSchema)
+def create_completed_session(session: CompletedSessionCreate,
+                           current_user: User = Depends(get_current_user),
+                           db: Session = Depends(get_db)):
     try:
-        # Get or create store items for user
-        store_items = db.query(UserStoreItems).filter(
-            UserStoreItems.user_id == current_user.id
+        # Parse the ISO8601 date string to datetime
+        session_date = datetime.fromisoformat(session.date.replace('Z', '+00:00'))
+
+        # Check for duplicate sessions (same user, same date, same drill count)
+        existing_session = db.query(CompletedSession).filter(
+            CompletedSession.user_id == current_user.id,
+            CompletedSession.date == session_date,
+            CompletedSession.total_drills == session.total_drills,
+            CompletedSession.total_completed_drills == session.total_completed_drills,
+            CompletedSession.session_type == session.session_type
         ).first()
         
-        if not store_items:
-            # Create default store items if they don't exist
-            store_items = UserStoreItems(
-                user_id=current_user.id,
-                treats=0,
-                streak_freezes=0,
-                streak_revivers=0,
-                used_freezes=[],
-                used_revivers=[]
+        if existing_session:
+            # Return existing session instead of creating duplicate
+            return existing_session
+        
+        # Create the completed session
+        db_session = CompletedSession(
+            user_id=current_user.id,
+            date=session_date,
+            total_completed_drills=session.total_completed_drills,
+            total_drills=session.total_drills,
+            session_type=session.session_type,
+            drills=[{
+                "drill": {
+                    "uuid": drill.drill.uuid,  # Use UUID as primary identifier
+                    "title": drill.drill.title,
+                    "skill": drill.drill.skill,
+                    "subSkills": drill.drill.subSkills,
+                    "sets": drill.drill.sets,
+                    "reps": drill.drill.reps,
+                    "duration": drill.drill.duration,
+                    "description": drill.drill.description,
+                    "instructions": drill.drill.instructions,
+                    "tips": drill.drill.tips,
+                    "equipment": drill.drill.equipment,
+                    "trainingStyle": drill.drill.trainingStyle,
+                    "difficulty": drill.drill.difficulty,
+                    "videoUrl": drill.drill.videoUrl
+                },
+                "setsDone": drill.setsDone,
+                "totalSets": drill.totalSets,
+                "totalReps": drill.totalReps,
+                "totalDuration": drill.totalDuration,
+                "isCompleted": drill.isCompleted
+            } for drill in session.drills] if session.drills else None,
+            duration_minutes=session.duration_minutes
+        )
+        db.add(db_session)
+        db.commit()
+        db.refresh(db_session)
+        
+        # ✅ NEW: Update streak in progress history when session is completed
+        progress_history = db.query(ProgressHistory).filter(
+            ProgressHistory.user_id == current_user.id
+        ).first()
+        
+        session_date_only = session_date.date()
+        
+        # Get the previous session (before this one)
+        previous_session = db.query(CompletedSession).filter(
+            CompletedSession.user_id == current_user.id,
+            CompletedSession.id != db_session.id
+        ).order_by(CompletedSession.date.desc()).first()
+        
+        if progress_history:
+            # Update streak using helper function
+            update_streak_on_session_completion(
+                progress_history=progress_history,
+                session_date=session_date_only,
+                previous_session=previous_session
             )
-            db.add(store_items)
             db.commit()
-            db.refresh(store_items)
-        else:
-            # Ensure used_freezes is initialized for existing records
-            if store_items.used_freezes is None:
-                store_items.used_freezes = []
-                db.commit()
-                db.refresh(store_items)
         
-        return store_items
-    
-    except Exception as e:
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Failed to get store items: {str(e)}"
-        )
-
-
-@router.put("/api/store/items", response_model=UserStoreItemsResponse)
-async def update_user_store_items(
-    items_update: UserStoreItemsUpdate,
-    current_user: User = Depends(get_current_user),
-    db: Session = Depends(get_db)
-):
-    """
-    Update the user's store items inventory
-    This should be called after RevenueCat confirms a successful purchase
-    
-    Only updates the fields that are provided (non-None values)
-    """
-    try:
-        # Get or create store items for user
-        store_items = db.query(UserStoreItems).filter(
-            UserStoreItems.user_id == current_user.id
-        ).first()
+        return db_session
         
-        if not store_items:
-            # Create new store items record
-            store_items = UserStoreItems(
-                user_id=current_user.id,
-                treats=items_update.treats if items_update.treats is not None else 0,
-                streak_freezes=items_update.streak_freezes if items_update.streak_freezes is not None else 0,
-                streak_revivers=items_update.streak_revivers if items_update.streak_revivers is not None else 0
-            )
-            db.add(store_items)
-        else:
-            # Update only the fields that are provided
-            if items_update.treats is not None:
-                store_items.treats = items_update.treats
-            if items_update.streak_freezes is not None:
-                store_items.streak_freezes = items_update.streak_freezes
-            if items_update.streak_revivers is not None:
-                store_items.streak_revivers = items_update.streak_revivers
-        
-        db.commit()
-        db.refresh(store_items)
-        
-        return store_items
-    
     except Exception as e:
         db.rollback()
         raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Failed to update store items: {str(e)}"
+            status_code=500,
+            detail=f"Failed to create completed session: {str(e)}"
         )
 
+# MODEL SCHEMA
+# Completed Session Schemas
+class CompletedSessionBase(BaseModel):
+    date: datetime
+    session_type: str = 'drill_training'  # 'drill_training', 'mental_training', etc.
+    
+    # ✅ UPDATED: Optional drill-specific fields
+    total_completed_drills: Optional[int] = None
+    total_drills: Optional[int] = None
+    drills: Optional[List[dict]] = None  # List of drill data (null for mental training)
+    
+    # ✅ NEW: Mental training specific fields
+    duration_minutes: Optional[int] = None  # For mental training sessions
+    mental_training_session_id: Optional[int] = None
 
-@router.post("/api/store/items/increment", response_model=UserStoreItemsResponse)
-async def increment_store_items(
-    items_update: UserStoreItemsUpdate,
-    current_user: User = Depends(get_current_user),
-    db: Session = Depends(get_db)
-):
-    """
-    Increment store items by the specified amounts
-    Use this endpoint after a successful purchase from RevenueCat
-    
-    Example: If user has 5 treats and you send treats=3, they'll have 8 treats
-    """
-    try:
-        # Get or create store items for user
-        store_items = db.query(UserStoreItems).filter(
-            UserStoreItems.user_id == current_user.id
-        ).first()
-        
-        if not store_items:
-            # Create new store items record with the increment values
-            store_items = UserStoreItems(
-                user_id=current_user.id,
-                treats=items_update.treats if items_update.treats is not None else 0,
-                streak_freezes=items_update.streak_freezes if items_update.streak_freezes is not None else 0,
-                streak_revivers=items_update.streak_revivers if items_update.streak_revivers is not None else 0
-            )
-            db.add(store_items)
-        else:
-            # Increment the values
-            if items_update.treats is not None:
-                store_items.treats += items_update.treats
-            if items_update.streak_freezes is not None:
-                store_items.streak_freezes += items_update.streak_freezes
-            if items_update.streak_revivers is not None:
-                store_items.streak_revivers += items_update.streak_revivers
-        
-        db.commit()
-        db.refresh(store_items)
-        
-        return store_items
-    
-    except Exception as e:
-        db.rollback()
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Failed to increment store items: {str(e)}"
-        )
+class DrillData(BaseModel):
+    uuid: str  # Use UUID instead of id
+    title: str
+    skill: str
+    subSkills: List[str]
+    sets: Optional[int] = None
+    reps: Optional[int] = None
+    duration: Optional[int] = None
+    description: str
+    instructions: List[str]
+    tips: List[str]
+    equipment: List[str]
+    trainingStyle: str
+    difficulty: str
+    videoUrl: str
 
+class CompletedDrillData(BaseModel):
+    drill: DrillData
+    setsDone: int
+    totalSets: int
+    totalReps: int
+    totalDuration: int
+    isCompleted: bool
 
-@router.post("/api/store/items/decrement", response_model=UserStoreItemsResponse)
-async def decrement_store_items(
-    items_update: UserStoreItemsUpdate,
-    current_user: User = Depends(get_current_user),
-    db: Session = Depends(get_db)
-):
-    """
-    Decrement store items by the specified amounts
-    Use this endpoint when a user uses/consumes an item
-    
-    Example: If user has 5 treats and you send treats=1, they'll have 4 treats
-    Note: Values cannot go below 0
-    """
-    try:
-        # Get store items for user
-        store_items = db.query(UserStoreItems).filter(
-            UserStoreItems.user_id == current_user.id
-        ).first()
-        
-        if not store_items:
-            raise HTTPException(
-                status_code=status.HTTP_404_NOT_FOUND,
-                detail="User has no store items to decrement"
-            )
-        
-        # Decrement the values (but don't go below 0)
-        if items_update.treats is not None:
-            store_items.treats = max(0, store_items.treats - items_update.treats)
-        if items_update.streak_freezes is not None:
-            store_items.streak_freezes = max(0, store_items.streak_freezes - items_update.streak_freezes)
-        if items_update.streak_revivers is not None:
-            store_items.streak_revivers = max(0, store_items.streak_revivers - items_update.streak_revivers)
-        
-        db.commit()
-        db.refresh(store_items)
-        
-        return store_items
-    
-    except HTTPException:
-        raise
-    except Exception as e:
-        db.rollback()
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Failed to decrement store items: {str(e)}"
-        )
-
-
-@router.post("/api/store/use-streak-reviver")
-async def use_streak_reviver(
-    current_user: User = Depends(get_current_user),
-    db: Session = Depends(get_db)
-):
-    """
-    Use a streak reviver to restore a lost streak
-    
-    This endpoint:
-    - Checks if the user has streak revivers available
-    - Checks if the user has a lost streak to restore (current_streak == 0 and previous_streak > 0)
-    - Restores the previous streak to current_streak
-    - Decrements streak_revivers by 1
-    
-    Returns:
-        Updated progress history and store items
-    """
-    try:
-        # Get user's store items
-        store_items = db.query(UserStoreItems).filter(
-            UserStoreItems.user_id == current_user.id
-        ).first()
-        
-        if not store_items or store_items.streak_revivers <= 0:
-            raise HTTPException(
-                status_code=status.HTTP_400_BAD_REQUEST,
-                detail="You don't have any streak revivers available"
-            )
-        
-        # Get user's progress history
-        progress_history = db.query(ProgressHistory).filter(
-            ProgressHistory.user_id == current_user.id
-        ).first()
-        
-        if not progress_history:
-            raise HTTPException(
-                status_code=status.HTTP_404_NOT_FOUND,
-                detail="Progress history not found"
-            )
-        
-        # Check if there's a lost streak to restore
-        if progress_history.current_streak > 0:
-            raise HTTPException(
-                status_code=status.HTTP_400_BAD_REQUEST,
-                detail="You already have an active streak. Streak revivers can only be used when you've lost your streak."
-            )
-        
-        if progress_history.previous_streak <= 0:
-            raise HTTPException(
-                status_code=status.HTTP_400_BAD_REQUEST,
-                detail="You don't have a previous streak to restore"
-            )
-        
-        # Restore the streak
-        progress_history.current_streak = progress_history.previous_streak
-        progress_history.previous_streak = 0
-        
-        # Track reviver usage
-        today = datetime.now().date()
-        store_items.active_streak_reviver = today
-        
-        # Add to used revivers history
-        if store_items.used_revivers is None:
-            store_items.used_revivers = []
-        store_items.used_revivers.append(today.isoformat())
-        
-        # Decrement streak revivers
-        store_items.streak_revivers -= 1
-        
-        # ✅ IMPORTANT: Flag the JSON field as modified so SQLAlchemy saves it
-        from sqlalchemy.orm.attributes import flag_modified
-        flag_modified(store_items, 'used_revivers')
-        
-        db.commit()
-        db.refresh(progress_history)
-        db.refresh(store_items)
-        
-        return {
-            "success": True,
-            "message": f"Streak revived! Your {progress_history.current_streak}-day streak has been restored.",
-            "progress_history": {
-                "current_streak": progress_history.current_streak,
-                "previous_streak": progress_history.previous_streak
-            },
-            "store_items": {
-                "streak_revivers": store_items.streak_revivers,
-                "active_streak_reviver": store_items.active_streak_reviver.isoformat() if store_items.active_streak_reviver else None,
-                "used_revivers": store_items.used_revivers
-            }
-        }
-    
-    except HTTPException:
-        raise
-    except Exception as e:
-        db.rollback()
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Failed to use streak reviver: {str(e)}"
-        )
-
-
-@router.post("/api/store/use-streak-freeze")
-async def use_streak_freeze(
-    current_user: User = Depends(get_current_user),
-    db: Session = Depends(get_db)
-):
-    """
-    Use a streak freeze to protect today's streak
-    
-    This endpoint:
-    - Checks if the user has streak freezes available
-    - Checks if the user has an active streak (current_streak > 0)
-    - Sets active_freeze_date to TODAY
-    - Decrements streak_freezes by 1
-    - Prevents the streak from breaking if user doesn't train today
-    
-    Returns:
-        Updated progress history and store items
-    """
-    try:
-        # Get user's store items
-        store_items = db.query(UserStoreItems).filter(
-            UserStoreItems.user_id == current_user.id
-        ).first()
-        
-        if not store_items or store_items.streak_freezes <= 0:
-            raise HTTPException(
-                status_code=status.HTTP_400_BAD_REQUEST,
-                detail="You don't have any streak freezes available"
-            )
-        
-        # Get user's progress history
-        progress_history = db.query(ProgressHistory).filter(
-            ProgressHistory.user_id == current_user.id
-        ).first()
-        
-        if not progress_history:
-            raise HTTPException(
-                status_code=status.HTTP_404_NOT_FOUND,
-                detail="Progress history not found"
-            )
-        
-        # Check if user has an active streak
-        if progress_history.current_streak <= 0:
-            raise HTTPException(
-                status_code=status.HTTP_400_BAD_REQUEST,
-                detail="You need an active streak to use a streak freeze"
-            )
-        
-        # Check if there's already an active freeze
-        today = datetime.now().date()
-        if store_items.active_freeze_date:
-            if store_items.active_freeze_date == today:
-                raise HTTPException(
-                    status_code=status.HTTP_400_BAD_REQUEST,
-                    detail="You already have a streak freeze active for today"
-                )
-            # Clear expired freeze dates (older than today)
-            elif store_items.active_freeze_date < today:
-                store_items.active_freeze_date = None
-        
-        # Activate freeze for today
-        store_items.active_freeze_date = today
-        
-        # Add to used freezes history
-        if store_items.used_freezes is None:
-            store_items.used_freezes = []
-        store_items.used_freezes.append(today.isoformat())
-        
-        # Decrement streak freezes
-        store_items.streak_freezes -= 1
-        
-        # ✅ IMPORTANT: Flag the JSON field as modified so SQLAlchemy saves it
-        from sqlalchemy.orm.attributes import flag_modified
-        flag_modified(store_items, 'used_freezes')
-        
-        db.commit()
-        db.refresh(store_items)
-        
-        return {
-            "success": True,
-            "message": f"Streak freeze activated for today! Your {progress_history.current_streak}-day streak is protected.",
-            "freeze_date": today.isoformat(),
-            "progress_history": {
-                "current_streak": progress_history.current_streak
-            },
-            "store_items": {
-                "streak_freezes": store_items.streak_freezes,
-                "active_freeze_date": store_items.active_freeze_date.isoformat() if store_items.active_freeze_date else None,
-                "used_freezes": store_items.used_freezes,
-                "active_streak_reviver": store_items.active_streak_reviver.isoformat() if store_items.active_streak_reviver else None,
-                "used_revivers": store_items.used_revivers
-            }
-        }
-    
-    except HTTPException:
-        raise
-    except Exception as e:
-        db.rollback()
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Failed to use streak freeze: {str(e)}"
-        )
-
-
-# *** STORE ITEMS MODELS ***
-# Store Items Schemas
-class UserStoreItemsBase(BaseModel):
-    treats: int = 0
-    streak_freezes: int = 0
-    streak_revivers: int = 0
-    # ✅ NEW: Streak freeze date
-    active_freeze_date: Optional[date] = None
-    # ✅ NEW: History of all freeze dates used (list of ISO date strings)
-    used_freezes: List[str] = []
-    # ✅ NEW: Streak reviver date
-    active_streak_reviver: Optional[date] = None
-    # ✅ NEW: History of all reviver dates used (list of ISO date strings)
-    used_revivers: List[str] = []
+# ✅ NEW: Drill training session creation
+class CompletedDrillSessionCreate(BaseModel):
+    date: str  # ISO8601 formatted string
+    session_type: str = 'drill_training'
+    drills: List[CompletedDrillData]
+    total_completed_drills: int
+    total_drills: int
 
     model_config = ConfigDict(from_attributes=True)
 
+# ✅ NEW: Mental training session creation
+class CompletedMentalTrainingSessionCreate(BaseModel):
+    date: str  # ISO8601 formatted string
+    session_type: str = 'mental_training'
+    duration_minutes: int
+    mental_training_session_id: int
 
-class UserStoreItemsResponse(UserStoreItemsBase):
+    model_config = ConfigDict(from_attributes=True)
+
+# ✅ UPDATED: Generic completed session creation (backwards compatible)
+class CompletedSessionCreate(BaseModel):
+    date: str  # ISO8601 formatted string    
+    # Drill session fields (optional)
+    drills: Optional[List[CompletedDrillData]] = None
+    total_completed_drills: Optional[int] = None
+    total_drills: Optional[int] = None
+    session_type: Optional[str] = None
+
+    
+    # Mental training session fields (optional)
+    duration_minutes: Optional[int] = None
+    mental_training_session_id: Optional[int] = None
+
+    model_config = ConfigDict(from_attributes=True)
+
+class CompletedSession(CompletedSessionBase):
     id: int
     user_id: int
-    created_at: datetime
-    updated_at: datetime
 
     model_config = ConfigDict(from_attributes=True)
-
-
-class UserStoreItemsUpdate(BaseModel):
-    treats: Optional[int] = None
-    streak_freezes: Optional[int] = None
-    streak_revivers: Optional[int] = None
-
-    model_config = ConfigDict(from_attributes=True)
-

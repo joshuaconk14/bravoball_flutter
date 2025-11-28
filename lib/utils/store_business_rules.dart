@@ -15,15 +15,19 @@ class StoreBusinessRules {
 
   /// Treat reward amounts for different actions
   static const int adRewardAmount = 15; // Treats earned for watching a rewarded ad
-  static const int sessionCompletionRewardAmount = 45; // Treats earned for completing a session
 
   /// Get the treat reward amount for a specific reward type
+  /// 
+  /// Note: Session completion treats are now calculated dynamically by the backend
+  /// and should not use this method. Use the treats_awarded from backend response instead.
   static int getTreatRewardAmount(TreatRewardType rewardType) {
     switch (rewardType) {
       case TreatRewardType.ad:
         return adRewardAmount;
       case TreatRewardType.sessionCompletion:
-        return sessionCompletionRewardAmount;
+        // ⚠️ DEPRECATED: Session completion treats are now calculated by backend
+        // This should not be used - use treats_awarded from backend response
+        throw UnsupportedError('Session completion treats are calculated by backend. Use treats_awarded from response.');
     }
   }
 
