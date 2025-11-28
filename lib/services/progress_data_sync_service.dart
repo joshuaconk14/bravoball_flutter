@@ -17,7 +17,8 @@ class ProgressDataSyncService {
   // MARK: - Completed Sessions Sync
 
   /// Sync a completed session to the backend
-  Future<bool> syncCompletedSession({
+  /// Returns response data including treats_awarded and treats_already_granted, or null on failure
+  Future<Map<String, dynamic>?> syncCompletedSession({
     required DateTime date,
     required List<EditableDrillModel> drills,
     required int totalCompleted,
@@ -67,22 +68,26 @@ class ProgressDataSyncService {
         requiresAuth: true,
       );
 
-      if (response.isSuccess) {
+      if (response.isSuccess && response.data != null) {
         if (kDebugMode) {
           print('✅ Successfully synced completed session');
+          final treatsAwarded = response.data!['treats_awarded'] ?? 0;
+          final treatsAlreadyGranted = response.data!['treats_already_granted'] ?? false;
+          print('   Treats awarded: $treatsAwarded');
+          print('   Treats already granted: $treatsAlreadyGranted');
         }
-        return true;
+        return response.data;
       } else {
         if (kDebugMode) {
           print('❌ Failed to sync completed session: ${response.statusCode} ${response.error}');
         }
-        return false;
+        return null;
       }
     } catch (e) {
       if (kDebugMode) {
         print('❌ Error syncing completed session: $e');
       }
-      return false;
+      return null;
     }
   }
 

@@ -18,7 +18,6 @@ import '../services/loading_state_service.dart';
 import './api_service.dart';
 import './custom_drill_service.dart';
 import './store_service.dart';
-import '../utils/store_business_rules.dart';
 import 'package:purchases_flutter/purchases_flutter.dart';
 import 'revenue_cat_service.dart';
 import 'revenue_cat_service_impl.dart';
@@ -287,6 +286,10 @@ class AppStateService extends ChangeNotifier {
   // ✅ NEW: Track if user just lost their streak (for showing revival dialog)
   bool _hasJustLostStreak = false;
   bool get hasJustLostStreak => _hasJustLostStreak;
+  
+  // ✅ NEW: Store treats awarded from last session completion (from backend)
+  int _lastSessionTreatsAwarded = 0;
+  int get lastSessionTreatsAwarded => _lastSessionTreatsAwarded;
   
   // ✅ NEW: Mark that we've shown the streak loss dialog
   void markStreakLossDialogShown() {
@@ -1138,7 +1141,7 @@ class AppStateService extends ChangeNotifier {
       try {
         if (kDebugMode) print('🔄 Starting immediate session sync to backend...');
         
-        final syncSuccess = await _progressSyncService.syncCompletedSession(
+        final responseData = await _progressSyncService.syncCompletedSession(
           date: session.date,
           drills: session.drills,
           totalCompleted: session.totalCompletedDrills,
@@ -1146,9 +1149,37 @@ class AppStateService extends ChangeNotifier {
           type: session.sessionType
         );
         
-        if (syncSuccess) {
-          if (kDebugMode) print('✅ Session sync successful, refreshing progress...');
+        if (responseData != null) {
+          // ✅ Extract treats from backend response
+          final treatsAwarded = responseData['treats_awarded'] ?? 0;
+          final treatsAlreadyGranted = responseData['treats_already_granted'] ?? false;
+          
+          // ✅ Store treats awarded for display in completion view
+          _lastSessionTreatsAwarded = treatsAwarded;
+          
+          if (kDebugMode) {
+            print('✅ Session sync successful');
+            print('   Treats awarded: $treatsAwarded');
+            print('   Treats already granted: $treatsAlreadyGranted');
+          }
+          
+          // ✅ Refresh treats from backend if treats were awarded
+          // Backend already granted treats, so we refresh to get authoritative count
+          if (treatsAwarded > 0 && !treatsAlreadyGranted) {
+            final storeService = StoreService.instance;
+            // Refresh treats from backend (backend already granted them)
+            await storeService.refreshTreatsFromBackend();
+            
+            if (kDebugMode) {
+              print('🎁 Refreshed treats from backend: ${storeService.treats}');
+            }
+          }
+          
+          // Refresh progress history to get updated streak
           await refreshProgressHistoryFromBackend();
+          notifyListeners(); // Notify listeners so UI can update with treats amount
+        } else {
+          if (kDebugMode) print('❌ Session sync failed - no response data');
         }
       } catch (e) {
         if (kDebugMode) print('❌ Error in session sync: $e');
@@ -1187,21 +1218,8 @@ class AppStateService extends ChangeNotifier {
       await _addCompletedSessionWithSync(completedSession);
       _setSessionState(SessionState.completed);
       
-      // Grant treats reward for completing a session
-      if (!isGuestMode) {
-        try {
-          final storeService = StoreService.instance;
-          await storeService.grantTreatsReward(TreatRewardType.sessionCompletion);
-          if (kDebugMode) {
-            print('🎁 Session completion reward: ${StoreBusinessRules.sessionCompletionRewardAmount} treats granted');
-          }
-        } catch (e) {
-          if (kDebugMode) {
-            print('⚠️ Failed to grant session completion reward: $e');
-          }
-          // Don't fail session completion if reward fails
-        }
-      }
+      // ✅ Treats are now calculated and granted by the backend when session is synced
+      // Backend will return treats_awarded in the POST response
       
       if (kDebugMode) print('✅ Session completed successfully');
     } catch (e) {
@@ -1887,6 +1905,7 @@ class AppStateService extends ChangeNotifier {
     _sessionDrills.clear();
     _editableSessionDrills.clear();
     _setSessionState(SessionState.idle);
+    _lastSessionTreatsAwarded = 0; // ✅ Reset treats awarded when clearing session
     notifyListeners();
     _scheduleSessionDrillsSync();
   }
@@ -2243,6 +2262,8 @@ class AppStateService extends ChangeNotifier {
   void resetDrillProgressForNewSession() {
     if (kDebugMode) print('🔄 Resetting drill progress for new session...');
     
+    _lastSessionTreatsAwarded = 0; // ✅ Reset treats awarded for new session
+    
     for (int i = 0; i < _editableSessionDrills.length; i++) {
       final currentDrill = _editableSessionDrills[i];
       _editableSessionDrills[i] = currentDrill.copyWith(
@@ -2392,6 +2413,7 @@ class AppStateService extends ChangeNotifier {
     _previousStreak = 0;
     _highestStreak = 0;
     _countOfFullyCompletedSessions = 0;
+    _lastSessionTreatsAwarded = 0; // ✅ Reset treats awarded on logout
     _savedDrillGroups.clear();
     _likedDrills.clear();
     // ✅ ADDED: Clear custom drills on logout

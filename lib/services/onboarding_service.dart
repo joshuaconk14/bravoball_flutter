@@ -65,13 +65,13 @@ class OnboardingService {
             // RevenueCat's logIn() can transfer purchases from anonymous or previous users,
             // so we must always reset to a clean state first
             try {
-              if (kDebugMode) {
+                if (kDebugMode) {
                 print('🔍 OnboardingService: Resetting RevenueCat user before identifying new user...');
               }
               
               // Always log out first, regardless of current user state
               // This ensures a clean slate and prevents purchase transfers
-              await Purchases.logOut();
+                await Purchases.logOut();
               
               // Small delay to ensure logout completes
               await Future.delayed(const Duration(milliseconds: 100));
@@ -79,7 +79,7 @@ class OnboardingService {
               if (kDebugMode) {
                 print('✅ OnboardingService: RevenueCat user reset, now identifying new user...');
               }
-            } catch (logoutError) {
+              } catch (logoutError) {
               if (kDebugMode) {
                 print('⚠️ OnboardingService: Error during logout (continuing anyway): $logoutError');
               }

@@ -84,13 +84,13 @@ void main() async {
       // RevenueCat's logIn() can transfer purchases from anonymous or previous users,
       // so we must always reset to a clean state first
       try {
-        if (kDebugMode) {
+          if (kDebugMode) {
           print('🔍 Main: Resetting RevenueCat user before identifying returning user...');
         }
         
         // Always log out first, regardless of current user state
         // This ensures a clean slate and prevents purchase transfers
-        await Purchases.logOut();
+          await Purchases.logOut();
         
         // Small delay to ensure logout completes
         await Future.delayed(const Duration(milliseconds: 100));
@@ -98,7 +98,7 @@ void main() async {
         if (kDebugMode) {
           print('✅ Main: RevenueCat user reset, now identifying returning user...');
         }
-      } catch (logoutError) {
+        } catch (logoutError) {
         if (kDebugMode) {
           print('⚠️ Main: Error during logout (continuing anyway): $logoutError');
         }

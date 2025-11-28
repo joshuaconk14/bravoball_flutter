@@ -6,7 +6,6 @@ import '../../services/audio_service.dart';
 import '../../services/ad_service.dart'; // ✅ ADDED: Import AdService
 import '../../utils/haptic_utils.dart';
 import '../../services/app_rating_service.dart';
-import '../../utils/store_business_rules.dart';
 import '../../services/user_manager_service.dart';
 
 class SessionCompletionView extends StatefulWidget {
@@ -15,6 +14,7 @@ class SessionCompletionView extends StatefulWidget {
   final int totalDrills;
   final bool isFirstSessionOfDay;
   final int sessionsCompletedToday;
+  final int treatsAwarded; // ✅ Treats awarded from backend
   final VoidCallback? onViewProgress;
   final VoidCallback? onBackToHome;
 
@@ -25,6 +25,7 @@ class SessionCompletionView extends StatefulWidget {
     required this.totalDrills,
     required this.isFirstSessionOfDay,
     required this.sessionsCompletedToday,
+    required this.treatsAwarded, // ✅ Required - backend provides this
     this.onViewProgress,
     this.onBackToHome,
   });
@@ -544,7 +545,8 @@ class _SessionCompletionViewState extends State<SessionCompletionView>
   }
 
   Widget _buildTreatsReward() {
-    final treatAmount = StoreBusinessRules.sessionCompletionRewardAmount;
+    // ✅ Use treats awarded from backend (dynamic calculation)
+    final treatAmount = widget.treatsAwarded;
     
     return Row(
       mainAxisAlignment: MainAxisAlignment.center,

@@ -46,9 +46,40 @@ class StoreService extends ChangeNotifier {
       if (kDebugMode) {
         print('❌ Error initializing store service: $e');
       }
+      // On initialization failure, it's acceptable to have 0 values
+      // since we're starting fresh and have no cached state
+      // User will see correct values once connection is restored
       _setError('Failed to load store items');
+      // Don't reset to 0 here - _fetchUserStoreItems already preserves state
+      // If this is truly first load, values will be 0 anyway
     } finally {
       _setLoading(false);
+    }
+  }
+
+  /// Refresh treats from backend (authoritative source)
+  /// 
+  /// Use this after backend operations that grant treats (session completion, etc.)
+  /// This ensures local state matches backend state (single source of truth)
+  /// 
+  /// Returns true if refresh was successful, false otherwise.
+  /// On failure, current state is preserved (backend still has correct treats).
+  Future<bool> refreshTreatsFromBackend() async {
+    try {
+      await _fetchUserStoreItems();
+      if (kDebugMode) {
+        print('✅ Treats refreshed from backend: $_treats');
+      }
+      return true;
+    } catch (e) {
+      if (kDebugMode) {
+        print('❌ Error refreshing treats from backend: $e');
+        print('   Current treats preserved: $_treats');
+        print('   Backend still has correct treats - will sync on next refresh');
+      }
+      // Don't throw - treats are still updated on backend, user will see correct count on next refresh
+      // Current state is preserved (not reset to 0)
+      return false;
     }
   }
 
@@ -133,11 +164,17 @@ class StoreService extends ChangeNotifier {
       if (kDebugMode) {
         print('❌ Error fetching store items: $e');
       }
-      // Keep placeholder values on error
-      _treats = 0;
-      _streakFreezes = 0;
-      _streakRevivers = 0;
-      notifyListeners();
+      // Don't reset values on error - preserve current state
+      // Backend still has correct treats, will sync on next successful refresh
+      // This ensures fail-safe behavior: if refresh fails, user keeps their current UI state
+      // rather than seeing incorrect 0 values
+      if (kDebugMode) {
+        print('   Preserving current state (treats: $_treats) - backend still has correct data');
+        print('   Will sync on next successful refresh or app restart');
+      }
+      // Don't notify listeners on error - preserve current UI state
+      // User will see correct count on next successful refresh or app restart
+      rethrow; // Let caller handle the error appropriately
     }
   }
 
