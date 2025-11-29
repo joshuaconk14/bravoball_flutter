@@ -22,6 +22,7 @@ import '../../services/mental_training_service.dart';
 import '../../config/app_config.dart'; // Added for debug mode
 import 'package:uuid/uuid.dart'; // Added for UUID generation
 import '../../views/main_tab_view.dart';
+import '../session_generator/session_completion_view.dart';
 
 class MentalTrainingTimerView extends StatefulWidget {
   final int durationMinutes;
@@ -600,6 +601,63 @@ class _MentalTrainingTimerViewState extends State<MentalTrainingTimerView>
     );
   }
 
+  void _navigateToSessionCompletion() async {
+    final appState = Provider.of<AppStateService>(context, listen: false);
+    
+    // Check if guest mode - show dialog instead of navigating
+    if (appState.isGuestMode) {
+      _showGuestCompletionDialog();
+      return;
+    }
+    
+    // Show ad after mental training completion
+    await AdService.instance.showAdAfterMentalTraining();
+    
+    // Get session data
+    final sessionsToday = appState.sessionsCompletedToday;
+    final isFirstSessionOfDay = sessionsToday == 1;
+    
+    // Navigate to session completion view
+    Navigator.of(context).push(
+      MaterialPageRoute(
+        builder: (_) => SessionCompletionView(
+          currentStreak: appState.currentStreak,
+          completedDrills: 1, // Mental training is a single session
+          totalDrills: 1,
+          isFirstSessionOfDay: isFirstSessionOfDay,
+          sessionsCompletedToday: sessionsToday,
+          treatsAwarded: appState.lastSessionTreatsAwarded,
+          treatBreakdown: appState.lastSessionTreatBreakdown,
+          treatsAlreadyGranted: appState.lastSessionTreatsAlreadyGranted,
+          onViewProgress: () async {
+            // Show ad after viewing progress
+            await AdService.instance.showAdAfterSession();
+            
+            // Navigate to progress tab (index 1)
+            Navigator.of(context).pushAndRemoveUntil(
+              MaterialPageRoute(
+                builder: (_) => const MainTabView(initialIndex: 1),
+              ),
+              (route) => false,
+            );
+          },
+          onBackToHome: () async {
+            // Show ad after going back to home
+            await AdService.instance.showAdAfterSession();
+            
+            // Navigate back to home tab (index 0)
+            Navigator.of(context).pushAndRemoveUntil(
+              MaterialPageRoute(
+                builder: (_) => const MainTabView(initialIndex: 0),
+              ),
+              (route) => false,
+            );
+          },
+        ),
+      ),
+    );
+  }
+
   @override
   void dispose() {
     _backgroundTimer.stopTimer(); // Stop the background timer (don't dispose shared service)
@@ -1009,39 +1067,31 @@ class _MentalTrainingTimerViewState extends State<MentalTrainingTimerView>
     if (_isCompleted) {
       return Column(
         children: [
-          Container(
-            width: double.infinity,
-            height: 56,
-            child: BravoButton(
-              text: 'Back to Home',
-              onPressed: () async {
-                // ✅ ADDED: Check if guest mode and show overlay instead of navigating
-                final appState = Provider.of<AppStateService>(context, listen: false);
-                if (appState.isGuestMode) {
-                  // Show guest account overlay for guests
-                  // GuestAccountOverlay.show( // This line was removed from the new_code, so it's removed here.
-                  //   context: context,
-                  //   title: 'Create an account to save your progress',
-                  //   description: 'Great job completing your mental training! Create an account to track your progress, earn achievements, and unlock all features.',
-                  //   themeColor: AppTheme.primaryYellow,
-                  //   showDismissButton: true,
-                  // );
-                } else {
-                  // ✅ ADDED: Show ad after mental training completion
-                  await AdService.instance.showAdAfterMentalTraining();
-                  
-                  // Navigate normally for authenticated users
-                  Navigator.of(context).pushAndRemoveUntil(
-                    MaterialPageRoute(
-                      builder: (_) => const MainTabView(initialIndex: 0),
-                    ),
-                    (route) => false,
-                  );
-                }
-              },
-              color: AppTheme.primaryYellow,
-              backColor: AppTheme.primaryDarkYellow,
-              textColor: AppTheme.white,
+          // Trophy button to navigate to session completion view
+          GestureDetector(
+            onTap: () {
+              HapticUtils.mediumImpact();
+              _navigateToSessionCompletion();
+            },
+            child: Container(
+              width: 80,
+              height: 80,
+              decoration: BoxDecoration(
+                color: AppTheme.primaryYellow,
+                shape: BoxShape.circle,
+                boxShadow: [
+                  BoxShadow(
+                    color: AppTheme.black.withOpacity(0.2),
+                    blurRadius: AppTheme.elevationHigh,
+                    offset: const Offset(0, 4),
+                  ),
+                ],
+              ),
+              child: const Icon(
+                Icons.emoji_events,
+                size: 48,
+                color: AppTheme.white,
+              ),
             ),
           ),
         ],
