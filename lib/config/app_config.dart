@@ -98,7 +98,7 @@ class AppConfig {
   /// Verbose backend logging - set to false to show only simple success/failure messages
   /// When false: Shows "✅ API endpoint loaded successfully" or "❌ API endpoint failed"
   /// When true: Shows full API request/response details including response bodies
-  static const bool verboseBackendLogging = false;
+  static const bool verboseBackendLogging = true;
   
 
   // MARK: - Test Data Settings (when useTestData is true)

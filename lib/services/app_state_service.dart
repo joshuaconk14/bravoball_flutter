@@ -291,6 +291,14 @@ class AppStateService extends ChangeNotifier {
   int _lastSessionTreatsAwarded = 0;
   int get lastSessionTreatsAwarded => _lastSessionTreatsAwarded;
   
+  // ✅ NEW: Store treat breakdown from last session completion (from backend)
+  Map<String, dynamic>? _lastSessionTreatBreakdown;
+  Map<String, dynamic>? get lastSessionTreatBreakdown => _lastSessionTreatBreakdown;
+  
+  // ✅ NEW: Store whether treats were already granted (from backend)
+  bool _lastSessionTreatsAlreadyGranted = false;
+  bool get lastSessionTreatsAlreadyGranted => _lastSessionTreatsAlreadyGranted;
+  
   // ✅ NEW: Mark that we've shown the streak loss dialog
   void markStreakLossDialogShown() {
     _hasJustLostStreak = false;
@@ -1153,14 +1161,22 @@ class AppStateService extends ChangeNotifier {
           // ✅ Extract treats from backend response
           final treatsAwarded = responseData['treats_awarded'] ?? 0;
           final treatsAlreadyGranted = responseData['treats_already_granted'] ?? false;
+          final treatBreakdown = responseData['treat_breakdown'];
           
-          // ✅ Store treats awarded for display in completion view
+          // ✅ Store treats awarded and breakdown for display in completion view
           _lastSessionTreatsAwarded = treatsAwarded;
+          _lastSessionTreatBreakdown = treatBreakdown != null 
+              ? Map<String, dynamic>.from(treatBreakdown) 
+              : null;
+          _lastSessionTreatsAlreadyGranted = treatsAlreadyGranted;
           
           if (kDebugMode) {
             print('✅ Session sync successful');
             print('   Treats awarded: $treatsAwarded');
             print('   Treats already granted: $treatsAlreadyGranted');
+            if (treatBreakdown != null) {
+              print('   Treat breakdown: $treatBreakdown');
+            }
           }
           
           // ✅ Refresh treats from backend if treats were awarded
@@ -1906,6 +1922,8 @@ class AppStateService extends ChangeNotifier {
     _editableSessionDrills.clear();
     _setSessionState(SessionState.idle);
     _lastSessionTreatsAwarded = 0; // ✅ Reset treats awarded when clearing session
+    _lastSessionTreatBreakdown = null; // ✅ Reset treat breakdown when clearing session
+    _lastSessionTreatsAlreadyGranted = false; // ✅ Reset treats already granted flag
     notifyListeners();
     _scheduleSessionDrillsSync();
   }
@@ -2263,6 +2281,8 @@ class AppStateService extends ChangeNotifier {
     if (kDebugMode) print('🔄 Resetting drill progress for new session...');
     
     _lastSessionTreatsAwarded = 0; // ✅ Reset treats awarded for new session
+    _lastSessionTreatBreakdown = null; // ✅ Reset treat breakdown for new session
+    _lastSessionTreatsAlreadyGranted = false; // ✅ Reset treats already granted flag
     
     for (int i = 0; i < _editableSessionDrills.length; i++) {
       final currentDrill = _editableSessionDrills[i];
@@ -2414,6 +2434,8 @@ class AppStateService extends ChangeNotifier {
     _highestStreak = 0;
     _countOfFullyCompletedSessions = 0;
     _lastSessionTreatsAwarded = 0; // ✅ Reset treats awarded on logout
+    _lastSessionTreatBreakdown = null; // ✅ Reset treat breakdown on logout
+    _lastSessionTreatsAlreadyGranted = false; // ✅ Reset treats already granted flag
     _savedDrillGroups.clear();
     _likedDrills.clear();
     // ✅ ADDED: Clear custom drills on logout

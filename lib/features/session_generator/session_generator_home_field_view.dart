@@ -682,6 +682,8 @@ class _SessionGeneratorHomeFieldViewState extends State<SessionGeneratorHomeFiel
           isFirstSessionOfDay: isFirstSessionOfDay,
           sessionsCompletedToday: sessionsToday, // ✅ Use actual count, not incremented
           treatsAwarded: appState.lastSessionTreatsAwarded, // ✅ Use treats from backend response
+          treatBreakdown: appState.lastSessionTreatBreakdown, // ✅ Use treat breakdown from backend response
+          treatsAlreadyGranted: appState.lastSessionTreatsAlreadyGranted, // ✅ Use treats already granted flag from backend
           onViewProgress: () async {
             appState.resetDrillProgressForNewSession();
             
