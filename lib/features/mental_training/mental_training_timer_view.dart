@@ -1077,7 +1077,7 @@ class _MentalTrainingTimerViewState extends State<MentalTrainingTimerView>
               width: 80,
               height: 80,
               decoration: BoxDecoration(
-                color: AppTheme.primaryYellow,
+              color: AppTheme.primaryYellow,
                 shape: BoxShape.circle,
                 boxShadow: [
                   BoxShadow(
