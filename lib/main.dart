@@ -1,3 +1,4 @@
+import 'dart:io' show Platform; // ✅ ADDED: For platform detection
 import 'package:flutter/material.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/services.dart'; // ✅ ADDED: For SystemChrome orientation locking
@@ -67,8 +68,16 @@ void main() async {
   await UserManagerService.instance.initialize();
   await AuthenticationService.shared.initialize();
   
-  // Initialize RevenueCat
-  final configuration = PurchasesConfiguration(PurchaseConfig.revenueCatApiKey);
+  // Initialize RevenueCat with platform-specific API key
+  final String revenueCatApiKey = Platform.isAndroid 
+      ? PurchaseConfig.revenueCatApiKeyAndroid 
+      : PurchaseConfig.revenueCatApiKeyIOS;
+  
+  if (kDebugMode) {
+    print('🔑 RevenueCat API Key: ${Platform.isAndroid ? "Android" : "iOS"}');
+  }
+  
+  final configuration = PurchasesConfiguration(revenueCatApiKey);
   await Purchases.configure(configuration);
   
   // ✅ CRITICAL: Identify returning users with RevenueCat
