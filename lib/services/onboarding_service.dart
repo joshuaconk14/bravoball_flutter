@@ -92,6 +92,28 @@ class OnboardingService {
             if (kDebugMode) {
               print('✅ OnboardingService: New user identified with RevenueCat as: $email');
             }
+            
+            // ✅ CRITICAL FOR PRODUCTION: Restore purchases after login
+            // This transfers any purchases made while anonymous to the identified account
+            // (e.g., if user purchased before registering)
+            try {
+              if (kDebugMode) {
+                print('🔄 OnboardingService: Restoring purchases for new user...');
+              }
+              
+              final customerInfo = await Purchases.restorePurchases();
+              
+              if (kDebugMode) {
+                print('✅ OnboardingService: Purchases restored');
+                print('   User ID: ${customerInfo.originalAppUserId}');
+                print('   Active Entitlements: ${customerInfo.entitlements.active.keys}');
+              }
+            } catch (restoreError) {
+              if (kDebugMode) {
+                print('⚠️ OnboardingService: Error restoring purchases (non-critical): $restoreError');
+              }
+              // Don't fail registration if restore fails - purchases will still work
+            }
           } catch (revenueCatError) {
             if (kDebugMode) {
               print('⚠️ OnboardingService: Failed to identify new user with RevenueCat: $revenueCatError');

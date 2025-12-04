@@ -120,6 +120,27 @@ void main() async {
       if (kDebugMode) {
         print('✅ Main: Returning user identified with RevenueCat as: ${userManager.email}');
       }
+      
+      // ✅ CRITICAL FOR PRODUCTION: Restore purchases after login
+      // This transfers any purchases made while anonymous to the identified account
+      try {
+        if (kDebugMode) {
+          print('🔄 Main: Restoring purchases for identified user...');
+        }
+        
+        final customerInfo = await Purchases.restorePurchases();
+        
+        if (kDebugMode) {
+          print('✅ Main: Purchases restored');
+          print('   User ID: ${customerInfo.originalAppUserId}');
+          print('   Active Entitlements: ${customerInfo.entitlements.active.keys}');
+        }
+      } catch (restoreError) {
+        if (kDebugMode) {
+          print('⚠️ Main: Error restoring purchases (non-critical): $restoreError');
+        }
+        // Don't fail app startup if restore fails - purchases will still work
+      }
     } catch (revenueCatError) {
       if (kDebugMode) {
         print('⚠️ Main: Failed to identify returning user with RevenueCat: $revenueCatError');
