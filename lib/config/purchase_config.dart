@@ -18,7 +18,10 @@ class PurchaseConfig {
   // ============================================================================
   
   /// RevenueCat API Key for iOS
-  static const String revenueCatApiKey = 'appl_OIYtlnvDkuuhmFAAWJojwiAgBxi';
+  static const String revenueCatApiKeyIOS = 'appl_OIYtlnvDkuuhmFAAWJojwiAgBxi';
+  
+  /// RevenueCat API Key for Android
+  static const String revenueCatApiKeyAndroid = 'goog_StgyfWJTGVIARJFEHIFtwKUjYLN';
 
   // ============================================================================
   // OFFERING IDENTIFIERS

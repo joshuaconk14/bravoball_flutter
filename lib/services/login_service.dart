@@ -139,6 +139,27 @@ class LoginService {
           if (kDebugMode) {
             print('✅ LoginService: User identified with RevenueCat as: ${loginResponse.email}');
           }
+          
+          // ✅ CRITICAL FOR PRODUCTION: Restore purchases after login
+          // This transfers any purchases made while anonymous to the identified account
+          try {
+            if (kDebugMode) {
+              print('🔄 LoginService: Restoring purchases for identified user...');
+            }
+            
+            final customerInfo = await Purchases.restorePurchases();
+            
+            if (kDebugMode) {
+              print('✅ LoginService: Purchases restored');
+              print('   User ID: ${customerInfo.originalAppUserId}');
+              print('   Active Entitlements: ${customerInfo.entitlements.active.keys}');
+            }
+          } catch (restoreError) {
+            if (kDebugMode) {
+              print('⚠️ LoginService: Error restoring purchases (non-critical): $restoreError');
+            }
+            // Don't fail login if restore fails - purchases will still work
+          }
         } catch (revenueCatError) {
           if (kDebugMode) {
             print('⚠️ LoginService: Failed to identify user with RevenueCat: $revenueCatError');

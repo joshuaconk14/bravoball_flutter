@@ -1,3 +1,4 @@
+import 'dart:io' show Platform; // ✅ ADDED: For platform detection
 import 'package:flutter/material.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/services.dart'; // ✅ ADDED: For SystemChrome orientation locking
@@ -67,8 +68,16 @@ void main() async {
   await UserManagerService.instance.initialize();
   await AuthenticationService.shared.initialize();
   
-  // Initialize RevenueCat
-  final configuration = PurchasesConfiguration(PurchaseConfig.revenueCatApiKey);
+  // Initialize RevenueCat with platform-specific API key
+  final String revenueCatApiKey = Platform.isAndroid 
+      ? PurchaseConfig.revenueCatApiKeyAndroid 
+      : PurchaseConfig.revenueCatApiKeyIOS;
+  
+  if (kDebugMode) {
+    print('🔑 RevenueCat API Key: ${Platform.isAndroid ? "Android" : "iOS"}');
+  }
+  
+  final configuration = PurchasesConfiguration(revenueCatApiKey);
   await Purchases.configure(configuration);
   
   // ✅ CRITICAL: Identify returning users with RevenueCat
@@ -110,6 +119,27 @@ void main() async {
       
       if (kDebugMode) {
         print('✅ Main: Returning user identified with RevenueCat as: ${userManager.email}');
+      }
+      
+      // ✅ CRITICAL FOR PRODUCTION: Restore purchases after login
+      // This transfers any purchases made while anonymous to the identified account
+      try {
+        if (kDebugMode) {
+          print('🔄 Main: Restoring purchases for identified user...');
+        }
+        
+        final customerInfo = await Purchases.restorePurchases();
+        
+        if (kDebugMode) {
+          print('✅ Main: Purchases restored');
+          print('   User ID: ${customerInfo.originalAppUserId}');
+          print('   Active Entitlements: ${customerInfo.entitlements.active.keys}');
+        }
+      } catch (restoreError) {
+        if (kDebugMode) {
+          print('⚠️ Main: Error restoring purchases (non-critical): $restoreError');
+        }
+        // Don't fail app startup if restore fails - purchases will still work
       }
     } catch (revenueCatError) {
       if (kDebugMode) {

@@ -40,12 +40,12 @@ android {
         versionName = flutter.versionName
 
         // Support for multiple CPU architectures including 64-bit devices
-        // Note: x86_64 excluded from production builds as it's only needed for emulators
-        // and Rive's x86_64 libraries don't support 16 KB page sizes yet
+        // Note: x86_64 included for emulator testing (debug builds)
+        // For release builds, x86_64 will be excluded via splits to avoid Rive 16KB page size issues
         ndk {
-            abiFilters += listOf("armeabi-v7a", "arm64-v8a")
-            // x86_64 removed: only needed for emulators, not production devices
-            // Re-add when Rive updates librive_text.so with 16 KB support for x86_64
+            abiFilters += listOf("armeabi-v7a", "arm64-v8a", "x86_64")
+            // x86_64 included for emulator testing
+            // Release builds will exclude x86_64 via splits configuration
         }
         
         // Support for 16 KB page sizes - NDK r27+ configuration

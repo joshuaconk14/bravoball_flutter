@@ -7,6 +7,7 @@ import '../../services/ad_service.dart'; // ✅ ADDED: Import AdService
 import '../../utils/haptic_utils.dart';
 import '../../services/app_rating_service.dart';
 import '../../services/user_manager_service.dart';
+import 'treat_reward_breakdown_view.dart';
 
 class SessionCompletionView extends StatefulWidget {
   final int currentStreak;
@@ -15,6 +16,8 @@ class SessionCompletionView extends StatefulWidget {
   final bool isFirstSessionOfDay;
   final int sessionsCompletedToday;
   final int treatsAwarded; // ✅ Treats awarded from backend
+  final Map<String, dynamic>? treatBreakdown; // ✅ Treat breakdown from backend
+  final bool treatsAlreadyGranted; // ✅ Whether treats were already granted
   final VoidCallback? onViewProgress;
   final VoidCallback? onBackToHome;
 
@@ -26,6 +29,8 @@ class SessionCompletionView extends StatefulWidget {
     required this.isFirstSessionOfDay,
     required this.sessionsCompletedToday,
     required this.treatsAwarded, // ✅ Required - backend provides this
+    this.treatBreakdown, // ✅ Optional - treat breakdown from backend
+    this.treatsAlreadyGranted = false, // ✅ Whether treats were already granted
     this.onViewProgress,
     this.onBackToHome,
   });
@@ -156,6 +161,20 @@ class _SessionCompletionViewState extends State<SessionCompletionView>
     
     await Future.delayed(const Duration(milliseconds: 300));
     _treatsController.forward();
+  }
+  
+  void _navigateToBreakdown() {
+    Navigator.of(context).push(
+      MaterialPageRoute(
+        builder: (_) => TreatRewardBreakdownView(
+          treatsAwarded: widget.treatsAwarded,
+          treatBreakdown: widget.treatBreakdown,
+          treatsAlreadyGranted: widget.treatsAlreadyGranted,
+          onViewProgress: widget.onViewProgress,
+          onBackToHome: widget.onBackToHome,
+        ),
+      ),
+    );
   }
 
   @override
@@ -295,18 +314,19 @@ class _SessionCompletionViewState extends State<SessionCompletionView>
                     },
                   ),
                 
-                const Spacer(), // Use spacer to push buttons to bottom
+                const Spacer(), // Use spacer for spacing
                 
-                // Action buttons - always visible at bottom
-                AnimatedBuilder(
-                  animation: _fadeAnimation,
-                  builder: (context, child) {
-                    return Opacity(
-                      opacity: _fadeAnimation.value,
-                      child: _buildActionButtons(),
-                    );
-                  },
-                ),
+                // Next button to view treat breakdown (only for authenticated users)
+                if (!UserManagerService.instance.isGuestMode)
+                  AnimatedBuilder(
+                    animation: _fadeAnimation,
+                    builder: (context, child) {
+                      return Opacity(
+                        opacity: _fadeAnimation.value,
+                        child: _buildNextButton(),
+                      );
+                    },
+                  ),
                 
                 const SizedBox(height: 16), // Bottom padding
               ],
@@ -636,61 +656,39 @@ class _SessionCompletionViewState extends State<SessionCompletionView>
     );
   }
 
-  Widget _buildActionButtons() {
-    return Column(
-      children: [
-        // View Progress button
-        SizedBox(
-          width: double.infinity,
-          height: 56,
-          child: ElevatedButton(
-            onPressed: widget.onViewProgress,
-            style: ElevatedButton.styleFrom(
-              backgroundColor: Colors.white,
-              foregroundColor: AppTheme.primaryYellow,
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(12),
-              ),
-              elevation: 0,
-            ),
-            child: const Text(
-              'View Progress',
+  Widget _buildNextButton() {
+    return SizedBox(
+      width: double.infinity,
+      height: 56,
+      child: ElevatedButton(
+        onPressed: _navigateToBreakdown,
+        style: ElevatedButton.styleFrom(
+          backgroundColor: Colors.white,
+          foregroundColor: AppTheme.primaryYellow,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(12),
+          ),
+          elevation: 0,
+        ),
+        child: const Row(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Text(
+              'Next',
               style: TextStyle(
                 fontFamily: 'Poppins',
                 fontSize: 16,
                 fontWeight: FontWeight.w600,
               ),
             ),
-          ),
-        ),
-        
-        const SizedBox(height: 12),
-        
-        // Back to Home button
-        SizedBox(
-          width: double.infinity,
-          height: 56,
-          child: ElevatedButton(
-            onPressed: widget.onBackToHome,
-            style: ElevatedButton.styleFrom(
-              backgroundColor: AppTheme.primaryGreen,
-              foregroundColor: Colors.white,
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(12),
-              ),
-              elevation: 0,
+            SizedBox(width: 8),
+            Icon(
+              Icons.arrow_forward,
+              size: 20,
             ),
-            child: const Text(
-              'Back to Home Page',
-              style: TextStyle(
-                fontFamily: 'Poppins',
-                fontSize: 16,
-                fontWeight: FontWeight.w600,
-              ),
-            ),
-          ),
+          ],
         ),
-      ],
+      ),
     );
   }
 } 
