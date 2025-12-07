@@ -93,7 +93,11 @@
           "familyShareable" : false,
           "groupNumber" : 1,
           "internalID" : "B2FAC0D4",
-          "introductoryOffer" : null,
+          "introductoryOffer" : {
+            "displayPrice" : "0.00",
+            "paymentMode" : "freeTrial",
+            "subscriptionPeriod" : "P7D"
+          },
           "localizations" : [
             {
               "description" : "",
@@ -121,7 +125,11 @@
           "familyShareable" : false,
           "groupNumber" : 1,
           "internalID" : "0A8A247A",
-          "introductoryOffer" : null,
+          "introductoryOffer" : {
+            "displayPrice" : "0.00",
+            "paymentMode" : "freeTrial",
+            "subscriptionPeriod" : "P7D"
+          },
           "localizations" : [
             {
               "description" : "",
