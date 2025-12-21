@@ -1,3 +1,5 @@
+import '../config/skill_config.dart';
+
 enum FilterType { time, equipment, trainingStyle, location, difficulty }
 
 class FilterOptions {
@@ -22,6 +24,10 @@ class FilterOptions {
   ];
 }
 
+/// UI model for skill categories used in filtering
+/// 
+/// This model combines skill category data with UI-specific properties (icons).
+/// Sub-skills are sourced from [SkillConfig] to maintain a single source of truth.
 class SkillCategory {
   final String name;
   final List<String> subSkills;
@@ -34,84 +40,49 @@ class SkillCategory {
   });
 }
 
+/// Skill categories for UI filtering
+/// 
+/// Uses [SkillConfig] as the source of truth for sub-skills to avoid duplication.
+/// Icons remain here as they are UI-specific presentation concerns.
 class SkillCategories {
-  static const List<SkillCategory> categories = [
+  /// List of skill categories with their sub-skills and icons
+  /// 
+  /// Computed once at initialization to avoid recreating objects on each access.
+  /// Sub-skills are sourced from [SkillConfig] to maintain consistency.
+  static final List<SkillCategory> categories = [
     SkillCategory(
       name: "Passing",
-      subSkills: [
-        "Short passing",
-        "Long passing",
-        "One touch passing",
-        "Technique",
-        "Passing with movement"
-      ],
+      subSkills: SkillConfig.getSubSkillsForCategory("Passing"),
       icon: "passing_icon",
     ),
     SkillCategory(
       name: "Shooting",
-      subSkills: [
-        "Power shots",
-        "Finesse shots",
-        "First time shots",
-        "1v1 to shoot",
-        "Shooting on the run",
-        "Volleying"
-      ],
+      subSkills: SkillConfig.getSubSkillsForCategory("Shooting"),
       icon: "shooting_icon",
     ),
     SkillCategory(
       name: "Dribbling",
-      subSkills: [
-        "Close control",
-        "Speed dribbling",
-        "1v1 moves",
-        "Change of direction",
-        "Ball mastery"
-      ],
+      subSkills: SkillConfig.getSubSkillsForCategory("Dribbling"),
       icon: "dribbling_icon",
     ),
     SkillCategory(
       name: "First Touch",
-      subSkills: [
-        "Ground control",
-        "Aerial control",
-        "Turn with ball",
-        "Touch and move",
-        "Juggling"
-      ],
+      subSkills: SkillConfig.getSubSkillsForCategory("First Touch"),
       icon: "first_touch_icon",
     ),
     SkillCategory(
       name: "Defending",
-      subSkills: [
-        "Tackling",
-        "Marking",
-        "Intercepting",
-        "Positioning",
-        "Agility",
-        "Aerial defending"
-      ],
+      subSkills: SkillConfig.getSubSkillsForCategory("Defending"),
       icon: "defending_icon",
     ),
     SkillCategory(
       name: "Goalkeeping",
-      subSkills: [
-        "Hand eye coordination",
-        "Diving",
-        "Reflexes",
-        "Shot stopping",
-        "Positioning",
-        "Catching"
-      ],
+      subSkills: SkillConfig.getSubSkillsForCategory("Goalkeeping"),
       icon: "goalkeeping_icon",
     ),
     SkillCategory(
       name: "Fitness",
-      subSkills: [
-        "Speed",
-        "Endurance",
-        "Agility"
-      ],
+      subSkills: SkillConfig.getSubSkillsForCategory("Fitness"),
       icon: "fitness_icon",
     ),
   ];

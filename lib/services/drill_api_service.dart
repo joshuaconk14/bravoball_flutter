@@ -1,5 +1,6 @@
 import 'package:flutter/foundation.dart';
 import '../config/app_config.dart';
+import '../config/skill_config.dart';
 import '../models/api_response_models.dart';
 import '../models/drill_model.dart';
 import 'api_service.dart';
@@ -194,17 +195,7 @@ class DrillApiService {
 
   /// Map API skill category to app skill category
   String _mapSkillCategory(String apiCategory) {
-    const skillMap = {
-      'passing': 'Passing',
-      'shooting': 'Shooting',
-      'dribbling': 'Dribbling',
-      'first_touch': 'First Touch',
-      'fitness': 'Fitness',
-      'defending': 'Defending',
-      'goalkeeping': 'Goalkeeping', // ✅ ADDED: Missing goalkeeping mapping
-    };
-    
-    return skillMap[apiCategory.toLowerCase()] ?? apiCategory;
+    return SkillConfig.mapSkillCategory(apiCategory);
   }
 
   /// Map API difficulty to app difficulty

@@ -5,6 +5,7 @@ import '../models/editable_drill_model.dart';
 import '../models/drill_group_model.dart';
 import '../models/filter_models.dart';
 import '../config/app_config.dart';
+import '../config/skill_config.dart';
 import '../services/drill_api_service.dart';
 import './test_data_service.dart';
 import './guest_drill_service.dart';
@@ -1809,42 +1810,7 @@ class AppStateService extends ChangeNotifier {
   }
 
   String _mapBackendSubSkillToFrontend(String backendSubSkill) {
-    const subSkillMap = {
-      'close_control': 'Close control',
-      'speed_dribbling': 'Speed dribbling',
-      '1v1_moves': '1v1 moves',
-      'change_of_direction': 'Change of direction',
-      'ball_mastery': 'Ball mastery',
-      'ground_control': 'Ground control',
-      'aerial_control': 'Aerial control',
-      'turn_with_ball': 'Turn with ball',
-      'touch_and_move': 'Touch and move',
-      'juggling': 'Juggling',
-      'short_passing': 'Short passing',
-      'long_passing': 'Long passing',
-      'one_touch_passing': 'One touch passing',
-      'technique': 'Technique',
-      'passing_with_movement': 'Passing with movement',
-      'power_shots': 'Power shots',
-      'finesse_shots': 'Finesse shots',
-      'first_time_shots': 'First time shots',
-      '1v1_to_shoot': '1v1 to shoot',
-      'shooting_on_the_run': 'Shooting on the run',
-      'volleying': 'Volleying',
-      'tackling': 'Tackling',
-      'marking': 'Marking',
-      'intercepting': 'Intercepting',
-      'positioning': 'Positioning',
-      'agility': 'Agility',
-      'aerial_defending': 'Aerial defending',
-      'hand_eye_coordination': 'Hand eye coordination',
-      'diving': 'Diving',
-      'reflexes': 'Reflexes',
-      'shot_stopping': 'Shot stopping',
-      'catching': 'Catching',
-      'general': 'General',
-    };
-    return subSkillMap[backendSubSkill.toLowerCase()] ?? backendSubSkill;
+    return SkillConfig.mapSubSkill(backendSubSkill);
   }
 
   // ===== SESSION DRILL MANAGEMENT SECTION =====
