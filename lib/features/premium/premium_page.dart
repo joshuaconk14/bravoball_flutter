@@ -459,7 +459,7 @@ class _PremiumPageState extends State<PremiumPage> {
         
         // Trial info
         const Text(
-          '7-day free trial, cancel anytime',
+          '3-day free trial, cancel anytime',
           style: TextStyle(
             fontSize: 12,
             color: AppTheme.primaryGray,

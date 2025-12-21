@@ -10,6 +10,7 @@ import '../../services/custom_drill_service.dart';
 import '../../services/app_state_service.dart';
 import '../../services/video_file_service.dart'; // ✅ ADDED: Import video file service
 import '../../services/permission_service.dart'; // ✅ ADDED: Import permission service
+import '../../config/skill_config.dart';
 import '../../constants/app_theme.dart';
 import '../../utils/haptic_utils.dart';
 import '../../widgets/bravo_button.dart';
@@ -79,14 +80,6 @@ class _CreateDrillSheetState extends State<CreateDrillSheet> {
     'High',
   ];
 
-  final Map<String, List<String>> _skillSubSkills = {
-    'Passing': ['Short Passing', 'Long Passing', 'One-Touch Passing', 'Through Balls', 'Crossing'],
-    'Shooting': ['Power Shooting', 'Accuracy Shooting', 'Volleys', 'Headers', 'Free Kicks'],
-    'Dribbling': ['Ball Control', 'Speed Dribbling', 'Close Control', 'Turns', 'Feints'],
-    'First Touch': ['Ground Control', 'Aerial Control', 'Chest Control', 'Thigh Control'],
-    'Defending': ['Tackling', 'Marking', 'Interceptions', 'Clearances', 'Positioning'],
-    'Fitness': ['Endurance', 'Speed', 'Agility', 'Strength', 'Recovery'],
-  };
 
   @override
   void dispose() {
@@ -1038,12 +1031,12 @@ Custom drills are personalized training exercises that you create specifically f
                     const SizedBox(height: 16),
                     
                     // Sub-skills
-                    if (_skillSubSkills[_selectedSkill] != null) ...[
+                    if (SkillConfig.getSubSkillsForCategory(_selectedSkill).isNotEmpty) ...[
                       const Text('Sub-skills (Optional):', style: TextStyle(fontWeight: FontWeight.w600)),
                       const SizedBox(height: 8),
                       Wrap(
                         spacing: 8,
-                        children: _skillSubSkills[_selectedSkill]!.map((subSkill) {
+                        children: SkillConfig.getSubSkillsForCategory(_selectedSkill).map((subSkill) {
                           final isSelected = _subSkills.contains(subSkill);
                           return FilterChip(
                             label: Text(subSkill),

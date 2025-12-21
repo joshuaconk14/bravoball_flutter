@@ -6,6 +6,7 @@ import '../../models/drill_model.dart';
 import '../../services/custom_drill_service.dart';
 import '../../services/app_state_service.dart';
 import '../../services/video_file_service.dart'; // ✅ ADDED: Import video file service
+import '../../config/skill_config.dart';
 import '../../constants/app_theme.dart';
 import '../../utils/haptic_utils.dart';
 import '../../widgets/bravo_button.dart';
@@ -75,14 +76,6 @@ class _EditCustomDrillSheetState extends State<EditCustomDrillSheet> {
     'High',
   ];
 
-  final Map<String, List<String>> _skillSubSkills = {
-    'Passing': ['Short Passing', 'Long Passing', 'One-Touch Passing', 'Through Balls', 'Crossing'],
-    'Shooting': ['Power Shooting', 'Accuracy Shooting', 'Volleys', 'Headers', 'Free Kicks'],
-    'Dribbling': ['Ball Control', 'Speed Dribbling', 'Close Control', 'Turns', 'Feints'],
-    'First Touch': ['Ground Control', 'Aerial Control', 'Chest Control', 'Thigh Control'],
-    'Defending': ['Tackling', 'Marking', 'Interceptions', 'Clearances', 'Positioning'],
-    'Fitness': ['Endurance', 'Speed', 'Agility', 'Strength', 'Recovery'],
-  };
 
   @override
   void initState() {
@@ -456,7 +449,7 @@ class _EditCustomDrillSheetState extends State<EditCustomDrillSheet> {
               const SizedBox(height: 20),
               
               // Sub-skills
-              if (_skillSubSkills[_selectedSkill] != null) ...[
+              if (SkillConfig.getSubSkillsForCategory(_selectedSkill).isNotEmpty) ...[
                 Text(
                   'Sub-skills (optional)',
                   style: TextStyle(
@@ -469,7 +462,7 @@ class _EditCustomDrillSheetState extends State<EditCustomDrillSheet> {
                 Wrap(
                   spacing: 8,
                   runSpacing: 8,
-                  children: _skillSubSkills[_selectedSkill]!.map((subSkill) {
+                  children: SkillConfig.getSubSkillsForCategory(_selectedSkill).map((subSkill) {
                     final isSelected = _subSkills.contains(subSkill);
                     return FilterChip(
                       label: Text(subSkill),
