@@ -6,6 +6,7 @@ import '../../widgets/drill_video_background.dart'; // ✅ ADDED: Import video b
 import '../../constants/app_theme.dart';
 import '../../utils/haptic_utils.dart';
 import '../../utils/skill_utils.dart';
+import '../../utils/preference_utils.dart';
 import '../../services/app_state_service.dart';
 import '../../widgets/save_to_collection_dialog.dart';
 import '../create_drill/edit_custom_drill_sheet.dart'; // ✅ ADDED: Import edit custom drill sheet
@@ -651,6 +652,15 @@ class _DrillDetailViewState extends State<DrillDetailView>
             _buildStatChip('${currentDrill.duration} min', Icons.schedule),
           ],
         ),
+        
+        const SizedBox(height: 12),
+        
+        // Difficulty row
+        Row(
+          children: [
+            _buildDifficultyChip(currentDrill.difficulty),
+          ],
+        ),
       ],
     );
   }
@@ -678,6 +688,55 @@ class _DrillDetailViewState extends State<DrillDetailView>
               fontWeight: FontWeight.w500,
               fontSize: 12,
               color: Colors.grey.shade600,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildDifficultyChip(String difficulty) {
+    // Get color based on difficulty level
+    Color difficultyColor;
+    switch (difficulty.toLowerCase()) {
+      case 'beginner':
+        difficultyColor = Colors.green;
+        break;
+      case 'intermediate':
+        difficultyColor = Colors.orange;
+        break;
+      case 'advanced':
+        difficultyColor = Colors.red;
+        break;
+      default:
+        difficultyColor = Colors.grey;
+    }
+
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+      decoration: BoxDecoration(
+        color: difficultyColor.withValues(alpha: 0.1),
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(
+          color: difficultyColor.withValues(alpha: 0.3),
+        ),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(
+            Icons.trending_up,
+            size: 16,
+            color: difficultyColor,
+          ),
+          const SizedBox(width: 6),
+          Text(
+            PreferenceUtils.formatDifficultyForDisplay(difficulty),
+            style: TextStyle(
+              fontFamily: 'Poppins',
+              fontWeight: FontWeight.w600,
+              fontSize: 12,
+              color: difficultyColor,
             ),
           ),
         ],

@@ -5,6 +5,7 @@ import '../../constants/app_theme.dart';
 import '../../config/app_config.dart';
 import '../../services/test_data_service.dart';
 import '../../services/app_state_service.dart';
+import '../../services/tutorial_service.dart'; // ✅ ADDED: Import tutorial service
 import '../../utils/skill_utils.dart'; // ✅ ADDED: Import centralized skill utilities
 
 class DebugSettingsView extends StatefulWidget {
@@ -359,6 +360,15 @@ class _DebugSettingsViewState extends State<DebugSettingsView> {
               subtitle: 'Show all test drills',
               icon: Icons.view_list,
               onTap: () => _showTestDataDialog(),
+            ),
+            
+            const SizedBox(height: 8),
+            
+            _buildActionButton(
+              title: 'Reset Tutorial',
+              subtitle: 'Reset tutorial seen state',
+              icon: Icons.school_outlined,
+              onTap: () => _resetTutorial(),
             ),
             
             const SizedBox(height: 8),
@@ -727,6 +737,17 @@ class _DebugSettingsViewState extends State<DebugSettingsView> {
       const SnackBar(
         content: Text('Debug info copied to clipboard'),
         backgroundColor: Colors.green,
+      ),
+    );
+  }
+
+  void _resetTutorial() async {
+    await TutorialService.instance.resetTutorial();
+    TestDataService.debugLog('Tutorial state reset');
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(
+        content: Text('Tutorial state reset. Tutorial will show on next app launch.'),
+        backgroundColor: Colors.blue,
       ),
     );
   }

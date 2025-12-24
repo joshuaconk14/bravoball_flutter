@@ -87,192 +87,145 @@ class FilterDropdown extends StatelessWidget {
   final FilterType filterType;
   final List<String> options;
   final String title;
+  final String? selectedValue;
+  final ValueChanged<String?> onChanged;
 
   const FilterDropdown({
     Key? key,
     required this.filterType,
     required this.options,
     required this.title,
+    this.selectedValue,
+    required this.onChanged,
   }) : super(key: key);
 
   @override
   Widget build(BuildContext context) {
-    return Consumer<AppStateService>(
-      builder: (context, appState, child) {
-        final selectedValue = _getSelectedValue(filterType, appState);
-        
-        // Validate that the selected value exists in the options
-        final validatedValue = (selectedValue != null && options.contains(selectedValue)) 
-            ? selectedValue 
-            : null;
-        
-        // Debug logging and cleanup for invalid values
-        if (selectedValue != null && !options.contains(selectedValue)) {
-          if (kDebugMode) {
-            print('🔧 FilterDropdown: Invalid value "$selectedValue" for $title');
-            print('   Available options: $options');
-            print('   Clearing invalid value from app state');
-          }
-          
-          // Clear the invalid value from app state
-          WidgetsBinding.instance.addPostFrameCallback((_) {
-            _updateFilter(filterType, null, appState);
-          });
-        }
-        
-        return Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(
-              title,
-              style: const TextStyle(
-                fontFamily: 'Poppins',
-                fontWeight: FontWeight.bold,
-                fontSize: 16,
-              ),
-            ),
-            const SizedBox(height: 8),
-            Container(
-              width: double.infinity,
-              padding: const EdgeInsets.symmetric(horizontal: 12),
-              decoration: BoxDecoration(
-                border: Border.all(color: Colors.grey.shade300),
-                borderRadius: BorderRadius.circular(8),
-              ),
-              child: DropdownButton<String>(
-                value: validatedValue,
-                hint: Text('Select $title'),
-                isExpanded: true,
-                underline: Container(),
-                onChanged: (value) => _updateFilter(filterType, value, appState),
-                items: options.map((String option) {
-                  return DropdownMenuItem<String>(
-                    value: option,
-                    child: Text(
-                      PreferenceUtils.formatPreferenceForDisplay(option), // ✅ UPDATED: Use centralized preference formatting
-                      style: const TextStyle(
-                        fontFamily: 'Poppins',
-                        fontSize: 14,
-                      ),
-                    ),
-                  );
-                }).toList(),
-              ),
-            ),
-          ],
-        );
-      },
+    // Validate that the selected value exists in the options
+    final validatedValue = (selectedValue != null && options.contains(selectedValue)) 
+        ? selectedValue 
+        : null;
+    
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          title,
+          style: const TextStyle(
+            fontFamily: 'Poppins',
+            fontWeight: FontWeight.bold,
+            fontSize: 16,
+          ),
+        ),
+        const SizedBox(height: 8),
+        Container(
+          width: double.infinity,
+          padding: const EdgeInsets.symmetric(horizontal: 12),
+          decoration: BoxDecoration(
+            border: Border.all(color: Colors.grey.shade300),
+            borderRadius: BorderRadius.circular(8),
+          ),
+          child: DropdownButton<String>(
+            value: validatedValue,
+            hint: Text('Select $title'),
+            isExpanded: true,
+            underline: Container(),
+            onChanged: onChanged,
+            items: options.map((String option) {
+              return DropdownMenuItem<String>(
+                value: option,
+                child: Text(
+                  PreferenceUtils.formatPreferenceForDisplay(option), // ✅ UPDATED: Use centralized preference formatting
+                  style: const TextStyle(
+                    fontFamily: 'Poppins',
+                    fontSize: 14,
+                  ),
+                ),
+              );
+            }).toList(),
+          ),
+        ),
+      ],
     );
-  }
-
-  String? _getSelectedValue(FilterType filterType, AppStateService appState) {
-    switch (filterType) {
-      case FilterType.time:
-        return appState.preferences.selectedTime;
-      case FilterType.trainingStyle:
-        return appState.preferences.selectedTrainingStyle;
-      case FilterType.location:
-        return appState.preferences.selectedLocation;
-      case FilterType.difficulty:
-        return appState.preferences.selectedDifficulty;
-      case FilterType.equipment:
-        return null;
-    }
-  }
-
-  void _updateFilter(FilterType filterType, String? value, AppStateService appState) {
-    switch (filterType) {
-      case FilterType.time:
-        appState.updateTimeFilter(value);
-        break;
-      case FilterType.trainingStyle:
-        appState.updateTrainingStyleFilter(value);
-        break;
-      case FilterType.location:
-        appState.updateLocationFilter(value);
-        break;
-      case FilterType.difficulty:
-        appState.updateDifficultyFilter(value);
-        break;
-      case FilterType.equipment:
-        break;
-    }
   }
 }
 
 class EquipmentMultiSelect extends StatelessWidget {
-  const EquipmentMultiSelect({Key? key}) : super(key: key);
+  final Set<String> selectedEquipment;
+  final ValueChanged<Set<String>> onChanged;
+
+  const EquipmentMultiSelect({
+    Key? key,
+    required this.selectedEquipment,
+    required this.onChanged,
+  }) : super(key: key);
 
   @override
   Widget build(BuildContext context) {
-    return Consumer<AppStateService>(
-      builder: (context, appState, child) {
-        return Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            const Text(
-              'Equipment',
-              style: TextStyle(
-                fontFamily: 'Poppins',
-                fontWeight: FontWeight.bold,
-                fontSize: 16,
-              ),
-            ),
-            const SizedBox(height: 8),
-            Wrap(
-              spacing: 8,
-              runSpacing: 4,
-              children: FilterOptions.equipmentOptions.map((equipment) {
-                final isSelected = appState.preferences.selectedEquipment.contains(equipment);
-                return GestureDetector(
-                  onTap: () {
-                    HapticUtils.lightImpact(); // Light haptic for skill selection
-                    final newSelection = Set<String>.from(appState.preferences.selectedEquipment);
-                    if (isSelected) {
-                      newSelection.remove(equipment);
-                    } else {
-                      newSelection.add(equipment);
-                    }
-                    appState.updateEquipmentFilter(newSelection);
-                  },
-                  child: Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-                    decoration: BoxDecoration(
-                      color: isSelected ? AppTheme.primaryLightBlue : Colors.grey.shade100,
-                      borderRadius: BorderRadius.circular(20),
-                      border: Border.all(
-                        color: isSelected ? AppTheme.primaryLightBlue : Colors.grey.shade300,
-                        width: 2,
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        const Text(
+          'Equipment',
+          style: TextStyle(
+            fontFamily: 'Poppins',
+            fontWeight: FontWeight.bold,
+            fontSize: 16,
+          ),
+        ),
+        const SizedBox(height: 8),
+        Wrap(
+          spacing: 8,
+          runSpacing: 4,
+          children: FilterOptions.equipmentOptions.map((equipment) {
+            final isSelected = selectedEquipment.contains(equipment);
+            return GestureDetector(
+              onTap: () {
+                HapticUtils.lightImpact(); // Light haptic for equipment selection
+                final newSelection = Set<String>.from(selectedEquipment);
+                if (isSelected) {
+                  newSelection.remove(equipment);
+                } else {
+                  newSelection.add(equipment);
+                }
+                onChanged(newSelection);
+              },
+              child: Container(
+                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                decoration: BoxDecoration(
+                  color: isSelected ? AppTheme.primaryLightBlue : Colors.grey.shade100,
+                  borderRadius: BorderRadius.circular(20),
+                  border: Border.all(
+                    color: isSelected ? AppTheme.primaryLightBlue : Colors.grey.shade300,
+                    width: 2,
+                  ),
+                ),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    if (isSelected)
+                      const Icon(
+                        Icons.check_circle,
+                        color: Colors.white,
+                        size: 16,
+                      ),
+                    if (isSelected) const SizedBox(width: 6),
+                    Text(
+                      PreferenceUtils.formatEquipmentForDisplay(equipment), // ✅ UPDATED: Use centralized equipment formatting
+                      style: TextStyle(
+                        fontFamily: 'Poppins',
+                        fontSize: 14,
+                        fontWeight: isSelected ? FontWeight.w600 : FontWeight.w500,
+                        color: isSelected ? Colors.white : Colors.grey.shade700,
                       ),
                     ),
-                    child: Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        if (isSelected)
-                          const Icon(
-                            Icons.check_circle,
-                            color: Colors.white,
-                            size: 16,
-                          ),
-                        if (isSelected) const SizedBox(width: 6),
-                        Text(
-                          PreferenceUtils.formatEquipmentForDisplay(equipment), // ✅ UPDATED: Use centralized equipment formatting
-                          style: TextStyle(
-                            fontFamily: 'Poppins',
-                            fontSize: 14,
-                            fontWeight: isSelected ? FontWeight.w600 : FontWeight.w500,
-                            color: isSelected ? Colors.white : Colors.grey.shade700,
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                );
-              }).toList(),
-            ),
-          ],
-        );
-      },
+                  ],
+                ),
+              ),
+            );
+          }).toList(),
+        ),
+      ],
     );
   }
 }
@@ -315,6 +268,9 @@ class SkillSelector extends StatelessWidget {
   }
 
   Widget _buildSkillCategory(SkillCategory category) {
+    // Check if all sub-skills for this category are selected
+    final allSelected = category.subSkills.every((subSkill) => selectedSkills.contains(subSkill));
+    
     return ExpansionTile(
       title: Text(
         category.name,
@@ -331,56 +287,106 @@ class SkillSelector extends StatelessWidget {
       children: [
         Padding(
           padding: const EdgeInsets.only(left: 16, right: 16, bottom: 8),
-          child: Wrap(
-            spacing: 8,
-            runSpacing: 4,
-            children: category.subSkills.map((subSkill) {
-              final isSelected = selectedSkills.contains(subSkill);
-              return GestureDetector(
-                onTap: () {
-                  HapticUtils.lightImpact(); // Light haptic for sub-skill selection
-                  final newSelection = Set<String>.from(selectedSkills);
-                  if (isSelected) {
-                    newSelection.remove(subSkill);
-                  } else {
-                    newSelection.add(subSkill);
-                  }
-                  onChanged(newSelection);
-                },
-                child: Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-                  decoration: BoxDecoration(
-                    color: isSelected ? AppTheme.primaryLightBlue : Colors.grey.shade100,
-                    borderRadius: BorderRadius.circular(16),
-                    border: Border.all(
-                      color: isSelected ? AppTheme.primaryLightBlue : Colors.grey.shade300,
-                      width: 2,
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              // Select All / Deselect All button
+              Align(
+                alignment: Alignment.centerRight,
+                child: TextButton.icon(
+                  onPressed: () {
+                    HapticUtils.lightImpact(); // Light haptic for select all action
+                    final newSelection = Set<String>.from(selectedSkills);
+                    
+                    if (allSelected) {
+                      // Deselect all sub-skills for this category
+                      for (final subSkill in category.subSkills) {
+                        newSelection.remove(subSkill);
+                      }
+                    } else {
+                      // Select all sub-skills for this category
+                      for (final subSkill in category.subSkills) {
+                        newSelection.add(subSkill);
+                      }
+                    }
+                    
+                    onChanged(newSelection);
+                  },
+                  icon: Icon(
+                    allSelected ? Icons.check_box : Icons.check_box_outline_blank,
+                    size: 16,
+                    color: AppTheme.primaryLightBlue,
+                  ),
+                  label: Text(
+                    allSelected ? 'Deselect All' : 'Select All',
+                    style: TextStyle(
+                      fontFamily: 'Poppins',
+                      fontSize: 12,
+                      fontWeight: FontWeight.w600,
+                      color: AppTheme.primaryLightBlue,
                     ),
                   ),
-                  child: Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      if (isSelected)
-                        const Icon(
-                          Icons.check_circle,
-                          color: Colors.white,
-                          size: 14,
-                        ),
-                      if (isSelected) const SizedBox(width: 4),
-                      Text(
-                        SkillUtils.formatSkillForDisplay(subSkill), // ✅ UPDATED: Use centralized skill formatting
-                        style: TextStyle(
-                          fontFamily: 'Poppins',
-                          fontSize: 12,
-                          fontWeight: isSelected ? FontWeight.w600 : FontWeight.w500,
-                          color: isSelected ? Colors.white : Colors.grey.shade700,
-                        ),
-                      ),
-                    ],
+                  style: TextButton.styleFrom(
+                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                    minimumSize: Size.zero,
+                    tapTargetSize: MaterialTapTargetSize.shrinkWrap,
                   ),
                 ),
-              );
-            }).toList(),
+              ),
+              const SizedBox(height: 4),
+              // Sub-skills chips
+              Wrap(
+                spacing: 8,
+                runSpacing: 4,
+                children: category.subSkills.map((subSkill) {
+                  final isSelected = selectedSkills.contains(subSkill);
+                  return GestureDetector(
+                    onTap: () {
+                      HapticUtils.lightImpact(); // Light haptic for sub-skill selection
+                      final newSelection = Set<String>.from(selectedSkills);
+                      if (isSelected) {
+                        newSelection.remove(subSkill);
+                      } else {
+                        newSelection.add(subSkill);
+                      }
+                      onChanged(newSelection);
+                    },
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                      decoration: BoxDecoration(
+                        color: isSelected ? AppTheme.primaryLightBlue : Colors.grey.shade100,
+                        borderRadius: BorderRadius.circular(16),
+                        border: Border.all(
+                          color: isSelected ? AppTheme.primaryLightBlue : Colors.grey.shade300,
+                          width: 2,
+                        ),
+                      ),
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          if (isSelected)
+                            const Icon(
+                              Icons.check_circle,
+                              color: Colors.white,
+                              size: 14,
+                            ),
+                          if (isSelected) const SizedBox(width: 4),
+                          Text(
+                            SkillUtils.formatSkillForDisplay(subSkill), // ✅ UPDATED: Use centralized skill formatting
+                            style: TextStyle(
+                              fontFamily: 'Poppins',
+                              fontSize: 12,
+                              fontWeight: isSelected ? FontWeight.w600 : FontWeight.w500,
+                              color: isSelected ? Colors.white : Colors.grey.shade700,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  );
+                }).toList(),
+              ),
+            ],
           ),
         ),
       ],
@@ -407,13 +413,39 @@ class SkillSelector extends StatelessWidget {
   }
 }
 
-class FilterBottomSheet extends StatelessWidget {
+class FilterBottomSheet extends StatefulWidget {
   final FilterType filterType;
+  final String? initialValue;
+  final Set<String>? initialEquipment;
+  final ValueChanged<String?>? onApply;
+  final ValueChanged<Set<String>>? onApplyEquipment;
 
   const FilterBottomSheet({
     Key? key,
     required this.filterType,
+    this.initialValue,
+    this.initialEquipment,
+    this.onApply,
+    this.onApplyEquipment,
   }) : super(key: key);
+
+  @override
+  State<FilterBottomSheet> createState() => _FilterBottomSheetState();
+}
+
+class _FilterBottomSheetState extends State<FilterBottomSheet> {
+  late String? _localValue;
+  late Set<String> _localEquipment;
+
+  @override
+  void initState() {
+    super.initState();
+    // Initialize local state with initial values
+    _localValue = widget.initialValue;
+    _localEquipment = widget.initialEquipment != null 
+        ? Set<String>.from(widget.initialEquipment!)
+        : <String>{};
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -458,7 +490,13 @@ class FilterBottomSheet extends StatelessWidget {
               Expanded(
                 child: ElevatedButton(
                   onPressed: () {
-                    HapticUtils.lightImpact(); // Light haptic for apply
+                    HapticUtils.mediumImpact(); // Medium haptic for apply
+                    // Apply changes only when Apply is clicked
+                    if (widget.filterType == FilterType.equipment) {
+                      widget.onApplyEquipment?.call(_localEquipment);
+                    } else {
+                      widget.onApply?.call(_localValue);
+                    }
                     Navigator.pop(context);
                   },
                   style: ElevatedButton.styleFrom(
@@ -482,32 +520,63 @@ class FilterBottomSheet extends StatelessWidget {
   }
 
   Widget _buildFilterContent() {
-    switch (filterType) {
+    switch (widget.filterType) {
       case FilterType.time:
         return FilterDropdown(
-          filterType: filterType,
+          filterType: widget.filterType,
           options: FilterOptions.timeOptions,
           title: 'Time',
+          selectedValue: _localValue,
+          onChanged: (value) {
+            setState(() {
+              _localValue = value;
+            });
+          },
         );
       case FilterType.equipment:
-        return const EquipmentMultiSelect();
+        return EquipmentMultiSelect(
+          selectedEquipment: _localEquipment,
+          onChanged: (equipment) {
+            setState(() {
+              _localEquipment = equipment;
+            });
+          },
+        );
       case FilterType.trainingStyle:
         return FilterDropdown(
-          filterType: filterType,
+          filterType: widget.filterType,
           options: FilterOptions.trainingStyleOptions,
           title: 'Training Style',
+          selectedValue: _localValue,
+          onChanged: (value) {
+            setState(() {
+              _localValue = value;
+            });
+          },
         );
       case FilterType.location:
         return FilterDropdown(
-          filterType: filterType,
+          filterType: widget.filterType,
           options: FilterOptions.locationOptions,
           title: 'Location',
+          selectedValue: _localValue,
+          onChanged: (value) {
+            setState(() {
+              _localValue = value;
+            });
+          },
         );
       case FilterType.difficulty:
         return FilterDropdown(
-          filterType: filterType,
+          filterType: widget.filterType,
           options: FilterOptions.difficultyOptions,
           title: 'Difficulty',
+          selectedValue: _localValue,
+          onChanged: (value) {
+            setState(() {
+              _localValue = value;
+            });
+          },
         );
     }
   }
@@ -516,14 +585,22 @@ class FilterBottomSheet extends StatelessWidget {
 // Updated helper function to show filter bottom sheet
 void showFilterSheet(
   BuildContext context,
-  FilterType filterType,
-) {
+  FilterType filterType, {
+  String? initialValue,
+  Set<String>? initialEquipment,
+  ValueChanged<String?>? onApply,
+  ValueChanged<Set<String>>? onApplyEquipment,
+}) {
   showModalBottomSheet(
     context: context,
     isScrollControlled: true,
     backgroundColor: Colors.transparent,
     builder: (context) => FilterBottomSheet(
       filterType: filterType,
+      initialValue: initialValue,
+      initialEquipment: initialEquipment,
+      onApply: onApply,
+      onApplyEquipment: onApplyEquipment,
     ),
   );
 } 
