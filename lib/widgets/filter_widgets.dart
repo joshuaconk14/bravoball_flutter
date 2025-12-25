@@ -271,14 +271,43 @@ class SkillSelector extends StatelessWidget {
     // Check if all sub-skills for this category are selected
     final allSelected = category.subSkills.every((subSkill) => selectedSkills.contains(subSkill));
     
+    // Count how many skills are selected from this category
+    final selectedCount = category.subSkills.where((subSkill) => selectedSkills.contains(subSkill)).length;
+    final hasSelections = selectedCount > 0;
+    
     return ExpansionTile(
-      title: Text(
-        category.name,
-        style: const TextStyle(
-          fontFamily: 'Poppins',
-          fontWeight: FontWeight.w600,
-          fontSize: 15,
-        ),
+      title: Row(
+        children: [
+          Expanded(
+            child: Text(
+              category.name,
+              style: const TextStyle(
+                fontFamily: 'Poppins',
+                fontWeight: FontWeight.w600,
+                fontSize: 15,
+              ),
+            ),
+          ),
+          // Show count badge if there are selections
+          if (hasSelections)
+            Container(
+              margin: const EdgeInsets.only(left: 8),
+              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+              decoration: BoxDecoration(
+                color: AppTheme.primaryLightBlue,
+                borderRadius: BorderRadius.circular(12),
+              ),
+              child: Text(
+                '$selectedCount',
+                style: const TextStyle(
+                  fontFamily: 'Poppins',
+                  fontWeight: FontWeight.w600,
+                  fontSize: 12,
+                  color: Colors.white,
+                ),
+              ),
+            ),
+        ],
       ),
       leading: Icon(
         _getSkillIcon(category.name),
