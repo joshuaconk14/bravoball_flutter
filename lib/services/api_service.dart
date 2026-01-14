@@ -167,6 +167,7 @@ class ApiService {
           // Update tokens in user manager
           await userManager.updateUserData(
             email: userManager.email,
+            username: userManager.username,
             accessToken: newAccessToken,
             refreshToken: newRefreshToken ?? userManager.refreshToken,
           );

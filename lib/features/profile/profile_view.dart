@@ -194,13 +194,29 @@ class _ProfileViewState extends State<ProfileView> {
           ),
           
           const SizedBox(height: 12), // Reduced from 16
-          
-          // User Email
-          Text(
-            userManager.email.isNotEmpty ? userManager.email : 'Guest User',
-            style: AppTheme.titleLarge.copyWith(
-              color: AppTheme.primaryDark,
-            ),
+
+          Column(
+            children: [
+              // ✅ Username
+              if (userManager.username.isNotEmpty)
+                Text(
+                  userManager.username,
+                  style: AppTheme.titleLarge.copyWith(
+                    color: AppTheme.primaryDark,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+
+              const SizedBox(height: 4), // small spacing between username and email
+
+              // ✅ Email
+              Text(
+                userManager.email.isNotEmpty ? userManager.email : 'Guest User',
+                style: AppTheme.bodyMedium.copyWith(
+                  color: AppTheme.primaryGray,
+                ),
+              ),
+            ],
           ),
           
           // Login Status

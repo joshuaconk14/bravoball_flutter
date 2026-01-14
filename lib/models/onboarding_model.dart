@@ -2,6 +2,7 @@
 /// Mirrors Swift OnboardingData and backend onboarding payload
 class OnboardingData {
   final String email;
+  final String username;
   final String password;
   final String primaryGoal;
   final String trainingExperience;
@@ -19,6 +20,7 @@ class OnboardingData {
 
   OnboardingData({
     required this.email,
+    required this.username,
     required this.password,
     required this.primaryGoal,
     required this.trainingExperience,
@@ -37,6 +39,7 @@ class OnboardingData {
   Map<String, dynamic> toJson() {
     return {
       'email': email,
+      'username': username,
       'password': password,
       'primaryGoal': primaryGoal,
       'trainingExperience': trainingExperience,
@@ -56,6 +59,7 @@ class OnboardingData {
   factory OnboardingData.fromJson(Map<String, dynamic> json) {
     return OnboardingData(
       email: json['email'] ?? '',
+      username: json['username'] ?? '',
       password: json['password'] ?? '',
       primaryGoal: json['primaryGoal'] ?? '',
       trainingExperience: json['trainingExperience'] ?? '',

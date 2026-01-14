@@ -4,10 +4,10 @@ import '../../constants/app_theme.dart';
 import '../../services/user_manager_service.dart';
 import '../../services/email_verification_service.dart';
 import '../../models/email_verification_model.dart';
-import '../../widgets/bravo_button.dart'; // ✅ ADDED: Import BravoButton
-import '../../utils/haptic_utils.dart'; // ✅ ADDED: Import HapticUtils
-import '../auth/login_view.dart'; // ✅ ADDED: Import LoginView
-import '../../main.dart'; // ✅ ADDED: Import MyApp for navigation
+import '../../services/username_verification_service.dart';
+import '../../models/username_verification_model.dart';
+import '../../widgets/bravo_button.dart';
+import '../../utils/haptic_utils.dart';
 
 class EditDetailsView extends StatefulWidget {
   const EditDetailsView({Key? key}) : super(key: key);
@@ -18,58 +18,62 @@ class EditDetailsView extends StatefulWidget {
 
 class _EditDetailsViewState extends State<EditDetailsView> {
   final EmailVerificationService _emailVerificationService = EmailVerificationService.shared;
+  final UsernameVerificationService _usernameVerificationService = UsernameVerificationService.shared;
   late EmailVerificationModel _emailVerificationModel;
-  bool _isSending = false;
+  late UsernameVerificationModel _usernameVerificationModel;
+  bool _isSendingEmail = false;
+  bool _isSendingUsername = false;
 
   @override
   void initState() {
     super.initState();
     _emailVerificationModel = EmailVerificationModel();
-    // Set current email from user manager
+    _usernameVerificationModel = UsernameVerificationModel();
+
     final userManager = Provider.of<UserManagerService>(context, listen: false);
-    _emailVerificationModel.currentEmail = userManager.email;
+    _emailVerificationModel.newEmail = userManager.email;
+    _usernameVerificationModel.newUsername = userManager.username;
   }
 
   @override
   void dispose() {
     _emailVerificationModel.dispose();
+    _usernameVerificationModel.dispose();
     super.dispose();
   }
 
   Color _getMessageColor(String message) {
     final lowerMessage = message.toLowerCase();
-    
-    // Success messages
     if (lowerMessage.contains('sent') ||
         lowerMessage.contains('verified') ||
         lowerMessage.contains('successfully')) {
       return Colors.green;
     }
-    
-    // Error messages
     return AppTheme.error;
   }
 
   @override
   Widget build(BuildContext context) {
-    return ChangeNotifierProvider.value(
-      value: _emailVerificationModel,
+    return MultiProvider(
+      providers: [
+        ChangeNotifierProvider.value(value: _emailVerificationModel),
+        ChangeNotifierProvider.value(value: _usernameVerificationModel),
+      ],
       child: Scaffold(
-        backgroundColor: AppTheme.lightGray, // ✅ UPDATED: Changed to grayish background
+        backgroundColor: AppTheme.lightGray,
         appBar: AppBar(
-          backgroundColor: AppTheme.backgroundPrimary, // ✅ UPDATED: White AppBar background
+          backgroundColor: AppTheme.backgroundPrimary,
           elevation: 0,
           leading: IconButton(
-            icon: const Icon(Icons.arrow_back, color: AppTheme.primaryDark), // ✅ UPDATED: Back arrow instead of close
+            icon: const Icon(Icons.arrow_back, color: AppTheme.primaryDark),
             onPressed: () {
               HapticUtils.lightImpact();
-              _emailVerificationModel.resetEmailVerificationState();
               Navigator.of(context).pop();
             },
           ),
           title: const Text(
             'Edit Details',
-            style: AppTheme.titleLarge, // ✅ UPDATED: Use consistent title style
+            style: AppTheme.titleLarge,
           ),
         ),
         body: SafeArea(
@@ -77,8 +81,8 @@ class _EditDetailsViewState extends State<EditDetailsView> {
             child: Column(
               children: [
                 const SizedBox(height: 20),
-                
-                // Step content wrapped in white container
+
+                // ----- EMAIL SECTION -----
                 Container(
                   margin: const EdgeInsets.symmetric(horizontal: 20),
                   padding: const EdgeInsets.all(24),
@@ -87,26 +91,35 @@ class _EditDetailsViewState extends State<EditDetailsView> {
                     borderRadius: BorderRadius.circular(12),
                     boxShadow: [
                       BoxShadow(
-                        color: Colors.black.withValues(alpha: 0.05),
+                        color: Colors.black.withOpacity(0.05),
                         blurRadius: 10,
                         offset: const Offset(0, 2),
                       ),
                     ],
                   ),
-                  child: Consumer<EmailVerificationModel>(
-                    builder: (context, model, child) {
-                      switch (model.emailVerificationStep) {
-                        case 1:
-                          return _buildEmailStep();
-                        case 2:
-                          return _buildCodeStep();
-                        default:
-                          return _buildEmailStep();
-                      }
-                    },
-                  ),
+                  child: _buildEmailStep(),
                 ),
-                
+
+                const SizedBox(height: 20), // spacing between email & username sections
+
+                // ----- USERNAME SECTION -----
+                Container(
+                  margin: const EdgeInsets.symmetric(horizontal: 20),
+                  padding: const EdgeInsets.all(24),
+                  decoration: BoxDecoration(
+                    color: Colors.white,
+                    borderRadius: BorderRadius.circular(12),
+                    boxShadow: [
+                      BoxShadow(
+                        color: Colors.black.withOpacity(0.05),
+                        blurRadius: 10,
+                        offset: const Offset(0, 2),
+                      ),
+                    ],
+                  ),
+                  child: _buildUsernameStep(),
+                ),
+
                 const SizedBox(height: 20),
               ],
             ),
@@ -130,9 +143,9 @@ class _EditDetailsViewState extends State<EditDetailsView> {
           ),
           textAlign: TextAlign.center,
         ),
-        
+
         const SizedBox(height: 8), // Reduced spacing
-        
+
         Consumer<EmailVerificationModel>(
           builder: (context, model, child) {
             return Text(
@@ -146,9 +159,9 @@ class _EditDetailsViewState extends State<EditDetailsView> {
             );
           },
         ),
-        
+
         const SizedBox(height: 16),
-        
+
         Text(
           'Enter your new email address and we\'ll send you a verification code.',
           style: AppTheme.bodyMedium.copyWith(
@@ -157,9 +170,9 @@ class _EditDetailsViewState extends State<EditDetailsView> {
           ),
           textAlign: TextAlign.center,
         ),
-        
+
         const SizedBox(height: 24), // Reduced from AppTheme.spacingLarge
-        
+
         // New Email Field
         Consumer<EmailVerificationModel>(
           builder: (context, model, child) {
@@ -175,40 +188,40 @@ class _EditDetailsViewState extends State<EditDetailsView> {
                 prefixIcon: const Icon(Icons.email_outlined),
                 border: OutlineInputBorder(
                   borderRadius: BorderRadius.circular(12),
-                  borderSide: BorderSide(color: AppTheme.primaryYellow.withValues(alpha: 0.3)),
+                  borderSide: BorderSide(color: AppTheme.primaryYellow.withOpacity(0.3)),
                 ),
                 enabledBorder: OutlineInputBorder(
                   borderRadius: BorderRadius.circular(12),
-                  borderSide: BorderSide(color: AppTheme.primaryYellow.withValues(alpha: 0.3)),
+                  borderSide: BorderSide(color: AppTheme.primaryYellow.withOpacity(0.3)),
                 ),
                 focusedBorder: OutlineInputBorder(
                   borderRadius: BorderRadius.circular(12),
-                  borderSide: BorderSide(color: AppTheme.primaryYellow, width: 2),
+                  borderSide: const BorderSide(color: AppTheme.primaryYellow, width: 2),
                 ),
                 filled: true,
-                fillColor: AppTheme.lightGray.withValues(alpha: 0.1),
+                fillColor: AppTheme.lightGray.withOpacity(0.1),
                 contentPadding: const EdgeInsets.all(16),
               ),
             );
           },
         ),
-        
+
         const SizedBox(height: 16),
-        
+
         // Message
         Consumer<EmailVerificationModel>(
           builder: (context, model, child) {
             if (model.emailVerificationMessage.isEmpty) {
               return const SizedBox();
             }
-            
+
             return Container(
               padding: const EdgeInsets.all(12),
               margin: const EdgeInsets.only(bottom: 16),
               decoration: BoxDecoration(
-                color: _getMessageColor(model.emailVerificationMessage).withValues(alpha: 0.1),
+                color: _getMessageColor(model.emailVerificationMessage).withOpacity(0.1),
                 borderRadius: BorderRadius.circular(12),
-                border: Border.all(color: _getMessageColor(model.emailVerificationMessage).withValues(alpha: 0.3)),
+                border: Border.all(color: _getMessageColor(model.emailVerificationMessage).withOpacity(0.3)),
               ),
               child: Row(
                 children: [
@@ -233,29 +246,29 @@ class _EditDetailsViewState extends State<EditDetailsView> {
             );
           },
         ),
-        
+
         const SizedBox(height: 24),
-        
+
         // Send Verification Code Button
         Consumer<EmailVerificationModel>(
           builder: (context, model, child) {
             return BravoButton(
-              onPressed: model.newEmail.isEmpty || _isSending
+              onPressed: model.newEmail.isEmpty || _isSendingEmail
                   ? null
                   : () async {
                       HapticUtils.lightImpact(); // ✅ ADDED: Light haptic feedback
-                      setState(() => _isSending = true);
+                      setState(() => _isSendingEmail = true);
                       await _emailVerificationService.sendEmailVerification(
                         model.newEmail,
                         model,
                       );
-                      setState(() => _isSending = false);
+                      setState(() => _isSendingEmail = false);
                     },
-              text: _isSending ? 'Sending...' : 'Send Verification Code',
+              text: _isSendingEmail ? 'Sending...' : 'Send Verification Code',
               color: AppTheme.primaryYellow,
               backColor: AppTheme.primaryDarkYellow,
               textColor: Colors.white,
-              disabled: model.newEmail.isEmpty || _isSending,
+              disabled: model.newEmail.isEmpty || _isSendingEmail,
             );
           },
         ),
@@ -263,12 +276,15 @@ class _EditDetailsViewState extends State<EditDetailsView> {
     );
   }
 
-  // Step 2: Code Verification
-  Widget _buildCodeStep() {
+  // Step 1: Current Username Display and New Username Input
+  Widget _buildUsernameStep() {
+    final userManager = Provider.of<UserManagerService>(context, listen: false);
+
     return Column(
       children: [
+        // Header
         Text(
-          'Enter Verification Code',
+          'Update Your Username',
           style: AppTheme.headlineLarge.copyWith(
             fontSize: 22,
             color: AppTheme.primaryDark,
@@ -277,95 +293,92 @@ class _EditDetailsViewState extends State<EditDetailsView> {
           ),
           textAlign: TextAlign.center,
         ),
-        
+
         const SizedBox(height: 8),
-        
-        Consumer<EmailVerificationModel>(
-          builder: (context, model, child) {
-            return Text(
-              'We\'ve sent a 6-digit code to ${model.newEmail}',
-              style: AppTheme.bodyMedium.copyWith(
-                color: AppTheme.primaryGray,
-                fontFamily: AppTheme.fontPoppins,
-              ),
-              textAlign: TextAlign.center,
-            );
-          },
+
+        // Current username
+        Text(
+          'Current username: ${userManager.username.isNotEmpty ? userManager.username : 'Guest User'}',
+          style: AppTheme.bodyMedium.copyWith(
+            color: AppTheme.primaryGray,
+            fontFamily: AppTheme.fontPoppins,
+            fontSize: 14,
+          ),
+          textAlign: TextAlign.center,
         ),
-        
-        const SizedBox(height: 24),
-        
-        // Code Field
-        Consumer<EmailVerificationModel>(
-          builder: (context, model, child) {
-            return TextField(
-              onChanged: (value) {
-                // Limit to 6 digits
-                if (value.length <= 6) {
-                  model.emailVerificationCode = value;
-                }
-              },
-              keyboardType: TextInputType.number,
-              textInputAction: TextInputAction.done,
-              maxLength: 6,
-              decoration: InputDecoration(
-                labelText: '6-digit code',
-                hintText: 'Enter verification code',
-                prefixIcon: const Icon(Icons.security),
-                border: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(12),
-                  borderSide: BorderSide(color: AppTheme.primaryYellow.withValues(alpha: 0.3)),
-                ),
-                enabledBorder: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(12),
-                  borderSide: BorderSide(color: AppTheme.primaryYellow.withValues(alpha: 0.3)),
-                ),
-                focusedBorder: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(12),
-                  borderSide: BorderSide(color: AppTheme.primaryYellow, width: 2),
-                ),
-                filled: true,
-                fillColor: AppTheme.lightGray.withValues(alpha: 0.1),
-                contentPadding: const EdgeInsets.all(16),
-                counterText: '', // Hide character counter
-              ),
-            );
-          },
-        ),
-        
+
         const SizedBox(height: 16),
-        
+
+        // Description
+        Text(
+          'Enter your new username. Changes will reflect after saving.',
+          style: AppTheme.bodyMedium.copyWith(
+            color: AppTheme.primaryGray,
+            fontFamily: AppTheme.fontPoppins,
+          ),
+          textAlign: TextAlign.center,
+        ),
+
+        const SizedBox(height: 24),
+
+        // New Username Field
+        TextField(
+          onChanged: (value) => _usernameVerificationModel.newUsername = value, // your model variable
+          keyboardType: TextInputType.text,
+          textInputAction: TextInputAction.done,
+          autocorrect: false,
+          textCapitalization: TextCapitalization.none,
+          decoration: InputDecoration(
+            labelText: 'New Username',
+            hintText: 'Enter your new username',
+            prefixIcon: const Icon(Icons.person_outline),
+            border: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(12),
+              borderSide: BorderSide(color: AppTheme.primaryYellow.withOpacity(0.3)),
+            ),
+            enabledBorder: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(12),
+              borderSide: BorderSide(color: AppTheme.primaryYellow.withOpacity(0.3)),
+            ),
+            focusedBorder: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(12),
+              borderSide: const BorderSide(color: AppTheme.primaryYellow, width: 2),
+            ),
+            filled: true,
+            fillColor: AppTheme.lightGray.withOpacity(0.1),
+            contentPadding: const EdgeInsets.all(16),
+          ),
+        ),
+
+        const SizedBox(height: 16),
+
         // Message
-        Consumer<EmailVerificationModel>(
+        Consumer<UsernameVerificationModel>(
           builder: (context, model, child) {
-            if (model.emailVerificationMessage.isEmpty) {
-              return const SizedBox();
-            }
-            
+            if (model.usernameVerificationMessage.isEmpty) return const SizedBox();
+
+            final color = _getMessageColor(model.usernameVerificationMessage);
+
             return Container(
               padding: const EdgeInsets.all(12),
               margin: const EdgeInsets.only(bottom: 16),
               decoration: BoxDecoration(
-                color: _getMessageColor(model.emailVerificationMessage).withValues(alpha: 0.1),
+                color: color.withOpacity(0.1),
                 borderRadius: BorderRadius.circular(12),
-                border: Border.all(color: _getMessageColor(model.emailVerificationMessage).withValues(alpha: 0.3)),
+                border: Border.all(color: color.withOpacity(0.3)),
               ),
               child: Row(
                 children: [
                   Icon(
-                    _getMessageColor(model.emailVerificationMessage) == Colors.green
-                        ? Icons.check_circle_outline
-                        : Icons.error_outline,
-                    color: _getMessageColor(model.emailVerificationMessage),
+                    color == Colors.green ? Icons.check_circle_outline : Icons.error_outline,
+                    color: color,
                     size: 20,
                   ),
                   const SizedBox(width: 8),
                   Expanded(
                     child: Text(
-                      model.emailVerificationMessage,
-                      style: AppTheme.bodySmall.copyWith(
-                        color: _getMessageColor(model.emailVerificationMessage),
-                      ),
+                      model.usernameVerificationMessage,
+                      style: AppTheme.bodySmall.copyWith(color: color),
                     ),
                   ),
                 ],
@@ -373,115 +386,58 @@ class _EditDetailsViewState extends State<EditDetailsView> {
             );
           },
         ),
-        
         const SizedBox(height: 24),
-        
-        // Verify Code Button
-        Consumer<EmailVerificationModel>(
+        // Update Username Button
+        Consumer<UsernameVerificationModel>(
           builder: (context, model, child) {
             return BravoButton(
-              onPressed: model.emailVerificationCode.length != 6 || _isSending
+              onPressed: model.newUsername.isEmpty || _isSendingUsername
                   ? null
                   : () async {
-                      HapticUtils.lightImpact(); // ✅ ADDED: Light haptic feedback
-                      setState(() => _isSending = true);
-                      await _emailVerificationService.verifyEmailAndUpdate(
-                        model.emailVerificationCode,
-                        model,
-                        onSuccess: () {
-                          // Show success message with logout notification
+                      HapticUtils.lightImpact();
+                      setState(() => _isSendingUsername = true);
+
+                      final userManager =
+                          Provider.of<UserManagerService>(context, listen: false);
+
+                      try {
+                        final success = await _usernameVerificationService.updateUsername(
+                          model.newUsername,
+                          userManager, // ✅ pass correct type
+                        );
+
+                        if (success && mounted) {
                           ScaffoldMessenger.of(context).showSnackBar(
                             const SnackBar(
-                              content: Text('Email updated successfully! Please log in with your new email.'),
+                              content: Text('Username updated successfully!'),
                               backgroundColor: AppTheme.success,
-                              duration: Duration(seconds: 4),
+                              duration: Duration(seconds: 2),
                             ),
                           );
-                          
-
-                        },
-                        onNavigateToLogin: () {
-                          // ✅ NEW: Navigate directly to login page like delete account
-                          // Store the navigator context before async operation
-                          final navigator = Navigator.of(context);
-                          
-                          // Add delay to ensure cleanup completes
-                          Future.delayed(const Duration(milliseconds: 100), () {
-                            // Force navigation to login page
-                            try {
-                              navigator.pushAndRemoveUntil(
-                                MaterialPageRoute(
-                                  builder: (context) => LoginView(
-                                    onCancel: () {
-                                      // Go back to onboarding flow
-                                      Navigator.of(context).pushAndRemoveUntil(
-                                        MaterialPageRoute(builder: (context) => const MyApp()),
-                                        (route) => false,
-                                      );
-                                    },
-                                  ),
-                                ),
-                                (route) => false,
-                              );
-                            } catch (e) {
-                              // If first approach fails, try with current context
-                              if (context.mounted) {
-                                Navigator.of(context).pushAndRemoveUntil(
-                                  MaterialPageRoute(
-                                    builder: (context) => LoginView(
-                                      onCancel: () {
-                                        Navigator.of(context).pushAndRemoveUntil(
-                                          MaterialPageRoute(builder: (context) => const MyApp()),
-                                          (route) => false,
-                                        );
-                                      },
-                                    ),
-                                  ),
-                                  (route) => false,
-                                );
-                              }
-                            }
-                          });
-                        },
-                      );
-                      setState(() => _isSending = false);
+                        }
+                      } catch (e) {
+                        if (mounted) {
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            SnackBar(
+                              content: Text(e.toString()),
+                              backgroundColor: AppTheme.error,
+                              duration: const Duration(seconds: 2),
+                            ),
+                          );
+                        }
+                      } finally {
+                        if (mounted) setState(() => _isSendingUsername = false);
+                      }
                     },
-              text: _isSending ? 'Verifying...' : 'Verify & Update Email',
+              text: _isSendingUsername ? 'Updating...' : 'Update Username',
               color: AppTheme.primaryYellow,
               backColor: AppTheme.primaryDarkYellow,
               textColor: Colors.white,
-              disabled: model.emailVerificationCode.length != 6 || _isSending,
-            );
-          },
-        ),
-        
-        const SizedBox(height: 16),
-        
-        // Resend Code Button
-        Consumer<EmailVerificationModel>(
-          builder: (context, model, child) {
-            return BravoButton(
-              onPressed: _isSending
-                  ? null
-                  : () async {
-                      HapticUtils.lightImpact(); // ✅ ADDED: Light haptic feedback
-                      setState(() => _isSending = true);
-                      await _emailVerificationService.sendEmailVerification(
-                        model.newEmail,
-                        model,
-                      );
-                      setState(() => _isSending = false);
-                    },
-              text: 'Resend Code',
-              color: Colors.white,
-              backColor: AppTheme.lightGray,
-              textColor: AppTheme.primaryYellow,
-              disabled: _isSending,
-              borderSide: BorderSide(color: AppTheme.lightGray, width: 2),
+              disabled: model.newUsername.isEmpty || _isSendingUsername,
             );
           },
         ),
       ],
     );
   }
-} 
+}

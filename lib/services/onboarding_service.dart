@@ -44,11 +44,13 @@ class OnboardingService {
         final accessToken = response.data!['access_token'] ?? '';
         final refreshToken = response.data!['refresh_token'] ?? '';
         final email = response.data!['email'] ?? data.email;
+        final username = response.data!['username'] ?? data.username;
         
         if (accessToken.isNotEmpty) {
           // ✅ Save authentication tokens
           await _userManager.updateUserData(
             email: email,
+            username: username,
             accessToken: accessToken,
             refreshToken: refreshToken,
           );
