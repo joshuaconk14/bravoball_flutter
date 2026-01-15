@@ -4,7 +4,7 @@ import '../config/app_config.dart';
 import 'dart:async';
 
 /// User Manager Service
-/// Mirrors Swift UserManager for managing user state and authentication
+// Mirrors Swift UserManager for managing user state and authentication
 class UserManagerService extends ChangeNotifier {
   static UserManagerService? _instance;
   static UserManagerService get instance => _instance ??= UserManagerService._();
@@ -13,6 +13,7 @@ class UserManagerService extends ChangeNotifier {
 
   // User state
   String _email = '';
+  String _username = '';
   String _accessToken = '';
   String _refreshToken = '';
   bool _isLoggedIn = false;
@@ -29,6 +30,7 @@ class UserManagerService extends ChangeNotifier {
   
   // Getters
   String get email => _email;
+  String get username => _username;
   String get accessToken => _accessToken;
   String get refreshToken => _refreshToken;
   bool get isLoggedIn => _isLoggedIn;
@@ -44,6 +46,7 @@ class UserManagerService extends ChangeNotifier {
   // ✅ NEW: Combined user state getter
   String get userDisplayName {
     if (_isGuestMode) return 'Guest User';
+    if (_username.isNotEmpty) return _username;
     if (_email.isNotEmpty) return _email;
     return 'Unknown User';
   }
@@ -64,6 +67,7 @@ class UserManagerService extends ChangeNotifier {
     if (kDebugMode) {
       print('🔐 UserManager: Initialized');
       print('   Email: $_email');
+      print('   Username: $_username');
       print('   IsLoggedIn: $_isLoggedIn');
       print('   HasHistory: $_userHasAccountHistory');
     }
@@ -75,6 +79,7 @@ class UserManagerService extends ChangeNotifier {
       final prefs = await SharedPreferences.getInstance();
       
       _email = prefs.getString('userEmail') ?? '';
+      _username = prefs.getString('username') ?? '';
       _accessToken = prefs.getString('accessToken') ?? '';
       _refreshToken = prefs.getString('refreshToken') ?? '';
       _isLoggedIn = prefs.getBool('isLoggedIn') ?? false;
@@ -90,7 +95,7 @@ class UserManagerService extends ChangeNotifier {
       _isGuestMode = false;
 
       if (kDebugMode) {
-        print('🔑 UserManager: Loaded from storage - Email: $_email, LoggedIn: $_isLoggedIn');
+        print('🔑 UserManager: Loaded from storage - Email: $_email, Username: $_username, LoggedIn: $_isLoggedIn');
       }
     } catch (e) {
       if (kDebugMode) {
@@ -105,6 +110,7 @@ class UserManagerService extends ChangeNotifier {
       final prefs = await SharedPreferences.getInstance();
       
       await prefs.setString('userEmail', _email);
+      await prefs.setString('username', _username);
       await prefs.setString('accessToken', _accessToken);
       await prefs.setString('refreshToken', _refreshToken);
       await prefs.setBool('isLoggedIn', _isLoggedIn);
@@ -116,7 +122,7 @@ class UserManagerService extends ChangeNotifier {
       }
       
       if (kDebugMode) {
-        print('💾 UserManager: Saved to storage - Email: $_email, LoggedIn: $_isLoggedIn');
+        print('💾 UserManager: Saved to storage - Email: $_email, Username: $_username, LoggedIn: $_isLoggedIn');
       }
     } catch (e) {
       if (kDebugMode) {
@@ -128,6 +134,7 @@ class UserManagerService extends ChangeNotifier {
   /// Update user data after successful login (mirrors Swift updateUserKeychain)
   Future<void> updateUserData({
     required String email,
+    required String username,
     required String accessToken,
     String? refreshToken,
   }) async {
@@ -137,6 +144,7 @@ class UserManagerService extends ChangeNotifier {
     }
     
     _email = email;
+    _username = username;
     _accessToken = accessToken;
     _refreshToken = refreshToken ?? '';
     _isLoggedIn = true;
@@ -174,6 +182,7 @@ class UserManagerService extends ChangeNotifier {
       
       // Clear all user state
       _email = '';
+      _username = '';
       _accessToken = '';
       _refreshToken = '';
       _isLoggedIn = false;
@@ -214,6 +223,7 @@ class UserManagerService extends ChangeNotifier {
       final prefs = await SharedPreferences.getInstance();
       
       await prefs.remove('userEmail');
+      await prefs.remove('username');
       await prefs.remove('accessToken');
       await prefs.remove('refreshToken');
       await prefs.remove('isLoggedIn');
@@ -378,6 +388,7 @@ class UserManagerService extends ChangeNotifier {
     // Set guest mode state
     _isGuestMode = true;
     _email = '';
+    _username = '';
     _accessToken = '';
     _refreshToken = '';
     _isLoggedIn = false;
@@ -460,6 +471,7 @@ class UserManagerService extends ChangeNotifier {
     return '''
 User Manager Debug Info:
 - Email: $_email
+- Username: $_username
 - IsLoggedIn: $_isLoggedIn
 - IsGuestMode: $_isGuestMode
 - IsAuthenticated: $isAuthenticated
@@ -473,10 +485,7 @@ User Manager Debug Info:
 - ShowLoginPage: $_showLoginPage
 - TokenCreatedAt: $_tokenCreatedAt
 - ProactiveRefreshActive: ${_proactiveRefreshTimer != null}
-- Is Authenticated: $isAuthenticated
-- Has Valid Token: $hasValidToken
-- Can Access Premium: $canAccessPremiumFeatures
-- User Display Name: $userDisplayName
+- Is 
 ''';
   }
-} 
+}
