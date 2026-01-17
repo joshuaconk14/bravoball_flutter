@@ -19,6 +19,7 @@ import 'services/loading_state_service.dart';
 import 'services/ad_service.dart'; // ✅ ADDED: Import AdService
 import 'services/store_service.dart'; // ✅ ADDED: Import StoreService
 import 'services/unified_purchase_service.dart'; // ✅ ADDED: Import UnifiedPurchaseService
+import 'services/connectivity_service.dart'; // ✅ ADDED: Import ConnectivityService
 import 'constants/app_theme.dart';
 import 'constants/app_assets.dart';
 import 'config/app_config.dart';
@@ -63,6 +64,9 @@ void main() async {
   
   // ✅ ADDED: Initialize StoreService to load store items and freeze dates
   await StoreService.instance.initialize();
+  
+  // ✅ ADDED: Initialize ConnectivityService to monitor network status
+  await ConnectivityService.instance.initialize();
   
   // Initialize authentication services
   await UserManagerService.instance.initialize();
@@ -202,6 +206,7 @@ class _MyAppState extends State<MyApp> {
         ChangeNotifierProvider.value(value: LoadingStateService.instance),
         ChangeNotifierProvider.value(value: StoreService.instance),
         ChangeNotifierProvider.value(value: UnifiedPurchaseService.instance),
+        ChangeNotifierProvider.value(value: ConnectivityService.instance),
       ],
       child: MaterialApp(
         title: 'BravoBall',

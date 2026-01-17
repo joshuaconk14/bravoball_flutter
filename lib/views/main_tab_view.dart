@@ -14,6 +14,7 @@ import '../services/app_state_service.dart'; // ✅ ADDED: Import for loading st
 import '../utils/premium_utils.dart'; // ✅ ADDED: Import premium utils
 import '../widgets/guest_account_creation_dialog.dart'; // ✅ ADDED: Import reusable dialog
 import '../features/premium/premium_page.dart'; // ✅ ADDED: Import premium page
+import '../widgets/offline_banner.dart'; // ✅ ADDED: Import offline banner
 import 'package:provider/provider.dart'; // ✅ ADDED: Import for Provider
 
 class MainTabView extends StatefulWidget {
@@ -96,7 +97,16 @@ class _MainTabViewState extends State<MainTabView> {
         }
         
         return Scaffold(
-          body: _widgetOptions[_selectedIndex],
+          body: Column(
+            children: [
+              // ✅ ADDED: Offline banner at the top
+              const OfflineBanner(),
+              // Main content
+              Expanded(
+                child: _widgetOptions[_selectedIndex],
+              ),
+            ],
+          ),
           bottomNavigationBar: Container(
         decoration: BoxDecoration(
           border: Border(
