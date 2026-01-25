@@ -8,6 +8,7 @@ import '../../constants/app_assets.dart';
 import '../../widgets/bravo_button.dart';
 import '../../widgets/item_usage_confirmation_dialog.dart';
 import '../../widgets/loading_overlay.dart';
+import '../../widgets/feature_unavailable_widget.dart';
 import '../../utils/haptic_utils.dart';
 import '../../utils/premium_utils.dart';
 import '../../utils/store_business_rules.dart';
@@ -17,6 +18,7 @@ import '../../services/store_service.dart';
 import '../../services/app_state_service.dart';
 import '../../services/ad_service.dart';
 import '../../services/unified_purchase_service.dart';
+import '../../services/connectivity_service.dart';
 import '../premium/premium_page.dart';
 
 class StorePage extends StatefulWidget {
@@ -30,6 +32,11 @@ class _StorePageState extends State<StorePage> {
   bool _isPremium = false;
   bool _isLoading = true;
   bool _isLoadingAd = false;
+  String? _loadError; // ✅ ADDED: Track loading errors
+  
+  // ✅ DEBUG ONLY: Override states for testing (null = use real state)
+  bool? _debugForceOffline; // null = use real connectivity, true/false = override
+  bool? _debugForceError;   // null = use real error state, true = force error
 
   @override
   void initState() {
@@ -39,22 +46,57 @@ class _StorePageState extends State<StorePage> {
   }
 
   Future<void> _initializeStoreService() async {
-    await StoreService.instance.initialize();
+    try {
+      await StoreService.instance.initialize();
+    } catch (e) {
+      if (kDebugMode) {
+        print('⚠️ StoreService initialization error: $e');
+      }
+      if (mounted) {
+        setState(() {
+          _loadError = 'Failed to load store items. Please try again.';
+        });
+      }
+    }
   }
 
   Future<void> _checkPremiumStatus() async {
     try {
       final isPremium = await PremiumUtils.instance.hasPremiumAccess();
-      setState(() {
-        _isPremium = isPremium;
-        _isLoading = false;
-      });
+      if (mounted) {
+        setState(() {
+          _isPremium = isPremium;
+          _isLoading = false;
+        });
+      }
     } catch (e) {
-      setState(() {
-        _isPremium = false;
-        _isLoading = false;
-      });
+      if (kDebugMode) {
+        print('⚠️ Premium status check error: $e');
+      }
+      if (mounted) {
+        setState(() {
+          _isPremium = false;
+          _isLoading = false;
+          // Only set error if we don't already have one
+          _loadError ??= 'Failed to load store. Please try again.';
+        });
+      }
     }
+  }
+
+  /// Retry loading store data
+  Future<void> _retryLoad() async {
+    setState(() {
+      _isLoading = true;
+      _loadError = null;
+      // ✅ DEBUG: Clear debug overrides on retry
+      if (kDebugMode) {
+        _debugForceOffline = null;
+        _debugForceError = null;
+      }
+    });
+    await _checkPremiumStatus();
+    await _initializeStoreService();
   }
 
   @override
@@ -74,33 +116,59 @@ class _StorePageState extends State<StorePage> {
               color: Colors.white,
               child: _isLoading 
                 ? const Center(child: CircularProgressIndicator())
-                : SingleChildScrollView(
-                    physics: const BouncingScrollPhysics(),
-                    child: Column(
-                      children: [
-                        // Header section - only show for non-premium users
-                        if (!_isPremium) _buildHeader(),
-                        
-                        // Premium user message - show above My Items
-                        if (_isPremium) ...[
-                          Padding(
-                            padding: const EdgeInsets.fromLTRB(20, 20, 20, 0),
-                            child: _buildPremiumUserMessage(),
-                          ),
-                        ],
-                        
-                        // My Items section
-                        _buildMyItemsSection(),
-                        
-                        // Store items section
-                        _buildStoreItems(),
-                        
-                        const SizedBox(height: 32),
-                        
-                        // Debug button - only show in debug mode
-                        if (kDebugMode) _buildDebugButton(),
-                      ],
-                    ),
+                : Consumer<ConnectivityService>(
+                    builder: (context, connectivity, child) {
+                      // ✅ DEBUG: Allow override for testing, fallback to real state
+                      final isOffline = _debugForceOffline ?? !connectivity.isOnline;
+                      final hasError = _debugForceError ?? (_loadError != null);
+                      
+                      // Check if offline (real or debug override)
+                      if (isOffline) {
+                        return _buildUnavailableView(
+                          isOffline: true,
+                          onRetry: _retryLoad,
+                        );
+                      }
+                      
+                      // Check if there was a loading error (real or debug override)
+                      if (hasError) {
+                        return _buildUnavailableView(
+                          isOffline: false,
+                          errorMessage: _loadError ?? 'Debug: Simulated error',
+                          onRetry: _retryLoad,
+                        );
+                      }
+                      
+                      // Normal content
+                      return SingleChildScrollView(
+                        physics: const BouncingScrollPhysics(),
+                        child: Column(
+                          children: [
+                            // Header section - only show for non-premium users
+                            if (!_isPremium) _buildHeader(),
+                            
+                            // Premium user message - show above My Items
+                            if (_isPremium) ...[
+                              Padding(
+                                padding: const EdgeInsets.fromLTRB(20, 20, 20, 0),
+                                child: _buildPremiumUserMessage(),
+                              ),
+                            ],
+                            
+                            // My Items section
+                            _buildMyItemsSection(),
+                            
+                            // Store items section
+                            _buildStoreItems(),
+                            
+                            const SizedBox(height: 32),
+                            
+                            // Debug button - only show in debug mode
+                            if (kDebugMode) _buildDebugButton(),
+                          ],
+                        ),
+                      );
+                    },
                   ),
               ),
             ),
@@ -118,6 +186,32 @@ class _StorePageState extends State<StorePage> {
           LoadingOverlay(isLoading: _isLoadingAd),
           ],
         ),
+    );
+  }
+
+  /// Build unavailable view based on connectivity or error state
+  Widget _buildUnavailableView({
+    required bool isOffline,
+    String? errorMessage,
+    required VoidCallback onRetry,
+  }) {
+    return Center(
+      child: SingleChildScrollView(
+        physics: const BouncingScrollPhysics(),
+        child: isOffline
+            ? FeatureUnavailableWidget.offline(
+                featureName: 'Store',
+                customDescription: 'You seem to be offline. Check your connection and try again!',
+                icon: Icons.shopping_bag_outlined,
+                onRetry: onRetry,
+              )
+            : FeatureUnavailableWidget.loadingError(
+                featureName: 'Store',
+                customDescription: errorMessage ?? 'Something went wrong. Please try again later.',
+                icon: Icons.shopping_bag_outlined,
+                onRetry: onRetry,
+              ),
+      ),
     );
   }
 
@@ -166,6 +260,11 @@ class _StorePageState extends State<StorePage> {
               
               const Spacer(),
               
+              // ✅ DEBUG: Testing controls (only in debug mode)
+              if (kDebugMode) _buildDebugControls(),
+              
+              if (kDebugMode) const SizedBox(width: 8),
+              
               // Treats balance display - matches front page style
               Consumer<StoreService>(
                 builder: (context, storeService, child) {
@@ -195,6 +294,64 @@ class _StorePageState extends State<StorePage> {
           ),
         ),
       ),
+    );
+  }
+
+  // ✅ DEBUG: Build debug controls for testing unavailable states
+  Widget _buildDebugControls() {
+    return Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        // Offline toggle
+        GestureDetector(
+          onTap: () {
+            setState(() {
+              _debugForceOffline = _debugForceOffline == true ? null : true;
+            });
+          },
+          child: Container(
+            padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 4),
+            decoration: BoxDecoration(
+              color: _debugForceOffline == true ? Colors.red.shade600 : Colors.grey.shade300,
+              borderRadius: BorderRadius.circular(4),
+            ),
+            child: Text(
+              _debugForceOffline == true ? 'OFFLINE' : 'TEST OFFLINE',
+              style: TextStyle(
+                color: _debugForceOffline == true ? Colors.white : Colors.black87,
+                fontSize: 8,
+                fontWeight: FontWeight.bold,
+                fontFamily: AppTheme.fontPoppins,
+              ),
+            ),
+          ),
+        ),
+        const SizedBox(width: 4),
+        // Error toggle
+        GestureDetector(
+          onTap: () {
+            setState(() {
+              _debugForceError = _debugForceError == true ? null : true;
+            });
+          },
+          child: Container(
+            padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 4),
+            decoration: BoxDecoration(
+              color: _debugForceError == true ? Colors.orange.shade600 : Colors.grey.shade300,
+              borderRadius: BorderRadius.circular(4),
+            ),
+            child: Text(
+              _debugForceError == true ? 'ERROR' : 'TEST ERROR',
+              style: TextStyle(
+                color: _debugForceError == true ? Colors.white : Colors.black87,
+                fontSize: 8,
+                fontWeight: FontWeight.bold,
+                fontFamily: AppTheme.fontPoppins,
+              ),
+            ),
+          ),
+        ),
+      ],
     );
   }
 

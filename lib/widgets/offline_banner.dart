@@ -18,32 +18,34 @@ class OfflineBanner extends StatelessWidget {
           return const SizedBox.shrink();
         }
         
-        return SafeArea(
-          bottom: false,
-          child: Container(
-            width: double.infinity,
-            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
-            color: Colors.grey.shade600,
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                Icon(
-                  Icons.wifi_off,
+        return Container(
+          width: double.infinity,
+          padding: EdgeInsets.only(
+            left: 16,
+            right: 16,
+            top: MediaQuery.of(context).padding.top + 6,
+            bottom: 6,
+          ),
+          color: Colors.grey.shade600,
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Icon(
+                Icons.wifi_off,
+                color: Colors.white,
+                size: 16,
+              ),
+              const SizedBox(width: 6),
+              Text(
+                'No internet connection',
+                style: TextStyle(
                   color: Colors.white,
-                  size: 16,
+                  fontSize: 12,
+                  fontWeight: FontWeight.w600,
+                  fontFamily: AppTheme.fontPoppins,
                 ),
-                const SizedBox(width: 6),
-                Text(
-                  'No internet connection',
-                  style: TextStyle(
-                    color: Colors.white,
-                    fontSize: 12,
-                    fontWeight: FontWeight.w600,
-                    fontFamily: AppTheme.fontPoppins,
-                  ),
-                ),
-              ],
-            ),
+              ),
+            ],
           ),
         );
       },
