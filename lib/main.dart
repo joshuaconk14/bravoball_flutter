@@ -20,6 +20,7 @@ import 'services/ad_service.dart'; // ✅ ADDED: Import AdService
 import 'services/store_service.dart'; // ✅ ADDED: Import StoreService
 import 'services/unified_purchase_service.dart'; // ✅ ADDED: Import UnifiedPurchaseService
 import 'services/connectivity_service.dart'; // ✅ ADDED: Import ConnectivityService
+import 'services/offline_custom_drill_database.dart'; // ✅ ADDED: Import OfflineCustomDrillDatabase
 import 'constants/app_theme.dart';
 import 'constants/app_assets.dart';
 import 'config/app_config.dart';
@@ -67,6 +68,20 @@ void main() async {
   
   // ✅ ADDED: Initialize ConnectivityService to monitor network status
   await ConnectivityService.instance.initialize();
+  
+  // ✅ ADDED: Initialize OfflineCustomDrillDatabase for offline storage of custom drills
+  try {
+    await OfflineCustomDrillDatabase.instance.database;
+    if (kDebugMode) {
+      print('✅ OfflineCustomDrillDatabase initialized successfully');
+    }
+  } catch (e) {
+    if (kDebugMode) {
+      print('⚠️ OfflineCustomDrillDatabase initialization error: $e');
+    }
+    // Continue app startup even if database init fails
+    // Database will be retried on first access
+  }
   
   // Initialize authentication services
   await UserManagerService.instance.initialize();
