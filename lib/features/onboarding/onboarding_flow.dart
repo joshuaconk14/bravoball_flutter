@@ -158,6 +158,7 @@ class _OnboardingFlowState extends State<OnboardingFlow> {
   int _previousStep = 0; // ✅ NEW: Track previous step for animation direction
   final Map<int, int> _answers = {};
   String _regEmail = '';
+  String _regUsername = '';
   String _regPassword = '';
   String _regConfirmPassword = '';
   String _regError = '';
@@ -168,6 +169,7 @@ class _OnboardingFlowState extends State<OnboardingFlow> {
 
   // Persistent controllers for registration fields
   final TextEditingController _emailController = TextEditingController();
+  final TextEditingController _usernameController = TextEditingController();
   final TextEditingController _passwordController = TextEditingController();
   final TextEditingController _confirmPasswordController = TextEditingController();
 
@@ -1028,6 +1030,23 @@ class _OnboardingFlowState extends State<OnboardingFlow> {
                   ),
                   const SizedBox(height: 16),
                   _BravoTextField(
+                    label: 'Username',
+                    value: _regUsername,
+                    controller: _usernameController,
+                    onChanged: (v) => setState(() {
+                      _regUsername = v;
+                      _regError = ''; // Clear error when user types
+                    }),
+                    keyboardType: TextInputType.text,
+                    isPassword: false,
+                    yellow: yellow,
+                    onSubmitted: () {
+                      // ✅ NEW: Move to password field
+                      FocusScope.of(context).nextFocus();
+                    },
+                  ),
+                  const SizedBox(height: 16),
+                  _BravoTextField(
                     label: 'Password',
                     value: _regPassword,
                     controller: _passwordController,
@@ -1155,6 +1174,7 @@ class _OnboardingFlowState extends State<OnboardingFlow> {
     // Map step numbers to question indices correctly
     final onboardingData = OnboardingData(
       email: _regEmail,
+      username: _regUsername,
       password: _regPassword,
       primaryGoal: onboardingQuestions[0].options[answers[stepFirstQuestion] ?? 0],
       trainingExperience: onboardingQuestions[1].options[answers[stepFirstQuestion + 1] ?? 0],

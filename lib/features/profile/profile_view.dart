@@ -11,6 +11,8 @@ import '../onboarding/onboarding_flow.dart';
 import 'privacy_policy_view.dart';
 import 'terms_of_service_view.dart';
 import 'account_settings_view.dart'; // ✅ ADDED: Import AccountSettingsView
+import '../leaderboard/leaderboard_view.dart'; // ✅ ADDED: Import LeaderboardView
+import '../friends/friends_view.dart'; // ✅ ADDED: Import FriendsView
 import '../../utils/haptic_utils.dart';
 import '../../utils/premium_utils.dart'; // ✅ ADDED: Import PremiumUtils
 import '../../features/premium/premium_page.dart'; // ✅ ADDED: Import premium page
@@ -52,6 +54,22 @@ class _ProfileViewState extends State<ProfileView> {
                           onTap: () {
                             HapticUtils.lightImpact(); // Light haptic for account settings
                             _handleAccountSettings();
+                          },
+                        ),
+                        _buildMenuItem(
+                          icon: Icons.emoji_events_outlined,
+                          title: 'Leaderboard',
+                          onTap: () {
+                            HapticUtils.lightImpact(); // Light haptic for leaderboard
+                            _handleLeaderboard();
+                          },
+                        ),
+                        _buildMenuItem(
+                          icon: Icons.people_outlined,
+                          title: 'Friends',
+                          onTap: () {
+                            HapticUtils.lightImpact(); // Light haptic for friends
+                            _handleFriends();
                           },
                         ),
                       ] else ...[
@@ -225,13 +243,29 @@ class _ProfileViewState extends State<ProfileView> {
           ),
           
           const SizedBox(height: 12), // Reduced from 16
-          
-          // User Email
-          Text(
-            userManager.email.isNotEmpty ? userManager.email : 'Guest User',
-            style: AppTheme.titleLarge.copyWith(
-              color: AppTheme.primaryDark,
-            ),
+
+          Column(
+            children: [
+              // ✅ Username
+              if (userManager.username.isNotEmpty)
+                Text(
+                  userManager.username,
+                  style: AppTheme.titleLarge.copyWith(
+                    color: AppTheme.primaryDark,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+
+              const SizedBox(height: 4), // small spacing between username and email
+
+              // ✅ Email
+              Text(
+                userManager.email.isNotEmpty ? userManager.email : 'Guest User',
+                style: AppTheme.bodyMedium.copyWith(
+                  color: AppTheme.primaryGray,
+                ),
+              ),
+            ],
           ),
           
           // Login Status
@@ -668,6 +702,22 @@ class _ProfileViewState extends State<ProfileView> {
     Navigator.of(context).push(
       MaterialPageRoute(
         builder: (context) => const AccountSettingsView(),
+      ),
+    );
+  }
+
+  void _handleLeaderboard() {
+    Navigator.of(context).push(
+      MaterialPageRoute(
+        builder: (context) => const LeaderboardView(),
+      ),
+    );
+  }
+
+  void _handleFriends() {
+    Navigator.of(context).push(
+      MaterialPageRoute(
+        builder: (context) => const FriendsView(),
       ),
     );
   }

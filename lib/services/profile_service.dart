@@ -35,6 +35,34 @@ class ProfileService {
     }
   }
 
+  /// Update username
+  Future<bool> updateUsername(String newUsername) async {
+    try {
+      final response = await ApiService.shared.put(
+        '/api/user/update-username',
+        body: {
+          'username': newUsername,
+        },
+        requiresAuth: true,
+      );
+
+      if (response.isSuccess) {
+        return true;
+      } else {
+        throw Exception(response.error ?? 'Failed to update username');
+      }
+    } catch (e) {
+      print('❌ ProfileService: Error updating username: $e');
+      if (e.toString().contains('Username already taken')) {
+        throw Exception('Username already taken');
+      } else if (e.toString().contains('401') || e.toString().contains('Unauthorized')) {
+        throw Exception('Unauthorized - please log in again');
+      } else {
+        throw Exception('Failed to update username');
+      }
+    }
+  }
+
   /// Update user password
   Future<bool> updatePassword(String currentPassword, String newPassword) async {
     try {
