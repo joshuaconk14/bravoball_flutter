@@ -103,6 +103,7 @@ class EmailVerificationService {
         // Update the email in user manager to the new email
         await _userManager.updateUserData(
           email: emailVerificationModel.newEmail,
+          username: _userManager.username,
           accessToken: _userManager.accessToken,
           refreshToken: _userManager.refreshToken,
         );

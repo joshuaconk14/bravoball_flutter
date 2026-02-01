@@ -24,12 +24,14 @@ class LoginResponse {
   final String accessToken;
   final String tokenType;
   final String email;
+  final String username;
   final String? refreshToken;
 
   LoginResponse({
     required this.accessToken,
     required this.tokenType,
     required this.email,
+    required this.username,
     this.refreshToken,
   });
 
@@ -38,6 +40,7 @@ class LoginResponse {
       accessToken: json['access_token'] ?? '',
       tokenType: json['token_type'] ?? 'bearer',
       email: json['email'] ?? '',
+      username: json['username'] ?? '',
       refreshToken: json['refresh_token'] as String?,
     );
   }
@@ -47,6 +50,7 @@ class LoginResponse {
       'access_token': accessToken,
       'token_type': tokenType,
       'email': email,
+      'username': username,
       'refresh_token': refreshToken,
     };
   }

@@ -96,6 +96,7 @@ class LoginService {
         // Update user manager with new auth data
         await _userManager.updateUserData(
           email: loginResponse.email,
+          username: loginResponse.username,
           accessToken: loginResponse.accessToken,
           refreshToken: loginResponse.refreshToken,
         );
@@ -458,4 +459,4 @@ class LoginService {
       return true;
     }
   }
-} 
+}
