@@ -18,11 +18,7 @@ import '../services/preferences_sync_service.dart';
 import '../services/loading_state_service.dart';
 import './api_service.dart';
 import './custom_drill_service.dart';
-import './store_service.dart';
-import 'package:purchases_flutter/purchases_flutter.dart';
-import 'revenue_cat_service.dart';
-import 'revenue_cat_service_impl.dart';
-import '../utils/premium_utils.dart';
+import './friend_service.dart';
 
 // ===== ENUMS FOR STATE MANAGEMENT =====
 // Session lifecycle states - tracks progress through a training session
@@ -183,6 +179,8 @@ class AppStateService extends ChangeNotifier {
   final UserManagerService _userManager = UserManagerService.instance;
   // ✅ ADDED: Custom drill service for fetching user's custom drills
   final CustomDrillService _customDrillService = CustomDrillService.shared;
+  // ✅ ADDED: Friend service for friend request tracking
+  final FriendService _friendService = FriendService.shared;
   
   // ✅ ADDED: RevenueCat service for premium checks (injectable for testing)
   final RevenueCatService _revenueCatService;
@@ -408,6 +406,12 @@ class AppStateService extends ChangeNotifier {
   // Auto-generation feature toggle
   bool _autoGenerateSession = true;
   bool get autoGenerateSession => _autoGenerateSession;
+
+  // ===== FRIEND REQUEST COUNT SECTION =====
+  // Track pending friend requests for badge display
+  int _friendRequestCount = 0;
+  int get friendRequestCount => _friendRequestCount;
+  bool get hasFriendRequests => _friendRequestCount > 0;
   
   // ===== DERIVED PROPERTIES =====
   // Computed properties based on current state and configuration
@@ -504,6 +508,8 @@ class AppStateService extends ChangeNotifier {
       if (AppConfig.useTestData && _editableSessionDrills.isEmpty) {
         await _loadTestSession();
       }
+      // ✅ ADDED: Refresh friend request count for authenticated users
+      await refreshFriendRequestCount();
     }
     
     notifyListeners();
@@ -2573,6 +2579,33 @@ class AppStateService extends ChangeNotifier {
       }
       // Ensure we don't get stuck in loading state
       _isInitialLoad = false;
+      notifyListeners();
+    }
+  }
+
+  // ===== FRIEND REQUEST COUNT METHODS =====
+  /// Refresh friend request count from backend
+  Future<void> refreshFriendRequestCount() async {
+    // Skip for guest users
+    if (isGuestMode) {
+      _friendRequestCount = 0;
+      notifyListeners();
+      return;
+    }
+
+    try {
+      final requests = await _friendService.getFriendRequests();
+      _friendRequestCount = requests.length;
+      if (kDebugMode) {
+        print('✅ Friend request count updated: $_friendRequestCount');
+      }
+      notifyListeners();
+    } catch (e) {
+      if (kDebugMode) {
+        print('❌ Error refreshing friend request count: $e');
+      }
+      // On error, set to 0 to avoid showing stale data
+      _friendRequestCount = 0;
       notifyListeners();
     }
   }

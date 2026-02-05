@@ -13,8 +13,7 @@ import '../utils/haptic_utils.dart';
 import '../services/app_state_service.dart'; // ✅ ADDED: Import for loading state checking
 import '../utils/premium_utils.dart'; // ✅ ADDED: Import premium utils
 import '../widgets/guest_account_creation_dialog.dart'; // ✅ ADDED: Import reusable dialog
-import '../features/premium/premium_page.dart'; // ✅ ADDED: Import premium page
-import '../widgets/offline_banner.dart'; // ✅ ADDED: Import offline banner
+import '../widgets/badge_widget.dart'; // ✅ ADDED: Import badge widget
 import 'package:provider/provider.dart'; // ✅ ADDED: Import for Provider
 
 class MainTabView extends StatefulWidget {
@@ -144,7 +143,16 @@ class _MainTabViewState extends State<MainTabView> {
                   label: 'Saved',
                 ),
                 BottomNavigationBarItem(
-                  icon: _buildRiveTab(AppAssets.tabDude, 3),
+                  icon: Consumer<AppStateService>(
+                    builder: (context, appState, child) {
+                      return BadgeWidget(
+                        count: appState.friendRequestCount,
+                        showBadge: appState.hasFriendRequests && !appState.isGuestMode,
+                        badgeSize: 14.0,
+                        child: _buildRiveTab('Tab_Dude.riv', 3),
+                      );
+                    },
+                  ),
                   label: 'Profile',
                 ),
               ],

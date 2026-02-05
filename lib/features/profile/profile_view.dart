@@ -6,6 +6,9 @@ import 'package:provider/provider.dart';
 import '../../constants/app_theme.dart';
 import '../../config/app_config.dart';
 import '../../services/user_manager_service.dart';
+import '../../services/app_state_service.dart'; // ✅ ADDED: Import AppStateService for friend request count
+import '../../widgets/badge_widget.dart'; // ✅ ADDED: Import badge widget
+import '../../utils/avatar_helper.dart'; // ✅ ADDED: Import avatar helper
 import '../debug/debug_settings_view.dart';
 import '../onboarding/onboarding_flow.dart';
 import 'privacy_policy_view.dart';
@@ -24,8 +27,41 @@ class ProfileView extends StatefulWidget {
   State<ProfileView> createState() => _ProfileViewState();
 }
 
-class _ProfileViewState extends State<ProfileView> {
+class _ProfileViewState extends State<ProfileView> with WidgetsBindingObserver {
   final String appVersion = '2.0.1'; // This would come from package info
+
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addObserver(this);
+    // ✅ ADDED: Refresh friend request count when ProfileView opens
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _refreshFriendRequestCount();
+    });
+  }
+
+  @override
+  void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
+    super.dispose();
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    super.didChangeAppLifecycleState(state);
+    // ✅ ADDED: Refresh count when app comes to foreground
+    if (state == AppLifecycleState.resumed) {
+      _refreshFriendRequestCount();
+    }
+  }
+
+  // ✅ ADDED: Helper method to refresh friend request count
+  void _refreshFriendRequestCount() {
+    final appState = Provider.of<AppStateService>(context, listen: false);
+    if (!appState.isGuestMode) {
+      appState.refreshFriendRequestCount();
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -64,12 +100,18 @@ class _ProfileViewState extends State<ProfileView> {
                             _handleLeaderboard();
                           },
                         ),
-                        _buildMenuItem(
-                          icon: Icons.people_outlined,
-                          title: 'Friends',
-                          onTap: () {
-                            HapticUtils.lightImpact(); // Light haptic for friends
-                            _handleFriends();
+                        Consumer<AppStateService>(
+                          builder: (context, appState, child) {
+                            return _buildMenuItemWithBadge(
+                              icon: Icons.people_outlined,
+                              title: 'Friends',
+                              badgeCount: appState.friendRequestCount,
+                              showBadge: appState.hasFriendRequests && !appState.isGuestMode,
+                              onTap: () {
+                                HapticUtils.lightImpact(); // Light haptic for friends
+                                _handleFriends();
+                              },
+                            );
                           },
                         ),
                       ] else ...[
@@ -228,18 +270,49 @@ class _ProfileViewState extends State<ProfileView> {
           const SizedBox(height: 12), // Reduced from 20
           
           // Profile Avatar
-          Container(
-            width: 64, // Reduced from 80
-            height: 64, // Reduced from 80
-            decoration: BoxDecoration(
-              color: AppTheme.secondaryBlue,
-              shape: BoxShape.circle,
-            ),
-            child: const Icon(
-              Icons.person,
-              size: 36, // Reduced from 48
-              color: Colors.white,
-            ),
+          Consumer<UserManagerService>(
+            builder: (context, userManager, child) {
+              final avatarPath = userManager.selectedAvatar ?? AvatarHelper.getDefaultAvatar();
+              final bgColor = userManager.avatarBackgroundColor ?? 
+                  AvatarHelper.getDefaultBackgroundColor();
+              
+              return Container(
+                width: 64, // Reduced from 80
+                height: 64, // Reduced from 80
+                decoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  color: bgColor,
+                  border: Border.all(
+                    color: AppTheme.primaryYellow,
+                    width: 2,
+                  ),
+                  boxShadow: [
+                    BoxShadow(
+                      color: Colors.black.withValues(alpha: 0.1),
+                      blurRadius: 8,
+                      offset: const Offset(0, 2),
+                    ),
+                  ],
+                ),
+                child: ClipOval(
+                  child: Image.asset(
+                    avatarPath,
+                    fit: BoxFit.cover,
+                    errorBuilder: (context, error, stackTrace) {
+                      // Fallback to default icon if image fails to load
+                      return Container(
+                        color: bgColor,
+                        child: const Icon(
+                          Icons.person,
+                          size: 36,
+                          color: Colors.white,
+                        ),
+                      );
+                    },
+                  ),
+                ),
+              );
+            },
           ),
           
           const SizedBox(height: 12), // Reduced from 16
@@ -377,6 +450,67 @@ class _ProfileViewState extends State<ProfileView> {
                   icon,
                   color: AppTheme.primaryYellow,
                   size: 18, // Reduced from 20
+                ),
+              ),
+              
+              const SizedBox(width: 12), // Reduced from 16
+              
+              Expanded(
+                child: Text(
+                  title,
+                  style: AppTheme.bodyLarge.copyWith(
+                    color: AppTheme.primaryDark,
+                  ),
+                ),
+              ),
+              
+              Icon(
+                Icons.arrow_forward_ios,
+                color: AppTheme.primaryGray,
+                size: 14, // Reduced from 16
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  // ✅ ADDED: Menu item with badge support
+  Widget _buildMenuItemWithBadge({
+    required IconData icon,
+    required String title,
+    required int badgeCount,
+    required bool showBadge,
+    required VoidCallback onTap,
+  }) {
+    return Material(
+      color: Colors.transparent,
+      child: InkWell(
+        onTap: () {
+          HapticUtils.lightImpact(); // Light haptic for profile item interaction
+          onTap();
+        },
+        borderRadius: BorderRadius.circular(12),
+        child: Container(
+          padding: const EdgeInsets.all(12), // Reduced from 16
+          child: Row(
+            children: [
+              BadgeWidget(
+                count: badgeCount,
+                showBadge: showBadge,
+                badgeSize: 14.0,
+                child: Container(
+                  padding: const EdgeInsets.all(6), // Reduced from 8
+                  decoration: BoxDecoration(
+                    color: AppTheme.primaryYellow.withValues(alpha: 0.1),
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  child: Icon(
+                    icon,
+                    color: AppTheme.primaryYellow,
+                    size: 18, // Reduced from 20
+                  ),
                 ),
               ),
               

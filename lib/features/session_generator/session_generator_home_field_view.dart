@@ -8,10 +8,12 @@ import '../../widgets/circular_drill_button.dart'; // ✅ NEW: Import circular d
 import '../../widgets/warning_dialog.dart'; // ✅ NEW: Import reusable warning dialog
 import '../../models/editable_drill_model.dart';
 import '../../services/app_state_service.dart';
+import '../../services/user_manager_service.dart'; // ✅ ADDED: Import UserManagerService for avatar
 import '../../services/audio_service.dart';
 import '../../constants/app_theme.dart';
 import '../../constants/app_assets.dart';
 import '../../utils/haptic_utils.dart';
+import '../../utils/avatar_helper.dart'; // ✅ ADDED: Import AvatarHelper for avatar utilities
 import 'session_generator_editor_page.dart';
 import 'edit_drill_view.dart';
 import 'drill_follow_along_view.dart';
@@ -301,10 +303,42 @@ class _SessionGeneratorHomeFieldViewState extends State<SessionGeneratorHomeFiel
                     (route) => false,
                   );
                 },
-                child: CircleAvatar(
-                radius: 18,
-                backgroundColor: AppTheme.backgroundPrimary,
-                child: Icon(Icons.person, color: AppTheme.secondaryBlue, size: 28),
+                child: Consumer<UserManagerService>(
+                  builder: (context, userManager, child) {
+                    final avatarPath = userManager.selectedAvatar ?? 
+                        AvatarHelper.getDefaultAvatar();
+                    final bgColor = userManager.avatarBackgroundColor ?? 
+                        AvatarHelper.getDefaultBackgroundColor();
+                    
+                    return Container(
+                      width: 36,
+                      height: 36,
+                      decoration: BoxDecoration(
+                        shape: BoxShape.circle,
+                        color: bgColor,
+                        border: Border.all(
+                          color: AppTheme.primaryYellow,
+                          width: 2,
+                        ),
+                      ),
+                      child: ClipOval(
+                        child: Image.asset(
+                          avatarPath,
+                          fit: BoxFit.cover,
+                          errorBuilder: (context, error, stackTrace) {
+                            return Container(
+                              color: bgColor,
+                              child: Icon(
+                                Icons.person,
+                                color: Colors.white,
+                                size: 20,
+                              ),
+                            );
+                          },
+                        ),
+                      ),
+                    );
+                  },
                 ),
               ),
               
