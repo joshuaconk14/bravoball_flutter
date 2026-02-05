@@ -8,6 +8,7 @@ import 'authentication_service.dart';
 import 'loading_state_service.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'app_state_service.dart';
+import 'package:purchases_flutter/purchases_flutter.dart';
 
 /// Login Service
 /// Mirrors Swift LoginService for handling authentication API calls
@@ -99,6 +100,73 @@ class LoginService {
           accessToken: loginResponse.accessToken,
           refreshToken: loginResponse.refreshToken,
         );
+
+        // ✅ CRITICAL: Identify user with RevenueCat
+        _loadingService.updateProgress(0.92, message: 'Setting up premium access...');
+        try {
+          if (kDebugMode) {
+            print('🔍 LoginService: Identifying user with RevenueCat...');
+          }
+          
+          // ✅ CRITICAL FIX: ALWAYS log out BEFORE logging in
+          // This prevents purchases from being transferred between users
+          // RevenueCat's logIn() can transfer purchases from anonymous or previous users,
+          // so we must always reset to a clean state first
+          try {
+              if (kDebugMode) {
+              print('🔍 LoginService: Resetting RevenueCat user before login...');
+            }
+            
+            // Always log out first, regardless of current user state
+            // This ensures a clean slate and prevents purchase transfers
+              await Purchases.logOut();
+            
+            // Small delay to ensure logout completes
+            await Future.delayed(const Duration(milliseconds: 100));
+            
+            if (kDebugMode) {
+              print('✅ LoginService: RevenueCat user reset, now identifying new user...');
+            }
+            } catch (logoutError) {
+            if (kDebugMode) {
+              print('⚠️ LoginService: Error during logout (continuing anyway): $logoutError');
+            }
+            // Continue even if logout fails - better to try than skip
+          }
+          
+          // Tell RevenueCat who this user is - this ensures subscriptions are tied to this specific user
+          await Purchases.logIn(loginResponse.email);
+          
+          if (kDebugMode) {
+            print('✅ LoginService: User identified with RevenueCat as: ${loginResponse.email}');
+          }
+          
+          // ✅ CRITICAL FOR PRODUCTION: Restore purchases after login
+          // This transfers any purchases made while anonymous to the identified account
+          try {
+            if (kDebugMode) {
+              print('🔄 LoginService: Restoring purchases for identified user...');
+            }
+            
+            final customerInfo = await Purchases.restorePurchases();
+            
+            if (kDebugMode) {
+              print('✅ LoginService: Purchases restored');
+              print('   User ID: ${customerInfo.originalAppUserId}');
+              print('   Active Entitlements: ${customerInfo.entitlements.active.keys}');
+            }
+          } catch (restoreError) {
+            if (kDebugMode) {
+              print('⚠️ LoginService: Error restoring purchases (non-critical): $restoreError');
+            }
+            // Don't fail login if restore fails - purchases will still work
+          }
+        } catch (revenueCatError) {
+          if (kDebugMode) {
+            print('⚠️ LoginService: Failed to identify user with RevenueCat: $revenueCatError');
+          }
+          // Don't fail login if RevenueCat identification fails, but log the error
+        }
 
         // ✅ CRITICAL FIX: Handle authentication state transition 
         _loadingService.updateProgress(0.95, message: 'Setting up your account...');
@@ -259,6 +327,25 @@ class LoginService {
       // Clear any cached auth state
       await AuthenticationService.shared.clearInvalidTokens();
       
+      // ✅ CRITICAL: Reset RevenueCat user to prevent subscription sharing
+      try {
+        if (kDebugMode) {
+          print('🔍 LoginService: Resetting RevenueCat user on logout...');
+        }
+        
+        // Reset RevenueCat to anonymous user - this prevents subscription sharing
+        await Purchases.logOut();
+        
+        if (kDebugMode) {
+          print('✅ LoginService: RevenueCat user reset successfully');
+        }
+      } catch (revenueCatError) {
+        if (kDebugMode) {
+          print('⚠️ LoginService: Failed to reset RevenueCat user: $revenueCatError');
+        }
+        // Don't fail logout if RevenueCat reset fails
+      }
+      
       if (kDebugMode) {
         print('✅ LoginService: User logged out successfully');
       }
@@ -314,6 +401,8 @@ class LoginService {
       if (kDebugMode) {
         print('  ✓ Cleared authentication data');
       }
+
+      // Premium status is now handled by RevenueCat automatically
 
       // Clear shared preferences
       final prefs = await SharedPreferences.getInstance();

@@ -1,5 +1,6 @@
 import 'package:audioplayers/audioplayers.dart';
 import 'package:flutter/services.dart';
+import '../constants/app_assets.dart';
 
 class AudioService {
   static final AudioPlayer _player = AudioPlayer();
@@ -23,7 +24,7 @@ class AudioService {
     if (_isMuted) return;
     
     try {
-      await _player.play(AssetSource('audio/321-start.mp3'));
+      await _player.play(AssetSource(AppAssets.audio321Start));
     } catch (e) {
       print('Error playing countdown start sound: $e');
     }
@@ -34,7 +35,7 @@ class AudioService {
     if (_isMuted) return;
     
     try {
-      await _player.play(AssetSource('audio/321-done.mp3'));
+      await _player.play(AssetSource(AppAssets.audio321Done));
     } catch (e) {
       print('Error playing final countdown sound: $e');
     }
@@ -46,7 +47,7 @@ class AudioService {
     if (_isMuted) return;
     
     try {
-      await _player.play(AssetSource('audio/success.mp3'));
+      await _player.play(AssetSource(AppAssets.audioSuccess));
     } catch (e) {
       print('Error playing success sound: $e');
     }

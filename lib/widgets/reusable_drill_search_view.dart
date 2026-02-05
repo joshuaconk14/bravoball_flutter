@@ -4,6 +4,7 @@ import '../models/drill_model.dart';
 import '../models/filter_models.dart'; // ✅ ADDED: Import filter models for FilterOptions
 import '../services/app_state_service.dart';
 import '../constants/app_theme.dart';
+import '../constants/app_assets.dart';
 import '../utils/haptic_utils.dart';
 import '../utils/skill_utils.dart'; // ✅ ADDED: Import centralized skill utilities
 import '../utils/preference_utils.dart'; // ✅ ADDED: Import centralized preference utilities
@@ -566,28 +567,8 @@ class SelectableDrillCard extends StatelessWidget {
   });
 
   String _getSkillIconPath(String skill) {
-    // Normalize the skill name for better matching
-    final normalizedSkill = skill.toLowerCase().replaceAll('_', ' ').trim();
-    
-    switch (normalizedSkill) {
-      case 'passing':
-        return 'assets/drill-icons/Player_Passing.png';
-      case 'shooting':
-        return 'assets/drill-icons/Player_Shooting.png';
-      case 'dribbling':
-        return 'assets/drill-icons/Player_Dribbling.png';
-      case 'first touch':
-      case 'firsttouch':
-        return 'assets/drill-icons/Player_First_Touch.png';
-      case 'defending':
-        return 'assets/drill-icons/Player_Defending.png';
-      case 'goalkeeping':
-        return 'assets/drill-icons/Player_Goalkeeping.png';
-      case 'fitness':
-        return 'assets/drill-icons/Player_Fitness.png';
-      default:
-        return 'assets/drill-icons/Player_Dribbling.png';
-    }
+    // Use centralized asset path
+    return AppAssets.getSkillIconPath(skill);
   }
 
   IconData _getSkillIconFallback(String skill) {

@@ -9,14 +9,23 @@ class AppConfig {
 
   // MARK: - Environment Configuration
   /// App Development Cases (mirrors Swift appDevCase)
+  /// 0: Staging (Testing db for migration) - Points to bravoball-staging.onrender.com
   /// 1: Legacy Production (DEPRECATED)
   /// 2: Computer (localhost)
   /// 3: Phone (Wi-Fi IP)
-  /// 4: V2 Backend (App Store Review & Production)
-  static const int appDevCase = 2; // Localhost for local backend testing
+  /// 4: V2 Backend (App Store Review & Production) - Points to bravoball-v2-backend.onrender.com
+  static const int appDevCase = 2; // Set to 0 for TestFlight (uses testflight-testing branch), 4 for production, 2 for localhost
 
   /// Debug mode toggle
-  static const bool debug = true; // Enable debug for local testing
+  static const bool debug = true; // set false for store submission
+
+  /// StoreKit Configuration - Package handling configuration
+  /// 
+  /// NOTE: to fully stop using storekit, go to xcworkspace and remove it from project scheme
+  /// NOTE: in backend, set REVENUECAT_ALLOW_SIMULATOR_BYPASS=true for storekit/local test
+  /// **Local StoreKit Testing** (`true`):
+  /// **Sandbox/Production** (`false`):
+  static const bool useLocalStoreKit = false;  // Set to true for local testing, false for sandbox/production
 
   /// Wi-Fi IP address for phone testing - loaded from .env file
   /// You can find this by running `ipconfig getifaddr en0` on macOS
@@ -25,35 +34,35 @@ class AppConfig {
   // MARK: - Environment Settings
   /// Get base URL based on app development case
   static String get baseUrl {
-    if (kDebugMode) {
-      switch (appDevCase) {
-        case 1:
-          // DEPRECATED: Production (simulated during debug)
-          return 'https://bravoball-backend.onrender.com';
-        case 2:
-          // Localhost for simulator or computer
-          // Use 10.0.2.2 for Android emulator, 127.0.0.1 for iOS simulator
-          if (defaultTargetPlatform == TargetPlatform.android) {
-            return 'http://10.0.2.2:8000';
-          } else {
-            return 'http://127.0.0.1:8000';
-          }
-        case 3:
-          // Wi-Fi IP for phone testing
-          return 'http://$phoneWifiIP:8000';
-        case 4:
-          // 🆕 V2 Backend for App Store review
-          return 'https://bravoball-v2-backend.onrender.com';
-        default:
-          if (defaultTargetPlatform == TargetPlatform.android) {
-            return 'http://10.0.2.2:8000';
-          } else {
-            return 'http://127.0.0.1:8000';
-          }
-      }
-    } else {
-      // V2 Backend for new v2 production
-      return 'https://bravoball-v2-backend.onrender.com';
+    // Use appDevCase for both debug and release builds
+    // This allows TestFlight builds to use staging backend
+    switch (appDevCase) {
+      case 0:
+        // Staging for migration testing / TestFlight testing
+        return 'https://bravoball-staging.onrender.com';
+      case 1:
+        // DEPRECATED: Production (simulated during debug)
+        return 'https://bravoball-backend.onrender.com';
+      case 2:
+        // Localhost for simulator or computer
+        // Use 10.0.2.2 for Android emulator, 127.0.0.1 for iOS simulator
+        if (defaultTargetPlatform == TargetPlatform.android) {
+          return 'http://10.0.2.2:8000';
+        } else {
+          return 'http://127.0.0.1:8000';
+        }
+      case 3:
+        // Wi-Fi IP for phone testing
+        return 'http://$phoneWifiIP:8000';
+      case 4:
+        // V2 Backend for App Store review / Production
+        return 'https://bravoball-v2-backend.onrender.com';
+      default:
+        if (defaultTargetPlatform == TargetPlatform.android) {
+          return 'http://10.0.2.2:8000';
+        } else {
+          return 'http://127.0.0.1:8000';
+        }
     }
   }
 
@@ -61,6 +70,8 @@ class AppConfig {
   /// Get current environment name
   static String get environmentName {
     switch (appDevCase) {
+      case 0:
+        return 'Staging';
       case 1:
         return 'Legacy Production (Deprecated)';
       case 2:
@@ -82,7 +93,13 @@ class AppConfig {
   static bool get enableDebugMenu => kDebugMode && debug;
   static bool get logApiCalls => kDebugMode && debug;
   static bool get showPerformanceOverlay => kDebugMode && false;
-  static bool get fastMentalTrainingTimers => kDebugMode && debug; // Speed up mental training timers for testing
+  static bool get fastMentalTrainingTimers => kDebugMode && debug;
+  
+  /// Verbose backend logging - set to false to show only simple success/failure messages
+  /// When false: Shows "✅ API endpoint loaded successfully" or "❌ API endpoint failed"
+  /// When true: Shows full API request/response details including response bodies
+  static const bool verboseBackendLogging = true;
+  
 
   // MARK: - Test Data Settings (when useTestData is true)
   static const int testDrillCount = 5;

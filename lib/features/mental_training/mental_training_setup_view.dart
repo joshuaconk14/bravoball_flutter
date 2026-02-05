@@ -1,7 +1,11 @@
 import 'package:flutter/material.dart';
+
+import 'package:provider/provider.dart';
 import '../../constants/app_theme.dart';
 import '../../utils/haptic_utils.dart';
 import '../../widgets/bravo_button.dart';
+import '../../services/app_state_service.dart';
+import '../../features/premium/premium_page.dart';
 import 'mental_training_timer_view.dart';
 
 class MentalTrainingSetupView extends StatefulWidget {
@@ -383,26 +387,36 @@ class _MentalTrainingSetupViewState extends State<MentalTrainingSetupView>
             height: 56,
             child: BravoButton(
               text: 'Start Mental Training',
-              onPressed: () {
-                HapticUtils.heavyImpact();
-                Navigator.of(context).push(
-                  PageRouteBuilder(
-                    pageBuilder: (context, animation, secondaryAnimation) =>
-                        MentalTrainingTimerView(durationMinutes: _selectedDuration),
-                    transitionsBuilder: (context, animation, secondaryAnimation, child) {
-                      return SlideTransition(
-                        position: animation.drive(
-                          Tween(
-                            begin: const Offset(1.0, 0.0),
-                            end: Offset.zero,
-                          ).chain(CurveTween(curve: Curves.easeInOut)),
-                        ),
-                        child: child,
-                      );
-                    },
-                    transitionDuration: const Duration(milliseconds: 400),
-                  ),
-                );
+              onPressed: () async {
+                // ✅ ADDED: Check session limit before allowing access
+                final appState = Provider.of<AppStateService>(context, listen: false);
+                final canStart = await appState.canStartNewSession();
+                
+                if (canStart) {
+                  HapticUtils.heavyImpact();
+                  Navigator.of(context).push(
+                    PageRouteBuilder(
+                      pageBuilder: (context, animation, secondaryAnimation) =>
+                          MentalTrainingTimerView(durationMinutes: _selectedDuration),
+                      transitionsBuilder: (context, animation, secondaryAnimation, child) {
+                        return SlideTransition(
+                          position: animation.drive(
+                            Tween(
+                              begin: const Offset(1.0, 0.0),
+                              end: Offset.zero,
+                            ).chain(CurveTween(curve: Curves.easeInOut)),
+                          ),
+                          child: child,
+                        );
+                      },
+                      transitionDuration: const Duration(milliseconds: 400),
+                    ),
+                  );
+                } else {
+                  // Show upgrade prompt
+                  HapticUtils.heavyImpact();
+                  _showSessionLimitUpgradePrompt(context);
+                }
               },
               color: AppTheme.primaryYellow,
               backColor: AppTheme.primaryDarkYellow,
@@ -411,6 +425,16 @@ class _MentalTrainingSetupViewState extends State<MentalTrainingSetupView>
           ),
         );
       },
+    );
+  }
+  
+  /// Show session limit upgrade prompt
+  void _showSessionLimitUpgradePrompt(BuildContext context) {
+    // Navigate to premium page instead of showing dialog
+    Navigator.of(context).push(
+      MaterialPageRoute(
+        builder: (context) => const PremiumPage(),
+      ),
     );
   }
 } 

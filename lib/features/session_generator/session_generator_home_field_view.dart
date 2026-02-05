@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
-import 'package:rive/rive.dart';
+import 'package:rive/rive.dart' hide Image;
 import 'dart:ui' as ui show Gradient;
 import 'package:flutter/painting.dart' as painting;
 import '../../widgets/bravo_button.dart';
@@ -11,6 +11,7 @@ import '../../services/app_state_service.dart';
 import '../../services/user_manager_service.dart'; // ✅ ADDED: Import UserManagerService for avatar
 import '../../services/audio_service.dart';
 import '../../constants/app_theme.dart';
+import '../../constants/app_assets.dart';
 import '../../utils/haptic_utils.dart';
 import '../../utils/avatar_helper.dart'; // ✅ ADDED: Import AvatarHelper for avatar utilities
 import 'session_generator_editor_page.dart';
@@ -21,6 +22,12 @@ import '../../views/main_tab_view.dart';
 import 'package:flutter/foundation.dart'; // Added for kDebugMode
 import '../mental_training/mental_training_setup_view.dart'; // Added for MentalTrainingSetupView
 import '../../widgets/guest_account_creation_dialog.dart'; // ✅ ADDED: Import reusable dialog
+import '../../features/premium/premium_page.dart'; // ✅ ADDED: Import premium page
+import '../../services/ad_service.dart'; // Added for AdService
+import '../../services/store_service.dart'; // Added for StoreService
+import '../store/store_page.dart'; // ✅ ADDED: Import store page
+import '../../services/tutorial_service.dart'; // ✅ ADDED: Import tutorial service
+import '../../widgets/tutorial_overlay.dart'; // ✅ ADDED: Import tutorial overlay
 
 class SessionGeneratorHomeFieldView extends StatefulWidget {
   const SessionGeneratorHomeFieldView({Key? key}) : super(key: key);
@@ -30,6 +37,155 @@ class SessionGeneratorHomeFieldView extends StatefulWidget {
 }
 
 class _SessionGeneratorHomeFieldViewState extends State<SessionGeneratorHomeFieldView> {
+  // ✅ ADDED: GlobalKeys for tutorial highlights
+  final GlobalKey _profileIconKey = GlobalKey();
+  final GlobalKey _streakKey = GlobalKey();
+  final GlobalKey _backpackKey = GlobalKey();
+  final GlobalKey _mentalTrainingKey = GlobalKey();
+  final GlobalKey _drillPathKey = GlobalKey();
+  final GlobalKey _trophyKey = GlobalKey();
+  
+  bool _showTutorial = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _initializeStoreService();
+    _checkTutorialStatus();
+  }
+
+  Future<void> _initializeStoreService() async {
+    await StoreService.instance.initialize();
+  }
+
+  Future<void> _checkTutorialStatus() async {
+    final hasSeenTutorial = await TutorialService.instance.hasSeenTutorial();
+    if (!hasSeenTutorial) {
+      // Wait for the widget tree to be built before showing tutorial
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted) {
+          setState(() {
+            _showTutorial = true;
+          });
+        }
+      });
+    }
+  }
+
+  void _completeTutorial() {
+    setState(() {
+      _showTutorial = false;
+    });
+  }
+
+  void _skipTutorial() {
+    setState(() {
+      _showTutorial = false;
+    });
+  }
+
+  List<TutorialStep> _buildTutorialSteps(BuildContext context) {
+    final steps = <TutorialStep>[];
+    
+    // Step 1: Profile icon
+    if (_profileIconKey.currentContext != null) {
+      final box = _profileIconKey.currentContext!.findRenderObject() as RenderBox;
+      final position = box.localToGlobal(Offset.zero);
+      steps.add(TutorialStep(
+        title: 'Your Profile',
+        description: 'Tap your profile icon to view your progress, achievements, and settings.',
+        targetRect: Rect.fromLTWH(
+          position.dx - 10,
+          position.dy - 10,
+          box.size.width + 20,
+          box.size.height + 20,
+        ),
+      ));
+    }
+    
+    // Step 2: Streak counter
+    if (_streakKey.currentContext != null) {
+      final box = _streakKey.currentContext!.findRenderObject() as RenderBox;
+      final position = box.localToGlobal(Offset.zero);
+      steps.add(TutorialStep(
+        title: 'Your Streak',
+        description: 'Track your daily training streak! Complete sessions to keep it going.',
+        targetRect: Rect.fromLTWH(
+          position.dx - 10,
+          position.dy - 10,
+          box.size.width + 20,
+          box.size.height + 20,
+        ),
+      ));
+    }
+    
+    // Step 3: Backpack (Session Generator)
+    if (_backpackKey.currentContext != null) {
+      final box = _backpackKey.currentContext!.findRenderObject() as RenderBox;
+      final position = box.localToGlobal(Offset.zero);
+      steps.add(TutorialStep(
+        title: 'Create Your Session',
+        description: 'Tap the backpack to customize your training session. Choose your skills, equipment, and preferences.',
+        targetRect: Rect.fromLTWH(
+          position.dx - 15,
+          position.dy - 15,
+          box.size.width + 30,
+          box.size.height + 30,
+        ),
+      ));
+    }
+    
+    // Step 4: Mental Training
+    if (_mentalTrainingKey.currentContext != null) {
+      final box = _mentalTrainingKey.currentContext!.findRenderObject() as RenderBox;
+      final position = box.localToGlobal(Offset.zero);
+      steps.add(TutorialStep(
+        title: 'Mental Training',
+        description: 'Build mental strength with visualization and focus exercises.',
+        targetRect: Rect.fromLTWH(
+          position.dx - 15,
+          position.dy - 15,
+          box.size.width + 30,
+          box.size.height + 30,
+        ),
+      ));
+    }
+    
+    // Step 5: Drill Path
+    if (_drillPathKey.currentContext != null) {
+      final box = _drillPathKey.currentContext!.findRenderObject() as RenderBox;
+      final position = box.localToGlobal(Offset.zero);
+      steps.add(TutorialStep(
+        title: 'Your Training Path',
+        description: 'Complete drills in order. Tap each drill to start and follow along with video instructions.',
+        targetRect: Rect.fromLTWH(
+          position.dx - 10,
+          position.dy - 10,
+          box.size.width + 20,
+          box.size.height + 20,
+        ),
+      ));
+    }
+    
+    // Step 6: Trophy
+    if (_trophyKey.currentContext != null) {
+      final box = _trophyKey.currentContext!.findRenderObject() as RenderBox;
+      final position = box.localToGlobal(Offset.zero);
+      steps.add(TutorialStep(
+        title: 'Complete Your Session',
+        description: 'Finish all drills to unlock the trophy and earn rewards!',
+        targetRect: Rect.fromLTWH(
+          position.dx - 15,
+          position.dy - 15,
+          box.size.width + 30,
+          box.size.height + 30,
+        ),
+      ));
+    }
+    
+    return steps;
+  }
+
   // ✅ NEW: Calculate dynamic spacing between drill buttons based on their sizes
   double _getSpacingForButton(
     EditableDrillModel currentDrill, 
@@ -70,35 +226,47 @@ class _SessionGeneratorHomeFieldViewState extends State<SessionGeneratorHomeFiel
   Widget build(BuildContext context) {
     return Consumer<AppStateService>(
       builder: (context, appState, child) {
-        return Scaffold(
-          backgroundColor: Colors.white,
-          body: Column(
-            children: [
-              // Top bar (white, compact)
-              _buildTopBar(context),
-              
-              // Main scrollable content
-              Expanded(
-                child: Container(
-                  color: AppTheme.backgroundField,
-                  child: SingleChildScrollView(
-                    physics: const BouncingScrollPhysics(),
-                    child: Column(
-                      children: [
-                        // Field area with controlled height
-                        _buildFieldArea(context, appState),
-                        
-                        // Drill circles and trophy
-                        _buildDrillPath(appState),
-                        
-                        const SizedBox(height: 32),
-                      ],
+        return Stack(
+          children: [
+            Scaffold(
+              backgroundColor: Colors.white,
+              body: Column(
+                children: [
+                  // Top bar (white, compact)
+                  _buildTopBar(context),
+                  
+                  // Main scrollable content
+                  Expanded(
+                    child: Container(
+                      color: AppTheme.backgroundField,
+                      child: SingleChildScrollView(
+                        physics: const BouncingScrollPhysics(),
+                        child: Column(
+                          children: [
+                            // Field area with controlled height
+                            _buildFieldArea(context, appState),
+                            
+                            // Drill circles and trophy
+                            _buildDrillPath(appState),
+                            
+                            const SizedBox(height: 32),
+                          ],
+                        ),
+                      ),
                     ),
                   ),
-                ),
+                ],
               ),
-            ],
-          ),
+            ),
+            
+            // ✅ ADDED: Tutorial overlay
+            if (_showTutorial)
+              TutorialOverlay(
+                steps: _buildTutorialSteps(context),
+                onComplete: _completeTutorial,
+                onSkip: _skipTutorial,
+              ),
+          ],
         );
       },
     );
@@ -123,7 +291,9 @@ class _SessionGeneratorHomeFieldViewState extends State<SessionGeneratorHomeFiel
           height: 48,
           child: Row(
             children: [
+              // Profile icon
               GestureDetector(
+                key: _profileIconKey, // ✅ ADDED: GlobalKey for tutorial
                 onTap: () {
                   HapticUtils.heavyImpact(); // Heavy haptic for major navigation
                   Navigator.of(context).pushAndRemoveUntil(
@@ -174,56 +344,84 @@ class _SessionGeneratorHomeFieldViewState extends State<SessionGeneratorHomeFiel
               
               const Spacer(),
               
-              Text(
-                'BravoBall',
-                style: TextStyle(
-                  fontFamily: AppTheme.fontPottaOne,
-                  fontSize: 22,
-                  color: AppTheme.primaryYellow,
-                  fontWeight: FontWeight.w400,
-                ),
+              // Streak display (flame and number grouped)
+              Consumer<AppStateService>(
+                builder: (context, appState, child) {
+                  return Row(
+                    key: _streakKey, // ✅ ADDED: GlobalKey for tutorial
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Icon(Icons.local_fire_department, color: AppTheme.secondaryOrange, size: 28),
+                      const SizedBox(width: 4),
+                      // Show loading indicator while initial data is being fetched
+                      appState.isInitialLoad 
+                        ? SizedBox(
+                            width: 20,
+                            height: 20,
+                            child: CircularProgressIndicator(
+                              strokeWidth: 2,
+                              valueColor: AlwaysStoppedAnimation<Color>(AppTheme.secondaryOrange),
+                            ),
+                          )
+                        : Text(
+                            '${appState.currentStreak}', // Use actual streak from AppStateService
+                            style: TextStyle(
+                              fontFamily: AppTheme.fontPoppins,
+                              fontSize: 24,
+                              color: AppTheme.secondaryOrange,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                    ],
+                  );
+                },
               ),
               
               const Spacer(),
               
-              GestureDetector(
-                onTap: () {
-                  HapticUtils.heavyImpact(); // Heavy haptic for major navigation  
-                  Navigator.of(context).pushAndRemoveUntil(
-                    MaterialPageRoute(
-                      builder: (_) => const MainTabView(initialIndex: 1),
-                    ),
-                    (route) => false,
+              // Treat indicator (icon and number grouped)
+              Consumer<StoreService>(
+                builder: (context, storeService, child) {
+                  return Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Image.asset(
+                        AppAssets.treatIcon,
+                        width: 25,
+                        height: 25,
+                        fit: BoxFit.contain,
+                      ),
+                      const SizedBox(width: 6),
+                      Text(
+                        '${storeService.treats}', // Real treat count from API
+                        style: TextStyle(
+                          fontFamily: AppTheme.fontPoppins,
+                          fontSize: 24,
+                          color: Colors.brown,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                    ],
                   );
                 },
-                child: Consumer<AppStateService>(
-                  builder: (context, appState, child) {
-                    return Row(
-                      children: [
-                        Icon(Icons.local_fire_department, color: AppTheme.secondaryOrange, size: 24),
-                        const SizedBox(width: 4),
-                        // Show loading indicator while initial data is being fetched
-                        appState.isInitialLoad 
-                          ? SizedBox(
-                              width: 16,
-                              height: 16,
-                              child: CircularProgressIndicator(
-                                strokeWidth: 2,
-                                valueColor: AlwaysStoppedAnimation<Color>(AppTheme.secondaryOrange),
-                              ),
-                            )
-                          : Text(
-                              '${appState.currentStreak}', // Use actual streak from AppStateService
-                              style: TextStyle(
-                                fontFamily: AppTheme.fontPoppins,
-                                fontSize: 20,
-                                color: AppTheme.secondaryOrange,
-                                fontWeight: FontWeight.bold,
-                              ),
-                            ),
-                      ],
-                    );
-                  },
+              ),
+              
+              const Spacer(),
+              
+              // Store button
+              GestureDetector(
+                onTap: () {
+                  HapticUtils.heavyImpact(); // Heavy haptic for major navigation
+                  Navigator.of(context).push(
+                    MaterialPageRoute(
+                      builder: (_) => const StorePage(),
+                    ),
+                  );
+                },
+                child: Icon(
+                  Icons.shopping_bag,
+                  color: AppTheme.secondaryBlue,
+                  size: 28,
                 ),
               ),
             ],
@@ -250,7 +448,7 @@ class _SessionGeneratorHomeFieldViewState extends State<SessionGeneratorHomeFiel
             child: SizedBox(
               height: 380, // Reduced height for appropriate field size
               child: RiveAnimation.asset(
-                'assets/rive/Grass_Field.riv',
+                AppAssets.grassField,
                 fit: BoxFit.cover,
               ),
             ),
@@ -272,7 +470,7 @@ class _SessionGeneratorHomeFieldViewState extends State<SessionGeneratorHomeFiel
               width: 110,
               height: 110,
               child: RiveAnimation.asset(
-                'assets/rive/Bravo_Animation.riv',
+                AppAssets.bravoAnimation,
                 fit: BoxFit.contain,
               ),
             ),
@@ -283,26 +481,36 @@ class _SessionGeneratorHomeFieldViewState extends State<SessionGeneratorHomeFiel
             top: 200, // Moved up to be closer to goal area
             right: screenWidth * 0.25,
             child: GestureDetector(
-              onTap: () {
+              key: _backpackKey, // ✅ ADDED: GlobalKey for tutorial
+              onTap: () async {
                 // ✅ NEW: Check for session progress before allowing access
                 if (appState.hasSessionProgress && !appState.isSessionComplete) {
                   HapticUtils.mediumImpact();
                   _showSessionProgressWarning(context, appState);
                 } else {
-                  // ✅ REMOVED: Trophy restriction - users can always access backpack
-                  HapticUtils.mediumImpact(); // Medium haptic for drill editor access
-                  Navigator.of(context).push(
-                    MaterialPageRoute(
-                      builder: (_) => const SessionGeneratorEditorPage(),
-                    ),
-                  );
+                  // ✅ ADDED: Check session limit before allowing access
+                  final canStart = await appState.canStartNewSession();
+                  
+                  if (canStart) {
+                    // ✅ REMOVED: Trophy restriction - users can always access backpack
+                    HapticUtils.mediumImpact(); // Medium haptic for drill editor access
+                    Navigator.of(context).push(
+                      MaterialPageRoute(
+                        builder: (_) => const SessionGeneratorEditorPage(),
+                      ),
+                    );
+                  } else {
+                    // Show upgrade prompt
+                    HapticUtils.mediumImpact();
+                    _showSessionLimitUpgradePrompt(context);
+                  }
                 }
               },
               child: SizedBox(
                 width: 90,
                 height: 90,
                 child: RiveAnimation.asset(
-                  'assets/rive/Backpack.riv',
+                  AppAssets.backpack,
                   fit: BoxFit.contain,
                 ),
               ),
@@ -314,13 +522,23 @@ class _SessionGeneratorHomeFieldViewState extends State<SessionGeneratorHomeFiel
             top: 122, // Positioned directly above the backpack
             right: screenWidth * 0.28, // Same horizontal position as backpack
             child: GestureDetector(
-              onTap: () {
-                HapticUtils.mediumImpact();
-                Navigator.of(context).push(
-                  MaterialPageRoute(
-                    builder: (_) => const MentalTrainingSetupView(),
-                  ),
-                );
+              key: _mentalTrainingKey, // ✅ ADDED: GlobalKey for tutorial
+              onTap: () async {
+                // ✅ ADDED: Check session limit before allowing access
+                final canStart = await appState.canStartNewSession();
+                
+                if (canStart) {
+                  HapticUtils.mediumImpact();
+                  Navigator.of(context).push(
+                    MaterialPageRoute(
+                      builder: (_) => const MentalTrainingSetupView(),
+                    ),
+                  );
+                } else {
+                  // Show upgrade prompt
+                  HapticUtils.mediumImpact();
+                  _showSessionLimitUpgradePrompt(context);
+                }
               },
               child: Container(
                 width: 50,
@@ -371,9 +589,11 @@ class _SessionGeneratorHomeFieldViewState extends State<SessionGeneratorHomeFiel
       return _buildEmptyStatePlaceholder();
     }
     
-    return Column(
-      mainAxisAlignment: MainAxisAlignment.start,
-      children: [
+    return Container(
+      key: _drillPathKey, // ✅ ADDED: GlobalKey for tutorial
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.start,
+        children: [
         // Drill circles
         ...editableSessionDrills.asMap().entries.map((entry) {
           final index = entry.key;
@@ -409,7 +629,18 @@ class _SessionGeneratorHomeFieldViewState extends State<SessionGeneratorHomeFiel
                 iconSize: iconSize,
                 showProgress: editableDrill.progress > 0 || editableDrill.isCompleted,
                 progress: editableDrill.progress,
-                onPressed: () => _openFollowAlong(editableDrill, appState),
+                onPressed: () async {
+                  // ✅ ADDED: Check session limit before allowing access
+                  final canStart = await appState.canStartNewSession();
+                  
+                  if (canStart) {
+                    _openFollowAlong(editableDrill, appState);
+                  } else {
+                    // Show upgrade prompt
+                    HapticUtils.mediumImpact();
+                    _showSessionLimitUpgradePrompt(context);
+                  }
+                },
               ),
               if (index < editableSessionDrills.length - 1)
                 SizedBox(
@@ -428,6 +659,7 @@ class _SessionGeneratorHomeFieldViewState extends State<SessionGeneratorHomeFiel
         if (hasSessionDrills) ...[
           const SizedBox(height: 32),
           _TrophyWidget(
+            key: _trophyKey, // ✅ ADDED: GlobalKey for tutorial
             isUnlocked: appState.isSessionComplete,
             isAlreadyCompleted: appState.currentSessionCompleted,
             isLarge: sessionComplete && !appState.currentSessionCompleted,
@@ -487,6 +719,7 @@ class _SessionGeneratorHomeFieldViewState extends State<SessionGeneratorHomeFiel
           ),
         ],
       ],
+      ),
     );
   }
 
@@ -596,8 +829,10 @@ class _SessionGeneratorHomeFieldViewState extends State<SessionGeneratorHomeFiel
         MaterialPageRoute(
           builder: (_) => DrillFollowAlongView(
             editableDrill: editableDrill,
-            onDrillCompleted: () {
+            onDrillCompleted: () async {
               print("Drill completed!");
+              // ✅ ADDED: Show ad after drill completion
+              await AdService.instance.showAdAfterDrillCompletion();
             },
             onSessionCompleted: () async {
               // ✅ IMPROVED: Show completion immediately, handle backend sync in background
@@ -641,8 +876,15 @@ class _SessionGeneratorHomeFieldViewState extends State<SessionGeneratorHomeFiel
           totalDrills: appState.editableSessionDrills.length,
           isFirstSessionOfDay: isFirstSessionOfDay,
           sessionsCompletedToday: sessionsToday, // ✅ Use actual count, not incremented
-          onViewProgress: () {
+          treatsAwarded: appState.lastSessionTreatsAwarded, // ✅ Use treats from backend response
+          treatBreakdown: appState.lastSessionTreatBreakdown, // ✅ Use treat breakdown from backend response
+          treatsAlreadyGranted: appState.lastSessionTreatsAlreadyGranted, // ✅ Use treats already granted flag from backend
+          onViewProgress: () async {
             appState.resetDrillProgressForNewSession();
+            
+            // ✅ ADDED: Show ad after session completion
+            await AdService.instance.showAdAfterSession();
+            
             // Navigate to progress tab (index 1)
             Navigator.of(context).pushAndRemoveUntil(
               MaterialPageRoute(
@@ -651,8 +893,12 @@ class _SessionGeneratorHomeFieldViewState extends State<SessionGeneratorHomeFiel
               (route) => false,
             );
           },
-          onBackToHome: () {
+          onBackToHome: () async {
             appState.resetDrillProgressForNewSession();
+            
+            // ✅ ADDED: Show ad after session completion
+            await AdService.instance.showAdAfterSession();
+            
             // Navigate back to home tab (index 0)
             Navigator.of(context).pushAndRemoveUntil(
               MaterialPageRoute(
@@ -662,6 +908,16 @@ class _SessionGeneratorHomeFieldViewState extends State<SessionGeneratorHomeFiel
             );
           },
         ),
+      ),
+    );
+  }
+
+  // ✅ NEW: Show session limit upgrade prompt
+  void _showSessionLimitUpgradePrompt(BuildContext context) {
+    // Navigate to premium page instead of showing dialog
+    Navigator.of(context).push(
+      MaterialPageRoute(
+        builder: (context) => const PremiumPage(),
       ),
     );
   }
@@ -776,6 +1032,7 @@ class _TrophyWidget extends StatelessWidget {
   final VoidCallback onTap;
 
   const _TrophyWidget({
+    super.key, // ✅ ADDED: Key parameter for tutorial
     required this.isUnlocked,
     required this.isAlreadyCompleted,
     this.isLarge = false,

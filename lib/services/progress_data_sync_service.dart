@@ -1,5 +1,6 @@
 import 'dart:convert';
 import 'package:flutter/foundation.dart';
+import '../config/app_config.dart';
 import '../models/editable_drill_model.dart';
 import 'api_service.dart';
 import 'app_state_service.dart'; // Import for CompletedSession
@@ -16,7 +17,8 @@ class ProgressDataSyncService {
   // MARK: - Completed Sessions Sync
 
   /// Sync a completed session to the backend
-  Future<bool> syncCompletedSession({
+  /// Returns response data including treats_awarded and treats_already_granted, or null on failure
+  Future<Map<String, dynamic>?> syncCompletedSession({
     required DateTime date,
     required List<EditableDrillModel> drills,
     required int totalCompleted,
@@ -66,71 +68,90 @@ class ProgressDataSyncService {
         requiresAuth: true,
       );
 
-      if (response.isSuccess) {
+      if (response.isSuccess && response.data != null) {
         if (kDebugMode) {
           print('✅ Successfully synced completed session');
+          final treatsAwarded = response.data!['treats_awarded'] ?? 0;
+          final treatsAlreadyGranted = response.data!['treats_already_granted'] ?? false;
+          print('   Treats awarded: $treatsAwarded');
+          print('   Treats already granted: $treatsAlreadyGranted');
         }
-        return true;
+        return response.data;
       } else {
         if (kDebugMode) {
           print('❌ Failed to sync completed session: ${response.statusCode} ${response.error}');
         }
-        return false;
+        return null;
       }
     } catch (e) {
       if (kDebugMode) {
         print('❌ Error syncing completed session: $e');
       }
-      return false;
+      return null;
     }
   }
 
   /// Fetch completed sessions from the backend
   Future<List<CompletedSession>> fetchCompletedSessions() async {
-    print('🔄 [COMPLETED_SESSIONS] Starting fetchCompletedSessions()');
+    if (kDebugMode && AppConfig.verboseBackendLogging) {
+      print('🔄 [COMPLETED_SESSIONS] Starting fetchCompletedSessions()');
+    }
     
     try {
-      if (kDebugMode) {
+      if (kDebugMode && !AppConfig.verboseBackendLogging) {
         print('📥 Fetching completed sessions from backend');
       }
 
-      print('🌐 [API] Making GET request to /api/sessions/completed/');
-      
-      // Test if the API call is being made
-      print('🔍 [DEBUG] About to make API call...');
+      if (kDebugMode && AppConfig.verboseBackendLogging) {
+        print('🌐 [API] Making GET request to /api/sessions/completed/');
+        print('🔍 [DEBUG] About to make API call...');
+      }
       
       final response = await _apiService.get(
         '/api/sessions/completed/',
         requiresAuth: true,
       );
 
-      print('🔍 [DEBUG] API call completed');
-      print('📡 [API] Response status: ${response.statusCode}');
-      print('📡 [API] Response success: ${response.isSuccess}');
-      print('📡 [API] Response data: ${response.data}');
+      if (kDebugMode && AppConfig.verboseBackendLogging) {
+        print('🔍 [DEBUG] API call completed');
+        print('📡 [API] Response status: ${response.statusCode}');
+        print('📡 [API] Response success: ${response.isSuccess}');
+        print('📡 [API] Response data: ${response.data}');
+      }
 
       // If response is empty or null, return empty list
       if (response.data == null) {
-        print('❌ [API] Response data is null');
+        if (kDebugMode) {
+          print('❌ [API] Response data is null');
+        }
         return [];
       }
 
       if (response.isSuccess && response.data != null) {
-        print('✅ [API] Response was successful and has data');
+        if (kDebugMode && AppConfig.verboseBackendLogging) {
+          print('✅ [API] Response was successful and has data');
+        }
         
         // Check if data has 'sessions' key or is directly an array
         final sessionsJson = response.data!['sessions'] ?? response.data!['data'] ?? response.data!;
-        print('📊 [API] Found ${sessionsJson.length} sessions in response');
-        print('📊 [API] Sessions data type: ${sessionsJson.runtimeType}');
+        if (kDebugMode && AppConfig.verboseBackendLogging) {
+          print('📊 [API] Found ${sessionsJson.length} sessions in response');
+          print('📊 [API] Sessions data type: ${sessionsJson.runtimeType}');
+        }
         
         if (sessionsJson is List) {
-          print('✅ [API] Sessions is a List, processing ${sessionsJson.length} items');
+          if (kDebugMode && AppConfig.verboseBackendLogging) {
+            print('✅ [API] Sessions is a List, processing ${sessionsJson.length} items');
+          }
           
           final sessions = <CompletedSession>[];
           
           for (int i = 0; i < sessionsJson.length; i++) {
             final sessionJson = sessionsJson[i];
-            print('🔄 [API] Parsing session $i: $sessionJson');
+            
+            if (kDebugMode && AppConfig.verboseBackendLogging) {
+              print('🔄 [API] Parsing session $i: $sessionJson');
+            }
             
             try {
               // 🧠 Check if this is a mental training session
@@ -138,40 +159,51 @@ class ProgressDataSyncService {
               final drillsData = sessionJson['drills'];
               final hasNullDrills = drillsData == null;
               
-              print('🧠 [MENTAL_TRAINING] Session $i type: $sessionType, drills null: $hasNullDrills');
-              
-              if (sessionType == 'mental_training') {
-                print('🧠 [MENTAL_TRAINING] Found mental training session!');
-                print('   Date: ${sessionJson['date']}');
-                print('   Total drills: ${sessionJson['total_drills']}');
-                print('   Completed drills: ${sessionJson['total_completed_drills']}');
-                print('   Drills data: $drillsData');
+              if (kDebugMode && AppConfig.verboseBackendLogging) {
+                print('🧠 [MENTAL_TRAINING] Session $i type: $sessionType, drills null: $hasNullDrills');
+                
+                if (sessionType == 'mental_training') {
+                  print('🧠 [MENTAL_TRAINING] Found mental training session!');
+                  print('   Date: ${sessionJson['date']}');
+                  print('   Total drills: ${sessionJson['total_drills']}');
+                  print('   Completed drills: ${sessionJson['total_completed_drills']}');
+                  print('   Drills data: $drillsData');
+                }
               }
               
               final session = CompletedSession.fromJson(sessionJson);
               sessions.add(session);
               
-              print('✅ [API] Successfully parsed session $i for date: ${session.date}, type: ${session.sessionType}');
-              
-              if (session.sessionType == 'mental_training') {
-                print('🧠 [MENTAL_TRAINING] Successfully parsed mental training session!');
-                print('   Drills count: ${session.drills.length}');
-                print('   Session date: ${session.date}');
+              if (kDebugMode && AppConfig.verboseBackendLogging) {
+                print('✅ [API] Successfully parsed session $i for date: ${session.date}, type: ${session.sessionType}');
+                
+                if (session.sessionType == 'mental_training') {
+                  print('🧠 [MENTAL_TRAINING] Successfully parsed mental training session!');
+                  print('   Drills count: ${session.drills.length}');
+                  print('   Session date: ${session.date}');
+                }
               }
               
             } catch (e) {
               print('❌ [API] Error parsing session $i: $e');
-              print('   Session data: $sessionJson');
-              print('   Stack trace: ${e.toString()}');
+              if (kDebugMode && AppConfig.verboseBackendLogging) {
+                print('   Session data: $sessionJson');
+                print('   Stack trace: ${e.toString()}');
+              }
               // Continue with other sessions instead of failing completely
             }
           }
 
-          print('✅ [API] Successfully parsed ${sessions.length} completed sessions');
-          
-          // 🧠 Count mental training sessions
-          final mentalTrainingSessions = sessions.where((s) => s.sessionType == 'mental_training').length;
-          print('🧠 [MENTAL_TRAINING] Found $mentalTrainingSessions mental training sessions out of ${sessions.length} total');
+          if (kDebugMode) {
+            if (AppConfig.verboseBackendLogging) {
+              print('✅ [API] Successfully parsed ${sessions.length} completed sessions');
+              // 🧠 Count mental training sessions
+              final mentalTrainingSessions = sessions.where((s) => s.sessionType == 'mental_training').length;
+              print('🧠 [MENTAL_TRAINING] Found $mentalTrainingSessions mental training sessions out of ${sessions.length} total');
+            } else {
+              print('✅ Successfully loaded ${sessions.length} completed sessions');
+            }
+          }
           
           return sessions;
         } else {
@@ -182,7 +214,9 @@ class ProgressDataSyncService {
         print('❌ [API] Response was not successful or has no data');
         print('   Status Code: ${response.statusCode}');
         print('   Error: ${response.error}');
-        print('   Data: ${response.data}');
+        if (kDebugMode && AppConfig.verboseBackendLogging) {
+          print('   Data: ${response.data}');
+        }
         return [];
       }
     } catch (e) {
@@ -236,7 +270,11 @@ class ProgressDataSyncService {
         };
 
         if (kDebugMode) {
-          print('✅ Successfully fetched progress history: $progressData');
+          if (AppConfig.verboseBackendLogging) {
+            print('✅ Successfully fetched progress history: $progressData');
+          } else {
+            print('✅ Successfully fetched progress history');
+          }
         }
         return progressData;
       } else {

@@ -1,9 +1,13 @@
 import 'package:flutter/material.dart';
-import 'package:rive/rive.dart' hide LinearGradient;
+import 'package:rive/rive.dart' hide LinearGradient, Image;
 import '../../constants/app_theme.dart';
+import '../../constants/app_assets.dart';
 import '../../services/audio_service.dart';
+import '../../services/ad_service.dart'; // ✅ ADDED: Import AdService
 import '../../utils/haptic_utils.dart';
 import '../../services/app_rating_service.dart';
+import '../../services/user_manager_service.dart';
+import 'treat_reward_breakdown_view.dart';
 
 class SessionCompletionView extends StatefulWidget {
   final int currentStreak;
@@ -11,6 +15,9 @@ class SessionCompletionView extends StatefulWidget {
   final int totalDrills;
   final bool isFirstSessionOfDay;
   final int sessionsCompletedToday;
+  final int treatsAwarded; // ✅ Treats awarded from backend
+  final Map<String, dynamic>? treatBreakdown; // ✅ Treat breakdown from backend
+  final bool treatsAlreadyGranted; // ✅ Whether treats were already granted
   final VoidCallback? onViewProgress;
   final VoidCallback? onBackToHome;
 
@@ -21,6 +28,9 @@ class SessionCompletionView extends StatefulWidget {
     required this.totalDrills,
     required this.isFirstSessionOfDay,
     required this.sessionsCompletedToday,
+    required this.treatsAwarded, // ✅ Required - backend provides this
+    this.treatBreakdown, // ✅ Optional - treat breakdown from backend
+    this.treatsAlreadyGranted = false, // ✅ Whether treats were already granted
     this.onViewProgress,
     this.onBackToHome,
   });
@@ -35,11 +45,13 @@ class _SessionCompletionViewState extends State<SessionCompletionView>
   late AnimationController _slideController;
   late AnimationController _streakController;
   late AnimationController _characterController;
+  late AnimationController _treatsController;
   
   late Animation<double> _fadeAnimation;
   late Animation<Offset> _slideAnimation;
   late Animation<double> _streakAnimation;
   late Animation<double> _characterBounceAnimation;
+  late Animation<double> _treatsAnimation;
 
   @override
   void initState() {
@@ -63,6 +75,11 @@ class _SessionCompletionViewState extends State<SessionCompletionView>
     
     _characterController = AnimationController(
       duration: const Duration(milliseconds: 1200),
+      vsync: this,
+    );
+    
+    _treatsController = AnimationController(
+      duration: const Duration(milliseconds: 1000),
       vsync: this,
     );
     
@@ -99,6 +116,14 @@ class _SessionCompletionViewState extends State<SessionCompletionView>
       curve: Curves.elasticOut,
     ));
     
+    _treatsAnimation = Tween<double>(
+      begin: 0.0,
+      end: 1.0,
+    ).animate(CurvedAnimation(
+      parent: _treatsController,
+      curve: Curves.bounceOut,
+    ));
+    
     // Start animations
     _startAnimations();
     
@@ -133,6 +158,23 @@ class _SessionCompletionViewState extends State<SessionCompletionView>
     
     await Future.delayed(const Duration(milliseconds: 500));
     _streakController.forward();
+    
+    await Future.delayed(const Duration(milliseconds: 300));
+    _treatsController.forward();
+  }
+  
+  void _navigateToBreakdown() {
+    Navigator.of(context).push(
+      MaterialPageRoute(
+        builder: (_) => TreatRewardBreakdownView(
+          treatsAwarded: widget.treatsAwarded,
+          treatBreakdown: widget.treatBreakdown,
+          treatsAlreadyGranted: widget.treatsAlreadyGranted,
+          onViewProgress: widget.onViewProgress,
+          onBackToHome: widget.onBackToHome,
+        ),
+      ),
+    );
   }
 
   @override
@@ -141,6 +183,7 @@ class _SessionCompletionViewState extends State<SessionCompletionView>
     _slideController.dispose();
     _streakController.dispose();
     _characterController.dispose();
+    _treatsController.dispose();
     super.dispose();
   }
 
@@ -254,18 +297,36 @@ class _SessionCompletionViewState extends State<SessionCompletionView>
                   },
                 ),
                 
-                const Spacer(), // Use spacer to push buttons to bottom
+                const SizedBox(height: 20),
                 
-                // Action buttons - always visible at bottom
-                AnimatedBuilder(
-                  animation: _fadeAnimation,
-                  builder: (context, child) {
-                    return Opacity(
-                      opacity: _fadeAnimation.value,
-                      child: _buildActionButtons(),
-                    );
-                  },
-                ),
+                // Treats reward display with animation (only show for authenticated users)
+                if (!UserManagerService.instance.isGuestMode)
+                  AnimatedBuilder(
+                    animation: _treatsAnimation,
+                    builder: (context, child) {
+                      return Transform.scale(
+                        scale: _treatsAnimation.value,
+                        child: Opacity(
+                          opacity: _treatsAnimation.value,
+                          child: _buildTreatsReward(),
+                        ),
+                      );
+                    },
+                  ),
+                
+                const Spacer(), // Use spacer for spacing
+                
+                // Next button to view treat breakdown (only for authenticated users)
+                if (!UserManagerService.instance.isGuestMode)
+                  AnimatedBuilder(
+                    animation: _fadeAnimation,
+                    builder: (context, child) {
+                      return Opacity(
+                        opacity: _fadeAnimation.value,
+                        child: _buildNextButton(),
+                      );
+                    },
+                  ),
                 
                 const SizedBox(height: 16), // Bottom padding
               ],
@@ -285,7 +346,7 @@ class _SessionCompletionViewState extends State<SessionCompletionView>
           width: 120,
           height: 120,
           child: RiveAnimation.asset(
-            'assets/rive/Bravo_Animation.riv',
+            AppAssets.bravoAnimation,
             fit: BoxFit.contain,
           ),
         ),
@@ -503,61 +564,131 @@ class _SessionCompletionViewState extends State<SessionCompletionView>
     );
   }
 
-  Widget _buildActionButtons() {
-    return Column(
+  Widget _buildTreatsReward() {
+    // ✅ Use treats awarded from backend (dynamic calculation)
+    final treatAmount = widget.treatsAwarded;
+    
+    return Row(
+      mainAxisAlignment: MainAxisAlignment.center,
       children: [
-        // View Progress button
-        SizedBox(
-          width: double.infinity,
-          height: 56,
-          child: ElevatedButton(
-            onPressed: widget.onViewProgress,
-            style: ElevatedButton.styleFrom(
-              backgroundColor: Colors.white,
-              foregroundColor: AppTheme.primaryYellow,
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(12),
+        // Treat icon
+        Container(
+          width: 50,
+          height: 50,
+          decoration: BoxDecoration(
+            color: AppTheme.primaryYellow,
+            shape: BoxShape.circle,
+            boxShadow: [
+              BoxShadow(
+                color: AppTheme.primaryYellow.withValues(alpha: 0.4),
+                blurRadius: 12,
+                offset: const Offset(0, 4),
               ),
-              elevation: 0,
-            ),
-            child: const Text(
-              'View Progress',
-              style: TextStyle(
-                fontFamily: 'Poppins',
-                fontSize: 16,
-                fontWeight: FontWeight.w600,
-              ),
+            ],
+          ),
+          child: Padding(
+            padding: const EdgeInsets.all(8.0),
+            child: Image.asset(
+              AppAssets.treatIcon,
+              width: 34,
+              height: 34,
+              fit: BoxFit.contain,
             ),
           ),
         ),
         
-        const SizedBox(height: 12),
+        const SizedBox(width: 16),
         
-        // Back to Home button
-        SizedBox(
-          width: double.infinity,
-          height: 56,
-          child: ElevatedButton(
-            onPressed: widget.onBackToHome,
-            style: ElevatedButton.styleFrom(
-              backgroundColor: AppTheme.primaryGreen,
-              foregroundColor: Colors.white,
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(12),
+        // Treat amount
+        Text(
+          treatAmount.toString(),
+          style: const TextStyle(
+            fontFamily: 'Poppins',
+            fontSize: 48,
+            fontWeight: FontWeight.bold,
+            color: Colors.white,
+          ),
+        ),
+        
+        const SizedBox(width: 8),
+        
+        // "Treats" label
+        const Text(
+          'Treats',
+          style: TextStyle(
+            fontFamily: 'Poppins',
+            fontSize: 20,
+            fontWeight: FontWeight.w600,
+            color: Colors.white,
+          ),
+        ),
+        
+        const SizedBox(width: 12),
+        
+        // Plus icon indicator
+        Container(
+          width: 44,
+          height: 44,
+          decoration: BoxDecoration(
+            color: AppTheme.primaryGreen,
+            shape: BoxShape.circle,
+            boxShadow: [
+              BoxShadow(
+                color: AppTheme.primaryGreen.withValues(alpha: 0.3),
+                blurRadius: 10,
+                offset: const Offset(0, 4),
               ),
-              elevation: 0,
-            ),
-            child: const Text(
-              'Back to Home Page',
+            ],
+          ),
+          child: const Center(
+            child: Text(
+              '+',
               style: TextStyle(
                 fontFamily: 'Poppins',
-                fontSize: 16,
-                fontWeight: FontWeight.w600,
+                fontSize: 24,
+                fontWeight: FontWeight.bold,
+                color: Colors.white,
               ),
             ),
           ),
         ),
       ],
+    );
+  }
+
+  Widget _buildNextButton() {
+    return SizedBox(
+      width: double.infinity,
+      height: 56,
+      child: ElevatedButton(
+        onPressed: _navigateToBreakdown,
+        style: ElevatedButton.styleFrom(
+          backgroundColor: Colors.white,
+          foregroundColor: AppTheme.primaryYellow,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(12),
+          ),
+          elevation: 0,
+        ),
+        child: const Row(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Text(
+              'Next',
+              style: TextStyle(
+                fontFamily: 'Poppins',
+                fontSize: 16,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+            SizedBox(width: 8),
+            Icon(
+              Icons.arrow_forward,
+              size: 20,
+            ),
+          ],
+        ),
+      ),
     );
   }
 } 

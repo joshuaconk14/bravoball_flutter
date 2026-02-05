@@ -1,6 +1,7 @@
 import 'package:flutter/foundation.dart';
 import '../models/drill_model.dart';
 import '../config/app_config.dart';
+import '../config/skill_config.dart';
 import 'api_service.dart';
 
 /// Service for handling drill data specifically for guest users
@@ -160,62 +161,11 @@ class GuestDrillService {
 
   /// Helper: Map backend skill category to frontend display name
   String _mapSkillCategory(String backendCategory) {
-    const categoryMap = {
-      'passing': 'Passing',
-      'shooting': 'Shooting',
-      'dribbling': 'Dribbling',
-      'first_touch': 'First Touch',
-      'defending': 'Defending',
-      'fitness': 'Fitness',
-      'goalkeeping': 'Goalkeeping', // ✅ ADDED: Missing goalkeeping mapping
-      'general': 'General',
-    };
-    
-    return categoryMap[backendCategory.toLowerCase()] ?? 'General';
+    return SkillConfig.mapSkillCategory(backendCategory);
   }
 
   /// Helper: Map backend sub-skill to frontend display name
   String _mapSubSkill(String backendSubSkill) {
-    const subSkillMap = {
-      // Dribbling
-      'close_control': 'Close control',
-      'speed_dribbling': 'Speed dribbling',
-      '1v1_moves': '1v1 moves',
-      'change_of_direction': 'Change of direction',
-      'ball_mastery': 'Ball mastery',
-      
-      // First Touch
-      'ground_control': 'Ground control',
-      'aerial_control': 'Aerial control',
-      'turn_with_ball': 'Turn with ball',
-      'touch_and_move': 'Touch and move',
-      'juggling': 'Juggling',
-      
-      // Passing
-      'short_passing': 'Short passing',
-      'long_passing': 'Long passing',
-      'one_touch_passing': 'One touch passing',
-      'technique': 'Technique',
-      'passing_with_movement': 'Passing with movement',
-      
-      // Shooting
-      'power_shots': 'Power shots',
-      'finesse_shots': 'Finesse shots',
-      'first_time_shots': 'First time shots',
-      '1v1_to_shoot': '1v1 to shoot',
-      'shooting_on_the_run': 'Shooting on the run',
-      'volleying': 'Volleying',
-      
-      // Defending
-      'tackling': 'Tackling',
-      'marking': 'Marking',
-      'intercepting': 'Intercepting',
-      'positioning': 'Positioning',
-      
-      // Fallback
-      'general': 'General',
-    };
-    
-    return subSkillMap[backendSubSkill.toLowerCase()] ?? backendSubSkill;
+    return SkillConfig.mapSubSkill(backendSubSkill);
   }
 } 

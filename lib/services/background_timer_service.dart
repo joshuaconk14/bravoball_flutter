@@ -4,6 +4,7 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/services.dart';
 import 'audio_service.dart';
 import 'notification_service.dart';
+import '../constants/app_assets.dart';
 
 /// Background Timer Service
 /// Keeps drill timers running even when phone screen is off
@@ -331,7 +332,7 @@ class BackgroundTimerService {
     try {
       // Play a very quiet/silent audio file on loop to keep app active
       await _backgroundPlayer.setVolume(0.01); // Almost silent
-      await _backgroundPlayer.play(AssetSource('audio/silent-timer.mp3'));
+      await _backgroundPlayer.play(AssetSource(AppAssets.audioSilentTimer));
       
       _isBackgroundSessionActive = true;
       
@@ -393,7 +394,7 @@ class BackgroundTimerService {
     
     try {
       await _effectsPlayer.setPlayerMode(PlayerMode.lowLatency);
-      await _effectsPlayer.play(AssetSource('audio/321-start.mp3'));
+      await _effectsPlayer.play(AssetSource(AppAssets.audio321Start));
       
       if (kDebugMode) {
         print('🔊 Playing countdown start sound using effects player');
@@ -412,7 +413,7 @@ class BackgroundTimerService {
     
     try {
       await _effectsPlayer.setPlayerMode(PlayerMode.lowLatency);
-      await _effectsPlayer.play(AssetSource('audio/321-done.mp3'));
+      await _effectsPlayer.play(AssetSource(AppAssets.audio321Done));
       
       if (kDebugMode) {
         print('🔊 Playing countdown final sound using effects player');

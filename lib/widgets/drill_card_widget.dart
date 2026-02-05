@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import '../models/drill_model.dart';
 import '../constants/app_theme.dart'; // Fixed import path for AppTheme
+import '../constants/app_assets.dart';
 import '../utils/haptic_utils.dart';
 import '../utils/skill_utils.dart'; // ✅ ADDED: Import centralized skill utilities
 import 'package:provider/provider.dart'; // Added for Provider
@@ -424,40 +425,8 @@ class DraggableDrillCard extends StatelessWidget {
       print('🔍 [ICON_DEBUG] Skill.toLowerCase(): "${skill.toLowerCase()}"');
     }
     
-    // Normalize the skill name for better matching
-    final normalizedSkill = skill.toLowerCase().replaceAll('_', ' ').trim();
-    
-    if (kDebugMode) {
-      print('🔍 [ICON_DEBUG] Normalized skill: "$normalizedSkill"');
-    }
-    
-    switch (normalizedSkill) {
-      case 'passing':
-        if (kDebugMode) print('🔍 [ICON_DEBUG] Matched: passing');
-        return 'assets/drill-icons/Player_Passing.png';
-      case 'shooting':
-        if (kDebugMode) print('🔍 [ICON_DEBUG] Matched: shooting');
-        return 'assets/drill-icons/Player_Shooting.png';
-      case 'dribbling':
-        if (kDebugMode) print('🔍 [ICON_DEBUG] Matched: dribbling');
-        return 'assets/drill-icons/Player_Dribbling.png';
-      case 'first touch':
-      case 'firsttouch':
-        if (kDebugMode) print('🔍 [ICON_DEBUG] Matched: first touch');
-        return 'assets/drill-icons/Player_First_Touch.png';
-      case 'defending':
-        if (kDebugMode) print('🔍 [ICON_DEBUG] Matched: defending');
-        return 'assets/drill-icons/Player_Defending.png';
-      case 'goalkeeping':
-        if (kDebugMode) print('🔍 [ICON_DEBUG] Matched: goalkeeping');
-        return 'assets/drill-icons/Player_Goalkeeping.png';
-      case 'fitness':
-        if (kDebugMode) print('🔍 [ICON_DEBUG] Matched: fitness');
-        return 'assets/drill-icons/Player_Fitness.png';
-      default:
-        if (kDebugMode) print('🔍 [ICON_DEBUG] No match found, using dribbling fallback');
-        return 'assets/drill-icons/Player_Dribbling.png'; // Fallback to dribbling icon
-    }
+    // Use centralized asset path
+    return AppAssets.getSkillIconPath(skill);
   }
 
   IconData _getSkillIconFallback(String skill) {
@@ -662,22 +631,8 @@ class SimpleDrillCard extends StatelessWidget {
   }
 
   String _getSkillIconPath(String skill) {
-    switch (skill.toLowerCase()) {
-      case 'passing':
-        return 'assets/drill-icons/Player_Passing.png';
-      case 'shooting':
-        return 'assets/drill-icons/Player_Shooting.png';
-      case 'dribbling':
-        return 'assets/drill-icons/Player_Dribbling.png';
-      case 'first touch':
-        return 'assets/drill-icons/Player_First_Touch.png';
-      case 'defending':
-        return 'assets/drill-icons/Player_Dribbling.png'; // Use dribbling as fallback for defending
-      case 'fitness':
-        return 'assets/drill-icons/Player_Dribbling.png'; // Use dribbling as fallback for fitness
-      default:
-        return 'assets/drill-icons/Player_Dribbling.png'; // Fallback to dribbling icon
-    }
+    // Use centralized asset path
+    return AppAssets.getSkillIconPath(skill);
   }
 
   IconData _getSkillIconFallback(String skill) {
