@@ -1,6 +1,8 @@
 import 'package:flutter/foundation.dart';
+import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../config/app_config.dart';
+import '../utils/avatar_helper.dart';
 import 'dart:async';
 
 /// User Manager Service
@@ -28,6 +30,10 @@ class UserManagerService extends ChangeNotifier {
   // ✅ NEW: Guest mode state
   bool _isGuestMode = false;
   
+  // ✅ NEW: Avatar selection
+  String? _selectedAvatar;
+  Color? _avatarBackgroundColor;
+  
   // Getters
   String get email => _email;
   String get username => _username;
@@ -50,6 +56,10 @@ class UserManagerService extends ChangeNotifier {
     if (_email.isNotEmpty) return _email;
     return 'Unknown User';
   }
+  
+  // ✅ NEW: Avatar getters
+  String? get selectedAvatar => _selectedAvatar;
+  Color? get avatarBackgroundColor => _avatarBackgroundColor;
 
   /// Initialize user manager and check for existing auth state
   Future<void> initialize() async {
@@ -84,6 +94,12 @@ class UserManagerService extends ChangeNotifier {
       _refreshToken = prefs.getString('refreshToken') ?? '';
       _isLoggedIn = prefs.getBool('isLoggedIn') ?? false;
       _userHasAccountHistory = prefs.getBool('userHasAccountHistory') ?? false;
+      _selectedAvatar = prefs.getString('selectedAvatar');
+      
+      // Load avatar background color
+      final bgColorHex = prefs.getString('avatarBackgroundColor');
+      _avatarBackgroundColor = AvatarHelper.hexToColor(bgColorHex) ?? 
+          AvatarHelper.getDefaultBackgroundColor();
       
       // Load token creation time for proactive refresh
       final tokenCreatedAtMs = prefs.getInt('tokenCreatedAt');
@@ -115,6 +131,13 @@ class UserManagerService extends ChangeNotifier {
       await prefs.setString('refreshToken', _refreshToken);
       await prefs.setBool('isLoggedIn', _isLoggedIn);
       await prefs.setBool('userHasAccountHistory', _userHasAccountHistory);
+      
+      // Save avatar
+      if (_selectedAvatar != null) {
+        await prefs.setString('selectedAvatar', _selectedAvatar!);
+      } else {
+        await prefs.remove('selectedAvatar');
+      }
       
       // Save token creation time
       if (_tokenCreatedAt != null) {
@@ -167,6 +190,55 @@ class UserManagerService extends ChangeNotifier {
       print('✅ UserManager: Updated user data for $_email');
       print('🔑 Access token: ${_accessToken.isEmpty ? 'empty' : '${_accessToken.substring(0, 20)}...'}');
       print('🎯 New state - isLoggedIn: $_isLoggedIn, isGuestMode: $_isGuestMode, isAuthenticated: $isAuthenticated');
+    }
+  }
+
+  /// Update user's selected avatar
+  Future<void> updateAvatar(String avatarPath) async {
+    if (kDebugMode) {
+      print('🖼️ UserManager: Updating avatar to $avatarPath');
+    }
+    
+    _selectedAvatar = avatarPath;
+    await _saveUserDataToStorage();
+    notifyListeners();
+    
+    if (kDebugMode) {
+      print('✅ UserManager: Avatar updated successfully');
+    }
+  }
+
+  /// Update avatar background color
+  Future<void> updateAvatarBackgroundColor(Color backgroundColor) async {
+    if (kDebugMode) {
+      print('🎨 UserManager: Updating avatar background color');
+    }
+    
+    _avatarBackgroundColor = backgroundColor;
+    await _saveUserDataToStorage();
+    notifyListeners();
+    
+    if (kDebugMode) {
+      print('✅ UserManager: Avatar background color updated successfully');
+    }
+  }
+
+  /// Update both avatar and background color
+  Future<void> updateAvatarAndBackground({
+    required String avatarPath,
+    required Color backgroundColor,
+  }) async {
+    if (kDebugMode) {
+      print('🖼️ UserManager: Updating avatar and background');
+    }
+    
+    _selectedAvatar = avatarPath;
+    _avatarBackgroundColor = backgroundColor;
+    await _saveUserDataToStorage();
+    notifyListeners();
+    
+    if (kDebugMode) {
+      print('✅ UserManager: Avatar and background updated successfully');
     }
   }
 

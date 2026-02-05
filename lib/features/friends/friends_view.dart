@@ -1,8 +1,11 @@
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
 import '../../constants/app_theme.dart';
 import '../../services/friend_service.dart';
+import '../../services/app_state_service.dart'; // ✅ ADDED: Import AppStateService for friend request count
 import '../../models/friend_model.dart';
 import '../../utils/haptic_utils.dart';
+import '../../widgets/badge_widget.dart'; // ✅ ADDED: Import badge widget
 
 class FriendsView extends StatefulWidget {
   const FriendsView({Key? key}) : super(key: key);
@@ -37,6 +40,10 @@ class _FriendsViewState extends State<FriendsView> with SingleTickerProviderStat
     });
     _loadFriends();
     _loadFriendRequests();
+    // ✅ ADDED: Refresh friend request count when view opens
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _refreshFriendRequestCount();
+    });
   }
 
   @override
@@ -76,11 +83,19 @@ class _FriendsViewState extends State<FriendsView> with SingleTickerProviderStat
         _friendRequests = requests;
         _isLoadingRequests = false;
       });
+      // ✅ ADDED: Refresh friend request count in AppStateService
+      _refreshFriendRequestCount();
     } catch (e) {
       setState(() {
         _isLoadingRequests = false;
       });
     }
+  }
+
+  // ✅ ADDED: Helper method to refresh friend request count
+  void _refreshFriendRequestCount() {
+    final appState = Provider.of<AppStateService>(context, listen: false);
+    appState.refreshFriendRequestCount();
   }
 
   Future<void> _removeFriend(Friend friend) async {
@@ -159,10 +174,21 @@ class _FriendsViewState extends State<FriendsView> with SingleTickerProviderStat
           indicatorColor: AppTheme.primaryYellow,
           labelColor: AppTheme.primaryDark,
           unselectedLabelColor: AppTheme.primaryGray,
-          tabs: const [
-            Tab(text: 'Friends'),
-            Tab(text: 'Requests'),
-            Tab(text: 'Add'),
+          tabs: [
+            const Tab(text: 'Friends'),
+            Consumer<AppStateService>(
+              builder: (context, appState, child) {
+                return Tab(
+                  child: BadgeWidget(
+                    count: appState.friendRequestCount,
+                    showBadge: appState.hasFriendRequests,
+                    badgeSize: 12.0,
+                    child: const Text('Requests'),
+                  ),
+                );
+              },
+            ),
+            const Tab(text: 'Add'),
           ],
         ),
       ),
@@ -600,6 +626,8 @@ class _FriendsViewState extends State<FriendsView> with SingleTickerProviderStat
         );
         // Refresh requests list
         _loadFriendRequests();
+        // ✅ ADDED: Refresh friend request count
+        _refreshFriendRequestCount();
       }
     } catch (e) {
       ScaffoldMessenger.of(context).showSnackBar(

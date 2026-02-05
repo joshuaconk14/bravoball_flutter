@@ -8,6 +8,7 @@ import '../onboarding/onboarding_flow.dart';
 import '../../utils/haptic_utils.dart';
 import 'edit_details_view.dart';
 import 'change_password_view.dart';
+import 'avatar_selection_view.dart'; // ✅ ADDED: Import avatar selection view
 
 class AccountSettingsView extends StatelessWidget {
   const AccountSettingsView({Key? key}) : super(key: key);
@@ -41,6 +42,15 @@ class AccountSettingsView extends StatelessWidget {
               _buildSection(
                 title: 'Profile Settings',
                 items: [
+                  _buildMenuItem(
+                    icon: Icons.face_outlined,
+                    title: 'Change Avatar',
+                    subtitle: 'Select your profile picture',
+                    onTap: () {
+                      HapticUtils.lightImpact();
+                      _handleChangeAvatar(context);
+                    },
+                  ),
                   _buildMenuItem(
                     icon: Icons.edit_outlined,
                     title: 'Edit your details',
@@ -276,6 +286,14 @@ class AccountSettingsView extends StatelessWidget {
     Navigator.of(context).push(
       MaterialPageRoute(
         builder: (context) => const ChangePasswordView(),
+      ),
+    );
+  }
+
+  void _handleChangeAvatar(BuildContext context) {
+    Navigator.of(context).push(
+      MaterialPageRoute(
+        builder: (context) => const AvatarSelectionView(),
       ),
     );
   }
