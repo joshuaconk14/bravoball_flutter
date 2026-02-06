@@ -218,8 +218,8 @@ class FriendService {
     }
   }
 
-  /// Lookup user ID by username
-  Future<int?> lookupUserByUsername(String username) async {
+  /// Lookup user by username (returns user ID, username, avatar, and background color)
+  Future<UserLookupResult?> lookupUserByUsername(String username) async {
     try {
       final response = await ApiService.shared.get(
         '/api/user/lookup/$username',
@@ -237,13 +237,13 @@ class FriendService {
             ? userData
             : <String, dynamic>{};
         
-        final userId = userDataMap['user_id'] as int?;
+        final lookupResult = UserLookupResult.fromJson(userDataMap);
         
         if (kDebugMode) {
-          print('✅ FriendService: Found user ID $userId for username $username');
+          print('✅ FriendService: Found user ID ${lookupResult.userId} for username $username');
         }
         
-        return userId;
+        return lookupResult;
       } else {
         // Check if it's a 404 (user not found)
         if (response.statusCode == 404) {

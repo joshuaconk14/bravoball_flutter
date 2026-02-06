@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../config/app_config.dart';
 import '../utils/avatar_helper.dart';
+import '../services/profile_service.dart'; // ✅ ADDED: Import ProfileService for backend sync
 import 'dart:async';
 import 'package:purchases_flutter/purchases_flutter.dart';
 
@@ -73,6 +74,9 @@ class UserManagerService extends ChangeNotifier {
     // Start proactive token refresh if user is logged in
     if (_isLoggedIn && _accessToken.isNotEmpty) {
       _scheduleProactiveTokenRefresh();
+      
+      // ✅ ADDED: Fetch avatar from backend if user is already logged in
+      await _loadAvatarFromBackend();
     }
     
     if (kDebugMode) {
@@ -81,6 +85,39 @@ class UserManagerService extends ChangeNotifier {
       print('   Username: $_username');
       print('   IsLoggedIn: $_isLoggedIn');
       print('   HasHistory: $_userHasAccountHistory');
+    }
+  }
+
+  /// Load avatar from backend for already logged-in users
+  Future<void> _loadAvatarFromBackend() async {
+    if (_isGuestMode || !_isLoggedIn) return;
+    
+    try {
+      final profileData = await ProfileService.shared.fetchUserProfile();
+      if (profileData != null) {
+        if (profileData['avatar_path'] != null) {
+          _selectedAvatar = profileData['avatar_path'];
+        }
+        
+        if (profileData['avatar_background_color'] != null) {
+          _avatarBackgroundColor = AvatarHelper.hexToColor(
+            profileData['avatar_background_color']
+          ) ?? AvatarHelper.getDefaultBackgroundColor();
+        } else {
+          _avatarBackgroundColor = AvatarHelper.getDefaultBackgroundColor();
+        }
+        
+        notifyListeners();
+        
+        if (kDebugMode) {
+          print('✅ UserManager: Avatar loaded from backend');
+        }
+      }
+    } catch (e) {
+      if (kDebugMode) {
+        print('❌ UserManager: Error loading avatar from backend: $e');
+      }
+      // Don't throw - avatar loading failure shouldn't break app initialization
     }
   }
 
@@ -144,12 +181,8 @@ class UserManagerService extends ChangeNotifier {
       
       _isLoggedIn = prefs.getBool('isLoggedIn') ?? false;
       _userHasAccountHistory = prefs.getBool('userHasAccountHistory') ?? false;
-      _selectedAvatar = prefs.getString('selectedAvatar');
       
-      // Load avatar background color
-      final bgColorHex = prefs.getString('avatarBackgroundColor');
-      _avatarBackgroundColor = AvatarHelper.hexToColor(bgColorHex) ?? 
-          AvatarHelper.getDefaultBackgroundColor();
+      // ✅ REMOVED: Avatar no longer stored in SharedPreferences - loaded from backend
       
       // Load token creation time for proactive refresh
       final tokenCreatedAtMs = prefs.getInt('tokenCreatedAt');
@@ -210,12 +243,7 @@ class UserManagerService extends ChangeNotifier {
       await prefs.setBool('isLoggedIn', _isLoggedIn);
       await prefs.setBool('userHasAccountHistory', _userHasAccountHistory);
       
-      // Save avatar
-      if (_selectedAvatar != null) {
-        await prefs.setString('selectedAvatar', _selectedAvatar!);
-      } else {
-        await prefs.remove('selectedAvatar');
-      }
+      // ✅ REMOVED: Avatar no longer stored in SharedPreferences - synced to backend only
       
       // Save token creation time
       if (_tokenCreatedAt != null) {
@@ -264,6 +292,8 @@ class UserManagerService extends ChangeNotifier {
     required String username,
     required String accessToken,
     String? refreshToken,
+    String? avatarPath,
+    String? avatarBackgroundColor,
   }) async {
     if (kDebugMode) {
       print('🔐 UserManager: Updating user data for $email');
@@ -280,6 +310,20 @@ class UserManagerService extends ChangeNotifier {
     _isGuestMode = false; // ✅ CRITICAL FIX: Clear guest mode on successful authentication
     _tokenCreatedAt = DateTime.now(); // Record when token was created
     
+    // ✅ ADDED: Load avatar from backend response
+    if (avatarPath != null) {
+      _selectedAvatar = avatarPath;
+    } else {
+      _selectedAvatar = null;
+    }
+    
+    if (avatarBackgroundColor != null) {
+      _avatarBackgroundColor = AvatarHelper.hexToColor(avatarBackgroundColor) ?? 
+          AvatarHelper.getDefaultBackgroundColor();
+    } else {
+      _avatarBackgroundColor = AvatarHelper.getDefaultBackgroundColor();
+    }
+    
     await _saveUserDataToStorage();
     
     // Start proactive token refresh
@@ -295,40 +339,13 @@ class UserManagerService extends ChangeNotifier {
       print('🔑 Access token: ${_accessToken.isEmpty ? 'empty' : '${_accessToken.substring(0, 20)}...'}');
       print('🔄 Refresh token: ${_refreshToken.isEmpty ? 'empty' : '${_refreshToken.substring(0, 20)}...'}');
       print('🎯 New state - isLoggedIn: $_isLoggedIn, isGuestMode: $_isGuestMode, isAuthenticated: $isAuthenticated');
+      if (avatarPath != null) {
+        print('🖼️ Avatar loaded from backend: $avatarPath');
+      }
     }
   }
 
-  /// Update user's selected avatar
-  Future<void> updateAvatar(String avatarPath) async {
-    if (kDebugMode) {
-      print('🖼️ UserManager: Updating avatar to $avatarPath');
-    }
-    
-    _selectedAvatar = avatarPath;
-    await _saveUserDataToStorage();
-    notifyListeners();
-    
-    if (kDebugMode) {
-      print('✅ UserManager: Avatar updated successfully');
-    }
-  }
-
-  /// Update avatar background color
-  Future<void> updateAvatarBackgroundColor(Color backgroundColor) async {
-    if (kDebugMode) {
-      print('🎨 UserManager: Updating avatar background color');
-    }
-    
-    _avatarBackgroundColor = backgroundColor;
-    await _saveUserDataToStorage();
-    notifyListeners();
-    
-    if (kDebugMode) {
-      print('✅ UserManager: Avatar background color updated successfully');
-    }
-  }
-
-  /// Update both avatar and background color
+  /// Update both avatar and background color (syncs to backend)
   Future<void> updateAvatarAndBackground({
     required String avatarPath,
     required Color backgroundColor,
@@ -337,13 +354,39 @@ class UserManagerService extends ChangeNotifier {
       print('🖼️ UserManager: Updating avatar and background');
     }
     
-    _selectedAvatar = avatarPath;
-    _avatarBackgroundColor = backgroundColor;
-    await _saveUserDataToStorage();
-    notifyListeners();
+    // Skip if guest mode
+    if (_isGuestMode) {
+      if (kDebugMode) {
+        print('👤 Guest mode - skipping avatar update');
+      }
+      return;
+    }
     
-    if (kDebugMode) {
-      print('✅ UserManager: Avatar and background updated successfully');
+    try {
+      // Sync to backend first
+      final backgroundColorHex = AvatarHelper.colorToHex(backgroundColor);
+      final success = await ProfileService.shared.updateAvatar(
+        avatarPath: avatarPath,
+        backgroundColorHex: backgroundColorHex,
+      );
+      
+      if (success) {
+        // Update local state only after successful backend sync
+        _selectedAvatar = avatarPath;
+        _avatarBackgroundColor = backgroundColor;
+        notifyListeners();
+        
+        if (kDebugMode) {
+          print('✅ UserManager: Avatar and background synced to backend successfully');
+        }
+      } else {
+        throw Exception('Failed to sync avatar to backend');
+      }
+    } catch (e) {
+      if (kDebugMode) {
+        print('❌ UserManager: Error syncing avatar to backend: $e');
+      }
+      rethrow;
     }
   }
 

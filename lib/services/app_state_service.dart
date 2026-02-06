@@ -2585,10 +2585,20 @@ class AppStateService extends ChangeNotifier {
 
   // ===== FRIEND REQUEST COUNT METHODS =====
   /// Refresh friend request count from backend
-  Future<void> refreshFriendRequestCount() async {
+  Future<void> refreshFriendRequestCount({int? count}) async {
     // Skip for guest users
     if (isGuestMode) {
       _friendRequestCount = 0;
+      notifyListeners();
+      return;
+    }
+
+    // If count is provided, use it directly to avoid API call
+    if (count != null) {
+      _friendRequestCount = count;
+      if (kDebugMode) {
+        print('✅ Friend request count updated: $_friendRequestCount');
+      }
       notifyListeners();
       return;
     }

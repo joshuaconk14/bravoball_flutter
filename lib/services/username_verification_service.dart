@@ -1,6 +1,7 @@
 import 'package:flutter/foundation.dart';
 import '../services/api_service.dart';
 import '../services/user_manager_service.dart';
+import '../utils/avatar_helper.dart'; // ✅ ADDED: Import AvatarHelper for color conversion
 
 class UsernameVerificationService {
   static UsernameVerificationService? _instance;
@@ -27,11 +28,16 @@ class UsernameVerificationService {
           print('✅ UsernameVerificationService: Username updated successfully on backend.');
         }
         // Update local user manager
+        // Preserve existing avatar data
         await userManager.updateUserData(
           email: userManager.email,
           username: newUsername, 
           accessToken: userManager.accessToken,
           refreshToken: userManager.refreshToken,
+          avatarPath: userManager.selectedAvatar,
+          avatarBackgroundColor: userManager.avatarBackgroundColor != null
+              ? AvatarHelper.colorToHex(userManager.avatarBackgroundColor!)
+              : null,
         );
         return true;
       } else {
