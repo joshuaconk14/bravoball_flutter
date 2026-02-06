@@ -48,11 +48,17 @@ class OnboardingService {
         
         if (accessToken.isNotEmpty) {
           // ✅ Save authentication tokens
+          // Extract avatar data from response if available
+          final avatarPath = response.data!['avatar_path'] as String?;
+          final avatarBackgroundColor = response.data!['avatar_background_color'] as String?;
+          
           await _userManager.updateUserData(
             email: email,
             username: username,
             accessToken: accessToken,
             refreshToken: refreshToken,
+            avatarPath: avatarPath,
+            avatarBackgroundColor: avatarBackgroundColor,
           );
           
           if (kDebugMode) {

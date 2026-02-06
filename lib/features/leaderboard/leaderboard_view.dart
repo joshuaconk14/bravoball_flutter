@@ -4,6 +4,7 @@ import '../../services/leaderboard_service.dart';
 import '../../services/user_manager_service.dart';
 import '../../models/leaderboard_model.dart';
 import '../../utils/haptic_utils.dart';
+import '../../utils/avatar_helper.dart'; // ✅ ADDED: Import AvatarHelper for avatar utilities
 
 class LeaderboardView extends StatefulWidget {
   const LeaderboardView({Key? key}) : super(key: key);
@@ -277,27 +278,80 @@ class _LeaderboardViewState extends State<LeaderboardView> {
         padding: const EdgeInsets.all(16.0),
         child: Row(
           children: [
-            // Rank Badge
-            Container(
-              width: 48,
-              height: 48,
-              decoration: BoxDecoration(
-                color: isCurrentUser 
-                    ? AppTheme.primaryYellow
-                    : AppTheme.primaryGray.withValues(alpha: 0.2),
-                borderRadius: BorderRadius.circular(24),
-              ),
-              child: Center(
-                child: Text(
-                  '#${entry.rank}',
-                  style: AppTheme.titleMedium.copyWith(
-                    color: isCurrentUser 
-                        ? AppTheme.primaryDark
-                        : AppTheme.primaryGray,
-                    fontWeight: FontWeight.bold,
+            // Avatar with Rank Badge
+            Stack(
+              children: [
+                // Avatar Circle
+                Container(
+                  width: 48,
+                  height: 48,
+                  decoration: BoxDecoration(
+                    shape: BoxShape.circle,
+                    color: entry.displayBackgroundColor,
+                    border: Border.all(
+                      color: isCurrentUser 
+                          ? AppTheme.primaryYellow
+                          : Colors.transparent,
+                      width: 2,
+                    ),
+                    boxShadow: [
+                      BoxShadow(
+                        color: Colors.black.withValues(alpha: 0.1),
+                        blurRadius: 4,
+                        offset: const Offset(0, 2),
+                      ),
+                    ],
+                  ),
+                  child: ClipOval(
+                    child: Image.asset(
+                      entry.displayAvatarPath,
+                      fit: BoxFit.cover,
+                      errorBuilder: (context, error, stackTrace) {
+                        // Fallback to default icon if image fails to load
+                        return Container(
+                          color: entry.displayBackgroundColor,
+                          child: const Icon(
+                            Icons.person,
+                            size: 24,
+                            color: Colors.white,
+                          ),
+                        );
+                      },
+                    ),
                   ),
                 ),
-              ),
+                // Rank Badge Overlay
+                Positioned(
+                  bottom: -2,
+                  right: -2,
+                  child: Container(
+                    width: 20,
+                    height: 20,
+                    decoration: BoxDecoration(
+                      color: isCurrentUser 
+                          ? AppTheme.primaryYellow
+                          : AppTheme.primaryGray,
+                      shape: BoxShape.circle,
+                      border: Border.all(
+                        color: Colors.white,
+                        width: 2,
+                      ),
+                    ),
+                    child: Center(
+                      child: Text(
+                        '${entry.rank}',
+                        style: AppTheme.bodySmall.copyWith(
+                          color: isCurrentUser 
+                              ? AppTheme.primaryDark
+                              : Colors.white,
+                          fontWeight: FontWeight.bold,
+                          fontSize: 10,
+                        ),
+                      ),
+                    ),
+                  ),
+                ),
+              ],
             ),
             
             const SizedBox(width: 16),

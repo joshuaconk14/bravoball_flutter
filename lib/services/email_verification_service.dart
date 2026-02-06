@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'api_service.dart';
 import '../models/email_verification_model.dart';
 import 'user_manager_service.dart';
+import '../utils/avatar_helper.dart'; // ✅ ADDED: Import AvatarHelper for color conversion
 
 class EmailVerificationService {
   static final EmailVerificationService _instance = EmailVerificationService._internal();
@@ -101,11 +102,16 @@ class EmailVerificationService {
         }
         
         // Update the email in user manager to the new email
+        // Preserve existing avatar data
         await _userManager.updateUserData(
           email: emailVerificationModel.newEmail,
           username: _userManager.username,
           accessToken: _userManager.accessToken,
           refreshToken: _userManager.refreshToken,
+          avatarPath: _userManager.selectedAvatar,
+          avatarBackgroundColor: _userManager.avatarBackgroundColor != null
+              ? AvatarHelper.colorToHex(_userManager.avatarBackgroundColor!)
+              : null,
         );
         
         if (kDebugMode) {

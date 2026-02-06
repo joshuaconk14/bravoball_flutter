@@ -26,6 +26,8 @@ class LoginResponse {
   final String email;
   final String username;
   final String? refreshToken;
+  final String? avatarPath;
+  final String? avatarBackgroundColor;
 
   LoginResponse({
     required this.accessToken,
@@ -33,6 +35,8 @@ class LoginResponse {
     required this.email,
     required this.username,
     this.refreshToken,
+    this.avatarPath,
+    this.avatarBackgroundColor,
   });
 
   factory LoginResponse.fromJson(Map<String, dynamic> json) {
@@ -42,6 +46,8 @@ class LoginResponse {
       email: json['email'] ?? '',
       username: json['username'] ?? '',
       refreshToken: json['refresh_token'] as String?,
+      avatarPath: json['avatar_path'] as String?,
+      avatarBackgroundColor: json['avatar_background_color'] as String?,
     );
   }
 
@@ -52,6 +58,8 @@ class LoginResponse {
       'email': email,
       'username': username,
       'refresh_token': refreshToken,
+      'avatar_path': avatarPath,
+      'avatar_background_color': avatarBackgroundColor,
     };
   }
 }

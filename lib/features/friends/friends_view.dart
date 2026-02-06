@@ -6,6 +6,7 @@ import '../../services/app_state_service.dart'; // ✅ ADDED: Import AppStateSer
 import '../../models/friend_model.dart';
 import '../../utils/haptic_utils.dart';
 import '../../widgets/badge_widget.dart'; // ✅ ADDED: Import badge widget
+import '../../utils/avatar_helper.dart'; // ✅ ADDED: Import AvatarHelper for avatar utilities
 
 class FriendsView extends StatefulWidget {
   const FriendsView({Key? key}) : super(key: key);
@@ -40,10 +41,6 @@ class _FriendsViewState extends State<FriendsView> with SingleTickerProviderStat
     });
     _loadFriends();
     _loadFriendRequests();
-    // ✅ ADDED: Refresh friend request count when view opens
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      _refreshFriendRequestCount();
-    });
   }
 
   @override
@@ -83,8 +80,8 @@ class _FriendsViewState extends State<FriendsView> with SingleTickerProviderStat
         _friendRequests = requests;
         _isLoadingRequests = false;
       });
-      // ✅ ADDED: Refresh friend request count in AppStateService
-      _refreshFriendRequestCount();
+      // ✅ ADDED: Refresh friend request count in AppStateService with count to avoid duplicate API call
+      _refreshFriendRequestCount(requests.length);
     } catch (e) {
       setState(() {
         _isLoadingRequests = false;
@@ -93,9 +90,9 @@ class _FriendsViewState extends State<FriendsView> with SingleTickerProviderStat
   }
 
   // ✅ ADDED: Helper method to refresh friend request count
-  void _refreshFriendRequestCount() {
+  void _refreshFriendRequestCount([int? count]) {
     final appState = Provider.of<AppStateService>(context, listen: false);
-    appState.refreshFriendRequestCount();
+    appState.refreshFriendRequestCount(count: count);
   }
 
   Future<void> _removeFriend(Friend friend) async {
@@ -440,18 +437,35 @@ class _FriendsViewState extends State<FriendsView> with SingleTickerProviderStat
           width: 48,
           height: 48,
           decoration: BoxDecoration(
-            color: AppTheme.secondaryBlue,
             shape: BoxShape.circle,
-          ),
-          child: Center(
-            child: Text(
-              friend.username.isNotEmpty 
-                  ? friend.username[0].toUpperCase()
-                  : '?',
-              style: AppTheme.titleMedium.copyWith(
-                color: Colors.white,
-                fontWeight: FontWeight.bold,
+            color: friend.displayBackgroundColor,
+            border: Border.all(
+              color: AppTheme.primaryYellow.withValues(alpha: 0.3),
+              width: 1,
+            ),
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black.withValues(alpha: 0.1),
+                blurRadius: 4,
+                offset: const Offset(0, 2),
               ),
+            ],
+          ),
+          child: ClipOval(
+            child: Image.asset(
+              friend.displayAvatarPath,
+              fit: BoxFit.cover,
+              errorBuilder: (context, error, stackTrace) {
+                // Fallback to default icon if image fails to load
+                return Container(
+                  color: friend.displayBackgroundColor,
+                  child: Icon(
+                    Icons.person,
+                    size: 24,
+                    color: Colors.white,
+                  ),
+                );
+              },
             ),
           ),
         ),
@@ -521,18 +535,35 @@ class _FriendsViewState extends State<FriendsView> with SingleTickerProviderStat
               width: 48,
               height: 48,
               decoration: BoxDecoration(
-                color: AppTheme.secondaryBlue,
                 shape: BoxShape.circle,
-              ),
-              child: Center(
-                child: Text(
-                  request.username.isNotEmpty 
-                      ? request.username[0].toUpperCase()
-                      : '?',
-                  style: AppTheme.titleMedium.copyWith(
-                    color: Colors.white,
-                    fontWeight: FontWeight.bold,
+                color: request.displayBackgroundColor,
+                border: Border.all(
+                  color: AppTheme.primaryYellow.withValues(alpha: 0.3),
+                  width: 1,
+                ),
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.black.withValues(alpha: 0.1),
+                    blurRadius: 4,
+                    offset: const Offset(0, 2),
                   ),
+                ],
+              ),
+              child: ClipOval(
+                child: Image.asset(
+                  request.displayAvatarPath,
+                  fit: BoxFit.cover,
+                  errorBuilder: (context, error, stackTrace) {
+                    // Fallback to default icon if image fails to load
+                    return Container(
+                      color: request.displayBackgroundColor,
+                      child: Icon(
+                        Icons.person,
+                        size: 24,
+                        color: Colors.white,
+                      ),
+                    );
+                  },
                 ),
               ),
             ),
@@ -624,10 +655,8 @@ class _FriendsViewState extends State<FriendsView> with SingleTickerProviderStat
             duration: const Duration(seconds: 2),
           ),
         );
-        // Refresh requests list
+        // Refresh requests list (which will also update the count)
         _loadFriendRequests();
-        // ✅ ADDED: Refresh friend request count
-        _refreshFriendRequestCount();
       }
     } catch (e) {
       ScaffoldMessenger.of(context).showSnackBar(
@@ -656,8 +685,7 @@ class _AddFriendsTabState extends State<_AddFriendsTab> {
   bool _isSearching = false;
   bool _isSendingRequest = false;
   String? _searchError;
-  int? _foundUserId;
-  String? _foundUsername;
+  UserLookupResult? _foundUser;
 
   @override
   void dispose() {
@@ -670,8 +698,7 @@ class _AddFriendsTabState extends State<_AddFriendsTab> {
     if (username.isEmpty) {
       setState(() {
         _searchError = 'Please enter a username';
-        _foundUserId = null;
-        _foundUsername = null;
+        _foundUser = null;
       });
       return;
     }
@@ -679,50 +706,46 @@ class _AddFriendsTabState extends State<_AddFriendsTab> {
     setState(() {
       _isSearching = true;
       _searchError = null;
-      _foundUserId = null;
-      _foundUsername = null;
+      _foundUser = null;
     });
 
     try {
-      final userId = await FriendService.shared.lookupUserByUsername(username);
-      if (userId != null) {
+      final lookupResult = await FriendService.shared.lookupUserByUsername(username);
+      if (lookupResult != null) {
         setState(() {
-          _foundUserId = userId;
-          _foundUsername = username;
+          _foundUser = lookupResult;
           _isSearching = false;
         });
       } else {
         setState(() {
           _searchError = 'User not found';
-          _foundUserId = null;
-          _foundUsername = null;
+          _foundUser = null;
           _isSearching = false;
         });
       }
     } catch (e) {
       setState(() {
         _searchError = 'Failed to search user: ${e.toString()}';
-        _foundUserId = null;
-        _foundUsername = null;
+        _foundUser = null;
         _isSearching = false;
       });
     }
   }
 
   Future<void> _sendFriendRequest() async {
-    if (_foundUserId == null) return;
+    if (_foundUser == null) return;
 
     setState(() {
       _isSendingRequest = true;
     });
 
     try {
-      final success = await FriendService.shared.sendFriendRequest(_foundUserId!);
+      final success = await FriendService.shared.sendFriendRequest(_foundUser!.userId);
       if (success) {
         HapticUtils.mediumImpact();
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text('Friend request sent to $_foundUsername!'),
+            content: Text('Friend request sent to ${_foundUser!.username}!'),
             backgroundColor: AppTheme.primaryGreen,
             duration: const Duration(seconds: 2),
           ),
@@ -730,8 +753,7 @@ class _AddFriendsTabState extends State<_AddFriendsTab> {
         // Clear search
         _usernameController.clear();
         setState(() {
-          _foundUserId = null;
-          _foundUsername = null;
+          _foundUser = null;
         });
         widget.onFriendRequestSent();
       }
@@ -854,7 +876,7 @@ class _AddFriendsTabState extends State<_AddFriendsTab> {
           ),
           
           // Found User Section
-          if (_foundUserId != null && _foundUsername != null) ...[
+          if (_foundUser != null) ...[
             const SizedBox(height: 20),
             Container(
               decoration: BoxDecoration(
@@ -879,16 +901,35 @@ class _AddFriendsTabState extends State<_AddFriendsTab> {
                           width: 48,
                           height: 48,
                           decoration: BoxDecoration(
-                            color: AppTheme.secondaryBlue,
                             shape: BoxShape.circle,
-                          ),
-                          child: Center(
-                            child: Text(
-                              _foundUsername![0].toUpperCase(),
-                              style: AppTheme.titleMedium.copyWith(
-                                color: Colors.white,
-                                fontWeight: FontWeight.bold,
+                            color: _foundUser!.displayBackgroundColor,
+                            border: Border.all(
+                              color: AppTheme.primaryYellow.withValues(alpha: 0.3),
+                              width: 1,
+                            ),
+                            boxShadow: [
+                              BoxShadow(
+                                color: Colors.black.withValues(alpha: 0.1),
+                                blurRadius: 4,
+                                offset: const Offset(0, 2),
                               ),
+                            ],
+                          ),
+                          child: ClipOval(
+                            child: Image.asset(
+                              _foundUser!.displayAvatarPath,
+                              fit: BoxFit.cover,
+                              errorBuilder: (context, error, stackTrace) {
+                                // Fallback to default icon if image fails to load
+                                return Container(
+                                  color: _foundUser!.displayBackgroundColor,
+                                  child: Icon(
+                                    Icons.person,
+                                    size: 24,
+                                    color: Colors.white,
+                                  ),
+                                );
+                              },
                             ),
                           ),
                         ),
@@ -898,7 +939,7 @@ class _AddFriendsTabState extends State<_AddFriendsTab> {
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
                               Text(
-                                _foundUsername!,
+                                _foundUser!.username,
                                 style: AppTheme.titleMedium.copyWith(
                                   color: AppTheme.primaryDark,
                                   fontWeight: FontWeight.bold,

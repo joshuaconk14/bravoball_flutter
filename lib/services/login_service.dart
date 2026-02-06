@@ -98,6 +98,8 @@ class LoginService {
           username: loginResponse.username,
           accessToken: loginResponse.accessToken,
           refreshToken: loginResponse.refreshToken,
+          avatarPath: loginResponse.avatarPath,
+          avatarBackgroundColor: loginResponse.avatarBackgroundColor,
         );
 
         // ✅ CRITICAL FIX: Handle authentication state transition 

@@ -5,15 +5,36 @@ import '../constants/app_theme.dart';
 /// Manages available avatar icons and provides utility methods
 class AvatarHelper {
   // Available avatar asset paths
+
   static const List<String> availableAvatars = [
     'assets/avatar-icons/SoccerBoy1.png',
     'assets/avatar-icons/SoccerBoy2.png',
+    'assets/avatar-icons/SoccerBoy4.png',
+    'assets/avatar-icons/SoccerBoy5.png',
+    'assets/avatar-icons/SoccerBoy6.png',
+    'assets/avatar-icons/SoccerGirl1.png',
+    'assets/avatar-icons/SoccerGirl3.png',
+    'assets/avatar-icons/SoccerGirl4.png',
+    'assets/avatar-icons/SoccerGirl5.png',
+    'assets/avatar-icons/SoccerGirl8.png',
   ];
 
   // Avatar display names (optional, for UI)
   static const List<String> avatarNames = [
     'Soccer Boy 1',
     'Soccer Boy 2',
+    'Soccer Boy 3',
+    'Soccer Boy 4',
+    'Soccer Boy 5',
+    'Soccer Boy 6',
+    'Soccer Boy 7',
+    'Soccer Girl 1',
+    'Soccer Girl 2',
+    'Soccer Girl 3',
+    'Soccer Girl 4',
+    'Soccer Girl 5',
+    'Soccer Girl 6',
+    'Soccer Girl 7',
   ];
 
   // Available background colors for avatar
