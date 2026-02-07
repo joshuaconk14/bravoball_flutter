@@ -48,21 +48,59 @@ class _SessionGeneratorHomeFieldViewState extends State<SessionGeneratorHomeFiel
       nextButtonSize = isNextActive ? 90 : (nextDrill.isCompleted ? 70 : 80); // ✅ UPDATED: Use new larger sizes
     }
     
-    // Base spacing - reduced for closer spacing
-    double baseSpacing = 18; // ✅ UPDATED: Reduced from 24 to 20
+    // Base spacing - increased to accommodate pathway dots (3 dots + spacing = ~25px minimum)
+    double baseSpacing = 32; // ✅ UPDATED: Increased to fit pathway dots
     
     // Adjust spacing based on button sizes to create visually even spacing
     // Larger buttons need more space to look balanced
     if (currentButtonSize == 90 || nextButtonSize == 90) { // ✅ UPDATED: Use new active size
-      baseSpacing = 24; // ✅ UPDATED: Reduced from 30 to 24 for closer spacing
+      baseSpacing = 36; // ✅ UPDATED: Increased for active drills
     } else if (currentButtonSize == 70 && nextButtonSize == 70) { // ✅ UPDATED: Use new completed size
-      baseSpacing = 18; // ✅ UPDATED: Reduced from 22 to 18 for closer spacing
+      baseSpacing = 30; // ✅ UPDATED: Increased for completed drills
     } else if ((currentButtonSize == 70 && nextButtonSize == 80) || 
                (currentButtonSize == 80 && nextButtonSize == 70)) { // ✅ UPDATED: Use new sizes
-      baseSpacing = 18; // ✅ UPDATED: Reduced from 24 to 20 for closer spacing
+      baseSpacing = 32; // ✅ UPDATED: Increased for mixed sizes
     }
     
     return baseSpacing;
+  }
+
+  // ✅ ADDED: Build pathway dots between drills
+  Widget _buildPathwayDots({required double spacing}) {
+    return SizedBox(
+      height: spacing,
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          Container(
+            width: 5,
+            height: 5,
+            decoration: BoxDecoration(
+              color: AppTheme.primaryGray.withValues(alpha: 0.5),
+              shape: BoxShape.circle,
+            ),
+          ),
+          const SizedBox(height: 5),
+          Container(
+            width: 5,
+            height: 5,
+            decoration: BoxDecoration(
+              color: AppTheme.primaryGray.withValues(alpha: 0.5),
+              shape: BoxShape.circle,
+            ),
+          ),
+          const SizedBox(height: 5),
+          Container(
+            width: 5,
+            height: 5,
+            decoration: BoxDecoration(
+              color: AppTheme.primaryGray.withValues(alpha: 0.5),
+              shape: BoxShape.circle,
+            ),
+          ),
+        ],
+      ),
+    );
   }
 
   // Build the home field view
@@ -412,8 +450,8 @@ class _SessionGeneratorHomeFieldViewState extends State<SessionGeneratorHomeFiel
                 onPressed: () => _openFollowAlong(editableDrill, appState),
               ),
               if (index < editableSessionDrills.length - 1)
-                SizedBox(
-                  height: _getSpacingForButton(
+                _buildPathwayDots(
+                  spacing: _getSpacingForButton(
                     editableDrill, 
                     index < editableSessionDrills.length - 1 ? editableSessionDrills[index + 1] : null,
                     sessionComplete,
@@ -426,7 +464,7 @@ class _SessionGeneratorHomeFieldViewState extends State<SessionGeneratorHomeFiel
         
         // Trophy at the end (only show if there are drills)
         if (hasSessionDrills) ...[
-          const SizedBox(height: 32),
+          _buildPathwayDots(spacing: 32),
           _TrophyWidget(
             isUnlocked: appState.isSessionComplete,
             isAlreadyCompleted: appState.currentSessionCompleted,

@@ -45,12 +45,14 @@ void main() async {
   // Initialize services
   ApiService.shared.initialize();
   
-  // Initialize the app state service
-  await AppStateService.instance.initialize();
+  // ✅ FIXED: Initialize UserManagerService FIRST (AppStateService depends on it)
+  await UserManagerService.instance.initialize();
   
   // Initialize authentication services
-  await UserManagerService.instance.initialize();
   await AuthenticationService.shared.initialize();
+  
+  // Initialize the app state service (after dependencies are ready)
+  await AppStateService.instance.initialize();
   
   if (kDebugMode) {
     print('✅ All services initialized successfully');
