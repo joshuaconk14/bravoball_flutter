@@ -57,11 +57,8 @@ void main() async {
   // Initialize services
   ApiService.shared.initialize();
   
-  // ✅ ADDED: Initialize AdService
-  await AdService.instance.initialize();
-  
-  // Initialize the app state service
-  await AppStateService.instance.initialize();
+  // ✅ FIXED: Initialize UserManagerService FIRST (AppStateService depends on it)
+  await UserManagerService.instance.initialize();
   
   // ✅ ADDED: Initialize StoreService to load store items and freeze dates
   await StoreService.instance.initialize();
@@ -84,88 +81,10 @@ void main() async {
   }
   
   // Initialize authentication services
-  await UserManagerService.instance.initialize();
   await AuthenticationService.shared.initialize();
   
-  // Initialize RevenueCat with platform-specific API key
-  final String revenueCatApiKey = Platform.isAndroid 
-      ? PurchaseConfig.revenueCatApiKeyAndroid 
-      : PurchaseConfig.revenueCatApiKeyIOS;
-  
-  if (kDebugMode) {
-    print('🔑 RevenueCat API Key: ${Platform.isAndroid ? "Android" : "iOS"}');
-  }
-  
-  final configuration = PurchasesConfiguration(revenueCatApiKey);
-  await Purchases.configure(configuration);
-  
-  // ✅ CRITICAL: Identify returning users with RevenueCat
-  final userManager = UserManagerService.instance;
-  if (userManager.isLoggedIn && userManager.email.isNotEmpty) {
-    try {
-      if (kDebugMode) {
-        print('🔍 Main: Identifying returning user with RevenueCat...');
-      }
-      
-      // ✅ CRITICAL FIX: ALWAYS log out BEFORE logging in
-      // This prevents purchases from being transferred between users
-      // RevenueCat's logIn() can transfer purchases from anonymous or previous users,
-      // so we must always reset to a clean state first
-      try {
-          if (kDebugMode) {
-          print('🔍 Main: Resetting RevenueCat user before identifying returning user...');
-        }
-        
-        // Always log out first, regardless of current user state
-        // This ensures a clean slate and prevents purchase transfers
-          await Purchases.logOut();
-        
-        // Small delay to ensure logout completes
-        await Future.delayed(const Duration(milliseconds: 100));
-        
-        if (kDebugMode) {
-          print('✅ Main: RevenueCat user reset, now identifying returning user...');
-        }
-        } catch (logoutError) {
-        if (kDebugMode) {
-          print('⚠️ Main: Error during logout (continuing anyway): $logoutError');
-        }
-        // Continue even if logout fails - better to try than skip
-      }
-      
-      // Tell RevenueCat who this returning user is
-      await Purchases.logIn(userManager.email);
-      
-      if (kDebugMode) {
-        print('✅ Main: Returning user identified with RevenueCat as: ${userManager.email}');
-      }
-      
-      // ✅ CRITICAL FOR PRODUCTION: Restore purchases after login
-      // This transfers any purchases made while anonymous to the identified account
-      try {
-        if (kDebugMode) {
-          print('🔄 Main: Restoring purchases for identified user...');
-        }
-        
-        final customerInfo = await Purchases.restorePurchases();
-        
-        if (kDebugMode) {
-          print('✅ Main: Purchases restored');
-          print('   User ID: ${customerInfo.originalAppUserId}');
-          print('   Active Entitlements: ${customerInfo.entitlements.active.keys}');
-        }
-      } catch (restoreError) {
-        if (kDebugMode) {
-          print('⚠️ Main: Error restoring purchases (non-critical): $restoreError');
-        }
-        // Don't fail app startup if restore fails - purchases will still work
-      }
-    } catch (revenueCatError) {
-      if (kDebugMode) {
-        print('⚠️ Main: Failed to identify returning user with RevenueCat: $revenueCatError');
-      }
-    }
-  }
+  // Initialize the app state service (after dependencies are ready)
+  await AppStateService.instance.initialize();
   
   if (kDebugMode) {
     print('✅ All services initialized successfully');

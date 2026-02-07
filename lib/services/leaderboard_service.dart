@@ -11,7 +11,7 @@ class LeaderboardService {
   Future<List<LeaderboardEntry>> getLeaderboard() async {
     try {
       final response = await ApiService.shared.get(
-        '/api/friends/leaderboard',
+        '/api/leaderboard/friends',
         requiresAuth: true,
       );
 
@@ -63,6 +63,59 @@ class LeaderboardService {
         throw Exception('Unauthorized - please log in again');
       } else {
         throw Exception('Failed to fetch leaderboard');
+      }
+    }
+  }
+
+  /// Get world leaderboard data
+  /// Returns top 50 users globally plus the current user's rank
+  Future<WorldLeaderboardResponse> getWorldLeaderboard() async {
+    try {
+      final response = await ApiService.shared.get(
+        '/api/leaderboard/world',
+        requiresAuth: true,
+      );
+
+      if (response.isSuccess && response.data != null) {
+        // Parse world leaderboard response
+        dynamic responseData = response.data;
+        
+        // Check if response.data is wrapped in a 'data' key
+        if (responseData is Map<String, dynamic> && responseData.containsKey('data')) {
+          responseData = responseData['data'];
+        }
+
+        if (responseData is! Map<String, dynamic>) {
+          if (kDebugMode) {
+            print('⚠️ LeaderboardService: Invalid world leaderboard response format');
+            print('   Response data type: ${response.data.runtimeType}');
+          }
+          throw Exception('Invalid response format');
+        }
+
+        final worldLeaderboard = WorldLeaderboardResponse.fromJson(responseData);
+
+        if (kDebugMode) {
+          print('✅ LeaderboardService: Retrieved world leaderboard');
+          print('   Top 50 entries: ${worldLeaderboard.top50.length}');
+          print('   User rank: #${worldLeaderboard.userRank.rank}');
+        }
+
+        return worldLeaderboard;
+      } else {
+        if (kDebugMode) {
+          print('❌ LeaderboardService: World leaderboard API call failed - ${response.error}');
+        }
+        throw Exception(response.error ?? 'Failed to fetch world leaderboard');
+      }
+    } catch (e) {
+      if (kDebugMode) {
+        print('❌ LeaderboardService: Error fetching world leaderboard: $e');
+      }
+      if (e.toString().contains('401') || e.toString().contains('Unauthorized')) {
+        throw Exception('Unauthorized - please log in again');
+      } else {
+        throw Exception('Failed to fetch world leaderboard');
       }
     }
   }

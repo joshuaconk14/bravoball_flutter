@@ -508,8 +508,6 @@ class AppStateService extends ChangeNotifier {
       if (AppConfig.useTestData && _editableSessionDrills.isEmpty) {
         await _loadTestSession();
       }
-      // ✅ ADDED: Refresh friend request count for authenticated users
-      await refreshFriendRequestCount();
     }
     
     notifyListeners();
