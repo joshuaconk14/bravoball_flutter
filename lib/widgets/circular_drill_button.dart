@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import '../constants/app_theme.dart';
+import '../constants/app_assets.dart';
 import '../utils/haptic_utils.dart';
 
 class CircularDrillButton extends StatefulWidget {
@@ -138,28 +139,8 @@ class _CircularDrillButtonState extends State<CircularDrillButton>
   }
 
   String _getSkillIconPath(String skill) {
-    // Normalize the skill name for better matching
-    final normalizedSkill = skill.toLowerCase().replaceAll('_', ' ').trim();
-    
-    switch (normalizedSkill) {
-      case 'passing':
-        return 'assets/drill-icons/Player_Passing.png';
-      case 'shooting':
-        return 'assets/drill-icons/Player_Shooting.png';
-      case 'dribbling':
-        return 'assets/drill-icons/Player_Dribbling.png';
-      case 'first touch':
-      case 'firsttouch':
-        return 'assets/drill-icons/Player_First_Touch.png';
-      case 'defending':
-        return 'assets/drill-icons/Player_Defending.png';
-      case 'goalkeeping':
-        return 'assets/drill-icons/Player_Goalkeeping.png';
-      case 'fitness':
-        return 'assets/drill-icons/Player_Fitness.png';
-      default:
-        return 'assets/drill-icons/Player_Dribbling.png';
-    }
+    // Use centralized asset path
+    return AppAssets.getSkillIconPath(skill);
   }
 
   IconData _getSkillIconFallback(String skill) {

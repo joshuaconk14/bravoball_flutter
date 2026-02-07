@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/foundation.dart'; // ✅ ADDED: Import for kDebugMode
 import 'package:flutter/services.dart';
 import 'package:rive/rive.dart';
 import '../features/session_generator/session_generator_home_field_view.dart';
@@ -7,8 +8,10 @@ import '../features/saved_drills/saved_drills_view.dart';
 import '../features/profile/profile_view.dart';
 import '../features/create_drill/create_drill_sheet.dart';
 import '../constants/app_theme.dart';
+import '../constants/app_assets.dart';
 import '../utils/haptic_utils.dart';
 import '../services/app_state_service.dart'; // ✅ ADDED: Import for loading state checking
+import '../utils/premium_utils.dart'; // ✅ ADDED: Import premium utils
 import '../widgets/guest_account_creation_dialog.dart'; // ✅ ADDED: Import reusable dialog
 import '../widgets/badge_widget.dart'; // ✅ ADDED: Import badge widget
 import 'package:provider/provider.dart'; // ✅ ADDED: Import for Provider
@@ -45,7 +48,7 @@ class _MainTabViewState extends State<MainTabView> {
     HapticUtils.heavyImpact(); // Heavy haptic for major navigation
   }
 
-  void _showCreateDrillSheet() {
+  void _showCreateDrillSheet() async {
     HapticUtils.mediumImpact();
     
     // ✅ ADDED: Check for guest mode and show account creation dialog
@@ -63,7 +66,18 @@ class _MainTabViewState extends State<MainTabView> {
       return;
     }
     
-    // Show create drill sheet for authenticated users
+    // ✅ ADDED: Check premium access for unlimited custom drills
+    final hasPremium = await PremiumUtils.instance.hasPremiumAccess();
+    
+    if (!hasPremium) {
+      if (kDebugMode) {
+        print('🔒 Premium required for custom drill creation');
+      }
+      _showCustomDrillLimitUpgradePrompt();
+      return;
+    }
+    
+    // Show create drill sheet for authenticated users with remaining custom drill quota
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
@@ -82,7 +96,16 @@ class _MainTabViewState extends State<MainTabView> {
         }
         
         return Scaffold(
-          body: _widgetOptions[_selectedIndex],
+          body: Column(
+            children: [
+              // ✅ ADDED: Offline banner at the top
+              const OfflineBanner(),
+              // Main content
+              Expanded(
+                child: _widgetOptions[_selectedIndex],
+              ),
+            ],
+          ),
           bottomNavigationBar: Container(
         decoration: BoxDecoration(
           border: Border(
@@ -104,11 +127,11 @@ class _MainTabViewState extends State<MainTabView> {
               showUnselectedLabels: false,
               items: [
                 BottomNavigationBarItem(
-                  icon: _buildRiveTab('Tab_House.riv', 0),
+                  icon: _buildRiveTab(AppAssets.tabHouse, 0),
                   label: 'Home',
                 ),
                 BottomNavigationBarItem(
-                  icon: _buildRiveTab('Tab_Calendar.riv', 1),
+                  icon: _buildRiveTab(AppAssets.tabCalendar, 1),
                   label: 'Progression',
                 ),
                 BottomNavigationBarItem(
@@ -116,7 +139,7 @@ class _MainTabViewState extends State<MainTabView> {
                   label: '',
                 ),
                 BottomNavigationBarItem(
-                  icon: _buildRiveTab('Tab_Saved.riv', 2),
+                  icon: _buildRiveTab(AppAssets.tabSaved, 2),
                   label: 'Saved',
                 ),
                 BottomNavigationBarItem(
@@ -242,7 +265,7 @@ class _MainTabViewState extends State<MainTabView> {
     );
   }
 
-  Widget _buildRiveTab(String assetName, int index) {
+  Widget _buildRiveTab(String assetPath, int index) {
     final isSelected = _selectedIndex == index;
     final size = isSelected ? 32.0 : 24.0; // Bigger when selected
     
@@ -252,11 +275,11 @@ class _MainTabViewState extends State<MainTabView> {
       width: size,
       height: size,
       child: RiveAnimation.asset(
-        'assets/rive/$assetName',
+        assetPath,
         fit: BoxFit.contain,
         onInit: (artboard) {
           // Rive asset loaded successfully
-          print('Loaded Rive asset: $assetName');
+          print('Loaded Rive asset: $assetPath');
         },
         // Add fallback in case of errors
         placeHolder: Icon(
@@ -281,5 +304,23 @@ class _MainTabViewState extends State<MainTabView> {
       default:
         return Icons.circle;
     }
+  }
+
+  /// Show custom drill limit upgrade prompt
+  void _showCustomDrillLimitUpgradePrompt() {
+    // Check if widget is still mounted before navigating
+    if (!mounted) {
+      if (kDebugMode) {
+        print('⚠️ Widget unmounted, cannot navigate to premium page');
+      }
+      return;
+    }
+    
+    // Navigate to premium page instead of showing dialog
+    Navigator.of(context).push(
+      MaterialPageRoute(
+        builder: (context) => const PremiumPage(),
+      ),
+    );
   }
 } 

@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:flutter/foundation.dart'; // ✅ ADDED: Import for kDebugMode
 import 'package:url_launcher/url_launcher.dart';
 import 'package:provider/provider.dart';
 import '../../constants/app_theme.dart';
@@ -16,6 +17,8 @@ import 'account_settings_view.dart'; // ✅ ADDED: Import AccountSettingsView
 import '../leaderboard/leaderboard_view.dart'; // ✅ ADDED: Import LeaderboardView
 import '../friends/friends_view.dart'; // ✅ ADDED: Import FriendsView
 import '../../utils/haptic_utils.dart';
+import '../../utils/premium_utils.dart'; // ✅ ADDED: Import PremiumUtils
+import '../../features/premium/premium_page.dart'; // ✅ ADDED: Import premium page
 
 class ProfileView extends StatefulWidget {
   const ProfileView({Key? key}) : super(key: key);
@@ -121,6 +124,25 @@ class _ProfileViewState extends State<ProfileView> with WidgetsBindingObserver {
                           },
                         ),
                       ],
+                      
+                      // ✅ ADDED: Premium upgrade button (only show for non-premium users)
+                      if (!context.read<UserManagerService>().isGuestMode) ...[
+                        FutureBuilder<bool>(
+                          future: PremiumUtils.instance.hasPremiumAccess(),
+                          builder: (context, snapshot) {
+                            if (snapshot.hasData && !snapshot.data!) {
+                              // User is not premium, show upgrade button
+                              return _buildPremiumMenuItem();
+                            } else if (snapshot.hasData && snapshot.data!) {
+                              // User is premium, show premium status
+                              return _buildPremiumStatusItem();
+                            } else {
+                              // Loading state
+                              return const SizedBox.shrink();
+                            }
+                          },
+                        ),
+                      ],
                     ],
                   ),
                   
@@ -204,6 +226,15 @@ class _ProfileViewState extends State<ProfileView> with WidgetsBindingObserver {
                           onTap: () {
                             HapticUtils.lightImpact(); // Light haptic for debug info
                             _showAuthDebugInfo(userManager);
+                          },
+                        ),
+                        _buildDebugMenuItem(
+                          icon: Icons.star,
+                          title: 'Premium Debug Info',
+                          subtitle: 'Check premium status & features',
+                          onTap: () {
+                            HapticUtils.lightImpact(); // Light haptic for debug info
+                            _showPremiumDebugInfo();
                           },
                         ),
                       ],
@@ -572,6 +603,160 @@ class _ProfileViewState extends State<ProfileView> with WidgetsBindingObserver {
     );
   }
 
+  // ✅ ADDED: Premium upgrade menu item
+  Widget _buildPremiumMenuItem() {
+    return Material(
+      color: Colors.transparent,
+      child: InkWell(
+        onTap: () {
+          HapticUtils.mediumImpact(); // Medium haptic for premium upgrade
+          _handlePremiumUpgrade();
+        },
+        borderRadius: BorderRadius.circular(12),
+        child: Container(
+          padding: const EdgeInsets.all(12),
+          child: Row(
+            children: [
+              // Premium icon with gradient background
+              Container(
+                padding: const EdgeInsets.all(6),
+                decoration: BoxDecoration(
+                  gradient: LinearGradient(
+                    colors: [
+                      AppTheme.primaryYellow,
+                      AppTheme.primaryDarkYellow,
+                    ],
+                    begin: Alignment.topLeft,
+                    end: Alignment.bottomRight,
+                  ),
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: const Icon(
+                  Icons.star,
+                  color: Colors.white,
+                  size: 18,
+                ),
+              ),
+              
+              const SizedBox(width: 12),
+              
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'Try BravoBall Premium',
+                      style: AppTheme.bodyLarge.copyWith(
+                        color: AppTheme.primaryDark,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                    Text(
+                      'Unlock unlimited features & remove ads',
+                      style: AppTheme.bodySmall.copyWith(
+                        color: AppTheme.primaryYellow,
+                        fontWeight: FontWeight.w500,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              
+              // Premium badge
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                decoration: BoxDecoration(
+                  color: AppTheme.primaryYellow.withOpacity(0.1),
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: Text(
+                  'UPGRADE',
+                  style: AppTheme.bodySmall.copyWith(
+                    color: AppTheme.primaryYellow,
+                    fontWeight: FontWeight.bold,
+                    fontSize: 10,
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  // ✅ ADDED: Premium status item for premium users
+  Widget _buildPremiumStatusItem() {
+    return Container(
+      padding: const EdgeInsets.all(12),
+      child: Row(
+        children: [
+          // Premium icon with gradient background
+          Container(
+            padding: const EdgeInsets.all(6),
+            decoration: BoxDecoration(
+              gradient: LinearGradient(
+                colors: [
+                  AppTheme.primaryYellow,
+                  AppTheme.primaryDarkYellow,
+                ],
+                begin: Alignment.topLeft,
+                end: Alignment.bottomRight,
+              ),
+              borderRadius: BorderRadius.circular(8),
+            ),
+            child: const Icon(
+              Icons.star,
+              color: Colors.white,
+              size: 18,
+            ),
+          ),
+          
+          const SizedBox(width: 12),
+          
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  'BravoBall Premium',
+                  style: AppTheme.bodyLarge.copyWith(
+                    color: AppTheme.primaryDark,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+                Text(
+                  'You have access to all premium features',
+                  style: AppTheme.bodySmall.copyWith(
+                    color: AppTheme.primaryYellow,
+                    fontWeight: FontWeight.w500,
+                  ),
+                ),
+              ],
+            ),
+          ),
+          
+          // Premium badge
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+            decoration: BoxDecoration(
+              color: AppTheme.primaryYellow,
+              borderRadius: BorderRadius.circular(12),
+            ),
+            child: const Text(
+              'PREMIUM',
+              style: TextStyle(
+                color: Colors.white,
+                fontWeight: FontWeight.bold,
+                fontSize: 10,
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
   // Action Handlers
 
   void _handleShareApp() {
@@ -618,6 +803,33 @@ class _ProfileViewState extends State<ProfileView> with WidgetsBindingObserver {
       MaterialPageRoute(builder: (context) => const OnboardingFlow()),
       (route) => false,
     );
+  }
+
+  // ✅ ADDED: Handle premium upgrade
+  void _handlePremiumUpgrade() async {
+    // Check current premium status
+    final isPremium = await PremiumUtils.instance.hasPremiumAccess();
+    
+    if (isPremium) {
+      // User is already premium
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('You already have Premium! 🎉'),
+          backgroundColor: Colors.green,
+          duration: Duration(seconds: 2),
+        ),
+      );
+      return;
+    }
+    
+    // Navigate to premium page instead of showing dialog
+    if (mounted) {
+      Navigator.of(context).push(
+        MaterialPageRoute(
+          builder: (context) => const PremiumPage(),
+        ),
+      );
+    }
   }
 
   void _handleAccountSettings() {
@@ -673,6 +885,62 @@ class _ProfileViewState extends State<ProfileView> with WidgetsBindingObserver {
               Navigator.pop(context);
             },
             child: const Text('Close'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  // ✅ ADDED: Show premium debug info
+  void _showPremiumDebugInfo() async {
+    final isPremium = await PremiumUtils.instance.hasPremiumAccess();
+    final entitlements = await PremiumUtils.instance.getActiveEntitlements();
+    
+    if (!mounted) return;
+    
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Premium Debug Info'),
+        content: SingleChildScrollView(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Text(
+                'Premium Status: ${isPremium ? "PREMIUM" : "FREE"}',
+                style: TextStyle(
+                  fontFamily: 'Courier',
+                  fontSize: 12,
+                  fontWeight: FontWeight.bold,
+                  color: isPremium ? Colors.green : Colors.orange,
+                ),
+              ),
+              const SizedBox(height: 8),
+              Text(
+                'Active Entitlements: ${entitlements.join(", ")}',
+                style: const TextStyle(fontFamily: 'Courier', fontSize: 12),
+              ),
+            ],
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () {
+              HapticUtils.lightImpact(); // Light haptic for close
+              Navigator.pop(context);
+            },
+            child: const Text('Close'),
+          ),
+          TextButton(
+            onPressed: () async {
+              HapticUtils.mediumImpact(); // Medium haptic for refresh
+              if (mounted) {
+                Navigator.pop(context);
+                _showPremiumDebugInfo(); // Show updated info
+              }
+            },
+            child: const Text('Refresh'),
           ),
         ],
       ),

@@ -14,7 +14,7 @@ This guide covers deploying BravoBall Flutter (v2.0.0+20) to both App Store and 
 
 ### App Configuration
 ✅ Bundle ID updated to match existing Swift app: `ConklinOfficial.BravoBall`
-✅ Version configured: 2.0.0 (Build 20)
+✅ Version configured: 2.0.0
 ✅ Android signing configuration set up
 ✅ iOS versioning properly configured
 

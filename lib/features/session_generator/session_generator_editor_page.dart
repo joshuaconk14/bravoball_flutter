@@ -913,85 +913,73 @@ class _SessionGeneratorEditorPageState extends State<SessionGeneratorEditorPage>
 
   // Show the filter sheet
   void _showFilterSheet(BuildContext context, FilterType filterType, AppStateService appState) {
-    showFilterSheet(context, filterType);
+    // Get initial values based on filter type
+    String? initialValue;
+    Set<String>? initialEquipment;
+    
+    switch (filterType) {
+      case FilterType.time:
+        initialValue = appState.preferences.selectedTime;
+        break;
+      case FilterType.trainingStyle:
+        initialValue = appState.preferences.selectedTrainingStyle;
+        break;
+      case FilterType.location:
+        initialValue = appState.preferences.selectedLocation;
+        break;
+      case FilterType.difficulty:
+        initialValue = appState.preferences.selectedDifficulty;
+        break;
+      case FilterType.equipment:
+        initialEquipment = Set<String>.from(appState.preferences.selectedEquipment);
+        break;
+    }
+    
+    showFilterSheet(
+      context,
+      filterType,
+      initialValue: initialValue,
+      initialEquipment: initialEquipment,
+      onApply: (value) {
+        // Apply changes to session only when Apply is clicked
+        switch (filterType) {
+          case FilterType.time:
+            appState.updateTimeFilter(value);
+            break;
+          case FilterType.trainingStyle:
+            appState.updateTrainingStyleFilter(value);
+            break;
+          case FilterType.location:
+            appState.updateLocationFilter(value);
+            break;
+          case FilterType.difficulty:
+            appState.updateDifficultyFilter(value);
+            break;
+          case FilterType.equipment:
+            break;
+        }
+      },
+      onApplyEquipment: (equipment) {
+        // Apply equipment changes to session only when Apply is clicked
+        appState.updateEquipmentFilter(equipment);
+      },
+    );
   }
 
   // Show the skills sheet
   void _showSkillsSheet(BuildContext context, AppStateService appState) {
+    // Initialize local state with current selections
+    final initialSelections = Set<String>.from(appState.preferences.selectedSkills);
+    
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
       backgroundColor: Colors.transparent,
-      builder: (context) => Container(
-        height: MediaQuery.of(context).size.height * 0.8,
-        padding: const EdgeInsets.all(16),
-        decoration: const BoxDecoration(
-          color: Colors.white,
-          borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
-        ),
-        child: Column(
-          children: [
-            Container(
-              width: 50,
-              height: 4,
-              decoration: BoxDecoration(
-                color: Colors.grey.shade300,
-                borderRadius: BorderRadius.circular(2),
-              ),
-            ),
-            const SizedBox(height: 16),
-            const Text(
-              'Select Skills',
-              style: TextStyle(
-                fontFamily: 'Poppins',
-                fontWeight: FontWeight.bold,
-                fontSize: 18,
-              ),
-            ),
-            const SizedBox(height: 16),
-            // Sub-skill selector
-            Expanded(
-              child: Consumer<AppStateService>(
-                builder: (context, appState, child) {
-                  return SkillSelector(
-                    selectedSkills: appState.preferences.selectedSkills,
-                    onChanged: (skills) {
-                      appState.updateSkillsFilter(skills);
-                    },
-                  );
-                },
-              ),
-            ),
-            const SizedBox(height: 16),
-            Row(
-              children: [
-                Expanded(
-                  child: TextButton(
-                    onPressed: () {
-                      HapticUtils.lightImpact(); // Light haptic for cancel
-                      Navigator.pop(context);
-                    },
-                    child: const Text('Cancel'),
-                  ),
-                ),
-                const SizedBox(width: 16),
-                Expanded(
-                  child: ElevatedButton(
-                    onPressed: () {
-                      HapticUtils.lightImpact(); // Light haptic for apply
-                      Navigator.pop(context);
-                    },
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: const Color(0xFFF9CC53),
-                      foregroundColor: Colors.white,
-                    ),
-                    child: const Text('Apply'),
-                  ),
-                ),
-              ],
-            ),
-          ],
-        ),
+      builder: (context) => _SkillsSelectionSheet(
+        initialSelections: initialSelections,
+        onApply: (selectedSkills) {
+          appState.updateSkillsFilter(selectedSkills);
+        },
       ),
     );
   }
@@ -1034,5 +1022,107 @@ class _SessionGeneratorEditorPageState extends State<SessionGeneratorEditorPage>
     }
     
     return validEquipment.length;
+  }
+}
+
+// Separate StatefulWidget to manage local state for skill selections
+class _SkillsSelectionSheet extends StatefulWidget {
+  final Set<String> initialSelections;
+  final ValueChanged<Set<String>> onApply;
+
+  const _SkillsSelectionSheet({
+    Key? key,
+    required this.initialSelections,
+    required this.onApply,
+  }) : super(key: key);
+
+  @override
+  State<_SkillsSelectionSheet> createState() => _SkillsSelectionSheetState();
+}
+
+class _SkillsSelectionSheetState extends State<_SkillsSelectionSheet> {
+  late Set<String> _localSelectedSkills;
+
+  @override
+  void initState() {
+    super.initState();
+    // Initialize local state with initial selections
+    _localSelectedSkills = Set<String>.from(widget.initialSelections);
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      height: MediaQuery.of(context).size.height * 0.8,
+      padding: const EdgeInsets.all(16),
+      decoration: const BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
+      child: Column(
+        children: [
+          Container(
+            width: 50,
+            height: 4,
+            decoration: BoxDecoration(
+              color: Colors.grey.shade300,
+              borderRadius: BorderRadius.circular(2),
+            ),
+          ),
+          const SizedBox(height: 16),
+          const Text(
+            'Select Skills',
+            style: TextStyle(
+              fontFamily: 'Poppins',
+              fontWeight: FontWeight.bold,
+              fontSize: 18,
+            ),
+          ),
+          const SizedBox(height: 16),
+          // Sub-skill selector with local state
+          Expanded(
+            child: SkillSelector(
+              selectedSkills: _localSelectedSkills,
+              onChanged: (skills) {
+                // Update local state only, don't apply to session yet
+                setState(() {
+                  _localSelectedSkills = skills;
+                });
+              },
+            ),
+          ),
+          const SizedBox(height: 16),
+          Row(
+            children: [
+              Expanded(
+                child: TextButton(
+                  onPressed: () {
+                    HapticUtils.lightImpact(); // Light haptic for cancel
+                    Navigator.pop(context);
+                  },
+                  child: const Text('Cancel'),
+                ),
+              ),
+              const SizedBox(width: 16),
+              Expanded(
+                child: ElevatedButton(
+                  onPressed: () {
+                    HapticUtils.mediumImpact(); // Medium haptic for apply
+                    // Apply changes to session only when Apply is clicked
+                    widget.onApply(_localSelectedSkills);
+                    Navigator.pop(context);
+                  },
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: const Color(0xFFF9CC53),
+                    foregroundColor: Colors.white,
+                  ),
+                  child: const Text('Apply'),
+                ),
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
   }
 } 

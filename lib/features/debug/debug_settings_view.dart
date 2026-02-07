@@ -5,7 +5,9 @@ import '../../constants/app_theme.dart';
 import '../../config/app_config.dart';
 import '../../services/test_data_service.dart';
 import '../../services/app_state_service.dart';
+import '../../services/tutorial_service.dart'; // ✅ ADDED: Import tutorial service
 import '../../utils/skill_utils.dart'; // ✅ ADDED: Import centralized skill utilities
+import 'offline_database_test_page.dart'; // ✅ ADDED: Import offline database test page
 
 class DebugSettingsView extends StatefulWidget {
   const DebugSettingsView({Key? key}) : super(key: key);
@@ -364,11 +366,30 @@ class _DebugSettingsViewState extends State<DebugSettingsView> {
             const SizedBox(height: 8),
             
             _buildActionButton(
+              title: 'Reset Tutorial',
+              subtitle: 'Reset tutorial seen state',
+              icon: Icons.school_outlined,
+              onTap: () => _resetTutorial(),
+            ),
+            
+            const SizedBox(height: 8),
+            
+            _buildActionButton(
               title: 'Force Crash',
               subtitle: 'Test error handling',
               icon: Icons.warning,
               color: Colors.red,
               onTap: () => _forceCrash(),
+            ),
+            
+            const SizedBox(height: 8),
+            
+            _buildActionButton(
+              title: 'Test Offline Database',
+              subtitle: 'Test SQLite offline storage',
+              icon: Icons.storage,
+              color: Colors.blue,
+              onTap: () => _testOfflineDatabase(),
             ),
           ],
         ),
@@ -727,6 +748,25 @@ class _DebugSettingsViewState extends State<DebugSettingsView> {
       const SnackBar(
         content: Text('Debug info copied to clipboard'),
         backgroundColor: Colors.green,
+      ),
+    );
+  }
+
+  void _resetTutorial() async {
+    await TutorialService.instance.resetTutorial();
+    TestDataService.debugLog('Tutorial state reset');
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(
+        content: Text('Tutorial state reset. Tutorial will show on next app launch.'),
+        backgroundColor: Colors.blue,
+      ),
+    );
+  }
+
+  void _testOfflineDatabase() {
+    Navigator.of(context).push(
+      MaterialPageRoute(
+        builder: (context) => const OfflineDatabaseTestPage(),
       ),
     );
   }

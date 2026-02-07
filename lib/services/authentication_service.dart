@@ -49,6 +49,7 @@ class AuthenticationService extends ChangeNotifier {
     if (kDebugMode) {
       print('✅ AuthenticationService: Found stored tokens for user: ${_userManager.email}');
       print('🔑 AuthenticationService: Access token: ${_userManager.accessToken.substring(0, 20)}...');
+      print('🔄 AuthenticationService: Refresh token: ${_userManager.refreshToken.isEmpty ? 'empty' : '${_userManager.refreshToken.substring(0, 20)}...'}');
     }
 
     // ✅ IMPROVED: Don't validate token with backend on startup
