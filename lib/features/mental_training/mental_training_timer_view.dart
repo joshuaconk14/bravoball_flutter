@@ -1,23 +1,28 @@
+import 'dart:async'; // ✅ ADDED: Import for Timer class
+import 'dart:math' as math; // ✅ ADDED: Import for math functions
 import 'package:flutter/material.dart';
+import 'package:flutter/foundation.dart';
 import 'package:provider/provider.dart';
-import 'dart:async';
-import 'dart:math' as math;
+import 'package:rive/rive.dart' hide LinearGradient, RadialGradient;
+import 'package:rive/rive.dart' as rive;
+import '../../constants/app_theme.dart';
+import '../../services/app_state_service.dart';
+import '../../services/audio_service.dart';
+import '../../services/background_timer_service.dart';
+import '../../services/wake_lock_service.dart';
+import '../../services/ad_service.dart'; // ✅ ADDED: Import AdService
+import '../../utils/haptic_utils.dart';
+import '../../widgets/guest_account_creation_dialog.dart';
+import '../../widgets/bravo_button.dart'; // ✅ ADDED: Import for BravoButton
+import '../../models/mental_training_models.dart';
+import '../../models/auth_models.dart';
 import '../../models/drill_model.dart'; // Added for DrillModel
 import '../../models/editable_drill_model.dart'; // Added for EditableDrillModel
 import '../../services/mental_training_service.dart';
-import '../../models/mental_training_models.dart';
-import '../../services/app_state_service.dart';
-import '../../services/audio_service.dart';
-import '../../services/background_timer_service.dart'; // ✅ ADDED: Background timer service
-import '../../services/wake_lock_service.dart'; // ✅ ADDED: Wake lock service
-import '../../constants/app_theme.dart';
-import '../../utils/haptic_utils.dart';
-import '../../widgets/bravo_button.dart';
-import '../../views/main_tab_view.dart';
 import '../../config/app_config.dart'; // Added for debug mode
-import 'package:flutter/foundation.dart'; // Added for kDebugMode
 import 'package:uuid/uuid.dart'; // Added for UUID generation
-import '../../widgets/guest_account_creation_dialog.dart'; // ✅ ADDED: Import reusable dialog
+import '../../views/main_tab_view.dart';
+import '../session_generator/session_completion_view.dart';
 
 class MentalTrainingTimerView extends StatefulWidget {
   final int durationMinutes;
@@ -596,6 +601,63 @@ class _MentalTrainingTimerViewState extends State<MentalTrainingTimerView>
     );
   }
 
+  void _navigateToSessionCompletion() async {
+    final appState = Provider.of<AppStateService>(context, listen: false);
+    
+    // Check if guest mode - show dialog instead of navigating
+    if (appState.isGuestMode) {
+      _showGuestCompletionDialog();
+      return;
+    }
+    
+    // Show ad after mental training completion
+    await AdService.instance.showAdAfterMentalTraining();
+    
+    // Get session data
+    final sessionsToday = appState.sessionsCompletedToday;
+    final isFirstSessionOfDay = sessionsToday == 1;
+    
+    // Navigate to session completion view
+    Navigator.of(context).push(
+      MaterialPageRoute(
+        builder: (_) => SessionCompletionView(
+          currentStreak: appState.currentStreak,
+          completedDrills: 1, // Mental training is a single session
+          totalDrills: 1,
+          isFirstSessionOfDay: isFirstSessionOfDay,
+          sessionsCompletedToday: sessionsToday,
+          treatsAwarded: appState.lastSessionTreatsAwarded,
+          treatBreakdown: appState.lastSessionTreatBreakdown,
+          treatsAlreadyGranted: appState.lastSessionTreatsAlreadyGranted,
+          onViewProgress: () async {
+            // Show ad after viewing progress
+            await AdService.instance.showAdAfterSession();
+            
+            // Navigate to progress tab (index 1)
+            Navigator.of(context).pushAndRemoveUntil(
+              MaterialPageRoute(
+                builder: (_) => const MainTabView(initialIndex: 1),
+              ),
+              (route) => false,
+            );
+          },
+          onBackToHome: () async {
+            // Show ad after going back to home
+            await AdService.instance.showAdAfterSession();
+            
+            // Navigate back to home tab (index 0)
+            Navigator.of(context).pushAndRemoveUntil(
+              MaterialPageRoute(
+                builder: (_) => const MainTabView(initialIndex: 0),
+              ),
+              (route) => false,
+            );
+          },
+        ),
+      ),
+    );
+  }
+
   @override
   void dispose() {
     _backgroundTimer.stopTimer(); // Stop the background timer (don't dispose shared service)
@@ -1005,36 +1067,31 @@ class _MentalTrainingTimerViewState extends State<MentalTrainingTimerView>
     if (_isCompleted) {
       return Column(
         children: [
-          Container(
-            width: double.infinity,
-            height: 56,
-            child: BravoButton(
-              text: 'Back to Home',
-              onPressed: () {
-                // ✅ ADDED: Check if guest mode and show overlay instead of navigating
-                final appState = Provider.of<AppStateService>(context, listen: false);
-                if (appState.isGuestMode) {
-                  // Show guest account overlay for guests
-                  // GuestAccountOverlay.show( // This line was removed from the new_code, so it's removed here.
-                  //   context: context,
-                  //   title: 'Create an account to save your progress',
-                  //   description: 'Great job completing your mental training! Create an account to track your progress, earn achievements, and unlock all features.',
-                  //   themeColor: AppTheme.primaryYellow,
-                  //   showDismissButton: true,
-                  // );
-                } else {
-                  // Navigate normally for authenticated users
-                  Navigator.of(context).pushAndRemoveUntil(
-                    MaterialPageRoute(
-                      builder: (_) => const MainTabView(initialIndex: 0),
-                    ),
-                    (route) => false,
-                  );
-                }
-              },
+          // Trophy button to navigate to session completion view
+          GestureDetector(
+            onTap: () {
+              HapticUtils.mediumImpact();
+              _navigateToSessionCompletion();
+            },
+            child: Container(
+              width: 80,
+              height: 80,
+              decoration: BoxDecoration(
               color: AppTheme.primaryYellow,
-              backColor: AppTheme.primaryDarkYellow,
-              textColor: AppTheme.white,
+                shape: BoxShape.circle,
+                boxShadow: [
+                  BoxShadow(
+                    color: AppTheme.black.withOpacity(0.2),
+                    blurRadius: AppTheme.elevationHigh,
+                    offset: const Offset(0, 4),
+                  ),
+                ],
+              ),
+              child: const Icon(
+                Icons.emoji_events,
+                size: 48,
+                color: AppTheme.white,
+              ),
             ),
           ),
         ],
@@ -1119,6 +1176,10 @@ class _MentalTrainingTimerViewState extends State<MentalTrainingTimerView>
               await WakeLockService.disableWakeLock();
               
               Navigator.of(context).pop(); // Close dialog
+              
+              // ✅ ADDED: Show ad when exiting mental training
+              await AdService.instance.showAdAfterMentalTraining();
+              
               Navigator.of(context).pushAndRemoveUntil(
                 MaterialPageRoute(
                   builder: (_) => const MainTabView(initialIndex: 0),

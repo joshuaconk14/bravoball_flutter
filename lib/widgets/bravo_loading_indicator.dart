@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:rive/rive.dart' hide LinearGradient;
 import '../constants/app_theme.dart';
+import '../constants/app_assets.dart';
 import 'dart:math' as math;
 
 /// Simple, Clean Bravo Loading Indicator
@@ -20,7 +21,7 @@ class BravoLoadingIndicator extends StatefulWidget {
     this.progress,
     this.showProgressText = true,
     this.backgroundColor,
-    this.riveAsset = 'assets/rive/Bravo_Animation.riv',
+    this.riveAsset = AppAssets.bravoAnimation,
     this.loadingSteps,
     this.currentStep,
   }) : super(key: key);
@@ -292,7 +293,7 @@ class BravoLoginLoadingIndicator extends StatefulWidget {
   const BravoLoginLoadingIndicator({
     Key? key,
     this.message,
-    this.riveAsset = 'assets/rive/Bravo_Animation.riv',
+    this.riveAsset = AppAssets.bravoAnimation,
   }) : super(key: key);
 
   @override

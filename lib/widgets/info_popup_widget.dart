@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:rive/rive.dart' as rive;
 import '../constants/app_theme.dart';
+import '../constants/app_assets.dart';
 import '../utils/haptic_utils.dart';
 
 class InfoPopupWidget extends StatelessWidget {
@@ -14,7 +15,7 @@ class InfoPopupWidget extends StatelessWidget {
     required this.title,
     required this.description,
     this.onClose,
-    this.riveFileName = 'Bravo_Animation.riv',
+    this.riveFileName = AppAssets.bravoAnimation,
   });
 
   @override
@@ -48,7 +49,7 @@ class InfoPopupWidget extends StatelessWidget {
                     width: 80,
                     height: 80,
                     child: rive.RiveAnimation.asset(
-                      'assets/rive/$riveFileName',
+                      riveFileName,
                       fit: BoxFit.contain,
                     ),
                   ),
@@ -134,7 +135,7 @@ class InfoPopupWidget extends StatelessWidget {
     required String title,
     required String description,
     VoidCallback? onClose,
-    String riveFileName = 'Bravo_Animation.riv',
+    String riveFileName = AppAssets.bravoAnimation,
   }) {
     showDialog(
       context: context,

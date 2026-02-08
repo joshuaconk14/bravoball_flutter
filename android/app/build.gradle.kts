@@ -18,7 +18,7 @@ if (keystorePropertiesFile.exists()) {
 android {
     namespace = "com.bravoball.app.bravoball_flutter"
     compileSdk = flutter.compileSdkVersion
-    ndkVersion = "27.0.12077973"
+    ndkVersion = "28.2.13676358"  // Updated for 16 KB page size support (matches rive.ndk.version)
 
     compileOptions {
         sourceCompatibility = JavaVersion.VERSION_11
@@ -34,14 +34,27 @@ android {
         // TODO: Specify your own unique Application ID (https://developer.android.com/studio/build/application-id.html).
         applicationId = "com.bravoball.app.bravoball_flutter"
         // Optimized for maximum compatibility and Play Store compliance
-        minSdk = 23  // Android 6.0 (API 23) - Covers ~98% of active Android devices
+        minSdk = flutter.minSdkVersion  // Android 6.0 (API 23) - Covers ~98% of active Android devices
         targetSdk = 35  // Required for Google Play Store submission (Android 14)
         versionCode = flutter.versionCode
         versionName = flutter.versionName
-        
-        // Support for 16 KB page sizes (required by Google Play)
+
+        // Support for multiple CPU architectures including 64-bit devices
+        // Note: x86_64 included for emulator testing (debug builds)
+        // For release builds, x86_64 will be excluded via splits to avoid Rive 16KB page size issues
         ndk {
             abiFilters += listOf("armeabi-v7a", "arm64-v8a", "x86_64")
+            // x86_64 included for emulator testing
+            // Release builds will exclude x86_64 via splits configuration
+        }
+        
+        // Support for 16 KB page sizes - NDK r27+ configuration
+        // This ensures native libraries built with CMake are 16KB-aligned
+        externalNativeBuild {
+            cmake {
+                // Enable 16 KB page size support for native libraries
+                arguments += listOf("-DANDROID_SUPPORT_FLEXIBLE_PAGE_SIZES=ON")
+            }
         }
     }
 
@@ -60,6 +73,15 @@ android {
             isMinifyEnabled = false  // Temporarily disabled to fix R8 issues
             isShrinkResources = false  // Must be false when minification is disabled
             // proguardFiles(getDefaultProguardFile("proguard-android-optimize.txt"), "proguard-rules.pro")
+        }
+    }
+
+    // Support for 16 KB page sizes - required by Google Play (Nov 2025+)
+    packaging {
+        jniLibs {
+            useLegacyPackaging = false  // Use uncompressed, 16KB-aligned libraries
+            // Ensure native libraries are stored uncompressed for proper alignment
+            pickFirsts += listOf("**/libc++_shared.so")
         }
     }
 }

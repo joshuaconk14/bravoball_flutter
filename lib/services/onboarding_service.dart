@@ -3,9 +3,11 @@ import '../models/onboarding_model.dart';
 import '../models/auth_models.dart';
 import '../models/drill_model.dart';
 import '../models/editable_drill_model.dart';
+import '../config/skill_config.dart';
 import 'api_service.dart';
 import 'user_manager_service.dart';
 import 'app_state_service.dart';
+import 'package:purchases_flutter/purchases_flutter.dart';
 
 class OnboardingService {
   static OnboardingService? _instance;
@@ -60,6 +62,73 @@ class OnboardingService {
             avatarPath: avatarPath,
             avatarBackgroundColor: avatarBackgroundColor,
           );
+          
+          // ✅ CRITICAL: Identify new user with RevenueCat to prevent subscription sharing
+          try {
+            if (kDebugMode) {
+              print('🔍 OnboardingService: Identifying new user with RevenueCat...');
+            }
+            
+            // ✅ CRITICAL FIX: ALWAYS log out BEFORE logging in
+            // This prevents purchases from being transferred to the new user
+            // RevenueCat's logIn() can transfer purchases from anonymous or previous users,
+            // so we must always reset to a clean state first
+            try {
+                if (kDebugMode) {
+                print('🔍 OnboardingService: Resetting RevenueCat user before identifying new user...');
+              }
+              
+              // Always log out first, regardless of current user state
+              // This ensures a clean slate and prevents purchase transfers
+                await Purchases.logOut();
+              
+              // Small delay to ensure logout completes
+              await Future.delayed(const Duration(milliseconds: 100));
+              
+              if (kDebugMode) {
+                print('✅ OnboardingService: RevenueCat user reset, now identifying new user...');
+              }
+              } catch (logoutError) {
+              if (kDebugMode) {
+                print('⚠️ OnboardingService: Error during logout (continuing anyway): $logoutError');
+              }
+              // Continue even if logout fails - better to try than skip
+            }
+            
+            // Tell RevenueCat who this new user is - this ensures they start fresh
+            await Purchases.logIn(email);
+            
+            if (kDebugMode) {
+              print('✅ OnboardingService: New user identified with RevenueCat as: $email');
+            }
+            
+            // ✅ CRITICAL FOR PRODUCTION: Restore purchases after login
+            // This transfers any purchases made while anonymous to the identified account
+            // (e.g., if user purchased before registering)
+            try {
+              if (kDebugMode) {
+                print('🔄 OnboardingService: Restoring purchases for new user...');
+              }
+              
+              final customerInfo = await Purchases.restorePurchases();
+              
+              if (kDebugMode) {
+                print('✅ OnboardingService: Purchases restored');
+                print('   User ID: ${customerInfo.originalAppUserId}');
+                print('   Active Entitlements: ${customerInfo.entitlements.active.keys}');
+              }
+            } catch (restoreError) {
+              if (kDebugMode) {
+                print('⚠️ OnboardingService: Error restoring purchases (non-critical): $restoreError');
+              }
+              // Don't fail registration if restore fails - purchases will still work
+            }
+          } catch (revenueCatError) {
+            if (kDebugMode) {
+              print('⚠️ OnboardingService: Failed to identify new user with RevenueCat: $revenueCatError');
+            }
+            // Don't fail registration if RevenueCat identification fails
+          }
           
           if (kDebugMode) {
             print('✅ OnboardingService: Registration successful, tokens saved.');
@@ -283,61 +352,11 @@ class OnboardingService {
 
   /// ✅ Helper: Map backend skill category to frontend display name
   String _mapSkillCategory(String backendCategory) {
-    const categoryMap = {
-      'passing': 'Passing',
-      'shooting': 'Shooting',
-      'dribbling': 'Dribbling',
-      'first_touch': 'First Touch',
-      'defending': 'Defending',
-      'fitness': 'Fitness',
-      'general': 'General',
-    };
-    
-    return categoryMap[backendCategory.toLowerCase()] ?? 'General';
+    return SkillConfig.mapSkillCategory(backendCategory);
   }
 
   /// ✅ Helper: Map backend sub-skill to frontend display name
   String _mapSubSkill(String backendSubSkill) {
-    const subSkillMap = {
-      // Dribbling
-      'close_control': 'Close control',
-      'speed_dribbling': 'Speed dribbling',
-      '1v1_moves': '1v1 moves',
-      'change_of_direction': 'Change of direction',
-      'ball_mastery': 'Ball mastery',
-      
-      // First Touch
-      'ground_control': 'Ground control',
-      'aerial_control': 'Aerial control',
-      'turn_with_ball': 'Turn with ball',
-      'touch_and_move': 'Touch and move',
-      'juggling': 'Juggling',
-      
-      // Passing
-      'short_passing': 'Short passing',
-      'long_passing': 'Long passing',
-      'one_touch_passing': 'One touch passing',
-      'technique': 'Technique',
-      'passing_with_movement': 'Passing with movement',
-      
-      // Shooting
-      'power_shots': 'Power shots',
-      'finesse_shots': 'Finesse shots',
-      'first_time_shots': 'First time shots',
-      '1v1_to_shoot': '1v1 to shoot',
-      'shooting_on_the_run': 'Shooting on the run',
-      'volleying': 'Volleying',
-      
-      // Defending
-      'tackling': 'Tackling',
-      'marking': 'Marking',
-      'intercepting': 'Intercepting',
-      'positioning': 'Positioning',
-      
-      // Fallback
-      'general': 'General',
-    };
-    
-    return subSkillMap[backendSubSkill.toLowerCase()] ?? backendSubSkill;
+    return SkillConfig.mapSubSkill(backendSubSkill);
   }
 } 

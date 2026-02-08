@@ -719,6 +719,7 @@ class _DrillFollowAlongViewState extends State<DrillFollowAlongView>
     // Give the UI time to update
     await Future.delayed(const Duration(milliseconds: 50));
     
+    // ✅ ADDED: Show ad when manually completing drill via play/pause button
     widget.onDrillCompleted?.call();
     
     if (mounted) {
@@ -733,11 +734,17 @@ class _DrillFollowAlongViewState extends State<DrillFollowAlongView>
     }
   }
 
-  void _handleExitAttempt() {
+  void _handleExitAttempt() async {
     // ✅ NEW: Check if timer is running and show warning if needed
     if (_isPlaying || _showCountdown) {
       _showExitWarning();
     } else {
+      // ✅ ADDED: Show ad before exiting if drill is completed
+      if (_editableDrill.isCompleted) {
+        // Call the completion callback to trigger the ad
+        widget.onDrillCompleted?.call();
+      }
+      // Exit the drill
       _exitDrill();
     }
   }
@@ -760,10 +767,7 @@ class _DrillFollowAlongViewState extends State<DrillFollowAlongView>
       isCompleted: _editableDrill.isCompleted,
     );
     
-    // ✅ NEW: Call completion callback when drill is automatically completed
-    if (_editableDrill.isCompleted && widget.onDrillCompleted != null) {
-      widget.onDrillCompleted!.call();
-    }
+    
   }
 
   void _showDrillDetails(BuildContext context) {
@@ -805,6 +809,13 @@ class _DrillFollowAlongViewState extends State<DrillFollowAlongView>
       onContinue: () async {
         HapticUtils.mediumImpact();
         // User confirmed - stop timers and exit
+        
+        // ✅ ADDED: Show ad before exiting if drill is completed
+        if (_editableDrill.isCompleted) {
+          // Call the completion callback to trigger the ad
+          widget.onDrillCompleted?.call();
+        }
+        
         await _stopAllTimers();
         if (mounted) {
           Navigator.pop(context);

@@ -2,8 +2,10 @@ import 'dart:convert';
 import 'dart:io';
 import 'package:http/http.dart' as http;
 import 'package:flutter/foundation.dart';
+import 'package:package_info_plus/package_info_plus.dart';
 import '../config/app_config.dart';
 import '../models/api_response_models.dart';
+import '../utils/encryption_utils.dart';
 import 'user_manager_service.dart';
 
 /// Base API Service
@@ -17,20 +19,25 @@ class ApiService {
   static ApiService get shared => _instance;
 
   // MARK: - HTTP Client
-  late final http.Client _client;
+  http.Client? _client;
 
   // MARK: - Token Refresh State
   bool _isRefreshingToken = false;
   List<Function> _failedRequestQueue = [];
 
+  /// Get the HTTP client (creates if not exists)
+  http.Client get client => _client ??= http.Client();
+
   /// Initialize the API service
+  /// Safe to call multiple times (idempotent)
   void initialize() {
-    _client = http.Client();
+    _client ??= http.Client();
   }
 
   /// Dispose of the HTTP client
   void dispose() {
-    _client.close();
+    _client?.close();
+    _client = null;
   }
 
   // MARK: - Generic Request Method
@@ -67,7 +74,7 @@ class ApiService {
 
       // Log the response if debugging
       if (AppConfig.logApiCalls) {
-        _logResponse(response);
+        _logResponse(response, endpoint, method);
       }
 
       // Check if we got a 401 error and should try to refresh token
@@ -143,10 +150,12 @@ class ApiService {
 
       if (kDebugMode) {
         print('🔄 Refreshing access token...');
+        print('🔑 Refresh token being sent: ${userManager.refreshToken}');
+        print('📧 User email: ${userManager.email}');
       }
 
       // Make refresh request without authentication headers
-      final refreshResponse = await _client.post(
+      final refreshResponse = await client.post(
         _buildUri('/refresh/', null),
         headers: {
           'Content-Type': 'application/json',
@@ -328,11 +337,35 @@ class ApiService {
       headers.addAll(customHeaders);
     }
 
-    // Add authentication header if required
+    // Add authentication header and security headers if required
     if (requiresAuth) {
       final userManager = UserManagerService.instance;
       if (userManager.hasValidToken) {
         headers['Authorization'] = 'Bearer ${userManager.accessToken}';
+        
+        // Add device fingerprint for security and audit purposes
+        try {
+          final deviceFingerprint = await EncryptionUtils.generateDeviceFingerprint();
+          headers['Device-Fingerprint'] = deviceFingerprint;
+          
+          if (AppConfig.logApiCalls && kDebugMode) {
+            print('🔐 Added device fingerprint header');
+          }
+        } catch (e) {
+          if (kDebugMode) {
+            print('⚠️ Failed to generate device fingerprint: $e');
+          }
+        }
+        
+        // Add app version header
+        try {
+          final packageInfo = await PackageInfo.fromPlatform();
+          headers['App-Version'] = '${packageInfo.version}+${packageInfo.buildNumber}';
+        } catch (e) {
+          if (kDebugMode) {
+            print('⚠️ Failed to get app version: $e');
+          }
+        }
         
         if (AppConfig.logApiCalls && kDebugMode) {
           print('🔑 Added auth header: Bearer ${userManager.accessToken.substring(0, 20)}...');
@@ -354,27 +387,27 @@ class ApiService {
   }) {
     switch (method.toUpperCase()) {
       case 'GET':
-        return _client.get(uri, headers: headers);
+        return client.get(uri, headers: headers);
       case 'POST':
-        return _client.post(
+        return client.post(
           uri,
           headers: headers,
           body: body != null ? json.encode(body) : null,
         );
       case 'PUT':
-        return _client.put(
+        return client.put(
           uri,
           headers: headers,
           body: body != null ? json.encode(body) : null,
         );
       case 'PATCH':
-        return _client.patch(
+        return client.patch(
           uri,
           headers: headers,
           body: body != null ? json.encode(body) : null,
         );
       case 'DELETE':
-        return _client.delete(uri, headers: headers);
+        return client.delete(uri, headers: headers);
       default:
         throw ArgumentError('Unsupported HTTP method: $method');
     }
@@ -402,8 +435,8 @@ class ApiService {
         // If response is already an object, use it as is
         responseData = jsonData;
       } else {
-        // Fallback for other types
-        responseData = {'data': jsonData};
+        // Fallback for other types - convert to string safely
+        responseData = {'data': jsonData.toString()};
       }
 
       // Check if response is successful
@@ -424,13 +457,31 @@ class ApiService {
   /// Extract error message from response
   String _extractErrorMessage(Map<String, dynamic>? responseData, int statusCode) {
     if (responseData != null) {
-      // Try different error field names
+      // Try different error field names with safe type checking
       if (responseData.containsKey('detail')) {
-        return responseData['detail'] as String;
+        final detail = responseData['detail'];
+        if (detail is String) {
+          return detail;
+        } else if (detail is List) {
+          // Handle list responses safely
+          return detail.isNotEmpty ? detail.first.toString() : 'Bad request';
+        }
       } else if (responseData.containsKey('message')) {
-        return responseData['message'] as String;
+        final message = responseData['message'];
+        if (message is String) {
+          return message;
+        } else if (message is List) {
+          // Handle list responses safely
+          return message.isNotEmpty ? message.first.toString() : 'Bad request';
+        }
       } else if (responseData.containsKey('error')) {
-        return responseData['error'] as String;
+        final error = responseData['error'];
+        if (error is String) {
+          return error;
+        } else if (error is List) {
+          // Handle list responses safely
+          return error.isNotEmpty ? error.first.toString() : 'Bad request';
+        }
       }
     }
 
@@ -459,27 +510,43 @@ class ApiService {
     Map<String, dynamic>? body,
   ) {
     if (kDebugMode) {
-      print('🌐 API Request: $method $uri');
-      print('📤 Headers: $headers');
-      if (body != null) {
-        print('📤 Body: ${json.encode(body)}');
+      if (AppConfig.verboseBackendLogging) {
+        // Verbose mode: Show full request details
+        print('🌐 API Request: $method $uri');
+        print('📤 Headers: $headers');
+        if (body != null) {
+          print('📤 Body: ${json.encode(body)}');
+        }
+      } else {
+        // Simple mode: Show only method and endpoint
+        print('🌐 $method ${uri.path}');
       }
     }
   }
 
   /// Log HTTP response for debugging
-  void _logResponse(http.Response response) {
+  void _logResponse(http.Response response, String endpoint, String method) {
     if (kDebugMode) {
-      print('📥 API Response: ${response.statusCode}');
-      if (response.body.isNotEmpty) {
-        try {
-          final prettyJson = const JsonEncoder.withIndent('  ').convert(
-            json.decode(response.body),
-          );
-          print('📥 Body: $prettyJson');
-        } catch (e) {
-          print('📥 Body: ${response.body}');
+      final isSuccess = response.statusCode >= 200 && response.statusCode < 300;
+      
+      if (AppConfig.verboseBackendLogging) {
+        // Verbose mode: Show full details
+        print('📥 API Response: ${response.statusCode}');
+        if (response.body.isNotEmpty) {
+          try {
+            final prettyJson = const JsonEncoder.withIndent('  ').convert(
+              json.decode(response.body),
+            );
+            print('📥 Body: $prettyJson');
+          } catch (e) {
+            print('📥 Body: ${response.body}');
+          }
         }
+      } else {
+        // Simple mode: Show only success/failure with endpoint
+        final statusIcon = isSuccess ? '✅' : '❌';
+        final statusText = isSuccess ? 'successfully' : 'failed';
+        print('$statusIcon $method $endpoint - ${response.statusCode} ($statusText)');
       }
     }
   }
