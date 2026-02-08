@@ -4,7 +4,7 @@ import 'package:flutter/services.dart';
 import 'package:rive/rive.dart';
 import '../features/session_generator/session_generator_home_field_view.dart';
 import '../features/progression/progress_view.dart';
-import '../features/saved_drills/saved_drills_view.dart';
+import '../features/leaderboard/leaderboard_view.dart'; // ✅ CHANGED: Leaderboard instead of Saved Drills
 import '../features/profile/profile_view.dart';
 import '../features/create_drill/create_drill_sheet.dart';
 import '../constants/app_theme.dart';
@@ -31,7 +31,7 @@ class _MainTabViewState extends State<MainTabView> {
   static final List<Widget> _widgetOptions = <Widget>[
     const SessionGeneratorHomeFieldView(),
     const ProgressView(),
-    const SavedDrillsView(),
+    const LeaderboardView(), // ✅ CHANGED: Leaderboard instead of Saved Drills
     const ProfileView(),
   ];
 
@@ -139,8 +139,8 @@ class _MainTabViewState extends State<MainTabView> {
                   label: '',
                 ),
                 BottomNavigationBarItem(
-                  icon: _buildRiveTab(AppAssets.tabSaved, 2),
-                  label: 'Saved',
+                  icon: _buildLeaderboardTab(2), // ✅ CHANGED: Temporary trophy icon for leaderboard
+                  label: 'Leaderboard',
                 ),
                 BottomNavigationBarItem(
                   icon: Consumer<AppStateService>(
@@ -267,7 +267,7 @@ class _MainTabViewState extends State<MainTabView> {
 
   Widget _buildRiveTab(String assetPath, int index) {
     final isSelected = _selectedIndex == index;
-    final size = isSelected ? 32.0 : 24.0; // Bigger when selected
+    final size = isSelected ? 40.0 : 30.0; // Bigger when selected
     
     return AnimatedContainer(
       duration: const Duration(milliseconds: 200),
@@ -291,6 +291,24 @@ class _MainTabViewState extends State<MainTabView> {
     );
   }
 
+  /// Build leaderboard tab with trophy icon (temporary until Rive asset is created)
+  Widget _buildLeaderboardTab(int index) {
+    final isSelected = _selectedIndex == index;
+    final size = isSelected ? 48.0 : 38.0; // ✅ INCREASED: Made trophy bigger
+    
+    return AnimatedContainer(
+      duration: const Duration(milliseconds: 200),
+      curve: Curves.easeInOut,
+      width: size,
+      height: size,
+      child: Icon(
+        Icons.emoji_events, // Trophy icon for leaderboard
+        size: size,
+        color: isSelected ? AppTheme.primaryYellow : Colors.grey.shade600,
+      ),
+    );
+  }
+
   IconData _getFallbackIcon(int index) {
     switch (index) {
       case 0:
@@ -298,7 +316,7 @@ class _MainTabViewState extends State<MainTabView> {
       case 1:
         return Icons.show_chart;
       case 2:
-        return Icons.bookmark;
+        return Icons.emoji_events; // ✅ CHANGED: Leaderboard icon instead of bookmark
       case 3:
         return Icons.person;
       default:

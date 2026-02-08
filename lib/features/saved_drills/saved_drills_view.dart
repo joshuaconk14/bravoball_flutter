@@ -42,122 +42,85 @@ class _SavedDrillsViewState extends State<SavedDrillsView> with SingleTickerProv
     return Consumer<AppStateService>(
       builder: (context, appState, child) {
         return Scaffold(
-          backgroundColor: AppTheme.primaryPurple,
+          backgroundColor: Colors.white,
+          appBar: AppBar(
+            backgroundColor: Colors.white,
+            elevation: 0,
+            leading: IconButton(
+              icon: Icon(Icons.arrow_back, color: AppTheme.primaryDark),
+              onPressed: () {
+                HapticUtils.lightImpact();
+                Navigator.of(context).pop();
+              },
+            ),
+            title: Text(
+              'Saved Drills',
+              style: AppTheme.titleMedium.copyWith(
+                color: AppTheme.primaryDark,
+                fontWeight: FontWeight.bold,
+              ),
+            ),
+            centerTitle: true,
+            actions: [
+              IconButton(
+                icon: Icon(Icons.add, color: AppTheme.primaryDark),
+                onPressed: () {
+                  HapticUtils.mediumImpact();
+                  _showCreateGroupDialog(context, appState);
+                },
+              ),
+            ],
+          ),
           body: Stack(
             children: [
               // Main content
               SafeArea(
                 child: Column(
                   children: [
-                    // Header
+                    const SizedBox(height: 20),
+                    // Tab bar
                     Container(
-                      padding: const EdgeInsets.all(20),
-                      child: Column(
-                        children: [
-                          const SizedBox(height: 20),
-                          // Header row with title and add button
-                          Row(
-                            children: [
-                              // Add button on the left (invisible to balance the right button)
-                              Container(
-                                width: 56, // Same width as the right button
-                                height: 56,
-                              ),
-                              // Centered title
-                              Expanded(
-                                child: Text(
-                                  'Saved Drills',
-                                  style: AppTheme.headlineMedium.copyWith(
-                                    color: Colors.white,
-                                  ),
-                                  textAlign: TextAlign.center,
-                                ),
-                              ),
-                              // Add button on the right
-                              Container(
-                                decoration: BoxDecoration(
-                                  color: Colors.white.withValues(alpha: 0.2),
-                                  borderRadius: BorderRadius.circular(12),
-                                ),
-                                child: IconButton(
-                                  onPressed: () {
-                                    HapticUtils.mediumImpact(); // Medium haptic for create action
-                                    _showCreateGroupDialog(context, appState);
-                                  },
-                                  icon: const Icon(
-                                    Icons.add,
-                                    color: Colors.white,
-                                    size: 28,
-                                  ),
-                                ),
-                              ),
-                            ],
-                          ),
+                      margin: const EdgeInsets.symmetric(horizontal: 20),
+                      decoration: BoxDecoration(
+                        color: Colors.grey.shade100,
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      child: TabBar(
+                        controller: _tabController,
+                        indicator: BoxDecoration(
+                          color: AppTheme.primaryYellow,
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                        indicatorSize: TabBarIndicatorSize.tab,
+                        labelColor: AppTheme.primaryDark,
+                        unselectedLabelColor: AppTheme.primaryGray,
+                        labelStyle: const TextStyle(
+                          fontFamily: AppTheme.fontPoppins,
+                          fontWeight: FontWeight.bold,
+                          fontSize: 14,
+                        ),
+                        unselectedLabelStyle: const TextStyle(
+                          fontFamily: AppTheme.fontPoppins,
+                          fontWeight: FontWeight.w500,
+                          fontSize: 14,
+                        ),
+                        tabs: const [
+                          Tab(text: 'Collections'),
+                          Tab(text: 'Custom Drills'),
                         ],
                       ),
                     ),
-                    
-                    // Content
+                    const SizedBox(height: 20),
+                    // Tab content
                     Expanded(
-                      child: Container(
-                        width: double.infinity,
-                        decoration: const BoxDecoration(
-                          color: Colors.white,
-                          borderRadius: BorderRadius.only(
-                            topLeft: Radius.circular(30),
-                            topRight: Radius.circular(30),
-                          ),
-                        ),
-                        child: Column(
-                          children: [
-                            const SizedBox(height: 20),
-                            // Tab bar
-                            Container(
-                              margin: const EdgeInsets.symmetric(horizontal: 20),
-                              decoration: BoxDecoration(
-                                color: Colors.grey.shade100,
-                                borderRadius: BorderRadius.circular(12),
-                              ),
-                              child: TabBar(
-                                controller: _tabController,
-                                indicator: BoxDecoration(
-                                  color: AppTheme.primaryPurple,
-                                  borderRadius: BorderRadius.circular(12),
-                                ),
-                                indicatorSize: TabBarIndicatorSize.tab, // ✅ ADDED: Make indicator fill entire tab
-                                labelColor: Colors.white,
-                                unselectedLabelColor: AppTheme.primaryGray,
-                                labelStyle: const TextStyle(
-                                  fontFamily: AppTheme.fontPoppins,
-                                  fontWeight: FontWeight.bold,
-                                  fontSize: 14,
-                                ),
-                                unselectedLabelStyle: const TextStyle(
-                                  fontFamily: AppTheme.fontPoppins,
-                                  fontWeight: FontWeight.w500,
-                                  fontSize: 14,
-                                ),
-                                tabs: const [
-                                  Tab(text: 'Collections'),
-                                  Tab(text: 'Custom Drills'),
-                                ],
-                              ),
-                            ),
-                            const SizedBox(height: 20),
-                            // Tab content
-                            Expanded(
-                              child: TabBarView(
-                                controller: _tabController,
-                                children: [
-                                  // Collections tab
-                                  _buildCollectionsTab(appState),
-                                  // Custom drills tab
-                                  _buildCustomDrillsTab(appState),
-                                ],
-                              ),
-                            ),
-                          ],
-                        ),
+                      child: TabBarView(
+                        controller: _tabController,
+                        children: [
+                          // Collections tab
+                          _buildCollectionsTab(appState),
+                          // Custom drills tab
+                          _buildCustomDrillsTab(appState),
+                        ],
                       ),
                     ),
                   ],
@@ -169,7 +132,7 @@ class _SavedDrillsViewState extends State<SavedDrillsView> with SingleTickerProv
                 GuestAccountOverlay(
                   title: 'Create an account',
                   description: 'Save your favorite drills and create collections by creating an account.',
-                  themeColor: AppTheme.primaryPurple,
+                  themeColor: AppTheme.primaryYellow,
                 ),
             ],
           ),
@@ -260,13 +223,13 @@ class _SavedDrillsViewState extends State<SavedDrillsView> with SingleTickerProv
             Container(
               padding: const EdgeInsets.all(24),
               decoration: BoxDecoration(
-                color: AppTheme.primaryPurple.withValues(alpha: 0.1),
+                color: AppTheme.primaryGray.withValues(alpha: 0.1),
                 borderRadius: BorderRadius.circular(24),
               ),
-              child: const Icon(
+              child: Icon(
                 Icons.sports_soccer_outlined,
                 size: 48,
-                color: AppTheme.primaryPurple,
+                color: AppTheme.primaryGray,
               ),
             ),
             const SizedBox(height: 24),
@@ -405,14 +368,14 @@ class _SavedDrillsViewState extends State<SavedDrillsView> with SingleTickerProv
                     decoration: BoxDecoration(
                       color: group.isLikedDrillsGroup 
                           ? AppTheme.secondaryRed.withValues(alpha: 0.1)
-                          : AppTheme.primaryPurple.withValues(alpha: 0.1),
+                          : AppTheme.primaryGray.withValues(alpha: 0.1),
                       borderRadius: BorderRadius.circular(12),
                     ),
                     child: Icon(
                       group.isLikedDrillsGroup ? Icons.favorite : Icons.folder,
                       color: group.isLikedDrillsGroup 
                           ? AppTheme.secondaryRed 
-                          : AppTheme.primaryPurple,
+                          : AppTheme.primaryGray,
                       size: 24,
                     ),
                   ),
@@ -505,13 +468,13 @@ class _SavedDrillsViewState extends State<SavedDrillsView> with SingleTickerProv
             Container(
               padding: const EdgeInsets.all(24),
               decoration: BoxDecoration(
-                color: AppTheme.primaryPurple.withValues(alpha: 0.1),
+                color: AppTheme.primaryGray.withValues(alpha: 0.1),
                 borderRadius: BorderRadius.circular(24),
               ),
-              child: const Icon(
+              child: Icon(
                 Icons.folder_copy_outlined,
                 size: 48,
-                color: AppTheme.primaryPurple,
+                color: AppTheme.primaryGray,
               ),
             ),
             const SizedBox(height: 24),
@@ -538,8 +501,8 @@ class _SavedDrillsViewState extends State<SavedDrillsView> with SingleTickerProv
               icon: const Icon(Icons.add),
               label: const Text('Create Collection'),
               style: ElevatedButton.styleFrom(
-                backgroundColor: AppTheme.primaryPurple,
-                foregroundColor: Colors.white,
+                backgroundColor: AppTheme.primaryYellow,
+                foregroundColor: AppTheme.primaryDark,
                 padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
               ),
             ),
@@ -595,9 +558,13 @@ class _SavedDrillsViewState extends State<SavedDrillsView> with SingleTickerProv
                     HapticUtils.lightImpact();
                     Navigator.pop(dialogContext);
                   },
-                  child: const Text(
+                  child: Text(
                     'Cancel',
-                    style: TextStyle(fontFamily: AppTheme.fontPoppins),
+                    style: TextStyle(
+                      fontFamily: AppTheme.fontPoppins,
+                      color: AppTheme.primaryDark,
+                      fontWeight: FontWeight.w600,
+                    ),
                   ),
                 ),
                 ElevatedButton(
@@ -618,12 +585,15 @@ class _SavedDrillsViewState extends State<SavedDrillsView> with SingleTickerProv
                     Navigator.pop(dialogContext);
                   },
                   style: ElevatedButton.styleFrom(
-                    backgroundColor: AppTheme.primaryPurple,
-                    foregroundColor: Colors.white,
+                    backgroundColor: AppTheme.primaryYellow,
+                    foregroundColor: AppTheme.primaryDark,
                   ),
                   child: const Text(
                     'Create',
-                    style: TextStyle(fontFamily: AppTheme.fontPoppins),
+                    style: TextStyle(
+                      fontFamily: AppTheme.fontPoppins,
+                      fontWeight: FontWeight.bold,
+                    ),
                   ),
                 ),
               ],

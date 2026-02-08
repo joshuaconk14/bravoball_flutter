@@ -174,6 +174,7 @@ class ApiService {
 
         if (newAccessToken != null) {
           // Update tokens in user manager
+          // Note: Avatar values are preserved in updateUserData when not provided
           await userManager.updateUserData(
             email: userManager.email,
             username: userManager.username,

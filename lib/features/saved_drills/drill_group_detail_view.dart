@@ -45,23 +45,59 @@ class _DrillGroupDetailViewState extends State<DrillGroupDetailView> {
             : appState.getDrillGroup(widget.group.id) ?? widget.group;
 
         return Scaffold(
-          backgroundColor: AppTheme.primaryPurple,
+          backgroundColor: Colors.white,
+          appBar: AppBar(
+            backgroundColor: Colors.white,
+            elevation: 0,
+            leading: IconButton(
+              icon: Icon(Icons.arrow_back, color: AppTheme.primaryDark),
+              onPressed: () => Navigator.pop(context),
+            ),
+            title: Text(
+              currentGroup.name,
+              style: AppTheme.titleMedium.copyWith(
+                color: AppTheme.primaryDark,
+                fontWeight: FontWeight.bold,
+              ),
+            ),
+            centerTitle: true,
+            actions: [
+              IconButton(
+                icon: Icon(
+                  _isEditMode ? Icons.check : Icons.edit_outlined,
+                  color: AppTheme.primaryDark,
+                ),
+                onPressed: () {
+                  if (_isEditMode) {
+                    if (currentGroup.isLikedDrillsGroup) {
+                      setState(() {
+                        _isEditMode = false;
+                      });
+                    } else {
+                      _finishEditingGroupInfo(appState);
+                    }
+                  } else {
+                    if (currentGroup.isLikedDrillsGroup) {
+                      setState(() {
+                        _isEditMode = true;
+                      });
+                    } else {
+                      _startEditingGroupInfo(currentGroup);
+                    }
+                  }
+                },
+              ),
+            ],
+          ),
           body: SafeArea(
             child: Column(
               children: [
-                // Header
-                _buildHeader(currentGroup, appState),
-                
                 // Content
                 Expanded(
                   child: Container(
                     width: double.infinity,
                     decoration: const BoxDecoration(
                       color: Colors.white,
-                      borderRadius: BorderRadius.only(
-                        topLeft: Radius.circular(30),
-                        topRight: Radius.circular(30),
-                      ),
                     ),
                     child: Column(
                       children: [
@@ -89,154 +125,11 @@ class _DrillGroupDetailViewState extends State<DrillGroupDetailView> {
           // Floating action button to add drills
           floatingActionButton: FloatingActionButton(
             onPressed: () => _showAddDrillsDialog(currentGroup, appState),
-            backgroundColor: AppTheme.primaryPurple,
-            child: const Icon(Icons.add, color: Colors.white),
+            backgroundColor: AppTheme.primaryYellow,
+            child: Icon(Icons.add, color: AppTheme.primaryDark),
           ),
         );
       },
-    );
-  }
-
-  Widget _buildHeader(DrillGroup group, AppStateService appState) {
-    return Container(
-      padding: const EdgeInsets.all(20),
-      child: Column(
-        children: [
-          const SizedBox(height: 10),
-          
-          // Header row
-          Row(
-            children: [
-              // Back button
-              Container(
-                decoration: BoxDecoration(
-                  color: Colors.white.withValues(alpha: 0.2),
-                  borderRadius: BorderRadius.circular(12),
-                ),
-                child: IconButton(
-                  onPressed: () => Navigator.pop(context),
-                  icon: const Icon(
-                    Icons.arrow_back_ios,
-                    color: Colors.white,
-                  ),
-                ),
-              ),
-              
-              const Spacer(),
-              
-              // Edit mode toggle - now available for both liked groups and custom groups
-              Container(
-                decoration: BoxDecoration(
-                  color: Colors.white.withValues(alpha: 0.2),
-                  borderRadius: BorderRadius.circular(12),
-                ),
-                child: IconButton(
-                  onPressed: () {
-                    if (_isEditMode) {
-                      // If we're in edit mode, finish editing
-                      if (group.isLikedDrillsGroup) {
-                        // For liked group, just exit quick remove mode
-                        setState(() {
-                          _isEditMode = false;
-                        });
-                      } else {
-                        // For custom groups, save changes and exit edit mode
-                        _finishEditingGroupInfo(appState);
-                      }
-                    } else {
-                      // Start edit mode
-                      if (group.isLikedDrillsGroup) {
-                        // For liked group, enter quick remove mode
-                        setState(() {
-                          _isEditMode = true;
-                        });
-                      } else {
-                        // For custom groups, start editing group info
-                        _startEditingGroupInfo(group);
-                      }
-                    }
-                  },
-                  icon: Icon(
-                    _isEditMode ? Icons.done : Icons.edit,
-                    color: Colors.white,
-                  ),
-                ),
-              ),
-            ],
-          ),
-          
-          const SizedBox(height: 20),
-          
-          // Group icon and title
-          Row(
-            children: [
-              Container(
-                padding: const EdgeInsets.all(16),
-                decoration: BoxDecoration(
-                  color: Colors.white.withValues(alpha: 0.2),
-                  borderRadius: BorderRadius.circular(16),
-                ),
-                child: Icon(
-                  group.isLikedDrillsGroup ? Icons.favorite : Icons.folder,
-                  color: Colors.white,
-                  size: 32,
-                ),
-              ),
-              
-              const SizedBox(width: 16),
-              
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    // Group name - editable when in edit mode (only for custom groups)
-                    if (_isEditMode && !group.isLikedDrillsGroup)
-                      TextField(
-                        controller: _nameController,
-                        style: AppTheme.headlineMedium.copyWith(
-                          color: Colors.white,
-                        ),
-                        decoration: InputDecoration(
-                          border: OutlineInputBorder(
-                            borderRadius: BorderRadius.circular(8),
-                            borderSide: BorderSide(color: Colors.white.withValues(alpha: 0.3)),
-                          ),
-                          enabledBorder: OutlineInputBorder(
-                            borderRadius: BorderRadius.circular(8),
-                            borderSide: BorderSide(color: Colors.white.withValues(alpha: 0.3)),
-                          ),
-                          focusedBorder: OutlineInputBorder(
-                            borderRadius: BorderRadius.circular(8),
-                            borderSide: BorderSide(color: Colors.white, width: 2),
-                          ),
-                          contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-                          isDense: true,
-                          filled: true,
-                          fillColor: Colors.white.withValues(alpha: 0.1),
-                        ),
-                        maxLines: 1,
-                      )
-                    else
-                      Text(
-                        group.name,
-                        style: AppTheme.headlineMedium.copyWith(
-                          color: Colors.white,
-                        ),
-                      ),
-                    const SizedBox(height: 4),
-                    Text(
-                      '${group.drills.length} drill${group.drills.length == 1 ? '' : 's'}',
-                      style: AppTheme.bodyMedium.copyWith(
-                        color: Colors.white.withValues(alpha: 0.9),
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            ],
-          ),
-        ],
-      ),
     );
   }
 
@@ -263,15 +156,15 @@ class _DrillGroupDetailViewState extends State<DrillGroupDetailView> {
                       decoration: InputDecoration(
                         border: OutlineInputBorder(
                           borderRadius: BorderRadius.circular(8),
-                          borderSide: BorderSide(color: AppTheme.primaryPurple.withValues(alpha: 0.3)),
+                          borderSide: BorderSide(color: AppTheme.primaryGray.withValues(alpha: 0.3)),
                         ),
                         enabledBorder: OutlineInputBorder(
                           borderRadius: BorderRadius.circular(8),
-                          borderSide: BorderSide(color: AppTheme.primaryPurple.withValues(alpha: 0.3)),
+                          borderSide: BorderSide(color: AppTheme.primaryGray.withValues(alpha: 0.3)),
                         ),
                         focusedBorder: OutlineInputBorder(
                           borderRadius: BorderRadius.circular(8),
-                          borderSide: BorderSide(color: AppTheme.primaryPurple, width: 2),
+                          borderSide: BorderSide(color: AppTheme.primaryYellow, width: 2),
                         ),
                         contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
                         isDense: true,
@@ -415,13 +308,13 @@ class _DrillGroupDetailViewState extends State<DrillGroupDetailView> {
             Container(
               padding: const EdgeInsets.all(24),
               decoration: BoxDecoration(
-                color: AppTheme.primaryPurple.withValues(alpha: 0.1),
+                color: AppTheme.primaryGray.withValues(alpha: 0.1),
                 borderRadius: BorderRadius.circular(24),
               ),
               child: Icon(
                 group.isLikedDrillsGroup ? Icons.favorite_border : Icons.folder_open,
                 size: 48,
-                color: AppTheme.primaryPurple,
+                color: AppTheme.primaryGray,
               ),
             ),
             
@@ -455,8 +348,8 @@ class _DrillGroupDetailViewState extends State<DrillGroupDetailView> {
               icon: const Icon(Icons.add),
               label: Text(group.isLikedDrillsGroup ? 'Browse Drills' : 'Add Drills'),
               style: ElevatedButton.styleFrom(
-                backgroundColor: AppTheme.primaryPurple,
-                foregroundColor: Colors.white,
+                backgroundColor: AppTheme.primaryYellow,
+                foregroundColor: AppTheme.primaryDark,
                 padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
               ),
             ),
@@ -509,7 +402,7 @@ class _DrillGroupDetailViewState extends State<DrillGroupDetailView> {
               ? 'Like Drills' 
               : 'Add to ${group.name}',
           actionButtonText: group.isLikedDrillsGroup ? 'Like Drills' : 'Add to Collection',
-          themeColor: AppTheme.primaryPurple,
+          themeColor: AppTheme.primaryYellow,
           onDrillsSelected: (selectedDrills) {
             if (group.isLikedDrillsGroup) {
               // For liked drills, toggle each drill's liked status
