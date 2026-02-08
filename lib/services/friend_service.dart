@@ -218,6 +218,57 @@ class FriendService {
     }
   }
 
+  /// Get friend details including stats
+  Future<FriendDetail?> getFriendDetail(int userId) async {
+    try {
+      final response = await ApiService.shared.get(
+        '/api/friends/$userId',
+        requiresAuth: true,
+      );
+
+      if (response.isSuccess && response.data != null) {
+        // Handle wrapped response
+        dynamic friendData = response.data;
+        if (friendData is Map<String, dynamic> && friendData.containsKey('data')) {
+          friendData = friendData['data'];
+        }
+        
+        final friendDataMap = friendData is Map<String, dynamic>
+            ? friendData
+            : <String, dynamic>{};
+        
+        final friendDetail = FriendDetail.fromJson(friendDataMap);
+        
+        if (kDebugMode) {
+          print('✅ FriendService: Retrieved friend details for user ID $userId');
+        }
+        
+        return friendDetail;
+      } else {
+        if (response.statusCode == 404) {
+          if (kDebugMode) {
+            print('❌ FriendService: Friend not found for user ID $userId');
+          }
+          return null;
+        }
+        
+        if (kDebugMode) {
+          print('❌ FriendService: API call failed - ${response.error}');
+        }
+        throw Exception(response.error ?? 'Failed to fetch friend details');
+      }
+    } catch (e) {
+      if (kDebugMode) {
+        print('❌ FriendService: Error fetching friend details: $e');
+      }
+      if (e.toString().contains('401') || e.toString().contains('Unauthorized')) {
+        throw Exception('Unauthorized - please log in again');
+      } else {
+        throw Exception('Failed to fetch friend details');
+      }
+    }
+  }
+
   /// Lookup user by username (returns user ID, username, avatar, and background color)
   Future<UserLookupResult?> lookupUserByUsername(String username) async {
     try {

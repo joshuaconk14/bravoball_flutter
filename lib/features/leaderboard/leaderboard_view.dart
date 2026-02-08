@@ -3,9 +3,13 @@ import 'package:flutter/foundation.dart'; // ✅ ADDED: For kDebugMode
 import '../../constants/app_theme.dart';
 import '../../services/leaderboard_service.dart';
 import '../../services/user_manager_service.dart';
+import '../../services/friend_service.dart'; // ✅ ADDED: Import FriendService
 import '../../models/leaderboard_model.dart';
+import '../../models/friend_model.dart'; // ✅ ADDED: Import Friend model
 import '../../utils/haptic_utils.dart';
 import '../../utils/avatar_helper.dart'; // ✅ ADDED: Import AvatarHelper for avatar utilities
+import '../../widgets/info_popup_widget.dart'; // ✅ ADDED: Import InfoPopupWidget
+import '../friends/friend_detail_view.dart'; // ✅ ADDED: Import FriendDetailView
 
 class LeaderboardView extends StatefulWidget {
   const LeaderboardView({Key? key}) : super(key: key);
@@ -117,13 +121,7 @@ class _LeaderboardViewState extends State<LeaderboardView> with SingleTickerProv
       appBar: AppBar(
         backgroundColor: Colors.white,
         elevation: 0,
-        leading: IconButton(
-          icon: Icon(Icons.arrow_back, color: AppTheme.primaryDark),
-          onPressed: () {
-            HapticUtils.lightImpact();
-            Navigator.pop(context);
-          },
-        ),
+        automaticallyImplyLeading: false, // ✅ REMOVED: No back button since it's in bottom nav
         title: Text(
           'Leaderboard',
           style: AppTheme.titleLarge.copyWith(
@@ -132,6 +130,18 @@ class _LeaderboardViewState extends State<LeaderboardView> with SingleTickerProv
           ),
         ),
         centerTitle: true,
+        actions: [
+          IconButton(
+            icon: Icon(
+              Icons.info_outline,
+              color: AppTheme.primaryGray,
+            ),
+            onPressed: () {
+              HapticUtils.lightImpact();
+              _showLeaderboardInfo();
+            },
+          ),
+        ],
         bottom: TabBar(
           controller: _tabController,
           indicatorColor: AppTheme.primaryYellow,
@@ -440,6 +450,31 @@ class _LeaderboardViewState extends State<LeaderboardView> with SingleTickerProv
           ),
         ),
         
+        const SizedBox(height: 16),
+        
+        // Top 50 Message
+        Center(
+          child: Text(
+            'Top 50 Players Worldwide',
+            style: AppTheme.titleMedium.copyWith(
+              color: AppTheme.primaryDark,
+              fontWeight: FontWeight.bold,
+            ),
+          ),
+        ),
+        
+        const SizedBox(height: 8),
+        
+        // Subtitle
+        Center(
+          child: Text(
+            'Ranked by total points',
+            style: AppTheme.bodySmall.copyWith(
+              color: AppTheme.primaryGray,
+            ),
+          ),
+        ),
+        
         const SizedBox(height: 24),
         
         // Top 50 Leaderboard Entries
@@ -450,7 +485,11 @@ class _LeaderboardViewState extends State<LeaderboardView> with SingleTickerProv
           
           return Padding(
             padding: EdgeInsets.only(bottom: index < top50.length - 1 ? 12 : 0),
-            child: _buildLeaderboardEntry(leaderboardEntry, isCurrentUser),
+            child: _buildLeaderboardEntry(
+              leaderboardEntry, 
+              isCurrentUser,
+              isFriend: false, // World leaderboard entries may not be friends
+            ),
           );
         }),
         
@@ -528,9 +567,20 @@ class _LeaderboardViewState extends State<LeaderboardView> with SingleTickerProv
     );
   }
 
-  Widget _buildLeaderboardEntry(LeaderboardEntry entry, bool isCurrentUser) {
-    return Container(
-      decoration: BoxDecoration(
+  Widget _buildLeaderboardEntry(
+    LeaderboardEntry entry, 
+    bool isCurrentUser, {
+    bool isFriend = false,
+  }) {
+    return InkWell(
+      onTap: () {
+        if (isCurrentUser) return; // Don't navigate if it's the current user
+        HapticUtils.lightImpact();
+        _navigateToProfile(entry, isFriend: isFriend);
+      },
+      borderRadius: BorderRadius.circular(16),
+      child: Container(
+        decoration: BoxDecoration(
         color: isCurrentUser 
             ? AppTheme.primaryYellow.withValues(alpha: 0.1)
             : Colors.white,
@@ -545,8 +595,8 @@ class _LeaderboardViewState extends State<LeaderboardView> with SingleTickerProv
             offset: const Offset(0, 2),
           ),
         ],
-      ),
-      child: Padding(
+        ),
+        child: Padding(
         padding: const EdgeInsets.all(16.0),
         child: Row(
           children: [
@@ -699,7 +749,106 @@ class _LeaderboardViewState extends State<LeaderboardView> with SingleTickerProv
             ),
           ],
         ),
+        ),
       ),
+    );
+  }
+
+  Future<void> _navigateToProfile(LeaderboardEntry entry, {required bool isFriend}) async {
+    try {
+      if (isFriend) {
+        // For friends leaderboard, fetch friend data and navigate to FriendDetailView
+        final friends = await FriendService.shared.getFriends();
+        final friend = friends.firstWhere(
+          (f) => f.id == entry.id,
+          orElse: () => _createFriendFromEntry(entry),
+        );
+        
+        if (mounted) {
+          Navigator.of(context).push(
+            MaterialPageRoute(
+              builder: (context) => FriendDetailView(friend: friend),
+            ),
+          );
+        }
+      } else {
+        // For world leaderboard, try to get friend detail (if they're a friend)
+        // Otherwise show a public profile or handle gracefully
+        try {
+          final friendDetail = await FriendService.shared.getFriendDetail(entry.id);
+          if (friendDetail != null && mounted) {
+            // Convert FriendDetail to Friend for navigation
+            final friend = Friend(
+              id: friendDetail.id,
+              friendshipId: friendDetail.friendshipId,
+              username: friendDetail.username,
+              email: friendDetail.email,
+              firstName: friendDetail.firstName,
+              lastName: friendDetail.lastName,
+              avatarPath: friendDetail.avatarPath,
+              avatarBackgroundColor: friendDetail.avatarBackgroundColor,
+            );
+            
+            Navigator.of(context).push(
+              MaterialPageRoute(
+                builder: (context) => FriendDetailView(friend: friend),
+              ),
+            );
+          } else {
+            // Not a friend - show a message or create public profile view
+            if (mounted) {
+              ScaffoldMessenger.of(context).showSnackBar(
+                SnackBar(
+                  content: Text('${entry.username} is not your friend. Add them to view their profile!'),
+                  duration: const Duration(seconds: 2),
+                ),
+              );
+            }
+          }
+        } catch (e) {
+          // If 404 or not a friend, show message
+          if (mounted) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(
+                content: Text('${entry.username} is not your friend. Add them to view their profile!'),
+                duration: const Duration(seconds: 2),
+              ),
+            );
+          }
+        }
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Failed to load profile: ${e.toString()}'),
+            backgroundColor: AppTheme.error,
+            duration: const Duration(seconds: 3),
+          ),
+        );
+      }
+    }
+  }
+
+  Friend _createFriendFromEntry(LeaderboardEntry entry) {
+    // Create a minimal Friend object from LeaderboardEntry
+    // This is used as fallback if friend is not found in friends list
+    return Friend(
+      id: entry.id,
+      friendshipId: 0, // Will be fetched when detail loads
+      username: entry.username,
+      email: '', // Not available in leaderboard entry
+      avatarPath: entry.avatarPath,
+      avatarBackgroundColor: entry.avatarBackgroundColor,
+    );
+  }
+
+  void _showLeaderboardInfo() {
+    InfoPopupWidget.show(
+      context,
+      title: 'About the Leaderboard',
+      description: 'Compete with friends and players worldwide! See how you rank based on your training progress.\n\n🏆 **How Points Work:**\nComplete training sessions to earn points. Each session you finish adds to your total score.\n\n📅 **Daily Limit:**\nYou can earn points for completing one session per day. Additional sessions completed on the same day won\'t count toward your points, but keep practicing to improve your skills!\n\n👥 **Friends Leaderboard:**\nSee how you rank among your friends. Add friends to compete and motivate each other!\n\n🌍 **World Leaderboard:**\nView the top 50 players globally and see where you rank among all BravoBall users.\n\nKeep training to climb the ranks!',
+      riveFileName: 'Bravo_Animation.riv',
     );
   }
 }

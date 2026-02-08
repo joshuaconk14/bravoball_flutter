@@ -4,6 +4,7 @@ import '../../constants/app_theme.dart';
 import '../../services/user_manager_service.dart';
 import '../../utils/avatar_helper.dart';
 import '../../utils/haptic_utils.dart';
+import '../../widgets/bravo_button.dart'; // ✅ ADDED: Import reusable BravoButton
 
 class AvatarSelectionView extends StatefulWidget {
   const AvatarSelectionView({Key? key}) : super(key: key);
@@ -327,25 +328,13 @@ class _AvatarSelectionViewState extends State<AvatarSelectionView> {
                 // Save button
                 Padding(
                   padding: const EdgeInsets.symmetric(horizontal: 20),
-                  child: SizedBox(
-                    width: double.infinity,
-                    child: ElevatedButton(
-                      onPressed: _saveAvatar,
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: AppTheme.primaryYellow,
-                        foregroundColor: AppTheme.primaryDark,
-                        padding: const EdgeInsets.symmetric(vertical: 16),
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(12),
-                        ),
-                      ),
-                      child: Text(
-                        'Save Avatar',
-                        style: AppTheme.titleMedium.copyWith(
-                          fontWeight: FontWeight.bold,
-                        ),
-                      ),
-                    ),
+                  child: BravoButton(
+                    text: 'Save Avatar',
+                    onPressed: _saveAvatar,
+                    color: AppTheme.primaryYellow,
+                    backColor: AppTheme.primaryDarkYellow,
+                    textColor: Colors.white,
+                    disabled: _selectedAvatar == null || _selectedBackgroundColor == null,
                   ),
                 ),
                 

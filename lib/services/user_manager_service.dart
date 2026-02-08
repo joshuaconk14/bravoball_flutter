@@ -75,7 +75,7 @@ class UserManagerService extends ChangeNotifier {
       _scheduleProactiveTokenRefresh();
       
       // ✅ ADDED: Fetch avatar from backend if user is already logged in
-      await _loadAvatarFromBackend();
+      await loadAvatarFromBackend();
     }
     
     if (kDebugMode) {
@@ -88,33 +88,91 @@ class UserManagerService extends ChangeNotifier {
   }
 
   /// Load avatar from backend for already logged-in users
-  Future<void> _loadAvatarFromBackend() async {
+  /// Can be called after token refresh to ensure avatar is up to date
+  Future<void> loadAvatarFromBackend() async {
     if (_isGuestMode || !_isLoggedIn) return;
     
     try {
       final profileData = await ProfileService.shared.fetchUserProfile();
       if (profileData != null) {
-        if (profileData['avatar_path'] != null) {
-          _selectedAvatar = profileData['avatar_path'];
+        final avatarPath = profileData['avatar_path'] as String?;
+        final avatarBackgroundColorStr = profileData['avatar_background_color'] as String?;
+        
+        if (kDebugMode) {
+          print('🖼️ UserManager: Loading avatar from backend');
+          print('   Raw avatar_path: $avatarPath');
+          print('   Raw avatar_background_color: $avatarBackgroundColorStr');
         }
         
-        if (profileData['avatar_background_color'] != null) {
-          _avatarBackgroundColor = AvatarHelper.hexToColor(
-            profileData['avatar_background_color']
-          ) ?? AvatarHelper.getDefaultBackgroundColor();
+        // Validate and set avatar path
+        if (avatarPath != null && avatarPath.isNotEmpty) {
+          // Check if the path is valid (exists in available avatars)
+          if (AvatarHelper.isValidAvatar(avatarPath)) {
+            _selectedAvatar = avatarPath;
+            if (kDebugMode) {
+              print('✅ UserManager: Valid avatar path set: $avatarPath');
+            }
+          } else {
+            // Try to find avatar by name if path doesn't match exactly
+            final avatarName = avatarPath.split('/').last.split('.').first;
+            final foundPath = AvatarHelper.getAvatarPathByName(avatarName);
+            if (foundPath != null) {
+              _selectedAvatar = foundPath;
+              if (kDebugMode) {
+                print('✅ UserManager: Found avatar by name: $foundPath (from $avatarPath)');
+              }
+            } else {
+              if (kDebugMode) {
+                print('⚠️ UserManager: Invalid avatar path from backend: $avatarPath');
+                print('   Falling back to default avatar');
+              }
+              _selectedAvatar = null; // Will use default in UI
+            }
+          }
+        } else {
+          if (kDebugMode) {
+            print('⚠️ UserManager: No avatar_path in backend response (null or empty)');
+          }
+          _selectedAvatar = null; // Will use default in UI
+        }
+        
+        // Set background color
+        if (avatarBackgroundColorStr != null && avatarBackgroundColorStr.isNotEmpty) {
+          final bgColor = AvatarHelper.hexToColor(avatarBackgroundColorStr);
+          if (bgColor != null) {
+            _avatarBackgroundColor = bgColor;
+            if (kDebugMode) {
+              print('✅ UserManager: Background color set: $bgColor');
+            }
+          } else {
+            if (kDebugMode) {
+              print('⚠️ UserManager: Invalid background color format: $avatarBackgroundColorStr');
+            }
+            _avatarBackgroundColor = AvatarHelper.getDefaultBackgroundColor();
+          }
         } else {
           _avatarBackgroundColor = AvatarHelper.getDefaultBackgroundColor();
+          if (kDebugMode) {
+            print('⚠️ UserManager: No background color in backend response, using default');
+          }
         }
         
         notifyListeners();
         
         if (kDebugMode) {
-          print('✅ UserManager: Avatar loaded from backend');
+          print('✅ UserManager: Avatar loading complete');
+          print('   Final selectedAvatar: ${_selectedAvatar ?? "null (will use default)"}');
+          print('   Final avatarBackgroundColor: $_avatarBackgroundColor');
+        }
+      } else {
+        if (kDebugMode) {
+          print('⚠️ UserManager: Profile data is null, avatar not loaded');
         }
       }
     } catch (e) {
       if (kDebugMode) {
         print('❌ UserManager: Error loading avatar from backend: $e');
+        print('   Stack trace: ${StackTrace.current}');
       }
       // Don't throw - avatar loading failure shouldn't break app initialization
     }
@@ -206,19 +264,17 @@ class UserManagerService extends ChangeNotifier {
     _isGuestMode = false; // ✅ CRITICAL FIX: Clear guest mode on successful authentication
     _tokenCreatedAt = DateTime.now(); // Record when token was created
     
-    // ✅ ADDED: Load avatar from backend response
+    // ✅ FIX: Only update avatar if explicitly provided (preserve existing avatar during token refresh)
     if (avatarPath != null) {
       _selectedAvatar = avatarPath;
-    } else {
-      _selectedAvatar = null;
     }
+    // If avatarPath is null, preserve existing _selectedAvatar value
     
     if (avatarBackgroundColor != null) {
       _avatarBackgroundColor = AvatarHelper.hexToColor(avatarBackgroundColor) ?? 
           AvatarHelper.getDefaultBackgroundColor();
-    } else {
-      _avatarBackgroundColor = AvatarHelper.getDefaultBackgroundColor();
     }
+    // If avatarBackgroundColor is null, preserve existing _avatarBackgroundColor value
     
     await _saveUserDataToStorage();
     

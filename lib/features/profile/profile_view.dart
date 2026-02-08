@@ -13,8 +13,8 @@ import '../onboarding/onboarding_flow.dart';
 import 'privacy_policy_view.dart';
 import 'terms_of_service_view.dart';
 import 'account_settings_view.dart'; // ✅ ADDED: Import AccountSettingsView
-import '../leaderboard/leaderboard_view.dart'; // ✅ ADDED: Import LeaderboardView
 import '../friends/friends_view.dart'; // ✅ ADDED: Import FriendsView
+import '../saved_drills/saved_drills_view.dart'; // ✅ ADDED: Import SavedDrillsView
 import '../../utils/haptic_utils.dart';
 
 class ProfileView extends StatefulWidget {
@@ -90,11 +90,11 @@ class _ProfileViewState extends State<ProfileView> with WidgetsBindingObserver {
                           },
                         ),
                         _buildMenuItem(
-                          icon: Icons.emoji_events_outlined,
-                          title: 'Leaderboard',
+                          icon: Icons.bookmark_outlined,
+                          title: 'Saved Drills',
                           onTap: () {
-                            HapticUtils.lightImpact(); // Light haptic for leaderboard
-                            _handleLeaderboard();
+                            HapticUtils.lightImpact(); // Light haptic for saved drills
+                            _handleSavedDrills();
                           },
                         ),
                         Consumer<AppStateService>(
@@ -628,10 +628,10 @@ class _ProfileViewState extends State<ProfileView> with WidgetsBindingObserver {
     );
   }
 
-  void _handleLeaderboard() {
+  void _handleSavedDrills() {
     Navigator.of(context).push(
       MaterialPageRoute(
-        builder: (context) => const LeaderboardView(),
+        builder: (context) => const SavedDrillsView(),
       ),
     );
   }

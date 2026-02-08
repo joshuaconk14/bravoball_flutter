@@ -4,9 +4,11 @@ import '../../constants/app_theme.dart';
 import '../../services/friend_service.dart';
 import '../../services/app_state_service.dart'; // ✅ ADDED: Import AppStateService for friend request count
 import '../../models/friend_model.dart';
+import 'friend_detail_view.dart'; // ✅ ADDED: Import FriendDetailView
 import '../../utils/haptic_utils.dart';
 import '../../widgets/badge_widget.dart'; // ✅ ADDED: Import badge widget
 import '../../utils/avatar_helper.dart'; // ✅ ADDED: Import AvatarHelper for avatar utilities
+import '../../widgets/bravo_button.dart'; // ✅ ADDED: Import reusable BravoButton
 
 class FriendsView extends StatefulWidget {
   const FriendsView({Key? key}) : super(key: key);
@@ -122,16 +124,20 @@ class _FriendsViewState extends State<FriendsView> with SingleTickerProviderStat
     );
 
     if (confirmed == true) {
+      HapticUtils.mediumImpact();
       try {
-        // Note: We need friendship_id to remove, but we only have friend.id
-        // For now, we'll need to handle this differently or update backend
-        // This is a placeholder - actual implementation may need backend changes
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Friend removal feature coming soon'),
-            duration: const Duration(seconds: 2),
-          ),
-        );
+        final success = await FriendService.shared.removeFriend(friend.friendshipId);
+        if (success) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text('${friend.username} has been removed from your friends'),
+              backgroundColor: AppTheme.primaryGreen,
+              duration: const Duration(seconds: 2),
+            ),
+          );
+          // Refresh friends list
+          _loadFriends();
+        }
       } catch (e) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
@@ -433,6 +439,19 @@ class _FriendsViewState extends State<FriendsView> with SingleTickerProviderStat
           horizontal: 16,
           vertical: 8,
         ),
+        onTap: () {
+          HapticUtils.lightImpact();
+          Navigator.of(context).push(
+            MaterialPageRoute(
+              builder: (context) => FriendDetailView(friend: friend),
+            ),
+          ).then((friendRemoved) {
+            // Refresh friends list if friend was removed
+            if (friendRemoved == true) {
+              _loadFriends();
+            }
+          });
+        },
         leading: Container(
           width: 48,
           height: 48,
@@ -852,23 +871,23 @@ class _AddFriendsTabState extends State<_AddFriendsTab> {
                   const SizedBox(height: 16),
                   
                   // Search Button
-                  ElevatedButton(
+                  BravoButton(
+                    text: 'Search',
                     onPressed: _isSearching ? null : _searchUser,
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: AppTheme.primaryYellow,
-                      foregroundColor: AppTheme.primaryDark,
-                      padding: const EdgeInsets.symmetric(vertical: 14),
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(12),
-                      ),
-                    ),
+                    color: AppTheme.primaryYellow,
+                    backColor: AppTheme.primaryDarkYellow,
+                    textColor: Colors.white,
+                    disabled: _isSearching,
                     child: _isSearching
                         ? const SizedBox(
                             height: 20,
                             width: 20,
-                            child: CircularProgressIndicator(strokeWidth: 2),
+                            child: CircularProgressIndicator(
+                              strokeWidth: 2,
+                              valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
+                            ),
                           )
-                        : const Text('Search'),
+                        : null,
                   ),
                 ],
               ),
