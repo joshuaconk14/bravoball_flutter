@@ -13,19 +13,11 @@ class AppConfig {
   /// 1: Legacy Production (DEPRECATED)
   /// 2: Computer (localhost)
   /// 3: Phone (Wi-Fi IP)
-  /// 4: V2 Backend (App Store Review & Production) - Points to bravoball-v2-backend.onrender.com
-  static const int appDevCase = 2; // Set to 0 for TestFlight (uses testflight-testing branch), 4 for production, 2 for localhost
+  /// 4: V2 Backend (App Store Review & Production)
+  static const int appDevCase = 3; // Localhost for local backend testing
 
   /// Debug mode toggle
-  static const bool debug = true; // set false for store submission
-
-  /// StoreKit Configuration - Package handling configuration
-  /// 
-  /// NOTE: to fully stop using storekit, go to xcworkspace and remove it from project scheme
-  /// NOTE: in backend, set REVENUECAT_ALLOW_SIMULATOR_BYPASS=true for storekit/local test
-  /// **Local StoreKit Testing** (`true`):
-  /// **Sandbox/Production** (`false`):
-  static const bool useLocalStoreKit = false;  // Set to true for local testing, false for sandbox/production
+  static const bool debug = false; // Enable debug for local testing
 
   /// Wi-Fi IP address for phone testing - loaded from .env file
   /// You can find this by running `ipconfig getifaddr en0` on macOS

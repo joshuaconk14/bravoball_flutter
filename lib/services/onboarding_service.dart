@@ -63,72 +63,9 @@ class OnboardingService {
             avatarBackgroundColor: avatarBackgroundColor,
           );
           
-          // ✅ CRITICAL: Identify new user with RevenueCat to prevent subscription sharing
-          try {
-            if (kDebugMode) {
-              print('🔍 OnboardingService: Identifying new user with RevenueCat...');
-            }
-            
-            // ✅ CRITICAL FIX: ALWAYS log out BEFORE logging in
-            // This prevents purchases from being transferred to the new user
-            // RevenueCat's logIn() can transfer purchases from anonymous or previous users,
-            // so we must always reset to a clean state first
-            try {
-                if (kDebugMode) {
-                print('🔍 OnboardingService: Resetting RevenueCat user before identifying new user...');
-              }
-              
-              // Always log out first, regardless of current user state
-              // This ensures a clean slate and prevents purchase transfers
-                await Purchases.logOut();
-              
-              // Small delay to ensure logout completes
-              await Future.delayed(const Duration(milliseconds: 100));
-              
-              if (kDebugMode) {
-                print('✅ OnboardingService: RevenueCat user reset, now identifying new user...');
-              }
-              } catch (logoutError) {
-              if (kDebugMode) {
-                print('⚠️ OnboardingService: Error during logout (continuing anyway): $logoutError');
-              }
-              // Continue even if logout fails - better to try than skip
-            }
-            
-            // Tell RevenueCat who this new user is - this ensures they start fresh
-            await Purchases.logIn(email);
-            
-            if (kDebugMode) {
-              print('✅ OnboardingService: New user identified with RevenueCat as: $email');
-            }
-            
-            // ✅ CRITICAL FOR PRODUCTION: Restore purchases after login
-            // This transfers any purchases made while anonymous to the identified account
-            // (e.g., if user purchased before registering)
-            try {
-              if (kDebugMode) {
-                print('🔄 OnboardingService: Restoring purchases for new user...');
-              }
-              
-              final customerInfo = await Purchases.restorePurchases();
-              
-              if (kDebugMode) {
-                print('✅ OnboardingService: Purchases restored');
-                print('   User ID: ${customerInfo.originalAppUserId}');
-                print('   Active Entitlements: ${customerInfo.entitlements.active.keys}');
-              }
-            } catch (restoreError) {
-              if (kDebugMode) {
-                print('⚠️ OnboardingService: Error restoring purchases (non-critical): $restoreError');
-              }
-              // Don't fail registration if restore fails - purchases will still work
-            }
-          } catch (revenueCatError) {
-            if (kDebugMode) {
-              print('⚠️ OnboardingService: Failed to identify new user with RevenueCat: $revenueCatError');
-            }
-            // Don't fail registration if RevenueCat identification fails
-          }
+          // ✅ FIX: Load avatar from backend to ensure correct avatar (or default if none)
+          // This ensures new users without avatars get default avatar, not previous user's avatar
+          await _userManager.loadAvatarFromBackend();
           
           if (kDebugMode) {
             print('✅ OnboardingService: Registration successful, tokens saved.');
