@@ -102,6 +102,10 @@ class LoginService {
           avatarBackgroundColor: loginResponse.avatarBackgroundColor,
         );
 
+        // ✅ FIX: Load avatar from backend to ensure correct avatar (or default if none)
+        // This ensures users without avatars get default avatar, not previous user's avatar
+        await _userManager.loadAvatarFromBackend();
+
         // ✅ CRITICAL FIX: Handle authentication state transition 
         _loadingService.updateProgress(0.95, message: 'Setting up your account...');
         await AppStateService.instance.handleAuthenticationTransition();

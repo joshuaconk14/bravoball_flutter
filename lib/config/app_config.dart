@@ -13,10 +13,10 @@ class AppConfig {
   /// 2: Computer (localhost)
   /// 3: Phone (Wi-Fi IP)
   /// 4: V2 Backend (App Store Review & Production)
-  static const int appDevCase = 2; // Localhost for local backend testing
+  static const int appDevCase = 3; // Localhost for local backend testing
 
   /// Debug mode toggle
-  static const bool debug = true; // Enable debug for local testing
+  static const bool debug = false; // Enable debug for local testing
 
   /// Wi-Fi IP address for phone testing - loaded from .env file
   /// You can find this by running `ipconfig getifaddr en0` on macOS

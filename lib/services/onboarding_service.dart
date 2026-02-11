@@ -61,6 +61,10 @@ class OnboardingService {
             avatarBackgroundColor: avatarBackgroundColor,
           );
           
+          // ✅ FIX: Load avatar from backend to ensure correct avatar (or default if none)
+          // This ensures new users without avatars get default avatar, not previous user's avatar
+          await _userManager.loadAvatarFromBackend();
+          
           if (kDebugMode) {
             print('✅ OnboardingService: Registration successful, tokens saved.');
           }

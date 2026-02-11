@@ -165,8 +165,12 @@ class UserManagerService extends ChangeNotifier {
           print('   Final avatarBackgroundColor: $_avatarBackgroundColor');
         }
       } else {
+        // ✅ FIX: If profile data is null, clear avatar to default
+        _selectedAvatar = null;
+        _avatarBackgroundColor = AvatarHelper.getDefaultBackgroundColor();
+        notifyListeners();
         if (kDebugMode) {
-          print('⚠️ UserManager: Profile data is null, avatar not loaded');
+          print('⚠️ UserManager: Profile data is null, cleared avatar to default');
         }
       }
     } catch (e) {
@@ -254,6 +258,9 @@ class UserManagerService extends ChangeNotifier {
       print('   Previous state - isLoggedIn: $_isLoggedIn, isGuestMode: $_isGuestMode');
     }
     
+    // ✅ FIX: Detect if this is a new login (different user) vs token refresh (same user)
+    final isNewLogin = _email != email || _email.isEmpty;
+    
     _email = email;
     _username = username;
     _accessToken = accessToken;
@@ -264,17 +271,27 @@ class UserManagerService extends ChangeNotifier {
     _isGuestMode = false; // ✅ CRITICAL FIX: Clear guest mode on successful authentication
     _tokenCreatedAt = DateTime.now(); // Record when token was created
     
-    // ✅ FIX: Only update avatar if explicitly provided (preserve existing avatar during token refresh)
-    if (avatarPath != null) {
+    // ✅ FIX: Handle avatar data
+    if (avatarPath != null && avatarPath.isNotEmpty) {
+      // Avatar provided - use it
       _selectedAvatar = avatarPath;
+    } else if (isNewLogin) {
+      // New login without avatar - clear to default (will be loaded from backend)
+      _selectedAvatar = null;
+      if (kDebugMode) {
+        print('🖼️ UserManager: New login without avatar, clearing to default');
+      }
     }
-    // If avatarPath is null, preserve existing _selectedAvatar value
+    // If token refresh and no avatar provided, preserve existing avatar
     
-    if (avatarBackgroundColor != null) {
+    if (avatarBackgroundColor != null && avatarBackgroundColor.isNotEmpty) {
       _avatarBackgroundColor = AvatarHelper.hexToColor(avatarBackgroundColor) ?? 
           AvatarHelper.getDefaultBackgroundColor();
+    } else if (isNewLogin) {
+      // New login without background color - use default
+      _avatarBackgroundColor = AvatarHelper.getDefaultBackgroundColor();
     }
-    // If avatarBackgroundColor is null, preserve existing _avatarBackgroundColor value
+    // If token refresh and no background color provided, preserve existing color
     
     await _saveUserDataToStorage();
     
@@ -361,6 +378,10 @@ class UserManagerService extends ChangeNotifier {
       _showLoginPage = false;
       _tokenCreatedAt = null;
       _isGuestMode = false; // ✅ Also clear guest mode on logout
+      
+      // ✅ FIX: Clear avatar data on logout to prevent showing previous user's avatar
+      _selectedAvatar = null;
+      _avatarBackgroundColor = AvatarHelper.getDefaultBackgroundColor();
       
       // Clear storage
       await _clearUserDataFromStorage();
