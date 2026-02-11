@@ -1,0 +1,156 @@
+{
+  "appPolicies" : {
+    "eula" : "",
+    "policies" : [
+      {
+        "locale" : "en_US",
+        "policyText" : "",
+        "policyURL" : ""
+      }
+    ]
+  },
+  "identifier" : "2AB09B32",
+  "nonRenewingSubscriptions" : [
+
+  ],
+  "products" : [
+    {
+      "displayPrice" : "4.99",
+      "familyShareable" : false,
+      "internalID" : "DE3BC7FB",
+      "localizations" : [
+        {
+          "description" : "",
+          "displayName" : "",
+          "locale" : "en_US"
+        }
+      ],
+      "productID" : "bravoball_treats_500",
+      "referenceName" : "BravoBall 500 Treats",
+      "type" : "Consumable"
+    },
+    {
+      "displayPrice" : "9.99",
+      "familyShareable" : false,
+      "internalID" : "A1ED8D38",
+      "localizations" : [
+        {
+          "description" : "",
+          "displayName" : "",
+          "locale" : "en_US"
+        }
+      ],
+      "productID" : "bravoball_treats_1000",
+      "referenceName" : "BravoBall 1000 Treats",
+      "type" : "Consumable"
+    },
+    {
+      "displayPrice" : "19.99",
+      "familyShareable" : false,
+      "internalID" : "240FE31C",
+      "localizations" : [
+        {
+          "description" : "",
+          "displayName" : "",
+          "locale" : "en_US"
+        }
+      ],
+      "productID" : "bravoball_treats_2000",
+      "referenceName" : "BravoBall 2000 Treats",
+      "type" : "Consumable"
+    }
+  ],
+  "settings" : {
+    "_askToBuyEnabled" : false,
+    "_billingGracePeriodEnabled" : false,
+    "_billingIssuesEnabled" : false,
+    "_disableDialogs" : false,
+    "_failTransactionsEnabled" : false,
+    "_locale" : "en_US",
+    "_renewalBillingIssuesEnabled" : false,
+    "_storefront" : "USA",
+    "_storeKitErrors" : [
+
+    ],
+    "_timeRate" : 0
+  },
+  "subscriptionGroups" : [
+    {
+      "id" : "179F5FAE",
+      "localizations" : [
+
+      ],
+      "name" : "subgroup",
+      "subscriptions" : [
+        {
+          "adHocOffers" : [
+
+          ],
+          "codeOffers" : [
+
+          ],
+          "displayPrice" : "14.99",
+          "familyShareable" : false,
+          "groupNumber" : 1,
+          "internalID" : "B2FAC0D4",
+          "introductoryOffer" : {
+            "displayPrice" : "0.00",
+            "paymentMode" : "freeTrial",
+            "subscriptionPeriod" : "P7D"
+          },
+          "localizations" : [
+            {
+              "description" : "",
+              "displayName" : "",
+              "locale" : "en_US"
+            }
+          ],
+          "productID" : "bravoball_monthly_premium",
+          "recurringSubscriptionPeriod" : "P1M",
+          "referenceName" : "BravoBall Monthly",
+          "subscriptionGroupID" : "179F5FAE",
+          "type" : "RecurringSubscription",
+          "winbackOffers" : [
+
+          ]
+        },
+        {
+          "adHocOffers" : [
+
+          ],
+          "codeOffers" : [
+
+          ],
+          "displayPrice" : "94.99",
+          "familyShareable" : false,
+          "groupNumber" : 1,
+          "internalID" : "0A8A247A",
+          "introductoryOffer" : {
+            "displayPrice" : "0.00",
+            "paymentMode" : "freeTrial",
+            "subscriptionPeriod" : "P7D"
+          },
+          "localizations" : [
+            {
+              "description" : "",
+              "displayName" : "",
+              "locale" : "en_US"
+            }
+          ],
+          "productID" : "bravoball_yearly_premium",
+          "recurringSubscriptionPeriod" : "P1Y",
+          "referenceName" : "BravoBall Yearly",
+          "subscriptionGroupID" : "179F5FAE",
+          "type" : "RecurringSubscription",
+          "winbackOffers" : [
+
+          ]
+        }
+      ]
+    }
+  ],
+  "version" : {
+    "major" : 4,
+    "minor" : 0
+  }
+}

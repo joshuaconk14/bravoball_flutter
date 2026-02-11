@@ -8,6 +8,7 @@ import 'authentication_service.dart';
 import 'loading_state_service.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'app_state_service.dart';
+import 'package:purchases_flutter/purchases_flutter.dart';
 
 /// Login Service
 /// Mirrors Swift LoginService for handling authentication API calls
@@ -265,6 +266,25 @@ class LoginService {
       // Clear any cached auth state
       await AuthenticationService.shared.clearInvalidTokens();
       
+      // ✅ CRITICAL: Reset RevenueCat user to prevent subscription sharing
+      try {
+        if (kDebugMode) {
+          print('🔍 LoginService: Resetting RevenueCat user on logout...');
+        }
+        
+        // Reset RevenueCat to anonymous user - this prevents subscription sharing
+        await Purchases.logOut();
+        
+        if (kDebugMode) {
+          print('✅ LoginService: RevenueCat user reset successfully');
+        }
+      } catch (revenueCatError) {
+        if (kDebugMode) {
+          print('⚠️ LoginService: Failed to reset RevenueCat user: $revenueCatError');
+        }
+        // Don't fail logout if RevenueCat reset fails
+      }
+      
       if (kDebugMode) {
         print('✅ LoginService: User logged out successfully');
       }
@@ -320,6 +340,8 @@ class LoginService {
       if (kDebugMode) {
         print('  ✓ Cleared authentication data');
       }
+
+      // Premium status is now handled by RevenueCat automatically
 
       // Clear shared preferences
       final prefs = await SharedPreferences.getInstance();

@@ -1,9 +1,11 @@
+import 'dart:io' show Platform; // ✅ ADDED: For platform detection
 import 'package:flutter/material.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/services.dart'; // ✅ ADDED: For SystemChrome orientation locking
 import 'package:provider/provider.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:rive/rive.dart';
+import 'package:purchases_flutter/purchases_flutter.dart';
 import 'views/onboarding_view.dart';
 import 'features/onboarding/onboarding_flow.dart';
 import 'features/auth/login_view.dart';
@@ -14,9 +16,17 @@ import 'services/authentication_service.dart';
 import 'services/user_manager_service.dart';
 import 'services/android_compatibility_service.dart'; // ✅ ADDED: Import Android compatibility service
 import 'services/loading_state_service.dart';
+import 'services/ad_service.dart'; // ✅ ADDED: Import AdService
+import 'services/store_service.dart'; // ✅ ADDED: Import StoreService
+import 'services/unified_purchase_service.dart'; // ✅ ADDED: Import UnifiedPurchaseService
+import 'services/connectivity_service.dart'; // ✅ ADDED: Import ConnectivityService
+import 'services/offline_custom_drill_database.dart'; // ✅ ADDED: Import OfflineCustomDrillDatabase
 import 'constants/app_theme.dart';
+import 'constants/app_assets.dart';
 import 'config/app_config.dart';
+import 'config/purchase_config.dart';
 import 'widgets/bravo_loading_indicator.dart';
+import 'utils/streak_dialog_manager.dart'; // ✅ ADDED: Import StreakDialogManager
 
 // Global flag to track intro animation - persists across widget rebuilds
 bool _hasShownIntroAnimation = false;
@@ -34,9 +44,11 @@ void main() async {
   
   // Show debug information
   if (kDebugMode) {
-    print('🚀 Starting BravoBall Flutter App');
-    print('📱 ${AppConfig.debugInfo}');
-    print('🌐 Phone Wi-Fi IP: ${AppConfig.phoneWifiIP}');
+  print('�� Starting BravoBall Flutter App');
+  print('📱 ${AppConfig.debugInfo}');
+  print('�� Phone Wi-Fi IP: ${AppConfig.phoneWifiIP}');
+  print('🔗 ACTUAL BASE URL: ${AppConfig.baseUrl}');
+  print('📁 .env file loaded: ${dotenv.env['PHONE_WIFI_IP'] ?? 'NOT FOUND'}');
   }
   
   // ✅ ADDED: Initialize Android compatibility service
@@ -48,6 +60,26 @@ void main() async {
   // ✅ FIXED: Initialize UserManagerService FIRST (AppStateService depends on it)
   await UserManagerService.instance.initialize();
   
+  // ✅ ADDED: Initialize StoreService to load store items and freeze dates
+  await StoreService.instance.initialize();
+  
+  // ✅ ADDED: Initialize ConnectivityService to monitor network status
+  await ConnectivityService.instance.initialize();
+  
+  // ✅ ADDED: Initialize OfflineCustomDrillDatabase for offline storage of custom drills
+  try {
+    await OfflineCustomDrillDatabase.instance.database;
+    if (kDebugMode) {
+      print('✅ OfflineCustomDrillDatabase initialized successfully');
+    }
+  } catch (e) {
+    if (kDebugMode) {
+      print('⚠️ OfflineCustomDrillDatabase initialization error: $e');
+    }
+    // Continue app startup even if database init fails
+    // Database will be retried on first access
+  }
+  
   // Initialize authentication services
   await AuthenticationService.shared.initialize();
   
@@ -56,10 +88,11 @@ void main() async {
   
   if (kDebugMode) {
     print('✅ All services initialized successfully');
+    print('✅ RevenueCat configured');
     // ✅ ADDED: Log Android debug info if on Android
     AndroidCompatibilityService.shared.logAndroidDebugInfo();
   }
-  
+
   runApp(const MyApp());
 }
 
@@ -105,6 +138,9 @@ class _MyAppState extends State<MyApp> {
         ChangeNotifierProvider.value(value: UserManagerService.instance),
         ChangeNotifierProvider.value(value: AuthenticationService.shared),
         ChangeNotifierProvider.value(value: LoadingStateService.instance),
+        ChangeNotifierProvider.value(value: StoreService.instance),
+        ChangeNotifierProvider.value(value: UnifiedPurchaseService.instance),
+        ChangeNotifierProvider.value(value: ConnectivityService.instance),
       ],
       child: MaterialApp(
         title: 'BravoBall',
@@ -120,8 +156,8 @@ class _MyAppState extends State<MyApp> {
                 width: MediaQuery.of(context).size.width,
                 height: MediaQuery.of(context).size.height,
                 color: Colors.transparent,
-                child: const RiveAnimation.asset(
-                  'assets/rive/BravoBall_Intro.riv',
+                child: RiveAnimation.asset(
+                  AppAssets.bravoBallIntro,
                   fit: BoxFit.cover,
                 ),
               ),
@@ -233,16 +269,51 @@ class AuthenticatedApp extends StatefulWidget {
   State<AuthenticatedApp> createState() => _AuthenticatedAppState();
 }
 
-class _AuthenticatedAppState extends State<AuthenticatedApp> {
+class _AuthenticatedAppState extends State<AuthenticatedApp> with WidgetsBindingObserver {
   bool _hasLoadedBackendData = false;
 
   @override
   void initState() {
     super.initState();
+    WidgetsBinding.instance.addObserver(this);
     _loadBackendDataIfNeeded();
+    
+    // ✅ ADDED: Initialize premium service
+    WidgetsBinding.instance.addPostFrameCallback((_) async {
+      await AdService.instance.showAdOnAppOpenIfAppropriate();
+    });
   }
 
-  void _loadBackendDataIfNeeded() {
+  @override
+  void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
+    super.dispose();
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    super.didChangeAppLifecycleState(state);
+    
+    // ✅ ADDED: Track app lifecycle for ad management
+    if (state == AppLifecycleState.resumed) {
+      // App came to foreground - check for ads
+      if (kDebugMode) {
+        print('📱 App resumed - checking for ads');
+      }
+      
+      // ✅ ADDED: Actually check for ads when app resumes
+      WidgetsBinding.instance.addPostFrameCallback((_) async {
+        await AdService.instance.showAdOnAppOpenIfAppropriate();
+      });
+    } else if (state == AppLifecycleState.paused) {
+      // App went to background
+      if (kDebugMode) {
+        print('📱 App paused');
+      }
+    }
+  }
+
+  Future<void> _loadBackendDataIfNeeded() async {
     final userManager = UserManagerService.instance;
     final appState = AppStateService.instance;
     
@@ -263,11 +334,16 @@ class _AuthenticatedAppState extends State<AuthenticatedApp> {
         print('📱 Loading backend data for user: ${userManager.email}');
       }
       
+      // Premium status is now handled by RevenueCat automatically
+      
       appState.loadBackendData().then((_) {
         if (mounted) {
           setState(() {
             _hasLoadedBackendData = true;
           });
+          
+          // ✅ NEW: Check if user just lost their streak and show dialog
+          _checkForStreakLoss();
         }
       });
     } else {
@@ -277,6 +353,13 @@ class _AuthenticatedAppState extends State<AuthenticatedApp> {
       if (kDebugMode) {
         print('✅ Initialization complete - isInitialLoad set to false (no user history)');
       }
+    }
+  }
+
+  /// ✅ NEW: Check if user lost their streak and show dialog
+  void _checkForStreakLoss() {
+    if (mounted) {
+      StreakDialogManager.checkAndShowStreakLossDialog(context);
     }
   }
 

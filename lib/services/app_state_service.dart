@@ -5,6 +5,7 @@ import '../models/editable_drill_model.dart';
 import '../models/drill_group_model.dart';
 import '../models/filter_models.dart';
 import '../config/app_config.dart';
+import '../config/skill_config.dart';
 import '../services/drill_api_service.dart';
 import './test_data_service.dart';
 import './guest_drill_service.dart';
@@ -167,8 +168,6 @@ class AppStateService extends ChangeNotifier {
   static AppStateService? _instance;
   static AppStateService get instance => _instance ??= AppStateService._();
   
-  AppStateService._();
-  
   // ===== SERVICES =====
   // External service dependencies - centralized here for easy testing/mocking
   final DrillApiService _drillApiService = DrillApiService.shared;
@@ -182,6 +181,15 @@ class AppStateService extends ChangeNotifier {
   final CustomDrillService _customDrillService = CustomDrillService.shared;
   // ✅ ADDED: Friend service for friend request tracking
   final FriendService _friendService = FriendService.shared;
+  
+  // ✅ ADDED: RevenueCat service for premium checks (injectable for testing)
+  final RevenueCatService _revenueCatService;
+  
+  // Private constructor with optional dependencies for testing
+  AppStateService._({RevenueCatService? revenueCatService})
+      : _revenueCatService = revenueCatService ?? RevenueCatServiceImpl();
+  
+
   
   // ===== SYNC COORDINATION =====
   // Prevents race conditions and manages debounced operations
@@ -273,6 +281,59 @@ class AppStateService extends ChangeNotifier {
   
   int _countOfFullyCompletedSessions = 0;
   int get countOfFullyCompletedSessions => _countOfFullyCompletedSessions;
+  
+  // ✅ NEW: Track if user just lost their streak (for showing revival dialog)
+  bool _hasJustLostStreak = false;
+  bool get hasJustLostStreak => _hasJustLostStreak;
+  
+  // ✅ NEW: Store treats awarded from last session completion (from backend)
+  int _lastSessionTreatsAwarded = 0;
+  int get lastSessionTreatsAwarded => _lastSessionTreatsAwarded;
+  
+  // ✅ NEW: Store treat breakdown from last session completion (from backend)
+  Map<String, dynamic>? _lastSessionTreatBreakdown;
+  Map<String, dynamic>? get lastSessionTreatBreakdown => _lastSessionTreatBreakdown;
+  
+  // ✅ NEW: Store whether treats were already granted (from backend)
+  bool _lastSessionTreatsAlreadyGranted = false;
+  bool get lastSessionTreatsAlreadyGranted => _lastSessionTreatsAlreadyGranted;
+  
+  // ✅ NEW: Mark that we've shown the streak loss dialog
+  void markStreakLossDialogShown() {
+    _hasJustLostStreak = false;
+    notifyListeners();
+  }
+  
+  // ✅ NEW: Update streak values directly (used after streak reviver)
+  void updateStreakValues({
+    required int currentStreak,
+    required int previousStreak,
+    int? highestStreak,
+  }) {
+    _currentStreak = currentStreak;
+    _previousStreak = previousStreak;
+    if (highestStreak != null && highestStreak > _highestStreak) {
+      _highestStreak = highestStreak;
+    }
+    _hasJustLostStreak = false; // Clear streak loss flag
+    notifyListeners();
+    
+    if (kDebugMode) {
+      print('✅ Streak values updated: current=$_currentStreak, previous=$_previousStreak, highest=$_highestStreak');
+    }
+  }
+  
+  // ✅ Active freeze date - delegates to StoreService
+  DateTime? get activeFreezeDate => StoreService.instance.activeFreezeDate;
+  
+  // ✅ Used freezes history - delegates to StoreService
+  List<DateTime> get usedFreezes => StoreService.instance.usedFreezes;
+  
+  // ✅ Active streak reviver - delegates to StoreService
+  DateTime? get activeStreakReviver => StoreService.instance.activeStreakReviver;
+  
+  // ✅ Used revivers history - delegates to StoreService
+  List<DateTime> get usedRevivers => StoreService.instance.usedRevivers;
   
   // ✅ NEW: Backend-sourced progress metrics only
   String _favoriteDrill = '';
@@ -645,8 +706,20 @@ class AppStateService extends ChangeNotifier {
       
       final progressHistory = await _progressSyncService.updateProgressHistory();
       if (progressHistory != null) {
-        _currentStreak = progressHistory['currentStreak'] ?? 0;
-        _previousStreak = progressHistory['previousStreak'] ?? 0;
+        final newCurrentStreak = progressHistory['currentStreak'] ?? 0;
+        final newPreviousStreak = progressHistory['previousStreak'] ?? 0;
+        
+        // ✅ NEW: Check if user just lost their streak
+        // Condition: current_streak == 0 AND previous_streak > 0
+        if (newCurrentStreak == 0 && newPreviousStreak > 0) {
+          _hasJustLostStreak = true;
+          if (kDebugMode) {
+            print('💔 Streak loss detected! Previous streak: $newPreviousStreak days');
+          }
+        }
+        
+        _currentStreak = newCurrentStreak;
+        _previousStreak = newPreviousStreak;
         _highestStreak = progressHistory['highestStreak'] ?? 0;
         _countOfFullyCompletedSessions = progressHistory['completedSessionsCount'] ?? 0;
         
@@ -889,8 +962,20 @@ class AppStateService extends ChangeNotifier {
       
       final progressHistory = await _progressSyncService.updateProgressHistory();
       if (progressHistory != null) {
-        _currentStreak = progressHistory['currentStreak'] ?? 0;
-        _previousStreak = progressHistory['previousStreak'] ?? 0;
+        final newCurrentStreak = progressHistory['currentStreak'] ?? 0;
+        final newPreviousStreak = progressHistory['previousStreak'] ?? 0;
+        
+        // ✅ NEW: Check if user just lost their streak
+        // Condition: current_streak == 0 AND previous_streak > 0
+        if (newCurrentStreak == 0 && newPreviousStreak > 0) {
+          _hasJustLostStreak = true;
+          if (kDebugMode) {
+            print('💔 Streak loss detected! Previous streak: $newPreviousStreak days');
+          }
+        }
+        
+        _currentStreak = newCurrentStreak;
+        _previousStreak = newPreviousStreak;
         _highestStreak = progressHistory['highestStreak'] ?? 0;
         _countOfFullyCompletedSessions = progressHistory['completedSessionsCount'] ?? 0;
         
@@ -1069,7 +1154,7 @@ class AppStateService extends ChangeNotifier {
       try {
         if (kDebugMode) print('🔄 Starting immediate session sync to backend...');
         
-        final syncSuccess = await _progressSyncService.syncCompletedSession(
+        final responseData = await _progressSyncService.syncCompletedSession(
           date: session.date,
           drills: session.drills,
           totalCompleted: session.totalCompletedDrills,
@@ -1077,9 +1162,45 @@ class AppStateService extends ChangeNotifier {
           type: session.sessionType
         );
         
-        if (syncSuccess) {
-          if (kDebugMode) print('✅ Session sync successful, refreshing progress...');
+        if (responseData != null) {
+          // ✅ Extract treats from backend response
+          final treatsAwarded = responseData['treats_awarded'] ?? 0;
+          final treatsAlreadyGranted = responseData['treats_already_granted'] ?? false;
+          final treatBreakdown = responseData['treat_breakdown'];
+          
+          // ✅ Store treats awarded and breakdown for display in completion view
+          _lastSessionTreatsAwarded = treatsAwarded;
+          _lastSessionTreatBreakdown = treatBreakdown != null 
+              ? Map<String, dynamic>.from(treatBreakdown) 
+              : null;
+          _lastSessionTreatsAlreadyGranted = treatsAlreadyGranted;
+          
+          if (kDebugMode) {
+            print('✅ Session sync successful');
+            print('   Treats awarded: $treatsAwarded');
+            print('   Treats already granted: $treatsAlreadyGranted');
+            if (treatBreakdown != null) {
+              print('   Treat breakdown: $treatBreakdown');
+            }
+          }
+          
+          // ✅ Refresh treats from backend if treats were awarded
+          // Backend already granted treats, so we refresh to get authoritative count
+          if (treatsAwarded > 0 && !treatsAlreadyGranted) {
+            final storeService = StoreService.instance;
+            // Refresh treats from backend (backend already granted them)
+            await storeService.refreshTreatsFromBackend();
+            
+            if (kDebugMode) {
+              print('🎁 Refreshed treats from backend: ${storeService.treats}');
+            }
+          }
+          
+          // Refresh progress history to get updated streak
           await refreshProgressHistoryFromBackend();
+          notifyListeners(); // Notify listeners so UI can update with treats amount
+        } else {
+          if (kDebugMode) print('❌ Session sync failed - no response data');
         }
       } catch (e) {
         if (kDebugMode) print('❌ Error in session sync: $e');
@@ -1118,6 +1239,9 @@ class AppStateService extends ChangeNotifier {
       await _addCompletedSessionWithSync(completedSession);
       _setSessionState(SessionState.completed);
       
+      // ✅ Treats are now calculated and granted by the backend when session is synced
+      // Backend will return treats_awarded in the POST response
+      
       if (kDebugMode) print('✅ Session completed successfully');
     } catch (e) {
       if (kDebugMode) print('❌ Error completing session: $e');
@@ -1139,6 +1263,13 @@ class AppStateService extends ChangeNotifier {
     }
     
     _completedSessions.add(session);
+    
+    // ✅ UPDATED: Session completion is now tracked via the completedSession database record
+    // Backend checks completedSession creation dates directly instead of UsageTracking model
+    if (kDebugMode) {
+      print('📝 Session completion recorded - backend will check database for limits');
+    }
+    
     await _syncCompletedSessionImmediate(session);
   }
 
@@ -1146,6 +1277,67 @@ class AppStateService extends ChangeNotifier {
   void startSession() {
     _setSessionState(SessionState.inProgress);
   }
+
+  /// Check if user can start a new session today
+  /// Free users: 1 session per day
+  /// Premium users: Unlimited sessions
+  Future<bool> canStartNewSession() async {
+    try {
+      if (kDebugMode) {
+        print('🔍 Checking if user can start new session...');
+        print('   Sessions completed today: $sessionsCompletedToday');
+      }
+      
+      // If user hasn't completed any sessions today, they can start one
+      if (sessionsCompletedToday == 0) {
+        if (kDebugMode) {
+          print('✅ User can start session - no sessions completed today');
+        }
+        return true;
+      }
+      
+      // If user has already completed a session today, check premium status
+      if (kDebugMode) {
+        print('🔍 User has completed $sessionsCompletedToday session(s) today');
+        print('🔍 Checking premium status...');
+      }
+      
+      // Check if user has premium access via RevenueCat
+      try {
+        final customerInfo = await _revenueCatService.getCustomerInfo();
+        final hasPremium = customerInfo.entitlements.active.isNotEmpty;
+        
+        if (kDebugMode) {
+          if (hasPremium) {
+            print('✅ Premium user - unlimited sessions allowed');
+          } else {
+            print('❌ Free user - only 1 session per day allowed');
+          }
+        }
+        
+        return hasPremium;
+      } catch (revenueCatError) {
+        if (kDebugMode) {
+          print('⚠️ Error checking RevenueCat status: $revenueCatError');
+          print('   Defaulting to free tier (1 session per day)');
+        }
+        // On error, default to free tier (1 session per day)
+        return false;
+      }
+      
+    } catch (e) {
+      if (kDebugMode) {
+        print('❌ Error in canStartNewSession: $e');
+        print('   Allowing session to proceed (fail-safe)');
+      }
+      // On error, allow session to proceed (fail-safe)
+      return true;
+    }
+  }
+
+
+
+
 
   // Get next drill that hasn't been completed
   EditableDrillModel? getNextIncompleteDrill() {
@@ -1622,42 +1814,7 @@ class AppStateService extends ChangeNotifier {
   }
 
   String _mapBackendSubSkillToFrontend(String backendSubSkill) {
-    const subSkillMap = {
-      'close_control': 'Close control',
-      'speed_dribbling': 'Speed dribbling',
-      '1v1_moves': '1v1 moves',
-      'change_of_direction': 'Change of direction',
-      'ball_mastery': 'Ball mastery',
-      'ground_control': 'Ground control',
-      'aerial_control': 'Aerial control',
-      'turn_with_ball': 'Turn with ball',
-      'touch_and_move': 'Touch and move',
-      'juggling': 'Juggling',
-      'short_passing': 'Short passing',
-      'long_passing': 'Long passing',
-      'one_touch_passing': 'One touch passing',
-      'technique': 'Technique',
-      'passing_with_movement': 'Passing with movement',
-      'power_shots': 'Power shots',
-      'finesse_shots': 'Finesse shots',
-      'first_time_shots': 'First time shots',
-      '1v1_to_shoot': '1v1 to shoot',
-      'shooting_on_the_run': 'Shooting on the run',
-      'volleying': 'Volleying',
-      'tackling': 'Tackling',
-      'marking': 'Marking',
-      'intercepting': 'Intercepting',
-      'positioning': 'Positioning',
-      'agility': 'Agility',
-      'aerial_defending': 'Aerial defending',
-      'hand_eye_coordination': 'Hand eye coordination',
-      'diving': 'Diving',
-      'reflexes': 'Reflexes',
-      'shot_stopping': 'Shot stopping',
-      'catching': 'Catching',
-      'general': 'General',
-    };
-    return subSkillMap[backendSubSkill.toLowerCase()] ?? backendSubSkill;
+    return SkillConfig.mapSubSkill(backendSubSkill);
   }
 
   // ===== SESSION DRILL MANAGEMENT SECTION =====
@@ -1734,6 +1891,9 @@ class AppStateService extends ChangeNotifier {
     _sessionDrills.clear();
     _editableSessionDrills.clear();
     _setSessionState(SessionState.idle);
+    _lastSessionTreatsAwarded = 0; // ✅ Reset treats awarded when clearing session
+    _lastSessionTreatBreakdown = null; // ✅ Reset treat breakdown when clearing session
+    _lastSessionTreatsAlreadyGranted = false; // ✅ Reset treats already granted flag
     notifyListeners();
     _scheduleSessionDrillsSync();
   }
@@ -2090,6 +2250,10 @@ class AppStateService extends ChangeNotifier {
   void resetDrillProgressForNewSession() {
     if (kDebugMode) print('🔄 Resetting drill progress for new session...');
     
+    _lastSessionTreatsAwarded = 0; // ✅ Reset treats awarded for new session
+    _lastSessionTreatBreakdown = null; // ✅ Reset treat breakdown for new session
+    _lastSessionTreatsAlreadyGranted = false; // ✅ Reset treats already granted flag
+    
     for (int i = 0; i < _editableSessionDrills.length; i++) {
       final currentDrill = _editableSessionDrills[i];
       _editableSessionDrills[i] = currentDrill.copyWith(
@@ -2239,6 +2403,9 @@ class AppStateService extends ChangeNotifier {
     _previousStreak = 0;
     _highestStreak = 0;
     _countOfFullyCompletedSessions = 0;
+    _lastSessionTreatsAwarded = 0; // ✅ Reset treats awarded on logout
+    _lastSessionTreatBreakdown = null; // ✅ Reset treat breakdown on logout
+    _lastSessionTreatsAlreadyGranted = false; // ✅ Reset treats already granted flag
     _savedDrillGroups.clear();
     _likedDrills.clear();
     // ✅ ADDED: Clear custom drills on logout
@@ -2279,6 +2446,8 @@ class AppStateService extends ChangeNotifier {
     _setSearchState(LoadingState.idle);
     
     _syncCoordinator.cancelAll();
+    
+    // Premium status is now handled by RevenueCat automatically
     
     if (kDebugMode) print('✅ User data cleared');
   }

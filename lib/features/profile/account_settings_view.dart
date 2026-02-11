@@ -324,16 +324,32 @@ class AccountSettingsView extends StatelessWidget {
           TextButton(
             onPressed: () async {
               HapticUtils.mediumImpact();
+              
+              // ✅ FIX: Store the navigator context BEFORE closing dialog
+              final navigator = Navigator.of(context);
+              
+              // Close the dialog
               Navigator.pop(context);
               
-              // Perform logout and navigate immediately
+              // Perform logout
               final success = await LoginService.shared.logoutUser();
               
-              if (success && context.mounted) {
-                Navigator.of(context).pushAndRemoveUntil(
-                  MaterialPageRoute(builder: (context) => const OnboardingFlow()),
-                  (route) => false,
-                );
+              if (success) {
+                // ✅ FIX: Use stored navigator to ensure proper navigation
+                try {
+                  navigator.pushAndRemoveUntil(
+                    MaterialPageRoute(builder: (context) => const OnboardingFlow()),
+                    (route) => false,
+                  );
+                } catch (e) {
+                  // Fallback: Try with current context
+                  if (context.mounted) {
+                    Navigator.of(context).pushAndRemoveUntil(
+                      MaterialPageRoute(builder: (context) => const OnboardingFlow()),
+                      (route) => false,
+                    );
+                  }
+                }
               }
             },
             child: const Text(
@@ -372,6 +388,8 @@ class AccountSettingsView extends StatelessWidget {
               style: TextStyle(fontFamily: AppTheme.fontPoppins),
             ),
           ),
+          
+          // Delete Account Button
           TextButton(
             onPressed: () async {
               HapticUtils.heavyImpact();
@@ -427,7 +445,7 @@ class AccountSettingsView extends StatelessWidget {
               }
             },
             child: const Text(
-              'Delete',
+              'Delete Account',
               style: TextStyle(
                 fontFamily: AppTheme.fontPoppins,
                 color: AppTheme.error,

@@ -1,22 +1,20 @@
-<manifest xmlns:android="http://schemas.android.com/apk/res/android">
+<manifest xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://schemas.android.com/tools">
 
     <!-- Internet permissions (existing) -->
     <uses-permission android:name="android.permission.INTERNET" />
     <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
     
-    <!-- Media access permissions for image picker -->
-    <uses-permission android:name="android.permission.READ_EXTERNAL_STORAGE" android:maxSdkVersion="32" />
-    <!-- For Android 13+ (API 33+) -->
-    <uses-permission android:name="android.permission.READ_MEDIA_VIDEO" />
-    <uses-permission android:name="android.permission.READ_MEDIA_IMAGES" />
+    <!-- No media permissions needed - Photo Picker handles video selection on all Android versions -->
     
     <!-- Background Audio and Wake Lock permissions -->
+    <!-- WAKE_LOCK: Required to keep screen on during training drills -->
+    <!-- FOREGROUND_SERVICE: Required for background audio playback during drills -->
     <uses-permission android:name="android.permission.WAKE_LOCK" />
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE_MEDIA_PLAYBACK" />
     
-    <!-- ✅ ADDED: Android battery optimization and background execution -->
-    <uses-permission android:name="android.permission.REQUEST_IGNORE_BATTERY_OPTIMIZATIONS" />
+    <!-- Haptic feedback for user interactions -->
     <uses-permission android:name="android.permission.VIBRATE" />
     
     <!-- ✅ ADDED: Restrict to phones only (no tablets) -->
@@ -32,6 +30,13 @@
         android:icon="@mipmap/ic_launcher"
         android:enableOnBackInvokedCallback="true"
         android:requestLegacyExternalStorage="false">
+        
+        <!-- ✅ ADDED: Google Mobile Ads meta-data -->
+        <!-- Replace the value below with your actual Google Mobile Ads app ID -->
+        <meta-data
+            android:name="com.google.android.gms.ads.APPLICATION_ID"
+            android:value="ca-app-pub-3940256099942544~3347511713" />
+        
         <activity
             android:name=".MainActivity"
             android:exported="true"
@@ -59,6 +64,18 @@
         <meta-data
             android:name="flutterEmbedding"
             android:value="2" />
+        
+        <!-- Enable Photo Picker backport for Android 12 and below via Google Play Services -->
+        <!-- This allows Photo Picker to work on all Android versions without any permissions -->
+        <service android:name="com.google.android.gms.metadata.ModuleDependencies"
+                 android:enabled="false"
+                 android:exported="false"
+                 tools:ignore="MissingClass">
+            <intent-filter>
+                <action android:name="com.google.android.gms.metadata.MODULE_DEPENDENCIES" />
+            </intent-filter>
+            <meta-data android:name="photopicker_activity:0:required" android:value="" />
+        </service>
     </application>
     <!-- Required to query activities that can process text, see:
          https://developer.android.com/training/package-visibility and

@@ -53,27 +53,14 @@ class PermissionService {
         return status == PermissionStatus.granted || status == PermissionStatus.limited;
       }
       
-      // On Android, handle different API levels
+      // On Android, Photo Picker works on all versions without permissions
+      // Android 13+: Native Photo Picker
+      // Android ≤12: Photo Picker via Google Play Services backport
       if (Platform.isAndroid) {
-        // For Android 13+ (API 33+), use granular media permissions
-        if (await _isAndroid13OrHigher()) {
-          final videoStatus = await Permission.videos.request();
-          
-          if (kDebugMode) {
-            print('🔐 [PermissionService] Android 13+ Videos permission: $videoStatus');
-          }
-          
-          return videoStatus == PermissionStatus.granted;
-        } else {
-          // For older Android versions, use storage permission
-          final storageStatus = await Permission.storage.request();
-          
-          if (kDebugMode) {
-            print('🔐 [PermissionService] Android <13 Storage permission: $storageStatus');
-          }
-          
-          return storageStatus == PermissionStatus.granted;
+        if (kDebugMode) {
+          print('🔐 [PermissionService] Android: Photo Picker used, no permission needed');
         }
+        return true; // Photo Picker doesn't require permissions on any Android version
       }
       
       // For other platforms, assume permission is granted
@@ -96,13 +83,8 @@ class PermissionService {
       }
       
       if (Platform.isAndroid) {
-        if (await _isAndroid13OrHigher()) {
-          final status = await Permission.videos.status;
-          return status == PermissionStatus.granted;
-        } else {
-          final status = await Permission.storage.status;
-          return status == PermissionStatus.granted;
-        }
+        // Photo Picker works on all Android versions without permissions
+        return true;
       }
       
       return true;
@@ -123,13 +105,8 @@ class PermissionService {
       }
       
       if (Platform.isAndroid) {
-        PermissionStatus status;
-        if (await _isAndroid13OrHigher()) {
-          status = await Permission.videos.status;
-        } else {
-          status = await Permission.storage.status;
-        }
-        return status == PermissionStatus.permanentlyDenied;
+        // Photo Picker doesn't have permanent denial concept (no permissions needed)
+        return false;
       }
       
       return false;
@@ -149,19 +126,6 @@ class PermissionService {
       if (kDebugMode) {
         print('❌ [PermissionService] Error opening app settings: $e');
       }
-      return false;
-    }
-  }
-
-  /// Check if device is running Android 13 or higher (API 33+)
-  Future<bool> _isAndroid13OrHigher() async {
-    if (!Platform.isAndroid) return false;
-    
-    try {
-      // This is a simplified check - in a production app you might want to use
-      // a more robust method to check Android API level
-      return true; // Assume modern Android for now
-    } catch (e) {
       return false;
     }
   }
