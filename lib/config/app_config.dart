@@ -13,7 +13,7 @@ class AppConfig {
   /// 2: Computer (localhost)
   /// 3: Phone (Wi-Fi IP)
   /// 4: V2 Backend (App Store Review & Production)
-  static const int appDevCase = 3; // Localhost for local backend testing
+  static const int appDevCase = 4; // Localhost for local backend testing
 
   /// Debug mode toggle
   static const bool debug = false; // Enable debug for local testing
