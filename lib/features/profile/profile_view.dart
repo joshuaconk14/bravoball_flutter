@@ -12,6 +12,7 @@ import '../debug/debug_settings_view.dart';
 import '../onboarding/onboarding_flow.dart';
 import 'privacy_policy_view.dart';
 import 'terms_of_service_view.dart';
+import 'credits_view.dart';
 import 'account_settings_view.dart'; // ✅ ADDED: Import AccountSettingsView
 import '../friends/friends_view.dart'; // ✅ ADDED: Import FriendsView
 import '../saved_drills/saved_drills_view.dart'; // ✅ ADDED: Import SavedDrillsView
@@ -25,7 +26,7 @@ class ProfileView extends StatefulWidget {
 }
 
 class _ProfileViewState extends State<ProfileView> with WidgetsBindingObserver {
-  final String appVersion = '2.0.1'; // This would come from package info
+  final String appVersion = '2.0.2'; // This would come from package info
 
   @override
   void initState() {
@@ -177,6 +178,14 @@ class _ProfileViewState extends State<ProfileView> with WidgetsBindingObserver {
                         onTap: () {
                           HapticUtils.lightImpact(); // Light haptic for terms of service
                           _handleTermsOfService();
+                        },
+                      ),
+                      _buildMenuItem(
+                        icon: Icons.attribution_outlined,
+                        title: 'Credits & Attributions',
+                        onTap: () {
+                          HapticUtils.lightImpact();
+                          _handleCredits();
                         },
                       ),
                     ],
@@ -603,6 +612,14 @@ class _ProfileViewState extends State<ProfileView> with WidgetsBindingObserver {
     Navigator.of(context).push(
       MaterialPageRoute(
         builder: (context) => const TermsOfServiceView(),
+      ),
+    );
+  }
+
+  void _handleCredits() {
+    Navigator.of(context).push(
+      MaterialPageRoute(
+        builder: (context) => const CreditsView(),
       ),
     );
   }

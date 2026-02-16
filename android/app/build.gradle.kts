@@ -34,14 +34,26 @@ android {
         // TODO: Specify your own unique Application ID (https://developer.android.com/studio/build/application-id.html).
         applicationId = "com.bravoball.app.bravoball_flutter"
         // Optimized for maximum compatibility and Play Store compliance
-        minSdk = 23  // Android 6.0 (API 23) - Covers ~98% of active Android devices
-        targetSdk = 35  // Required for Google Play Store submission (Android 14)
+        minSdk = flutter.minSdkVersion  // Android 6.0 (API 23) - Covers ~98% of active Android devices
+        targetSdk = 35  // Required for Google Play Store submission (Android 15)
         versionCode = flutter.versionCode
         versionName = flutter.versionName
         
-        // Support for 16 KB page sizes (required by Google Play)
+        // ✅ FIX: Include all architectures to allow upgrades from existing users
+        // This fixes "doesn't allow any existing users to upgrade" error
         ndk {
-            abiFilters += listOf("armeabi-v7a", "arm64-v8a", "x86_64")
+            abiFilters += listOf("armeabi-v7a", "arm64-v8a", "x86", "x86_64")
+        }
+    }
+    
+    // ✅ FIX: Enable 16 KB page size support (required by Google Play)
+    packaging {
+        jniLibs {
+            useLegacyPackaging = false
+        }
+        // Ensure proper alignment for 16 KB page sizes
+        resources {
+            excludes += "/META-INF/{AL2.0,LGPL2.1}"
         }
     }
 
